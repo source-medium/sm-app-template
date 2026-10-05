@@ -1,0 +1,114 @@
+# AGENTS.md
+
+This is a customer-owned Next.js app that reads a SourceMedium BigQuery
+warehouse on the server and shows it to a small group of trusted viewers.
+Every viewer sees everything the app can read; there is no per-viewer data.
+Without configuration it runs on clearly labeled sample data.
+
+## Commands
+
+- `pnpm dev`: checks configuration, then serves on http://127.0.0.1:3000.
+- `pnpm check`: format, lint, types, auth coverage, skill copies, all tests. Under a minute.
+- `pnpm schema <relation>`: a relation's columns and types (never rows).
+- `pnpm skills:sync`: run after editing anything in `.agents/skills`.
+
+Also: `pnpm diagnose` (full configuration and warehouse check), `pnpm test:e2e`,
+`pnpm build`, `pnpm build:cloudflare`. Use `pnpm run deploy`, never `pnpm deploy`
+(a pnpm built-in).
+
+## Repo map
+
+```text
+app.config.ts                 Name, logo, navigation, store labels, date defaults
+src/app/(app)/<route>/page.tsx  One line re-exporting a feature's page
+src/features/<view>/          One view: queries.ts (contract), rows.ts (row schema),
+                              bigquery.ts (live SQL), sample.ts (fixtures), page.tsx
+src/components/shell/         Sidebar, top bar, mode chip, filter bar, report page frame
+src/components/patterns/      KPI card, data table, card grid, data states, DataRegion
+src/components/charts/        Recharts chart card with a table view
+src/components/ui/            shadcn/ui primitives, copied and editable
+src/styles/tokens.css         Colors, fonts, radius, chart palette (the rebrand file)
+src/lib/auth/                 requireViewer(), Basic and Cloudflare Access guards
+src/lib/config/env.server.ts  The only configuration parser
+src/lib/data/                 BigQuery client, decoders, errors, catalog, store roster
+src/lib/filters.ts, format.ts URL filters; server-side number and date formatting
+docs/                         Guides (index below)
+```
+
+## The five rules
+
+1. **Call `requireViewer()` in every data function.** Every exported async
+   function in `bigquery.ts` and `queries.ts`, every route handler, and every
+   server action starts with `await requireViewer()`. `pnpm check` enforces it.
+2. **Format dates and numbers on the server** with `src/lib/format.ts`, and pass
+   strings to client components. Locale formatting in a `"use client"` file
+   fails lint, because server and browser can disagree.
+3. **Keep filters in the URL** (`?store=&from=&to=` plus the view's own). Read
+   them in the page's `searchParams`; there is no client data store.
+4. **Inspect the schema before writing SQL**: the SourceMedium MCP
+   (`describe_table`) or `pnpm schema <relation>`. Never guess a column.
+5. **Never paste a secret** into a chat, a file, a commit, or a log. Do not read
+   `.env.local`, `.env.production`, or `.dev.vars`; ask the person to run
+   `pnpm diagnose` and share its output instead.
+
+## Add a page
+
+1. Create `src/features/<name>/` with `queries.ts` (types plus a `get<Name>`
+   dispatcher that calls `requireViewer()` and picks live or sample), `rows.ts`
+   (a Zod row schema built from `bq.*` decoders), `bigquery.ts` (parameterized
+   SQL through `warehouse.query`), `sample.ts` (deterministic fixtures in
+   BigQuery's wire format), and `page.tsx` using `ReportPage`.
+2. Add `src/app/(app)/<route>/page.tsx`: `export { default, metadata } from "@/features/<name>/page";`
+3. Add one entry to `nav` in `app.config.ts`.
+4. Wrap each data region in `<Suspense fallback={<LoadingState …/>}>` and
+   `<DataRegion>` so it has loading, empty, error, and incompatible-schema states.
+5. Add `src/features/<name>/fixture-contract.test.ts`, then `pnpm check`.
+
+Copy `src/features/overview` (KPIs and charts), `paid-marketing` (dimension
+filter and table), `creatives` (card grid), or `orders` (search, keyset pages,
+detail drawer). See `docs/removing-the-example.md` to delete any of them.
+
+## SQL and data
+
+- SQL is written by developers, never built from browser input. Browser input
+  becomes typed named parameters (`@store_id`), or picks from a fixed map in code.
+- Fully qualified names come from `warehouse.table("<relation>")`.
+- Aggregate in SQL. Every query has `maxRows`; check `result.truncated`. Totals
+  are never computed from a truncated list.
+- INT64 decodes to `bigint`, FLOAT64 to a finite number, DATE stays a string.
+- No revenue, spend, or other money until a reporting currency is verified
+  (`docs/data.md`). Never add a currency symbol you have not verified.
+- Show "Queried at" and "Data freshness unknown"; never claim freshness from `MAX(date)`.
+
+## UI
+
+Use the shadcn primitives in `components/ui` and the patterns in
+`components/patterns`. Colors and fonts come only from `src/styles/tokens.css`;
+use theme classes (`bg-card`, `text-muted-foreground`), not raw colors. Charts
+use `--chart-1`…`--chart-8` in order, one y-axis, and keep the table view.
+
+## Runtime constraints (Cloudflare Workers, tested)
+
+- Runs on workerd via OpenNext with `nodejs_compat`. WebCrypto, `fetch`, and
+  `jose` work; there is no file system at runtime.
+- `src/middleware.ts` runs in the edge runtime: no Node-only APIs there.
+- Configuration comes only from runtime variables, read per request through
+  `readConfig()`. Never read configuration at module scope or build time.
+- Use plain `<img>` for remote images (no `next/image` optimization on Workers),
+  and add new image hosts to `src/lib/security-headers.ts`.
+- Pages are dynamic and private (`Cache-Control: private, no-store`); do not add
+  shared caches of query results.
+
+## Guides
+
+- `docs/connect.md`: going live, configuration, deploying, lost secrets.
+- `docs/data.md`: MCP setup, schemas, SQL rules, decoding, money, freshness.
+- `docs/auth.md`: the shared password, Cloudflare Access, sign-in options.
+- `docs/operations.md`: rotating secrets, quotas, errors and their remedies.
+- `docs/removing-the-example.md`: deleting one view or all four.
+- `docs/prompts.md`: starter prompts.
+
+Publishing live data, production deploys, and destructive actions need the
+person's explicit go-ahead. Never ask for a SourceMedium admin credential.
+
+Run `pnpm check` before declaring done.

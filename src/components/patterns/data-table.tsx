@@ -1,0 +1,157 @@
+"use client";
+
+/**
+ * The shadcn data-table pattern on TanStack Table: sortable columns, client
+ * pagination over the rows the server sent, and a sticky header. Cells
+ * arrive formatted from the server; `sort` carries the raw value to sort by.
+ * When the query helper reported truncation, a footer says so, so a table is
+ * never silently shorter than the data.
+ */
+import Link from "next/link";
+import { useState } from "react";
+import {
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+
+export type DataTableColumn = { key: string; header: string; align?: "left" | "right"; sortable?: boolean };
+export type DataTableCell = { display: string; sort?: string | number | null; href?: string };
+export type DataTableRow = { id: string; cells: Record<string, DataTableCell> };
+
+export function DataTable({
+  caption,
+  columns,
+  rows,
+  pageSize = 10,
+  paginate = true,
+  truncated = false,
+}: {
+  caption: string;
+  columns: DataTableColumn[];
+  rows: DataTableRow[];
+  pageSize?: number;
+  paginate?: boolean;
+  truncated?: boolean;
+}) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const columnDefs: ColumnDef<DataTableRow>[] = columns.map((column) => ({
+    id: column.key,
+    header: column.header,
+    accessorFn: (row) => row.cells[column.key]?.sort ?? row.cells[column.key]?.display ?? null,
+    enableSorting: column.sortable ?? true,
+    sortUndefined: "last",
+    cell: ({ row }) => {
+      const cell = row.original.cells[column.key];
+      if (!cell) return null;
+      return cell.href ? (
+        <Link href={cell.href} scroll={false} className="font-medium text-primary underline-offset-4 hover:underline">
+          {cell.display}
+        </Link>
+      ) : (
+        cell.display
+      );
+    },
+  }));
+
+  const table = useReactTable({
+    data: rows,
+    columns: columnDefs,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    ...(paginate ? { getPaginationRowModel: getPaginationRowModel(), initialState: { pagination: { pageSize } } } : {}),
+  });
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="max-h-[32rem] overflow-auto rounded-md border">
+        <Table>
+          <caption className="sr-only">{caption}</caption>
+          <TableHeader className="sticky top-0 z-10 bg-muted">
+            {table.getHeaderGroups().map((group) => (
+              <TableRow key={group.id}>
+                {group.headers.map((header) => {
+                  const column = columns.find((item) => item.key === header.column.id);
+                  const sorted = header.column.getIsSorted();
+                  const Icon = sorted === "asc" ? ArrowUp : sorted === "desc" ? ArrowDown : ArrowUpDown;
+                  return (
+                    <TableHead
+                      key={header.id}
+                      className={cn(column?.align === "right" && "text-right")}
+                      aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
+                    >
+                      {header.column.getCanSort() ? (
+                        <button
+                          type="button"
+                          onClick={header.column.getToggleSortingHandler()}
+                          className={cn(
+                            "inline-flex items-center gap-1 font-medium",
+                            column?.align === "right" && "flex-row-reverse",
+                          )}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          <Icon className="size-3.5 text-muted-foreground" aria-hidden />
+                        </button>
+                      ) : (
+                        flexRender(header.column.columnDef.header, header.getContext())
+                      )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell) => {
+                  const column = columns.find((item) => item.key === cell.column.id);
+                  return (
+                    <TableCell key={cell.id} className={cn(column?.align === "right" && "text-right tabular-nums")}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+        <span>
+          {truncated
+            ? `Showing the first ${rows.length} rows; more rows matched than this view loads.`
+            : `${rows.length} ${rows.length === 1 ? "row" : "rows"}`}
+        </span>
+        {paginate && table.getPageCount() > 1 && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <span>
+              Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+              Next
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

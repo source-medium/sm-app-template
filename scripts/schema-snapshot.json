@@ -1,0 +1,1886 @@
+{
+ "_note": "Column names and types of SourceMedium's published relations, read from the SourceMedium demo warehouse on 2026-10-05. No data. Your warehouse may differ; with live configuration, pnpm schema reads your own.",
+ "relations": {
+  "rpt_executive_summary_daily": {
+   "dataset": "transformed",
+   "columns": [
+    {
+     "name": "sm_store_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_channel",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_sub_channel",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "date",
+     "type": "DATE",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_gross_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_net_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_total_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_net_shipping_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_total_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_shipping_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_return_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_fulfillment_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_merchant_processing_fees",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "operating_expenses",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_product_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "product_gross_profit",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "gross_profit",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "contribution_profit",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "net_profit",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_spend",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_platform_reported_conversions",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_platform_reported_revenue",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_clicks",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_impressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "website_sessions",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "new_subscription_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "cancelled_subscription_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "cancelled_passive_subscription_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "active_subscription_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "cancelled_subscription_count_daily_snapshot",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "new_subscriber_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "cancelled_subscriber_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "active_subscriber_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "cancelled_subscriber_count_daily_snapshot",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "customer_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "new_customer_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "repeat_customer_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "new_customer_order_net_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "repeat_customer_order_net_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "new_customer_order_gross_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "repeat_customer_order_gross_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "new_customer_order_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "repeat_customer_order_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_gross_revenue_after_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "target_order_gross_revenue",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "target_order_net_revenue",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "target_total_order_revenue",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "target_order_count",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "target_ad_spend",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "target_website_sessions",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "target_average_order_value",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "target_customer_acquisition_cost",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "target_return_on_ad_spend",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "target_order_conversion_rate",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    }
+   ]
+  },
+  "rpt_ad_performance_daily": {
+   "dataset": "transformed",
+   "columns": [
+    {
+     "name": "sm_store_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "source_system",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_channel",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sub_channel",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "date",
+     "type": "DATE",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_spend",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_clicks",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_inline_link_clicks",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_impressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_platform_reported_conversions",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_platform_reported_revenue",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_platform_reported_revenue_windows",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "fields": [
+      {
+       "name": "default_window",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "_1d_click",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "_7d_click",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "_28d_click",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "_1d_view",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "_7d_view",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "_1d_ev",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      }
+     ]
+    },
+    {
+     "name": "ad_platform_reported_conversion_windows",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "fields": [
+      {
+       "name": "default_window",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "_1d_click",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "_7d_click",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "_28d_click",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "_1d_view",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "_7d_view",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "_1d_ev",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      }
+     ]
+    },
+    {
+     "name": "ad_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_group_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_group_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_account_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_account_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_campaign_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_campaign_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_campaign_type",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_campaign_tactic",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_platform_campaign_objective",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_creative_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_creative_title",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_creative_body",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_creative_image_url",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_creative_thumbnail_url",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_creative_call_to_action_type",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_creative_link_params",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_creative_website_url",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_creative_instagram_url",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "ad_creative_facebook_url",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    }
+   ]
+  },
+  "obt_orders": {
+   "dataset": "transformed",
+   "columns": [
+    {
+     "name": "sm_store_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_order_key",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_customer_key",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "source_system",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_pending",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "customer_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_number",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_checkout_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_currency_code",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_currency_code",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_currency_code",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_currency_conversion_currency_code",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_currency_conversion_effective_date",
+     "type": "DATE",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_currency_conversion_rate_applied",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_currency_conversion_status",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_currency_mismatch_flag",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "currency_conversion_settings_version",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "currency_conversion_mapping_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "currency_conversion_mapping_source",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "currency_conversion_resolution_method",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "currency_conversion_mapping_from_currency",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "currency_conversion_mapping_to_currency",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_created_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_created_at_local_datetime",
+     "type": "DATETIME",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_updated_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_updated_at_local_datetime",
+     "type": "DATETIME",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_processed_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_processed_at_local_datetime",
+     "type": "DATETIME",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_cancelled_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_cancelled_at_local_datetime",
+     "type": "DATETIME",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_cancellation_reason",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_order_sales_channel",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "source_system_sales_channel",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_referrer_url",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_order_landing_page",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_order_referrer_domain",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_index",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_index_reversed",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_tags_csv",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_vendors_csv",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_sequence",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_session_user_agent",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "customer_device_type",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_session_browser_type",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_payment_status",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_processing_method",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "primary_order_payment_gateway",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_shipping_country_code",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_shipping_country",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_shipping_city",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_shipping_zip_code",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_customer_street_address",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_shipping_state",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_cart_quantity",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_price_tax_inclusive",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_default_channel",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_channel",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_sub_channel",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_order_type",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "subscription_order_index",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "subscription_order_sequence",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_utm_source",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_utm_medium",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_utm_campaign",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_utm_content",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_utm_term",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_utm_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_gclid",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_fbclid",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_ttclid",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_utm_source_medium",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "customer_email_hashed",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "customer_tags_csv",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_refund_quantity",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_gross_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_gross_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_net_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_net_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_gross_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_gross_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_tax_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_tax_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_net_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_net_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_gross_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_gross_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_shipping_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_shipping_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_shipping_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_shipping_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_net_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_net_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_gross_shipping_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_gross_shipping_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_shipping_tax_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_shipping_tax_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_net_shipping_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_net_shipping_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_total_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_total_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_total_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_total_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_total_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_total_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_net_revenue_before_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_net_revenue_before_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_total_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_total_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_gross_duties",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_gross_duties",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_duty_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_duty_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_original_net_duties",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_converted_net_duties",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_gross_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_net_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_gross_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_tax_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_net_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_gross_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_shipping_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_shipping_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_net_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_gross_shipping_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_shipping_tax_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_net_shipping_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_total_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_total_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_total_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_net_revenue_before_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_total_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_gross_duties",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_duty_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_net_duties",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_currency_canonicalization_status",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_order_currency_canonicalized",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_shipping_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_return_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_fulfillment_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_merchant_processing_fees",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_zero_party_attribution_source",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_discount_codes_csv",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "product_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "gross_profit",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "product_gross_profit",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_order_sm_valid",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_valid_order_index",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_valid_order_index_reversed",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_skus_csv",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_product_tags_csv",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_product_titles_csv",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_product_variant_titles_csv",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_cart_net_quantity",
+     "type": "NUMERIC",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_subscription_order",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_first_subscription_order",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_recurring_subscription_order",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_latest_order",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "earliest_order_refund_date",
+     "type": "DATE",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "latest_order_refund_date",
+     "type": "DATE",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_to_refund_days_earliest",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_to_refund_days_latest",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_to_refund_weeks_earliest",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_to_refund_weeks_latest",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_to_refund_months_earliest",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_to_refund_months_latest",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_latency_days",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_valid_order_latency_days",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_valid_order_sequence",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    }
+   ]
+  },
+  "obt_inventory_positions": {
+   "dataset": "transformed",
+   "columns": [
+    {
+     "name": "sm_store_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_inventory_position_key",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_product_variant_key",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_product_key",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "source_system",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_source_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_snapshot_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_updated_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sku",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_skus_csv",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_item_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "marketplace_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "product_variant_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "product_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "product_title",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "product_variant_title",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "product_type",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "product_vendor",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "product_tags_csv",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "product_collection_handles_csv",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_location_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_location_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_location_type",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_fulfillment_method",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_quantity_available",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_quantity_on_hand",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_quantity_committed",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_quantity_reserved",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_quantity_incoming",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_quantity_quality_control",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_quantity_damaged",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_quantity_safety_stock",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_quantity_pending",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "inventory_quantity_unsellable",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_inventory_source_attributed",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_inventory_quantity_trusted",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_inventory_location_physical",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_inventory_product_matched",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_inventory_default_total_eligible",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_inventory_quantity_eligible",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    }
+   ]
+  },
+  "dim_data_dictionary": {
+   "dataset": "metadata",
+   "columns": [
+    {
+     "name": "sm_store_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "table_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "dataset_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "table_type",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "dataset_location",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "business_domain",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "refresh_frequency",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "primary_use_case",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "column_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "data_type",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_nullable",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "table_description",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "column_description",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "table_description_updated_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "column_description_updated_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_key_column",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_temporal_column",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_numeric_column",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "categorical_value_distribution",
+     "type": "RECORD",
+     "mode": "REPEATED",
+     "fields": [
+      {
+       "name": "value",
+       "type": "STRING",
+       "mode": "NULLABLE"
+      },
+      {
+       "name": "pct",
+       "type": "FLOAT",
+       "mode": "NULLABLE"
+      }
+     ]
+    },
+    {
+     "name": "_synced_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "table_has_data",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "table_has_fresh_data_14d",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "table_last_data_date",
+     "type": "DATE",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "column_null_percentage",
+     "type": "FLOAT",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "column_distinct_count",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "column_sample_min",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "column_sample_max",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    }
+   ]
+  },
+  "dim_semantic_metric_catalog": {
+   "dataset": "metadata",
+   "columns": [
+    {
+     "name": "metric_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "metric_label",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "metric_description",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "metric_type",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "metric_category",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "calculation",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "has_filter",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "filter_condition",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "metric_time_grains",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "metric_time_expression",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "cumulative_settings",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "semantic_model_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "underlying_model",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "dependent_metrics",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "dependent_metric_count",
+     "type": "INTEGER",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "is_abbreviation",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "preferred_metric_name",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "abbreviations_list",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "catalog_updated_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE"
+    }
+   ]
+  }
+ }
+}

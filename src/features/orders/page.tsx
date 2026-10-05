@@ -1,0 +1,177 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Suspense } from "react";
+import { DataRegion } from "@/components/patterns/data-region";
+import { LoadingState } from "@/components/patterns/data-states";
+import { DataTable } from "@/components/patterns/data-table";
+import { buttonVariants } from "@/components/ui/button";
+import { ReportPage } from "@/components/shell/report-page";
+import { preservedParams, single, withParams, type SearchParams } from "@/lib/filters";
+import { EMPTY_VALUE, formatCount, formatInstant, formatWallTime } from "@/lib/format";
+import { OrderDrawer } from "./order-drawer";
+import { OrderSearchForm } from "./search-form";
+import {
+  decodeCursor,
+  encodeCursor,
+  getOrderDetail,
+  getOrders,
+  type OrderCursor,
+  type OrderDetail,
+  type OrdersFilters,
+  type OrdersPage,
+} from "./queries";
+
+export const metadata: Metadata = { title: "Orders" };
+
+const PATHNAME = "/orders";
+
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const params = await searchParams;
+  const search = single(params, "q")?.trim().slice(0, 64) || null;
+  const cursor = decodeCursor(single(params, "cursor"));
+  const selected = decodeCursor(single(params, "order"));
+
+  return (
+    <ReportPage
+      title="Orders"
+      description="Every order for one store, newest first. Open an order to see its details."
+      pathname={PATHNAME}
+      params={params}
+      preserve={["q"]}
+    >
+      {({ filters }) => {
+        const orderFilters: OrdersFilters = { ...filters, search, cursor };
+        return (
+          <div className="flex flex-col gap-4">
+            <OrderSearchForm
+              pathname={PATHNAME}
+              search={search ?? ""}
+              preserved={preservedParams(params, [], filters)}
+            />
+            <Suspense
+              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${search}|${single(params, "cursor")}`}
+              fallback={<LoadingState variant="table" label="Loading orders" />}
+            >
+              <DataRegion
+                load={() => getOrders(orderFilters)}
+                isEmpty={(data) => data.orders.length === 0}
+                emptyMessage={
+                  search
+                    ? "No orders match that search in the selected dates. Try a wider date range."
+                    : "This store has no orders in the selected dates."
+                }
+              >
+                {(data) => <OrdersList data={data} params={params} paged={cursor !== null} />}
+              </DataRegion>
+            </Suspense>
+            {selected && (
+              <OrderDrawer title="Order details" closeHref={withParams(PATHNAME, params, { order: null })}>
+                <Suspense fallback={<LoadingState variant="table" label="Loading the order" />}>
+                  <DataRegion
+                    load={() => getOrderDetail(filters.storeId, selected)}
+                    isEmpty={(order) => order === null}
+                    emptyMessage="This order is not in the selected store."
+                  >
+                    {(order) => (order ? <OrderDetailList order={order} /> : null)}
+                  </DataRegion>
+                </Suspense>
+              </OrderDrawer>
+            )}
+          </div>
+        );
+      }}
+    </ReportPage>
+  );
+}
+
+function OrdersList({ data, params, paged }: { data: OrdersPage; params: SearchParams; paged: boolean }) {
+  const linkTo = (ref: OrderCursor) => withParams(PATHNAME, params, { order: encodeCursor(ref) });
+  return (
+    <div className="flex flex-col gap-3">
+      <DataTable
+        caption="Orders, newest first"
+        paginate={false}
+        columns={[
+          { key: "order", header: "Order", sortable: false },
+          { key: "created", header: "Created (store time)", sortable: false },
+          { key: "channel", header: "Channel", sortable: false },
+          { key: "type", header: "Type", sortable: false },
+          { key: "status", header: "Payment", sortable: false },
+          { key: "items", header: "Items", align: "right", sortable: false },
+        ]}
+        rows={data.orders.map((order) => ({
+          id: order.key,
+          cells: {
+            order: {
+              display: order.name ?? order.key,
+              href: linkTo({ createdAtMicros: order.createdAt.micros, key: order.key }),
+            },
+            created: { display: formatWallTime(order.createdLocal) },
+            channel: { display: [order.channel, order.subChannel].filter(Boolean).join(" · ") || EMPTY_VALUE },
+            type: { display: order.orderType ?? EMPTY_VALUE },
+            status: { display: order.paymentStatus ?? EMPTY_VALUE },
+            items: { display: order.items ?? EMPTY_VALUE },
+          },
+        }))}
+      />
+      <nav aria-label="Order pages" className="flex gap-2">
+        {paged && (
+          <Link
+            href={withParams(PATHNAME, params, { cursor: null, order: null })}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Newest orders
+          </Link>
+        )}
+        {data.nextCursor && (
+          <Link
+            href={withParams(PATHNAME, params, { cursor: encodeCursor(data.nextCursor), order: null })}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Older orders
+          </Link>
+        )}
+      </nav>
+    </div>
+  );
+}
+
+function OrderDetailList({ order }: { order: OrderDetail }) {
+  const rows: [string, string][] = [
+    ["Order", order.name ?? EMPTY_VALUE],
+    ["Order id", order.orderId ?? EMPTY_VALUE],
+    ["Created (store time)", formatWallTime(order.createdLocal)],
+    ["Processed", order.processedAt ? formatInstant(order.processedAt.iso) : EMPTY_VALUE],
+    ["Channel", [order.channel, order.subChannel].filter(Boolean).join(" · ") || EMPTY_VALUE],
+    ["Sales channel", order.salesChannel ?? EMPTY_VALUE],
+    ["Source system", order.sourceSystem ?? EMPTY_VALUE],
+    ["Order type", order.orderType ?? EMPTY_VALUE],
+    ["Customer order number", formatCount(order.customerOrderIndex)],
+    ["Payment status", order.paymentStatus ?? EMPTY_VALUE],
+    ["Items", order.items ?? EMPTY_VALUE],
+    ["Items refunded", order.refundedItems ?? EMPTY_VALUE],
+    ["Products", order.productTitles ?? EMPTY_VALUE],
+    ["Discount codes", order.discountCodes ?? EMPTY_VALUE],
+    ["Currency", order.currencyCode ?? EMPTY_VALUE],
+    ["Ships to", [order.shippingState, order.shippingCountry].filter(Boolean).join(", ") || EMPTY_VALUE],
+    ["UTM source / medium", [order.utmSource, order.utmMedium].filter(Boolean).join(" / ") || EMPTY_VALUE],
+    ["UTM campaign", order.utmCampaign ?? EMPTY_VALUE],
+    ["Counts as a valid order", order.isValidOrder === null ? EMPTY_VALUE : order.isValidOrder ? "Yes" : "No"],
+    [
+      "Cancelled",
+      order.cancelledAt
+        ? `${formatInstant(order.cancelledAt.iso)}${order.cancellationReason ? ` (${order.cancellationReason})` : ""}`
+        : "No",
+    ],
+  ];
+  return (
+    <dl className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-x-4 gap-y-3 text-sm">
+      {rows.map(([label, value]) => (
+        <div key={label} className="contents">
+          <dt className="text-muted-foreground">{label}</dt>
+          <dd className="break-words">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}

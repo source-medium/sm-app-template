@@ -1,0 +1,11 @@
+.next
+.open-next
+.wrangler
+node_modules
+pnpm-lock.yaml
+playwright-report
+test-results
+public/sample-creatives
+scripts/schema-snapshot.json
+next-env.d.ts
+cloudflare-env.d.ts

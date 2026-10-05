@@ -1,0 +1,116 @@
+/**
+ * Overview's sample and live paths share one row schema and one aggregation
+ * contract. These cases check shape (the schema) and arithmetic (totals
+ * computed independently of the code under test).
+ */
+import { describe, expect, it } from "vitest";
+import { decodeRows, toChartNumber } from "@/lib/data/decode";
+import { WarehouseError } from "@/lib/data/warehouse-error";
+import { datesInRange } from "@/lib/filters";
+import { OVERVIEW_RELATION, OverviewRow, toOverviewData } from "./rows";
+import { aggregateOverviewWire, sampleOverview, sampleOverviewSource, type OverviewSourceRow } from "./sample";
+
+const RANGE = { from: "2026-09-01", to: "2026-09-28" };
+const NOW = new Date("2026-10-05T12:00:00Z");
+
+function source(
+  date: string,
+  orders: number,
+  sessions: bigint,
+  clicks: bigint,
+  store = "s1",
+  sub = "Paid",
+): OverviewSourceRow {
+  return {
+    sm_store_id: store,
+    sm_channel: "Online DTC",
+    sm_sub_channel: sub,
+    date,
+    order_count: orders,
+    website_sessions: sessions,
+    ad_clicks: clicks,
+  };
+}
+
+describe("overview fixture contract", () => {
+  it("every generated row decodes through the live row schema", () => {
+    for (const store of ["sample-store-a", "sample-store-b"]) {
+      const wire = aggregateOverviewWire(sampleOverviewSource(store, RANGE, "2026-10-05"), store, RANGE);
+      expect(wire.length).toBeGreaterThan(0);
+      expect(() => decodeRows(OverviewRow, wire, OVERVIEW_RELATION)).not.toThrow();
+    }
+  });
+
+  it("sums sub-channels by date and totals the period exactly, with fractional orders", () => {
+    const rows = [
+      source("2026-09-01", 1.5, 10n, 3n, "s1", "Paid"),
+      source("2026-09-01", 2.5, 5n, 0n, "s1", "Email"),
+      source("2026-09-02", 4, 7n, 1n),
+    ];
+    const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", RANGE), OVERVIEW_RELATION));
+    expect(data.days).toEqual([
+      { date: "2026-09-01", orders: 4, sessions: 15n, adClicks: 3n },
+      { date: "2026-09-02", orders: 4, sessions: 7n, adClicks: 1n },
+    ]);
+    expect(data.totals).toEqual({ orders: 8, sessions: 22n, adClicks: 4n });
+  });
+
+  it("keeps stores apart: there is no combined total", () => {
+    const rows = [source("2026-09-01", 1, 1n, 1n, "s1"), source("2026-09-01", 100, 100n, 100n, "s2")];
+    const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", RANGE), OVERVIEW_RELATION));
+    expect(data.totals).toEqual({ orders: 1, sessions: 1n, adClicks: 1n });
+  });
+
+  it("keeps large INT64 values exact and refuses to chart them", () => {
+    const huge = 9_007_199_254_740_993n; // 2^53 + 1
+    const rows = [source("2026-09-01", 1, huge, 0n)];
+    const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", RANGE), OVERVIEW_RELATION));
+    expect(data.days[0]?.sessions).toBe(huge);
+    expect(toChartNumber(huge)).toBeNull();
+  });
+
+  it("leaves missing dates as gaps, not zeros", () => {
+    const store = "sample-store-b";
+    const range = { from: "2026-06-01", to: "2026-08-29" };
+    const dates = new Set(
+      aggregateOverviewWire(sampleOverviewSource(store, range, "2026-10-05"), store, range).map((row) => row.date),
+    );
+    const all = datesInRange(range);
+    expect(dates.size).toBeLessThan(all.length);
+    expect(dates.size).toBeGreaterThan(all.length / 2);
+  });
+
+  it("returns no days and no totals for an empty range", () => {
+    const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire([], "s1", RANGE), OVERVIEW_RELATION));
+    expect(data).toEqual({ days: [], totals: null });
+  });
+
+  it("models forward-dated target rows with zero actuals, as the relation does", () => {
+    const future = sampleOverviewSource("sample-store-a", { from: "2026-10-06", to: "2026-10-08" }, "2026-10-05");
+    expect(future.length).toBeGreaterThan(0);
+    for (const row of future) expect([row.order_count, row.website_sessions, row.ad_clicks]).toEqual([0, 0n, 0n]);
+  });
+
+  it("is deterministic: the same filters give the same numbers at any time", async () => {
+    const filters = { storeId: "sample-store-a", range: RANGE };
+    const first = await sampleOverview(filters, NOW);
+    const later = await sampleOverview(filters, new Date("2027-01-01T00:00:00Z"));
+    expect(later).toEqual(first);
+  });
+
+  it("names the relation and column when a row does not match", () => {
+    const wire = aggregateOverviewWire([source("2026-09-01", 1, 1n, 1n)], "s1", RANGE);
+    const bad = [{ ...wire[0], website_sessions: "12.5" }];
+    try {
+      decodeRows(OverviewRow, bad, OVERVIEW_RELATION);
+      throw new Error("expected an incompatible-schema error");
+    } catch (error) {
+      expect(error).toBeInstanceOf(WarehouseError);
+      expect(error).toMatchObject({
+        kind: "incompatible_schema",
+        relation: OVERVIEW_RELATION,
+        column: "website_sessions",
+      });
+    }
+  });
+});

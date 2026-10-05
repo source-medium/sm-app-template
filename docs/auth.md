@@ -1,0 +1,76 @@
+# Who can see the app
+
+Every viewer sees everything the app can read. Both shipped options decide
+**who may open the app**; neither limits **which data** a viewer sees. A
+customer-facing portal, or anything where viewers must see different data,
+needs a separate authorization design that this starter does not provide.
+
+Live data always needs exactly one viewer guard, even on localhost. With no
+live values, a guard is optional: it protects the sample preview.
+
+## The options, with their real costs
+
+1. **Shared password (default).** In your configuration block as
+   `APP_BASIC_AUTH`. Right for a handful of trusted people and read-only
+   numbers.
+2. **Cloudflare Access.** When someone leaving must lose access on their own,
+   when you want to know who looked, or past roughly ten viewers. No code: host
+   configuration plus two variables.
+3. **Sign-in inside the app.** On Vercel, or when the app grows actions tied to
+   a person. `requireViewer()` in `src/lib/auth/require-viewer.ts` is the seam:
+   it can read a Clerk or Auth.js session instead of a header. The identity
+   integration, session handling, and tests are your work, not a few lines.
+4. **Sign in with SourceMedium.** Not available yet.
+
+## The shared password
+
+The browser asks for a user name and password; both are in `APP_BASIC_AUTH`
+(`user:password`). The app compares them in constant time and answers wrong
+or missing ones with `401` and nothing else.
+
+Limits: everyone shares one identity, so there is no per-person record and no
+per-person removal; browsers have no "log out"; and it is not a design for
+writes, which would need real accounts and CSRF protection. Hosted apps are
+HTTPS; plain HTTP is only for the local dev server on 127.0.0.1.
+
+To remove someone, issue a replacement password on the Apps page and update
+every deployment (`docs/operations.md`). SourceMedium cannot change your host's
+secrets, so the old password works until you do.
+
+## Cloudflare Access
+
+Access puts a Cloudflare sign-in in front of the app. Emailed one-time PINs
+need no identity provider; the free plan covers up to 50 users, although Zero
+Trust onboarding asks for payment details.
+
+1. In Cloudflare Zero Trust, add a **self-hosted application** for your app's
+   hostname, with a policy that allows specific emails or your email domain.
+2. Set the application's **session duration** to one hour.
+3. Copy your **team domain** (`yourteam.cloudflareaccess.com`) and the
+   application's **Audience (AUD) tag**.
+4. In your Worker's variables, set `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD`,
+   **remove `APP_BASIC_AUTH`** (both guards at once is a configuration error),
+   and redeploy.
+5. Cover every hostname that reaches the Worker: add `*.workers.dev` for your
+   Worker to the Access application, or turn off workers.dev in the Worker's
+   settings. Keep preview URLs off (`wrangler.jsonc`); turning off workers.dev
+   does not turn off preview URLs.
+
+The app also verifies the token Access attaches (issuer, audience, RS256
+signature, expiry) against your team's published keys, and refuses everything
+if those keys cannot be fetched. That catches a request that skipped Access,
+but a valid token replayed against a hostname Access does not cover still
+verifies, so step 5 matters.
+
+The top bar shows the signed-in viewer's email.
+
+**Removing someone:** remove them from the policy **and** revoke their
+sessions in Zero Trust. Removing a policy entry alone does not end sessions
+already issued; the one-hour session duration bounds how long one lasts.
+
+## Leaving SourceMedium's organization is separate
+
+Removing a member from your SourceMedium organization changes neither who can
+open your app nor any key someone already copied. Rotate the password (or
+update Access) and, if they held the configuration block, issue a replacement
+key.

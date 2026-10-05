@@ -1,0 +1,13 @@
+# Single-package repository. pnpm reads build-script and patch settings from
+# this file, not from package.json.
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - workerd
+  - simple-git-hooks
+
+# eslint-plugin-jsx-a11y 6.10.2 is the current release and works under
+# ESLint 10 (checked in the lint suite); its peer range predates ESLint 10.
+peerDependencyRules:
+  allowedVersions:
+    eslint-plugin-jsx-a11y>eslint: "10"

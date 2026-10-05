@@ -1,0 +1,112 @@
+/*
+ * The rebrand file. SourceMedium's palette, mapped onto shadcn/ui's theme
+ * variables. Change colors, radius, and fonts here; components read only
+ * these variables. Light and dark follow the system preference.
+ *
+ * Chart series use a colorblind-validated categorical order (--chart-1..8).
+ * Keep the order when you swap hues, and re-validate any replacement set.
+ */
+
+:root {
+  --font-sans: "Satoshi", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --radius: 0.5rem;
+
+  --background: #f8fafc;
+  --foreground: #1a1f36;
+  --card: #ffffff;
+  --card-foreground: #1a1f36;
+  --popover: #ffffff;
+  --popover-foreground: #1a1f36;
+  --primary: #5e55c6;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #1a1f36;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --accent: #eae9fb;
+  --accent-foreground: #3f3794;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --ring: #5e55c6;
+
+  --success: #12823b;
+  --success-soft: #dcfce7;
+  --warning: #a95104;
+  --warning-soft: #fef3c7;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1f36;
+  --sidebar-primary: #2e3d78;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8ebf5;
+  --sidebar-accent-foreground: #1e2a5e;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #5e55c6;
+
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-6: #008300;
+  --chart-7: #4a3aa7;
+  --chart-8: #e34948;
+  --chart-grid: #e2e8f0;
+  --chart-axis: #64748b;
+
+  --shadow-card: 0 10px 24px -16px rgba(46, 61, 120, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b1120;
+    --foreground: #e2e8f0;
+    --card: #111a2e;
+    --card-foreground: #e2e8f0;
+    --popover: #0d1526;
+    --popover-foreground: #e2e8f0;
+    --primary: #a99bf8;
+    --primary-foreground: #0f172a;
+    --secondary: #16213a;
+    --secondary-foreground: #e2e8f0;
+    --muted: #1a2744;
+    --muted-foreground: #94a3b8;
+    --accent: #1f2b4d;
+    --accent-foreground: #e2e8f0;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #23314f;
+    --input: #2c3b5c;
+    --ring: #a99bf8;
+
+    --success: #4ade80;
+    --success-soft: #0f2e1d;
+    --warning: #fbbf24;
+    --warning-soft: #33250a;
+
+    --sidebar: #0d1526;
+    --sidebar-foreground: #e2e8f0;
+    --sidebar-primary: #a99bf8;
+    --sidebar-primary-foreground: #0f172a;
+    --sidebar-accent: #1a2744;
+    --sidebar-accent-foreground: #e2e8f0;
+    --sidebar-border: #23314f;
+    --sidebar-ring: #a99bf8;
+
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-5: #d55181;
+    --chart-6: #008300;
+    --chart-7: #9085e9;
+    --chart-8: #e66767;
+    --chart-grid: #23314f;
+    --chart-axis: #94a3b8;
+
+    --shadow-card: none;
+  }
+}

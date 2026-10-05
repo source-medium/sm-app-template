@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sourcemedium": {
+      "type": "http",
+      "url": "https://mcp.sourcemedium.com/mcp"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Sample creative 6">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e2a5e"/><stop offset="1" stop-color="#1baf7a"/></linearGradient></defs>
+  <rect width="400" height="400" fill="#f0fdfa"/>
+  <g fill="url(#g)"><rect x="70" y="210" width="50" height="110" rx="10"/><rect x="140" y="160" width="50" height="160" rx="10"/><rect x="210" y="110" width="50" height="210" rx="10"/><rect x="280" y="70" width="50" height="250" rx="10"/></g>
+  <text x="24" y="380" font-family="system-ui, sans-serif" font-size="18" font-weight="600" fill="#1e2a5e">SAMPLE</text>
+</svg>
