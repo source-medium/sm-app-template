@@ -74,7 +74,7 @@ export function EmptyState({ message }: { message: string }) {
 
 export function ErrorState({ title, remedy, detail }: { title: string; remedy: string; detail?: string | null }) {
   return (
-    <div role="alert">
+    <div role="alert" data-slot="data-error">
       <StateFrame icon={<AlertTriangle className="size-4 text-destructive" aria-hidden />} title={title} tone="error">
         <p>{remedy}</p>
         {detail && (
@@ -87,7 +87,7 @@ export function ErrorState({ title, remedy, detail }: { title: string; remedy: s
 
 export function IncompatibleState({ relation, column }: { relation: string; column: string }) {
   return (
-    <div role="alert">
+    <div role="alert" data-slot="data-error">
       <StateFrame
         icon={<FileWarning className="size-4 text-destructive" aria-hidden />}
         title="The data no longer matches this view"

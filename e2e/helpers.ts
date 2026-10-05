@@ -1,8 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 
-export const VIEWS = ["/overview", "/paid-marketing", "/creatives", "/orders"] as const;
-
 /** Console errors and hydration warnings, minus the sample's deliberately expired creative image. */
 export function watchConsole(page: Page): string[] {
   const problems: string[] = [];

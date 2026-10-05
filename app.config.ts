@@ -12,7 +12,11 @@ export type NavItem = { href: `/${string}`; label: string; icon: LucideIcon };
 
 export const appConfig = {
   name: "Store Insights",
-  /** A square image in /public, such as { src: "/logo.svg", alt: "Acme" }, or null to show the name. */
+  /**
+   * An image in /public, such as { src: "/logo.svg", alt: "Acme" }, shown in
+   * place of the name (a wordmark or a mark; it fits a 32px-tall slot), or
+   * null to show the name. The name is still the browser tab title.
+   */
   logo: null as { src: string; alt: string } | null,
   /** Shows "Built on SourceMedium" in the sidebar footer. */
   showSourceMediumAttribution: true,

@@ -49,6 +49,55 @@ describe("auth-coverage", () => {
     expect(gaps[2]).toContain("`act`");
   });
 
+  it("follows route handlers that are re-exported or aliased from another module", () => {
+    const unguarded = {
+      path: "src/features/orders/csv.ts",
+      text: "export async function csvGET() { return new Response(await rows()); }",
+    };
+    const guarded = {
+      path: "src/features/orders/safe.ts",
+      text: "export async function safeGET() { await requireViewer(); return new Response(''); }",
+    };
+    expect(
+      findAuthGaps([
+        unguarded,
+        { path: "src/app/(app)/orders/csv/route.ts", text: 'export { csvGET as GET } from "@/features/orders/csv";' },
+      ]),
+    ).toEqual([
+      "`src/app/(app)/orders/csv/route.ts` exports `GET`, which handles requests without calling `requireViewer()`; call `await requireViewer()` first.",
+    ]);
+    expect(
+      findAuthGaps([
+        unguarded,
+        {
+          path: "src/app/x/route.ts",
+          text: 'import { csvGET } from "../../features/orders/csv";\nexport const GET = csvGET;',
+        },
+      ]),
+    ).toHaveLength(1);
+    expect(
+      findAuthGaps([
+        unguarded,
+        {
+          path: "src/app/x/route.ts",
+          text: 'export * from "@/features/orders/csv";\nexport { csvGET as GET } from "@/features/orders/csv";',
+        },
+      ]),
+    ).toHaveLength(1);
+    expect(
+      findAuthGaps([
+        guarded,
+        { path: "src/app/y/route.ts", text: 'export { safeGET as GET } from "@/features/orders/safe";' },
+      ]),
+    ).toEqual([]);
+    const wrapped = findAuthGaps([
+      { path: "src/app/z/route.ts", text: 'import { wrap } from "some-package";\nexport const GET = wrap(handler);' },
+    ]);
+    expect(wrapped).toEqual([
+      "`src/app/z/route.ts` exports `GET` in a form the auth check cannot follow; define it as a function in this repository that calls `await requireViewer()` first.",
+    ]);
+  });
+
   it("passes guarded loaders, sync helpers, and documented public routes", () => {
     expect(
       findAuthGaps([

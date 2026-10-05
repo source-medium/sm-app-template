@@ -3,8 +3,10 @@
  * variables. Change colors, radius, and fonts here; components read only
  * these variables. Light and dark follow the system preference.
  *
- * Chart series use a colorblind-validated categorical order (--chart-1..8).
- * Keep the order when you swap hues, and re-validate any replacement set.
+ * Chart series use a categorical order checked for color-blind readers
+ * (--chart-1..8). If you replace them, keep each at 3:1 contrast against the
+ * card color, keep neighbors clearly different in lightness as well as hue,
+ * and keep the chart's "View as table" option, which never relies on color.
  */
 
 :root {

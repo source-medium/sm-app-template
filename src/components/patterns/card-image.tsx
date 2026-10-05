@@ -5,21 +5,30 @@
  * fallback (usually the card's text) takes its place. A plain <img>, not
  * next/image, so the Worker never spends CPU optimizing remote images.
  *
- * An image can fail before React hydrates and attaches onError, so the ref
- * also checks whether the browser already gave up on it.
+ * The server renders the fallback and the browser swaps in the image after
+ * hydration. An image's load or failure can then never race React's
+ * hydration, and onError is always attached before the request starts.
  */
-import { useCallback, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+
+const subscribe = () => () => undefined;
+
+/** False on the server and during hydration, true afterwards. */
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false,
+  );
+}
 
 export function CardImage({ src, alt, fallback }: { src: string; alt: string; fallback: React.ReactNode }) {
+  const hydrated = useHydrated();
   const [failed, setFailed] = useState(false);
-  const checkAlreadyFailed = useCallback((image: HTMLImageElement | null) => {
-    if (image?.complete && image.naturalWidth === 0) setFailed(true);
-  }, []);
-  if (failed) return <>{fallback}</>;
+  if (!hydrated || failed) return <>{fallback}</>;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- remote creative images are hotlinked by design (docs/data.md)
     <img
-      ref={checkAlreadyFailed}
       src={src}
       alt={alt}
       loading="lazy"

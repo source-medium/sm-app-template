@@ -13,7 +13,12 @@ pnpm check        # must pass; under a minute
 pnpm test:e2e     # Playwright + axe against a production build
 pnpm test:secrets # sentinel-credential scan of the build and rendered pages
 pnpm build:cloudflare && pnpm smoke:worker   # the Worker in workerd
+pnpm test:live    # opt-in: your .env.local configuration against a real warehouse
 ```
+
+For live checks, put a test app's configuration block in `.env.local` and run
+`pnpm diagnose` and `pnpm test:live`. They run real (small) BigQuery queries,
+so they never run by default or in CI.
 
 CI runs all of these on every pull request, without credentials or network
 access to any warehouse.

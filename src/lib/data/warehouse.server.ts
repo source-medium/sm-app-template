@@ -17,11 +17,21 @@ import {
 import { createTokenProvider } from "./google-token.server";
 
 const TABLE_ID = /^[A-Za-z0-9_]{1,1024}$/;
+const DATASET_ID = /^[A-Za-z0-9_]{1,1024}$/;
+
+/** SourceMedium's two datasets by role, or any other dataset id in your warehouse project. */
+export type DatasetName = "transformed" | "metadata" | (string & {});
 
 export type Warehouse = {
   applicationId: string;
-  /** Backquoted `project.dataset.table` from validated configuration, never from a browser. */
-  table(name: string, dataset?: "transformed" | "metadata"): string;
+  /**
+   * Backquoted `project.dataset.table` in your warehouse project, built from
+   * code, never from a browser. `table("obt_orders")` reads SourceMedium's
+   * transformed dataset; `table("dim_data_dictionary", "metadata")` the
+   * metadata dataset; `table("my_table", "customized_views")` or
+   * `table("customized_views.my_table")` any other dataset the app can read.
+   */
+  table(name: string, dataset?: DatasetName): string;
   query(request: QueryRequest, options?: QueryOptions): Promise<QueryResult>;
 };
 
@@ -56,9 +66,25 @@ export function warehouseFor(live: LiveConfig): Warehouse {
   return {
     applicationId: live.applicationId,
     table(name, dataset = "transformed") {
-      if (!TABLE_ID.test(name)) throw new Error(`"${name}" is not a valid BigQuery table name.`);
-      const datasetId = dataset === "metadata" ? live.metadataDatasetId : live.transformedDatasetId;
-      return `\`${live.dataProjectId}.${datasetId}.${name}\``;
+      const [qualifiedDataset, qualifiedTable] = name.includes(".") ? name.split(".", 2) : [null, name];
+      const datasetName = qualifiedDataset ?? dataset;
+      const datasetId =
+        datasetName === "transformed"
+          ? live.transformedDatasetId
+          : datasetName === "metadata"
+            ? live.metadataDatasetId
+            : datasetName;
+      if (
+        !qualifiedTable ||
+        !TABLE_ID.test(qualifiedTable) ||
+        !DATASET_ID.test(datasetId) ||
+        name.split(".").length > 2
+      ) {
+        throw new Error(
+          `"${name}" is not a valid table name; use "table", or "dataset.table" within your warehouse project.`,
+        );
+      }
+      return `\`${live.dataProjectId}.${datasetId}.${qualifiedTable}\``;
     },
     query: (request, options) => runQuery(client, request, options),
   };

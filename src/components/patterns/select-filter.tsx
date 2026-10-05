@@ -2,7 +2,8 @@
 
 /**
  * One dimension filter (a channel, a sort order) as a GET form, so the
- * choice lives in the URL. Submits on change; the button covers no-JS use.
+ * choice lives in the URL. Submits on change; the Apply button appears on
+ * keyboard focus and works without JavaScript.
  */
 import Form from "next/form";
 import { useId } from "react";
@@ -48,11 +49,10 @@ export function SelectFilter({
           ))}
         </select>
       </div>
-      <noscript>
-        <Button type="submit" variant="secondary" size="sm">
-          Apply
-        </Button>
-      </noscript>
+      {/* Changing the selection submits; this button serves keyboard users and pages without JavaScript. */}
+      <Button type="submit" variant="secondary" size="sm" className="sr-only focus:not-sr-only">
+        Apply
+      </Button>
     </Form>
   );
 }

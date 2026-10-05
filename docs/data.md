@@ -69,8 +69,11 @@ const rows = decodeRows(TopProductRow, result.rows, "your_relation");
 
 - Browser input only ever becomes a parameter value, or picks a key from a
   fixed map in code (see `creatives/bigquery.ts`). Never concatenate it into SQL.
-- `warehouse.table()` builds the fully qualified name from your configuration;
-  pass `"metadata"` as the second argument for `sm_metadata` relations.
+- `warehouse.table()` builds the fully qualified name from your configuration:
+  `table("obt_orders")` for SourceMedium's transformed dataset,
+  `table("dim_data_dictionary", "metadata")` for its metadata dataset, and
+  `table("customized_views.my_table")` for any other dataset in your warehouse
+  project that the app can read.
 - Aggregate in SQL. `maxRows` bounds the rows returned across pages, and
   `result.truncated` says when more matched. Show truncation (the data table
   does), and never compute a total from a truncated list: throw
@@ -121,6 +124,10 @@ when the app asked, not how current the warehouse is. Do not use `MAX(date)` as
 freshness: `rpt_executive_summary_daily` includes forward-dated target rows,
 which is also why date ranges end no later than today.
 
+Showing a table's own snapshot time, labeled as such (for example "Inventory
+snapshot as of …" from `inventory_snapshot_at`), is fine: it describes that
+table, not how current the whole warehouse is.
+
 ## Metadata
 
 `src/lib/data/catalog.server.ts` reads the published `dim_data_dictionary`
@@ -150,5 +157,6 @@ allow only specific image hosts, narrow `img-src` in
 
 Every page runs its queries in parallel with the store list when the URL names
 a store, which the filter bar and navigation keep doing. Each BigQuery query
-still takes a moment, so keep pages to a few queries each. `LIMIT` does not
+still takes a moment (on the demo warehouse, pages took 1 to 2.5 seconds from
+Cloudflare's edge), so keep pages to a few queries each. `LIMIT` does not
 reduce cost; filtering on a partition column and selecting fewer columns do.

@@ -19,6 +19,7 @@ const DictionaryRow = z.object({
   column_name: bq.string(),
   data_type: bq.string().nullable(),
   column_description: bq.string().nullable(),
+  table_description: bq.string().nullable(),
 });
 
 const MetricRow = z.object({
@@ -42,7 +43,7 @@ export async function readDictionary(
     name: "data_dictionary",
     maxRows: limit,
     sql: `
-      SELECT column_name, data_type, column_description
+      SELECT column_name, data_type, column_description, table_description
       FROM ${warehouse.table(DICTIONARY, "metadata")}
       WHERE sm_store_id = @store_id AND table_name = @relation
       ORDER BY column_name

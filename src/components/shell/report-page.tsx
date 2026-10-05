@@ -39,6 +39,7 @@ type FilterBarProps = {
   range: DateRange;
   now: Date;
   preserve: string[];
+  dates: boolean;
 };
 
 export async function ReportPage({
@@ -47,6 +48,7 @@ export async function ReportPage({
   pathname,
   params,
   preserve = [],
+  dates = true,
   children,
 }: {
   title: string;
@@ -55,6 +57,8 @@ export async function ReportPage({
   params: SearchParams;
   /** URL parameters (besides store and dates) that survive a filter change. */
   preserve?: string[];
+  /** False for current-state views (such as inventory) that have no date range. */
+  dates?: boolean;
   children: (context: ReportContext) => React.ReactNode;
 }) {
   const access = await requireViewer();
@@ -63,7 +67,7 @@ export async function ReportPage({
   const roster = loadStores();
   // Handled where it is awaited; this keeps an early failure from being reported as unhandled.
   roster.catch(() => undefined);
-  const barProps: FilterBarProps = { pathname, params, range, now, preserve };
+  const barProps: FilterBarProps = { pathname, params, range, now, preserve, dates };
 
   const header = (
     <header className="flex flex-col gap-1">
@@ -75,8 +79,8 @@ export async function ReportPage({
     <footer className="border-t pt-4 text-xs text-muted-foreground">
       {access.mode === "sample"
         ? "Synthetic sample data for demonstration; not from any warehouse."
-        : `Queried at ${formatInstant(now.toISOString())} · Data freshness unknown.`}{" "}
-      Dates are calendar dates as published in the warehouse.
+        : `Queried at ${formatInstant(now.toISOString())} · Data freshness unknown.`}
+      {dates && " Dates are calendar dates as published in the warehouse."}
     </footer>
   );
 
@@ -160,6 +164,7 @@ function StoreFilterBar({
   range,
   now,
   preserve,
+  dates,
 }: FilterBarProps & { stores: StoreOption[]; storeId: string }) {
   const yesterday = addDays(todayUtc(now), -1);
   const presets = PRESET_DAYS.map((days) => {
@@ -183,8 +188,9 @@ function StoreFilterBar({
       from={range.from}
       to={range.to}
       maxDate={todayUtc(now)}
-      presets={presets}
+      presets={dates ? presets : []}
       preserved={preserved}
+      dates={dates}
     />
   );
 }

@@ -66,6 +66,9 @@ into your GitHub or GitLab account, then asks for each value from
 deploy, open the URL, enter the password, and confirm **Live data** and the
 store you expect.
 
+- **Plan: Workers Paid.** Rendering a page takes roughly 80 to 850 ms of CPU
+  on Workers (measured with live data, 2026-10-05), far above the Free plan's
+  10 ms per request. Vercel's Hobby and Pro plans have no comparable limit.
 - Values are runtime secrets, never build variables. The build needs none.
 - Later deploys keep the secrets you entered; nothing in `wrangler.jsonc`
   overwrites them.

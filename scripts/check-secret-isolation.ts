@@ -12,11 +12,29 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { appConfig } from "../app.config";
 import { root } from "./lib/environment";
 
 const PORT = 3107;
 const PASSWORD = "SentinelPasswordDoNotShip0123456789";
 const APP_ID = "5e1e4e1e-0000-4000-8000-5e1e4e1e0000";
+
+/** `next start` loads .env.local; clearing every app variable keeps a developer's real configuration out. */
+const cleared = Object.fromEntries(
+  [
+    "SM_APPLICATION_ID",
+    "SM_APP_KEY",
+    "BIGQUERY_JOB_PROJECT_ID",
+    "BIGQUERY_LOCATION",
+    "SM_DATA_PROJECT_ID",
+    "SM_TRANSFORMED_DATASET_ID",
+    "SM_METADATA_DATASET_ID",
+    "APP_BASIC_AUTH",
+    "CF_ACCESS_TEAM_DOMAIN",
+    "CF_ACCESS_AUD",
+    "BIGQUERY_MAX_BYTES_BILLED",
+  ].map((name) => [name, ""]),
+);
 
 async function sentinelKey(): Promise<{ base64: string; pemFragment: string }> {
   const pair = (await crypto.subtle.generateKey(
@@ -63,7 +81,7 @@ const scan = (label: string, text: string) => {
 console.log("Building with sentinel credentials in the build environment...");
 const build = spawnSync("pnpm", ["exec", "next", "build"], {
   cwd: root,
-  env: { ...process.env, ...liveEnv },
+  env: { ...process.env, ...cleared, ...liveEnv },
   stdio: "inherit",
 });
 if (build.status !== 0) process.exit(build.status ?? 1);
@@ -84,6 +102,7 @@ const auth = { Authorization: `Basic ${Buffer.from(`viewer:${PASSWORD}`).toStrin
  * renders every page in full. A successfully rendered live page needs a
  * working warehouse, which this offline check does not have.
  */
+
 const modes = [
   { name: "live (sentinel key)", env: liveEnv, expect: "Live data" },
   { name: "protected sample", env: { APP_BASIC_AUTH: `viewer:${PASSWORD}` }, expect: "Sample data" },
@@ -94,7 +113,7 @@ for (const mode of modes) {
   console.log(`Serving in ${mode.name} mode...`);
   const server = spawn("pnpm", ["exec", "next", "start", "--hostname", "127.0.0.1", "--port", String(PORT)], {
     cwd: root,
-    env: { ...process.env, ...mode.env },
+    env: { ...process.env, ...cleared, ...mode.env },
     stdio: "ignore",
     detached: true,
   });
@@ -108,7 +127,7 @@ for (const mode of modes) {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
     let sawMode = false;
-    for (const path of ["/overview", "/paid-marketing", "/creatives", "/orders", "/does-not-exist"]) {
+    for (const path of [...appConfig.nav.map((item) => item.href), "/does-not-exist"]) {
       for (const headers of [auth, { ...auth, RSC: "1" }, {}]) {
         const response = await fetch(`${base}${path}`, { headers });
         const body = await response.text();

@@ -8,11 +8,14 @@ import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { appConfig } from "../app.config";
 import { root } from "./lib/environment";
 
 const PORT = 8791;
 const BASE = `http://127.0.0.1:${PORT}`;
 const PASSWORD = "SmokeTestPassword0123456789abc";
+const FIRST = appConfig.nav[0]?.href ?? "/";
+const LAST = appConfig.nav.at(-1)?.href ?? FIRST;
 const dir = mkdtempSync(join(tmpdir(), "sm-smoke-"));
 
 const modes: { name: string; env: string; checks: [string, RequestInit, number, string?][] }[] = [
@@ -21,24 +24,24 @@ const modes: { name: string; env: string; checks: [string, RequestInit, number, 
     env: "",
     checks: [
       ["/healthz", {}, 200],
-      ["/overview", {}, 200, "Sample data"],
-      ["/orders", {}, 200, "Sample data"],
+      [FIRST, {}, 200, "Sample data"],
+      [LAST, {}, 200, "Sample data"],
     ],
   },
   {
     name: "protected sample",
     env: `APP_BASIC_AUTH=viewer:${PASSWORD}\n`,
     checks: [
-      ["/overview", {}, 401],
-      ["/overview", { headers: { RSC: "1" } }, 401],
-      ["/overview", { headers: { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` } }, 200, "Sample data"],
+      [FIRST, {}, 401],
+      [FIRST, { headers: { RSC: "1" } }, 401],
+      [FIRST, { headers: { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` } }, 200, "Sample data"],
       ["/healthz", {}, 200],
     ],
   },
   {
     name: "partial live configuration",
     env: `SM_APPLICATION_ID=0b6f7a52-3c4e-4d1f-9a2b-1c2d3e4f5a6b\nAPP_BASIC_AUTH=viewer:${PASSWORD}\n`,
-    checks: [["/overview", {}, 503, "SM_APP_KEY is missing"]],
+    checks: [[FIRST, {}, 503, "SM_APP_KEY is missing"]],
   },
 ];
 

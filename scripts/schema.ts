@@ -1,28 +1,55 @@
 /**
- * pnpm schema <relation>: one relation's columns and types, never its rows.
- * Reads your warehouse with live configuration; otherwise prints the bundled
- * snapshot of SourceMedium's published relations.
+ * pnpm schema <relation>: one relation's columns, types, keys, and
+ * descriptions, never its rows. With live configuration it reads your
+ * warehouse (types from BigQuery, descriptions from SourceMedium's data
+ * dictionary); otherwise it prints the bundled snapshot of SourceMedium's
+ * published relations.
  *
  *   pnpm schema obt_orders
  *   pnpm schema sm_metadata.dim_data_dictionary
+ *   pnpm schema customized_views.my_table
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseConfig } from "../src/lib/config/env.server";
 import { getTableMetadata, type BigQueryField } from "../src/lib/data/bigquery-rest.server";
-import { bigQueryClientFor } from "../src/lib/data/warehouse.server";
+import { readDictionary } from "../src/lib/data/catalog.server";
+import { setLogEmitter } from "../src/lib/data/log";
+import { queryStoreRoster } from "../src/lib/data/store-roster.server";
+import { bigQueryClientFor, warehouseFor } from "../src/lib/data/warehouse.server";
 import { WarehouseError } from "../src/lib/data/warehouse-error";
 import { loadLocalEnvironment, root } from "./lib/environment";
 
-type Snapshot = { relations: Record<string, { dataset: string; columns: BigQueryField[] }> };
+type Column = BigQueryField & { description?: string; key?: boolean; fields?: Column[] };
+type Snapshot = { relations: Record<string, { dataset: string; description?: string; columns: Column[] }> };
 
-function print(fields: readonly BigQueryField[], indent = "  "): void {
-  for (const field of fields) {
-    const repeated = field.mode === "REPEATED" ? "[]" : "";
-    const required = field.mode === "REQUIRED" ? " NOT NULL" : "";
-    console.log(`${indent}${field.name.padEnd(48)} ${field.type}${repeated}${required}`);
-    if (field.fields) print(field.fields, `${indent}  `);
+/** The REST API's legacy type names, as GoogleSQL and the decoders in docs/data.md call them. */
+const TYPE_NAMES: Record<string, string> = {
+  INTEGER: "INT64",
+  FLOAT: "FLOAT64",
+  BOOLEAN: "BOOL",
+  RECORD: "STRUCT",
+};
+
+function firstSentence(text: string): string {
+  const sentence = /^.*?[.!?](\s|$)/.exec(text)?.[0]?.trim() ?? text;
+  return sentence.length > 140 ? `${sentence.slice(0, 137)}…` : sentence;
+}
+
+function print(columns: readonly Column[], indent = "  "): void {
+  for (const column of columns) {
+    const type = `${TYPE_NAMES[column.type] ?? column.type}${column.mode === "REPEATED" ? "[]" : ""}${column.mode === "REQUIRED" ? " NOT NULL" : ""}`;
+    console.log(`${indent}${column.name.padEnd(44)} ${type.padEnd(12)}${column.key ? " key" : ""}`);
+    if (column.description) console.log(`${indent}    ${firstSentence(column.description)}`);
+    if (column.fields) print(column.fields, `${indent}  `);
   }
+}
+
+function printRelation(title: string, description: string | undefined, columns: Column[]): void {
+  console.log(title);
+  if (description) console.log(`\n${description}\n`);
+  console.log("Columns are nullable unless marked NOT NULL.");
+  print(columns);
 }
 
 async function main(): Promise<void> {
@@ -36,19 +63,19 @@ async function main(): Promise<void> {
   const [datasetArg, table] = argument.includes(".") ? (argument.split(".") as [string, string]) : [null, argument];
 
   loadLocalEnvironment();
+  setLogEmitter(() => undefined);
   const config = parseConfig(process.env);
   if (config.status === "ok" && config.mode === "live") {
     const live = config.live;
     const client = bigQueryClientFor(live);
     const datasets = datasetArg ? [datasetArg] : [live.transformedDatasetId, live.metadataDatasetId];
     for (const dataset of datasets) {
+      let fields: BigQueryField[];
+      let heading: string;
       try {
         const meta = await getTableMetadata(client, live.dataProjectId, dataset, table);
-        console.log(
-          `${live.dataProjectId}.${dataset}.${table} (${meta.type}, ${meta.location}), ${meta.fields.length} columns:`,
-        );
-        print(meta.fields);
-        return;
+        fields = meta.fields;
+        heading = `${live.dataProjectId}.${dataset}.${table} (${meta.type}, ${meta.location}), ${meta.fields.length} columns:`;
       } catch (error) {
         if (error instanceof WarehouseError && error.kind === "not_found") continue;
         if (error instanceof WarehouseError) {
@@ -57,6 +84,22 @@ async function main(): Promise<void> {
         }
         throw error;
       }
+      // Descriptions come from SourceMedium's data dictionary, which documents its own relations per store.
+      const warehouse = warehouseFor(live);
+      const documented = await queryStoreRoster(warehouse)
+        .then(([store]) => (store ? readDictionary(warehouse, store, table) : []))
+        .catch(() => []);
+      const descriptions = new Map(
+        documented.map((entry) => [entry.column_name, entry.column_description ?? undefined]),
+      );
+      printRelation(
+        heading,
+        documented.find((entry) => entry.table_description)?.table_description ?? undefined,
+        fields.map((field) => ({ ...field, description: descriptions.get(field.name) })),
+      );
+      if (documented.length === 0)
+        console.log("\n(No data dictionary entries for this relation; it may be your own table.)");
+      return;
     }
     console.error(
       `No relation named ${table} in ${datasets.join(" or ")}; check the name with the SourceMedium MCP or your data dictionary.`,
@@ -72,10 +115,14 @@ async function main(): Promise<void> {
     );
     process.exit(1);
   }
-  console.log(
-    `${table} (snapshot of SourceMedium's published schema; your warehouse may differ), ${entry.columns.length} columns:`,
+  printRelation(
+    `${datasetArg ? `${datasetArg}.` : ""}${table}: snapshot of SourceMedium's published schema, ${entry.columns.length} columns.${datasetArg ? " The dataset is not checked without live configuration." : ""} Your warehouse may differ.`,
+    entry.description,
+    entry.columns,
   );
-  print(entry.columns);
 }
 
-await main();
+main().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});

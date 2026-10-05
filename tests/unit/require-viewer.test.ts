@@ -37,7 +37,14 @@ describe("requireViewer", () => {
     const access = await requireViewer({ live: true });
     expect(access.mode).toBe("live");
     expect(access.warehouse.table("obt_orders")).toBe("`sm-demotenant.sm_transformed_v2.obt_orders`");
-    expect(() => access.warehouse.table("x`; DROP")).toThrow();
+    expect(access.warehouse.table("dim_data_dictionary", "metadata")).toBe(
+      "`sm-demotenant.sm_metadata.dim_data_dictionary`",
+    );
+    expect(access.warehouse.table("my_table", "customized_views")).toBe("`sm-demotenant.customized_views.my_table`");
+    expect(access.warehouse.table("customized_views.my_table")).toBe("`sm-demotenant.customized_views.my_table`");
+    for (const bad of ["x`; DROP", "a.b.c", "other-project.ds.t", "ds.", ".t"])
+      expect(() => access.warehouse.table(bad)).toThrow();
+    expect(() => access.warehouse.table("t", "bad dataset")).toThrow();
   });
 
   it("refuses a live request with a wrong password", async () => {

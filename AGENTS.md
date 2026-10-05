@@ -60,9 +60,14 @@ docs/                         Guides (index below)
    BigQuery's wire format), and `page.tsx` using `ReportPage`.
 2. Add `src/app/(app)/<route>/page.tsx`: `export { default, metadata } from "@/features/<name>/page";`
 3. Add one entry to `nav` in `app.config.ts`.
-4. Wrap each data region in `<Suspense fallback={<LoadingState …/>}>` and
-   `<DataRegion>` so it has loading, empty, error, and incompatible-schema states.
-5. Add `src/features/<name>/fixture-contract.test.ts`, then `pnpm check`.
+4. Wrap each data region in `<Suspense key={…the filters it reads…} fallback={<LoadingState …/>}>`
+   and `<DataRegion>`, so it has loading, empty, error, and incompatible-schema
+   states. A view with no date range (current state, such as inventory) passes
+   `dates={false}` to `ReportPage`.
+5. Add tests beside the view: `fixture-contract.test.ts` (sample shape and
+   totals), `live-contract.test.ts` (the SQL, parameters, and truncation against
+   the fake BigQuery; copy overview's), and `<view>.e2e.ts` for interactions.
+   Then `pnpm check`, and `pnpm test:e2e` after UI changes.
 
 Copy `src/features/overview` (KPIs and charts), `paid-marketing` (dimension
 filter and table), `creatives` (card grid), or `orders` (search, keyset pages,
@@ -72,7 +77,8 @@ detail drawer). See `docs/removing-the-example.md` to delete any of them.
 
 - SQL is written by developers, never built from browser input. Browser input
   becomes typed named parameters (`@store_id`), or picks from a fixed map in code.
-- Fully qualified names come from `warehouse.table("<relation>")`.
+- Fully qualified names come from `warehouse.table("<relation>")`; your own
+  datasets in the warehouse project: `warehouse.table("customized_views.my_table")`.
 - Aggregate in SQL. Every query has `maxRows`; check `result.truncated`. Totals
   are never computed from a truncated list.
 - INT64 decodes to `bigint`, FLOAT64 to a finite number, DATE stays a string.
@@ -82,15 +88,25 @@ detail drawer). See `docs/removing-the-example.md` to delete any of them.
 
 ## UI
 
+Two measures on different scales get two charts (one y-axis per chart).
 Use the shadcn primitives in `components/ui` and the patterns in
 `components/patterns`. Colors and fonts come only from `src/styles/tokens.css`;
 use theme classes (`bg-card`, `text-muted-foreground`), not raw colors. Charts
 use `--chart-1`…`--chart-8` in order, one y-axis, and keep the table view.
 
+## Route handlers and downloads
+
+A `route.ts` handler (a CSV download, an API) calls `await requireViewer()`
+first, like any data function. On a `WarehouseError`, return its `title` and
+`remedy` with a 5xx status. Exports carry raw values (exact decimals, ISO
+dates), not display formatting. This app is read-only: anything that writes or
+acts for a person needs a real per-person authorization design first.
+
 ## Runtime constraints (Cloudflare Workers, tested)
 
-- Runs on workerd via OpenNext with `nodejs_compat`. WebCrypto, `fetch`, and
-  `jose` work; there is no file system at runtime.
+- Runs on workerd via OpenNext with `nodejs_compat` (Workers Paid plan: pages
+  use 80–850 ms of CPU). WebCrypto, `fetch`, and `jose` work; there is no file
+  system at runtime.
 - `src/middleware.ts` runs in the edge runtime: no Node-only APIs there.
 - Configuration comes only from runtime variables, read per request through
   `readConfig()`. Never read configuration at module scope or build time.

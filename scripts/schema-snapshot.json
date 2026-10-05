@@ -1,5 +1,5 @@
 {
- "_note": "Column names and types of SourceMedium's published relations, read from the SourceMedium demo warehouse on 2026-10-05. No data. Your warehouse may differ; with live configuration, pnpm schema reads your own.",
+ "_note": "Column names, types, descriptions, and key flags of SourceMedium's published relations, read from the SourceMedium demo warehouse and its data dictionary on 2026-10-05. No data. Your warehouse may differ; with live configuration, pnpm schema reads your own.",
  "relations": {
   "rpt_executive_summary_daily": {
    "dataset": "transformed",
@@ -7,162 +7,194 @@
     {
      "name": "sm_store_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "key": true
     },
     {
      "name": "sm_channel",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Sales channel via hierarchy: (1) exclusion tag 'sm-exclude-order' -> excluded; (2) config sheet overrides; (3) default logic (amazon/tiktok_shop/walmart.com, pos/leap -> retail, wholesale tags -> wholesale, otherwise online_dtc). Note: excluded channel is omitted from Executive Summary and LTV."
     },
     {
      "name": "sm_sub_channel",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Sub-channel from source/tags with config overrides (e.g., Facebook & Instagram, Google, Amazon FBA/Fulfilled by Merchant)."
     },
     {
      "name": "date",
      "type": "DATE",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The date in YYYY-MM-DD format."
     },
     {
      "name": "order_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of orders placed by customers."
     },
     {
      "name": "order_gross_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The gross revenue for orders, based on order lines. Gross revenue is calculated by multiplying the price of an order's lines by the quantity purchased. Gross revenue excludes revenue from gift card purchases."
     },
     {
      "name": "order_net_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The gross order revenue minus order discounts and refunds."
     },
     {
      "name": "order_total_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Total order revenue after factoring in shipping revenue, taxes collected, discounts, and refunds."
     },
     {
      "name": "order_discounts",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The total amount of discounts applied to orders."
     },
     {
      "name": "order_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The total amount of refunds applied to orders."
     },
     {
      "name": "order_net_shipping_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The gross shipping revenue for orders minus shipping discounts and shipping refunds."
     },
     {
      "name": "order_total_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of order and shipping taxes minus order and shipping tax refunds."
     },
     {
      "name": "order_shipping_cost",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The blended cost to ship products to customers, considering that shipping costs are variable order costs included in cost of goods sold (COGS). This data is set in the Financial Cost - Shipping tab of the SourceMedium financial cost configuration sheet."
     },
     {
      "name": "order_return_cost",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The blended cost to handle returned products from a customer, considering that the cost of returns is a variable order cost included in cost of goods sold (COGS). This data is entered in the Financial Cost - Shipping tab of the SourceMedium financial cost configuration sheet."
     },
     {
      "name": "order_fulfillment_cost",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The blended cost to fulfill (pick and pack) orders for customers, considering that fulfillment cost is a variable order cost included in cost of goods sold (COGS). This data is recorded in the Financial Cost - Fulfillment tab of the financial cost configuration sheet."
     },
     {
      "name": "order_merchant_processing_fees",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The payment processing fees for orders. This data is entered in the Financial Cost - Merchant Processing Fees tab of the SourceMedium financial cost configuration sheet."
     },
     {
      "name": "operating_expenses",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The cost the business incurs while performing its normal operational activities. This data is entered into the Financial Cost - Operating Expenses tab of the SourceMedium financial cost configuration sheet."
     },
     {
      "name": "order_product_cost",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The landed cost of orders as defined by the SourceMedium financial cost configuration sheet (or input into Shopify) multiplied by the quantity purchased. The SourceMedium financial cost configuration overrides any costs input into Shopify."
     },
     {
      "name": "product_gross_profit",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net order line revenue minus product cost."
     },
     {
      "name": "gross_profit",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net order revenue and shipping revenue minus order product cost, order shipping cost, order fulfillment cost, and merchant processing fees."
     },
     {
      "name": "contribution_profit",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross profit minus ad spend."
     },
     {
      "name": "net_profit",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross profit minus ad spend and operating expenses."
     },
     {
      "name": "ad_spend",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of money spent on ads."
     },
     {
      "name": "ad_platform_reported_conversions",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of conversions attributable to ads, as reported by the advertising platform."
     },
     {
      "name": "ad_platform_reported_revenue",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of revenue attributable to the ads, as reported by the advertising platform."
     },
     {
      "name": "ad_clicks",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of times ads were clicked."
     },
     {
      "name": "ad_impressions",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of times ads were shown."
     },
     {
      "name": "website_sessions",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of sessions on the website."
     },
     {
      "name": "new_subscription_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of new subscriptions started by customers."
     },
     {
      "name": "cancelled_subscription_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of subscriptions voluntarily cancelled by customers."
     },
     {
      "name": "cancelled_passive_subscription_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of subscriptions that were terminated without active customer initiation, often due to reasons like the natural expiration of the subscription period."
     },
     {
      "name": "active_subscription_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of active subscriptions with a store."
     },
     {
      "name": "cancelled_subscription_count_daily_snapshot",
@@ -172,17 +204,20 @@
     {
      "name": "new_subscriber_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of customers who converted on their first subscription program."
     },
     {
      "name": "cancelled_subscriber_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of customers who cancelled their final subscription (they do not have any active subscriptions)."
     },
     {
      "name": "active_subscriber_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of customers who have at least one active subscription."
     },
     {
      "name": "cancelled_subscriber_count_daily_snapshot",
@@ -192,87 +227,104 @@
     {
      "name": "customer_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of unique customers who made a purchase."
     },
     {
      "name": "new_customer_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of unique customers who made their first purchase. Special Considerations: Platform coverage varies; tests allow for low coverage thresholds in some cases."
     },
     {
      "name": "repeat_customer_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of unique customers who made at least their second purchase."
     },
     {
      "name": "new_customer_order_net_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The net order revenue from new customers."
     },
     {
      "name": "repeat_customer_order_net_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The net order revenue from repeat customers."
     },
     {
      "name": "new_customer_order_gross_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The gross order revenue from new customers."
     },
     {
      "name": "repeat_customer_order_gross_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The gross order revenue from repeat customers. Special Considerations: Platform aggregation rules can differ; see tests for permitted thresholds."
     },
     {
      "name": "new_customer_order_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of orders from new customers."
     },
     {
      "name": "repeat_customer_order_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of orders from repeat customers."
     },
     {
      "name": "order_gross_revenue_after_discounts",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The gross order revenue minus order discounts."
     },
     {
      "name": "target_order_gross_revenue",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The gross order revenue target for the store. This data is entered in the Targets tab of the SourceMedium configuration sheet."
     },
     {
      "name": "target_order_net_revenue",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The net order revenue target for the store. This data is entered in the Targets tab of the SourceMedium configuration sheet."
     },
     {
      "name": "target_total_order_revenue",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The total order revenue target for the store. This data is entered in the Targets tab of the SourceMedium configuration sheet."
     },
     {
      "name": "target_order_count",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The order count target for the store. This data is entered in the Targets tab of the SourceMedium configuration sheet."
     },
     {
      "name": "target_ad_spend",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The ad spend target for the store. This data is entered in the Targets tab of the SourceMedium configuration sheet."
     },
     {
      "name": "target_website_sessions",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The website sessions target for the store. This data is entered in the Targets tab of the SourceMedium configuration sheet."
     },
     {
      "name": "target_average_order_value",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The average order value target for the store. This data is entered in the Targets tab of the SourceMedium configuration sheet."
     },
     {
      "name": "target_customer_acquisition_cost",
@@ -282,14 +334,17 @@
     {
      "name": "target_return_on_ad_spend",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The return on ad spend target for the store. This data is entered in the Targets tab of the SourceMedium configuration sheet."
     },
     {
      "name": "target_order_conversion_rate",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The order conversion rate target for the store. This data is entered in the Targets tab of the SourceMedium configuration sheet."
     }
-   ]
+   ],
+   "description": "Daily KPI aggregation for executive reporting and dashboards (revenue, ROAS, profit, targets). Grain: One row per (smcid, sm_channel, sm_sub_channel, date). Date field: date. Critical filters: sm_channel for channel-specific KPIs; date for time windows. Key joins: none; drill down to obt_orders using (date, sm_channel) filters."
   },
   "rpt_ad_performance_daily": {
    "dataset": "transformed",
@@ -297,57 +352,68 @@
     {
      "name": "sm_store_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "key": true
     },
     {
      "name": "source_system",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The advertising source system used to deliver the ad."
     },
     {
      "name": "sm_channel",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The sales channel associated with the ad."
     },
     {
      "name": "sub_channel",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Sub-channel classification for the ad, typically derived from campaign naming or ad platform specifics. Provides additional granularity beyond sm_channel for channel-specific analysis (e.g., Affiliate, Brand, Retargeting)."
     },
     {
      "name": "date",
      "type": "DATE",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The date when the ad was delivered."
     },
     {
      "name": "ad_spend",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of money spent on the ad."
     },
     {
      "name": "ad_clicks",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of times the ad was clicked."
     },
     {
      "name": "ad_inline_link_clicks",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of clicks on links within the ad that led users to advertiser-specified destinations. Subset of total ad_clicks; excludes non-link engagement clicks (e.g., likes, comments)."
     },
     {
      "name": "ad_impressions",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of times the ad was shown."
     },
     {
      "name": "ad_platform_reported_conversions",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of conversions attributable to the ad, as reported by the advertising platform."
     },
     {
      "name": "ad_platform_reported_revenue",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of revenue attributable to the ad, as reported by the advertising platform."
     },
     {
      "name": "ad_platform_reported_revenue_windows",
@@ -389,7 +455,8 @@
        "type": "FLOAT",
        "mode": "NULLABLE"
       }
-     ]
+     ],
+     "description": "Platform-reported revenue by attribution window. The struct is populated only when the upstream adapter supplies window detail and is null otherwise. Meta supplies populated structs; unsupported fields within those structs are zero."
     },
     {
      "name": "ad_platform_reported_conversion_windows",
@@ -431,114 +498,142 @@
        "type": "FLOAT",
        "mode": "NULLABLE"
       }
-     ]
+     ],
+     "description": "Platform-reported conversions by attribution window. The struct is populated only when the upstream adapter supplies window detail and is null otherwise. Meta supplies populated structs; unsupported fields within those structs are zero."
     },
     {
      "name": "ad_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The unique identifier for the ad.",
+     "key": true
     },
     {
      "name": "ad_name",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The name of the ad."
     },
     {
      "name": "ad_group_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The unique identifier for the ad group that contains the ad. Used to group related ads within a campaign for organizational and reporting purposes.",
+     "key": true
     },
     {
      "name": "ad_group_name",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The name of the ad group that contains the ad. Provides human-readable identification for ad set organization within campaigns."
     },
     {
      "name": "ad_account_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The unique identifier for the ad account that is associated with the ad.",
+     "key": true
     },
     {
      "name": "ad_account_name",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The name of the ad account that is associated with the ad."
     },
     {
      "name": "ad_campaign_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The unique identifier for the campaign that is associated with the ad.",
+     "key": true
     },
     {
      "name": "ad_campaign_name",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The name of the campaign that is associated with the ad."
     },
     {
      "name": "ad_campaign_type",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The type of campaign that is associated with the ad, such as reach, discovery, search, display, or video (this campaign type will vary by advertising platform)."
     },
     {
      "name": "ad_campaign_tactic",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The tactic of the campaign derived from campaign naming conventions. Possible values are \"Prospecting\", \"Retargeting\", and \"Brand\". Default is \"Prospecting\"."
     },
     {
      "name": "ad_platform_campaign_objective",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The objective of the campaign that is associated with the ad, such as \"maximize conversion\" or \"target impression share\" (the campaign objective will vary by advertising platform)."
     },
     {
      "name": "ad_creative_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The unique identifier for the ad creative that is associated with the ad.",
+     "key": true
     },
     {
      "name": "ad_creative_title",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The title of the ad creative used for the ad."
     },
     {
      "name": "ad_creative_body",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The body copy of the ad creative used for the ad."
     },
     {
      "name": "ad_creative_image_url",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The URL of the image used in the ad creative."
     },
     {
      "name": "ad_creative_thumbnail_url",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The URL of the thumbnail image used in the ad creative."
     },
     {
      "name": "ad_creative_call_to_action_type",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The type of call-to-action used in the ad creative, such as \"order now\" or \"sign up\" (the call to action type will vary by advertising platform)."
     },
     {
      "name": "ad_creative_link_params",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The URL parameters used in the ad creative link."
     },
     {
      "name": "ad_creative_website_url",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The click-through Website URL configured on the ad creative (the Ads Manager \"Destination\" value). Meta Ads only today; sourced from asset_feed_spec.link_urls for Advantage+/flexible-format creatives and from the object_story_spec link fields for classic creatives. This is the destination as configured: query strings are kept and url_tags templating is not applied (that lives in ad_creative_link_p"
     },
     {
      "name": "ad_creative_instagram_url",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The URL of the ad creative as it appears on Instagram."
     },
     {
      "name": "ad_creative_facebook_url",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The URL of the ad creative as it appears on Facebook."
     }
-   ]
+   ],
+   "description": "Daily platform-native advertising performance rows. Grain is not unique at the visible keys: hidden sub-ad breakdowns can produce multiple rows for (smcid, source_system, sm_channel, date, ad_id), and ad_id may be NULL. Aggregate metrics before reporting; do not deduplicate or treat (source_system, ad_id) as unique. Date field: date. Critical filters: sm_channel and source_system. Blend with rpt_executive_summary_daily by date and sm_channel."
   },
   "obt_orders": {
    "dataset": "transformed",
@@ -546,172 +641,212 @@
     {
      "name": "sm_store_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "key": true
     },
     {
      "name": "sm_order_key",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Stable SourceMedium order key. Unique per order. Key joins: `obt_order_lines` (1:many via `sm_order_key`); `dim_customers` (many:1 via `sm_customer_key`). Platform caveat: TikTok Shop coverage may be limited. Primary key (grain: one row per sm_order_key). Join to obt_order_lines via sm_order_key (1:many), obt_customers via sm_customer_key (many:1), dim_orders via sm_order_key (1:1).",
+     "key": true
     },
     {
      "name": "sm_customer_key",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Stable SourceMedium customer key. Unique per customer. Key joins: `dim_customers` (1:1); `dim_orders`/`obt_orders` (1:many). Platform caveat: TikTok Shop coverage may be limited. Foreign key to obt_customers (many:1 - multiple orders per customer).",
+     "key": true
     },
     {
      "name": "source_system",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Originating platform for the record (e.g., Shopify, Amazon, TikTok Shop, Chargebee). Used for platform\u2011specific behavior and coverage."
     },
     {
      "name": "order_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Platform order identifier. Not globally unique across stores; pair with `smcid` and `source_system` when needed for scoping.",
+     "key": true
     },
     {
      "name": "is_pending",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "True for Amazon or Medusa orders with no settled order-line rows. This can represent ingestion lag, terminal itemless orders, or source anomalies; it does not indicate whether an order with at least one settled line is otherwise complete."
     },
     {
      "name": "customer_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The ID of the customer who placed the order.",
+     "key": true
     },
     {
      "name": "order_name",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Platform-rendered name (human\u2011readable or platform\u2011specific). Not a stable join key."
     },
     {
      "name": "order_number",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Shop-scoped sequence number assigned by the platform. Not globally unique; pair with `smcid` for scoping."
     },
     {
      "name": "order_checkout_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The ID of the checkout that the order is associated with.",
+     "key": true
     },
     {
      "name": "order_currency_code",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Three-letter ISO 4217 currency code used to price and settle the order (e.g., USD, CAD, EUR). Multi-currency brands should normalize for FX when comparing revenue across currencies."
     },
     {
      "name": "order_original_currency_code",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Original order currency resolved by the currency conversion runtime. For enabled Shopify stores, this prefers the row-level source currency; otherwise it falls back to order_currency_code."
     },
     {
      "name": "order_converted_currency_code",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Target reporting currency resolved by the currency conversion runtime. For stores without active conversion settings, this falls back to the original order currency."
     },
     {
      "name": "order_currency_conversion_currency_code",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Currency code that should describe order-level money fields after conversion is applied. This is the converted currency for converted or passthrough rows, and the original currency for unresolved rows."
     },
     {
      "name": "order_currency_conversion_effective_date",
      "type": "DATE",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Date used to choose the daily FX rate for order currency conversion. Defaults to the order processed date when no active conversion mapping exists."
     },
     {
      "name": "order_currency_conversion_rate_applied",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Multiplicative rate used to convert order-level money from original currency into converted currency. A value of 1 indicates passthrough, disabled conversion, or unresolved conversion."
     },
     {
      "name": "order_currency_conversion_status",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Runtime status explaining whether the order was converted, passed through, not enabled, or blocked by missing configuration, missing FX coverage, or a source excluded from the current runtime scope."
     },
     {
      "name": "order_currency_mismatch_flag",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "True when a row-level source currency is available and conflicts with the configured mapping currency. This is diagnostic only; row-level source currency still wins where available."
     },
     {
      "name": "currency_conversion_settings_version",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Published store-level currency conversion settings version used for the order. Uses __NOT_ENABLED__ when the store does not have active conversion settings."
     },
     {
      "name": "currency_conversion_mapping_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source/account mapping identifier used to resolve the original and converted currency. Uses __NO_MAPPING__ when no mapping applies.",
+     "key": true
     },
     {
      "name": "currency_conversion_mapping_source",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source of the mapping used for this order, such as operator override or dynamically generated mapping. Uses __NO_MAPPING__ when no mapping applies."
     },
     {
      "name": "currency_conversion_resolution_method",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Method used to resolve original currency for this order, such as record currency or operator override. Uses __NO_MAPPING__ when no mapping applies."
     },
     {
      "name": "currency_conversion_mapping_from_currency",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Configured original currency from the mapping that applied to this order. Uses __NO_MAPPING__ when no mapping applies."
     },
     {
      "name": "currency_conversion_mapping_to_currency",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Configured target currency from the mapping that applied to this order. Uses __NO_MAPPING__ when no mapping applies."
     },
     {
      "name": "order_created_at",
      "type": "TIMESTAMP",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "UTC timestamp when the order was created."
     },
     {
      "name": "order_created_at_local_datetime",
      "type": "DATETIME",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Order created timestamp converted to reporting timezone (from order_created_at UTC)."
     },
     {
      "name": "order_updated_at",
      "type": "TIMESTAMP",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "UTC timestamp from source system when the order was last updated."
     },
     {
      "name": "order_updated_at_local_datetime",
      "type": "DATETIME",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Order last updated timestamp converted to reporting timezone (from order_updated_at UTC)."
     },
     {
      "name": "order_processed_at",
      "type": "TIMESTAMP",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "UTC timestamp when the order was processed."
     },
     {
      "name": "order_processed_at_local_datetime",
      "type": "DATETIME",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Order processed timestamp converted to reporting timezone (from order_processed_at UTC). Primary date field for order analytics and time-based filtering."
     },
     {
      "name": "order_cancelled_at",
      "type": "TIMESTAMP",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "UTC timestamp when the order was cancelled. Null if order has not been cancelled."
     },
     {
      "name": "order_cancelled_at_local_datetime",
      "type": "DATETIME",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Order cancelled timestamp converted to reporting timezone (from order_cancelled_at UTC). Null if order has not been cancelled."
     },
     {
      "name": "order_cancellation_reason",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The reason an order was cancelled (sourced from the platform, e.g. Shopify's cancel_reason). A reason of 'fraud' or 'declined' marks the order as not sm-valid (is_order_sm_valid = false) regardless of payment status."
     },
     {
      "name": "sm_order_sales_channel",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Raw sales channel from Shopify specifically (e.g., 'TikTok Shop', 'Instagram Shop'). Some values are used as input dimension for sm_channel mapping. See sm_channel for final classification. Others are used for analysis."
     },
     {
      "name": "source_system_sales_channel",
@@ -726,592 +861,715 @@
     {
      "name": "sm_order_landing_page",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Path of the page where the buyer landed when they entered the shop (`/products/x`). Never a scheme+host URL. Checkout, invoice and cart URLs collapse to `/checkouts`, `/invoices` and `/cart`."
     },
     {
      "name": "sm_order_referrer_domain",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Domain derived from order_referring_site."
     },
     {
      "name": "order_index",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Ordered index identifying the sequential position of an order among the orders present in SourceMedium's data for a customer (1..N, oldest = 1). Counts only ingested orders and is fully self-contained; for tenants with incomplete ingested history (see int_shopify__incomplete_history_flags) this can understate the customer's true lifetime position."
     },
     {
      "name": "order_index_reversed",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Ordered index identifying the sequential position of an order in a customer's order history, in reverse order (newest = 1). Ranks the orders present in SourceMedium's data."
     },
     {
      "name": "order_tags_csv",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Comma-separated list of tags that the shop owner has attached to the order. Use for simple filtering; beware that individual tag values may contain commas."
     },
     {
      "name": "order_vendors_csv",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Comma-separated list of product vendors in the order, aggregated from line items. Vendor names may vary by platform; use for vendor mix analysis at order level."
     },
     {
      "name": "order_sequence",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Customer lifecycle classification: 'First Order' for new customers, 'Repeat Order' for returning customers. Includes all orders (valid + invalid). Use for cohort analysis and retention reporting. See valid_order_index for valid-only ordering."
     },
     {
      "name": "order_session_user_agent",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Raw user agent string. Used to derive customer_device_type and order_session_browser_type."
     },
     {
      "name": "customer_device_type",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Device type derived from user agent (e.g., mobile, desktop, tablet). Coverage depends on website tracking; limited for marketplaces."
     },
     {
      "name": "order_session_browser_type",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Browser type derived from user agent (e.g., chrome, safari, firefox). Coverage depends on website tracking; limited for marketplaces."
     },
     {
      "name": "order_payment_status",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Financial status of the order (e.g., paid, partially_paid, partially_refunded, authorized, pending, refunded, voided, draft). Platform\u2011defined."
     },
     {
      "name": "order_processing_method",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Method used to process the order (e.g., 'manual', 'direct', 'offsite'). Platform-defined strings; some methods may only appear for specific integrations."
     },
     {
      "name": "primary_order_payment_gateway",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The technology or service that securely transmitted payment information between the customer, the business, and the payment processor."
     },
     {
      "name": "order_shipping_country_code",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The two-letter code (ISO 3166-1 format) for the country of the shipping address."
     },
     {
      "name": "order_shipping_country",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The country of the shipping address."
     },
     {
      "name": "order_shipping_city",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The city, town, or village of the shipping address."
     },
     {
      "name": "order_shipping_zip_code",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Postal/ZIP code from the shipping address (alphanumeric, varies by country). Use with country and state to avoid ambiguity; not geo-normalized."
     },
     {
      "name": "order_customer_street_address",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Customer's billing street address associated with the order. May differ from shipping address; use for billing analysis and fraud detection."
     },
     {
      "name": "order_shipping_state",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Province/state of the shipping address; format varies by country and platform."
     },
     {
      "name": "order_cart_quantity",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The quantity of items that were originally purchased in an order."
     },
     {
      "name": "is_price_tax_inclusive",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Whether taxes are included in the order subtotal."
     },
     {
      "name": "sm_default_channel",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Default channel before overrides, from source name and tags: amazon/tiktok_shop/walmart.com; pos/leap -> retail; wholesale tags -> wholesale; otherwise online_dtc. See sm_channel for final channel."
     },
     {
      "name": "sm_channel",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Sales channel via hierarchy: (1) exclusion tag 'sm-exclude-order' -> excluded; (2) config sheet overrides; (3) default logic (amazon/tiktok_shop/walmart.com, pos/leap -> retail, wholesale tags -> wholesale, otherwise online_dtc). Note: excluded channel is omitted from Executive Summary and LTV."
     },
     {
      "name": "sm_sub_channel",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Sub-channel from source/tags with config overrides (e.g., Facebook & Instagram, Google, Amazon FBA/Fulfilled by Merchant)."
     },
     {
      "name": "sm_order_type",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Order classification (subscription vs one-time) derived from order attributes, tags, or subscription platforms (Shopify Subscription Contract, ReCharge, Skio, Loop, Stay AI)."
     },
     {
      "name": "subscription_order_index",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Ordered index identifying the sequential position of a subscription order in a customer's subscription order history."
     },
     {
      "name": "subscription_order_sequence",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Subscription lifecycle classification: 'First Subscription Order' for initial subscription purchase, 'Repeat Subscription Order' for renewals. Based on subscription order index when available, otherwise inferred from order tags. Use for subscription cohort analysis."
     },
     {
      "name": "sm_utm_source",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Last-click UTM source from attribution waterfall (Shopify visits/landing/order attributes \u2192 website events \u2192 GA/GA4 \u2192 referrer). For Shopify, order-level attribution includes allowlisted order `customAttributes` and legacy `note_attributes`, including parsing aggregate `utmParams`/`GE_utmParams`; if explicit `utm_source` is missing, `sm_utm_source` may be inferred from click IDs (e.g., `gclid` \u2192 g"
     },
     {
      "name": "sm_utm_medium",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Last-click UTM medium from attribution waterfall (Shopify visits/landing/order attributes \u2192 website events \u2192 GA/GA4 \u2192 referrer). Native on Shopify/Chargebee; enriched via website tracking (Elevar, Blotout, Snowplow). Limited for marketplaces."
     },
     {
      "name": "sm_utm_campaign",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Last-click UTM campaign from attribution waterfall (Shopify visits/landing/order attributes \u2192 website events \u2192 GA/GA4 \u2192 referrer). Native on Shopify/Chargebee; enriched via website tracking (Elevar, Blotout, Snowplow). Limited for marketplaces."
     },
     {
      "name": "sm_utm_content",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Last-click UTM content from attribution waterfall (Shopify visits/landing/order attributes \u2192 website events \u2192 GA/GA4 \u2192 referrer). Native on Shopify/Chargebee; enriched via website tracking (Elevar, Blotout, Snowplow). Limited for marketplaces."
     },
     {
      "name": "sm_utm_term",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Last-click UTM term from attribution waterfall (Shopify visits/landing/order attributes \u2192 website events \u2192 GA/GA4 \u2192 referrer). Native on Shopify/Chargebee; enriched via website tracking (Elevar, Blotout, Snowplow). Limited for marketplaces."
     },
     {
      "name": "sm_utm_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "SourceMedium-generated unique identifier for UTM parameter combinations on this order. Used to link orders to specific marketing campaigns via UTM tracking.",
+     "key": true
     },
     {
      "name": "sm_gclid",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Google Click Identifier (GCLID) from Google Ads campaigns, used to track paid search conversions. Present when order originated from Google Ads click-through.",
+     "key": true
     },
     {
      "name": "sm_fbclid",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Facebook Click Identifier (FBCLID) from Meta/Facebook ad campaigns, used to track social media conversions. Present when order originated from Facebook/Instagram ad click-through.",
+     "key": true
     },
     {
      "name": "sm_ttclid",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "TikTok Click Identifier (TTCLID) captured from the selected pre-purchase event or order referring URL. The original case-sensitive token is preserved for downstream click-log joins.",
+     "key": true
     },
     {
      "name": "sm_utm_source_medium",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Concatenation of source / medium (e.g., 'google / cpc'). Shows '(none) / (none)' when null."
     },
     {
      "name": "customer_email_hashed",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "A hashed version of the customer's email address."
     },
     {
      "name": "customer_tags_csv",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Comma-separated customer tags at time of order; string version of customer_tags_array. Prefer array field for robust matching; CSV can include commas in tag values."
     },
     {
      "name": "order_refund_quantity",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The quantity of order lines originally purchased in an order that were refunded."
     },
     {
      "name": "order_original_gross_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross order revenue expressed in the original order currency."
     },
     {
      "name": "order_converted_gross_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross order revenue converted using order_currency_conversion_rate_applied."
     },
     {
      "name": "order_original_discounts",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Order discounts expressed in the original order currency."
     },
     {
      "name": "order_converted_discounts",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Order discounts converted using order_currency_conversion_rate_applied."
     },
     {
      "name": "order_original_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Order refunds expressed in the original order currency."
     },
     {
      "name": "order_converted_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Order refunds converted using order_currency_conversion_rate_applied."
     },
     {
      "name": "order_original_net_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net order revenue expressed in the original order currency."
     },
     {
      "name": "order_converted_net_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net order revenue converted using order_currency_conversion_rate_applied."
     },
     {
      "name": "order_original_gross_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross non-shipping order taxes expressed in the original order currency."
     },
     {
      "name": "order_converted_gross_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross non-shipping order taxes converted using the applied FX rate."
     },
     {
      "name": "order_original_tax_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Non-shipping tax refunds expressed in the original order currency."
     },
     {
      "name": "order_converted_tax_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Non-shipping tax refunds converted using the applied FX rate."
     },
     {
      "name": "order_original_net_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net non-shipping order taxes expressed in the original order currency."
     },
     {
      "name": "order_converted_net_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net non-shipping order taxes converted using the applied FX rate."
     },
     {
      "name": "order_original_gross_shipping",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross shipping revenue expressed in the original order currency."
     },
     {
      "name": "order_converted_gross_shipping",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross shipping revenue converted using the applied FX rate."
     },
     {
      "name": "order_original_shipping_discounts",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Shipping discounts expressed in the original order currency."
     },
     {
      "name": "order_converted_shipping_discounts",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Shipping discounts converted using the applied FX rate."
     },
     {
      "name": "order_original_shipping_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Shipping refunds expressed in the original order currency."
     },
     {
      "name": "order_converted_shipping_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Shipping refunds converted using the applied FX rate."
     },
     {
      "name": "order_original_net_shipping",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net shipping revenue expressed in the original order currency."
     },
     {
      "name": "order_converted_net_shipping",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net shipping revenue converted using the applied FX rate."
     },
     {
      "name": "order_original_gross_shipping_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross shipping taxes expressed in the original order currency."
     },
     {
      "name": "order_converted_gross_shipping_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross shipping taxes converted using the applied FX rate."
     },
     {
      "name": "order_original_shipping_tax_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Shipping tax refunds expressed in the original order currency."
     },
     {
      "name": "order_converted_shipping_tax_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Shipping tax refunds converted using the applied FX rate."
     },
     {
      "name": "order_original_net_shipping_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net shipping taxes expressed in the original order currency."
     },
     {
      "name": "order_converted_net_shipping_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net shipping taxes converted using the applied FX rate."
     },
     {
      "name": "order_original_total_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Total order and shipping taxes, net of refunds, in the original currency."
     },
     {
      "name": "order_converted_total_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Total order and shipping taxes, net of refunds, converted using the applied FX rate."
     },
     {
      "name": "order_original_total_discounts",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Total order and shipping discounts expressed in the original order currency."
     },
     {
      "name": "order_converted_total_discounts",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Total order and shipping discounts converted using the applied FX rate."
     },
     {
      "name": "order_original_total_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Total order and shipping refunds expressed in the original order currency."
     },
     {
      "name": "order_converted_total_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Total order and shipping refunds converted using the applied FX rate."
     },
     {
      "name": "order_original_net_revenue_before_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross order revenue less discounts, before refunds, in the original currency."
     },
     {
      "name": "order_converted_net_revenue_before_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross revenue less discounts, before refunds, converted using the applied FX rate."
     },
     {
      "name": "order_original_total_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Total order revenue including shipping and taxes in the original currency."
     },
     {
      "name": "order_converted_total_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Total order revenue including shipping and taxes converted using the applied FX rate."
     },
     {
      "name": "order_original_gross_duties",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross order duties expressed in the original order currency."
     },
     {
      "name": "order_converted_gross_duties",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Gross order duties converted using the applied FX rate."
     },
     {
      "name": "order_original_duty_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Duty refunds expressed in the original order currency."
     },
     {
      "name": "order_converted_duty_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Duty refunds converted using the applied FX rate."
     },
     {
      "name": "order_original_net_duties",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net order duties expressed in the original order currency."
     },
     {
      "name": "order_converted_net_duties",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net order duties converted using the applied FX rate."
     },
     {
      "name": "order_gross_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The gross revenue for an order, based on an order's lines. Gross revenue is calculated by multiplying the price of an order's lines by the quantity purchased. Gross revenue excludes revenue from gift card purchases."
     },
     {
      "name": "order_discounts",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The total amount of discounts applied to an order."
     },
     {
      "name": "order_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The total amount of refunds applied to an order."
     },
     {
      "name": "order_net_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The gross order revenue minus order discounts and refunds."
     },
     {
      "name": "order_gross_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of taxes associated with an order's lines, after discounts and before returns. This does not include shipping taxes."
     },
     {
      "name": "order_tax_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of tax refunds applied to an order. This does not include shipping tax refunds."
     },
     {
      "name": "order_net_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The order tax minus order tax refunds. This does not include shipping taxes."
     },
     {
      "name": "order_gross_shipping",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount the customer paid in shipping for an order. This does not include shipping tax."
     },
     {
      "name": "order_shipping_discounts",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of discounts applied to shipping."
     },
     {
      "name": "order_shipping_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of shipping refunds applied to an order."
     },
     {
      "name": "order_net_shipping",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The gross shipping revenue for an order minus shipping discounts and shipping refunds."
     },
     {
      "name": "order_gross_shipping_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of taxes associated with shipping, after discounts and before returns."
     },
     {
      "name": "order_shipping_tax_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of shipping tax refunds applied to an order."
     },
     {
      "name": "order_net_shipping_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The order shipping tax minus shipping tax refunds."
     },
     {
      "name": "order_total_taxes",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Canonical order-level tax: order and shipping taxes less their refunds, summed from dim_order_taxes line taxes through int_order_line_transactions_revenue_calculated. Do not substitute the raw Shopify order-header total_tax, which is incomplete in some historical data."
     },
     {
      "name": "order_total_discounts",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of order and shipping discounts for an order."
     },
     {
      "name": "order_total_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of order and shipping refunds."
     },
     {
      "name": "order_net_revenue_before_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The gross order revenue minus order discounts."
     },
     {
      "name": "order_total_revenue",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Total order revenue after factoring in shipping revenue, taxes collected, discounts, and refunds."
     },
     {
      "name": "order_gross_duties",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount the customer paid in duties for an order."
     },
     {
      "name": "order_duty_refunds",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The amount of duty refunds applied to an order."
     },
     {
      "name": "order_net_duties",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The gross order duties minus duty refunds."
     },
     {
      "name": "order_currency_canonicalization_status",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Safety status for replacing canonical order money fields with converted values."
     },
     {
      "name": "is_order_currency_canonicalized",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "True when canonical order money fields use the converted values for this row."
     },
     {
      "name": "order_shipping_cost",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The blended cost per order to ship products to customers, considering that shipping costs are variable order costs included in cost of goods sold (COGS). This data is set in the Financial Cost - Shipping tab of the SourceMedium financial cost configuration sheet."
     },
     {
      "name": "order_return_cost",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The blended cost per order to handle returned products from a customer, considering that the cost of returns is a variable order cost included in cost of goods sold (COGS). This data is entered in the Financial Cost - Shipping tab of the SourceMedium financial cost configuration sheet."
     },
     {
      "name": "order_fulfillment_cost",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The blended cost to fulfill (pick and pack) orders for customers, considering that fulfillment cost is a variable order cost included in cost of goods sold (COGS). This data is recorded in the Financial Cost - Fulfillment tab of the financial cost configuration sheet."
     },
     {
      "name": "order_merchant_processing_fees",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The payment processing fees for an order. This data is entered in the Financial Cost - Merchant Processing Fees tab of the SourceMedium financial cost configuration sheet."
     },
     {
      "name": "sm_zero_party_attribution_source",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Attributable source from post\u2011purchase survey tags (e.g., Fairing/Enquire)."
     },
     {
      "name": "order_discount_codes_csv",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "A list of discount codes applied to an order."
     },
     {
      "name": "product_cost",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The landed cost of an order as defined by the SourceMedium financial cost configuration sheet (or by costs input directly into Shopify) multiplied by the quantity purchased."
     },
     {
      "name": "gross_profit",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net order revenue and shipping revenue minus order product cost, order shipping cost, order fulfillment cost, and merchant processing fees."
     },
     {
      "name": "product_gross_profit",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Net order revenue minus product cost."
     },
     {
      "name": "is_order_sm_valid",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "True if order is not voided, cancelled, uncollectible, draft, or refunded, and not cancelled for fraud or a declined payment (excluded even if still marked paid). Use WHERE is_order_sm_valid = TRUE to exclude test/invalid orders from revenue.",
+     "key": true
     },
     {
      "name": "sm_valid_order_index",
@@ -1326,37 +1584,44 @@
     {
      "name": "order_skus_csv",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "A list of SKUs included in an order."
     },
     {
      "name": "order_product_tags_csv",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The unique product tags across the order's lines, de-duplicated, sorted and comma-and-space separated; the exact string form of order_product_tags_array, so array_to_string(order_product_tags_array, ', ') reproduces it. Null when no line in the order carries a tag. Tags are free-form and merchant-defined, and can be inconsistent across platforms; prefer normalized dimensional attributes when avail"
     },
     {
      "name": "order_product_titles_csv",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "A list of product titles included in an order."
     },
     {
      "name": "order_product_variant_titles_csv",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "A list of product variant titles included in an order."
     },
     {
      "name": "order_cart_net_quantity",
      "type": "NUMERIC",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The quantity of items that were originally purchased in an order minus the quantity of items refunded."
     },
     {
      "name": "is_subscription_order",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Whether the order is a subscription order."
     },
     {
      "name": "is_first_subscription_order",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Whether a subscription order is the first subscription order based on the subscription order index or order tag indicators when an index is not available."
     },
     {
      "name": "is_recurring_subscription_order",
@@ -1366,7 +1631,8 @@
     {
      "name": "is_latest_order",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Whether an order has an order_index_reversed that equals 1."
     },
     {
      "name": "earliest_order_refund_date",
@@ -1381,37 +1647,44 @@
     {
      "name": "order_to_refund_days_earliest",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of days between the process date and the first refund date for an order."
     },
     {
      "name": "order_to_refund_days_latest",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of days between the process date and the most recent refund date for an order."
     },
     {
      "name": "order_to_refund_weeks_earliest",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of weeks between the process date and the first refund date for an order."
     },
     {
      "name": "order_to_refund_weeks_latest",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of weeks between the process date and the most recent refund date for an order."
     },
     {
      "name": "order_to_refund_months_earliest",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of months between the process date and the first refund date for an order."
     },
     {
      "name": "order_to_refund_months_latest",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of months between the process date and the most recent refund date for an order."
     },
     {
      "name": "order_latency_days",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The number of days between the order_created_at and the order_processed_at for an order."
     },
     {
      "name": "sm_valid_order_latency_days",
@@ -1423,7 +1696,8 @@
      "type": "STRING",
      "mode": "NULLABLE"
     }
-   ]
+   ],
+   "description": "Order analytics table for revenue, profitability, refunds, and channel performance analysis. Grain: One row per sm_order_key. Date field: order_processed_at_local_datetime. Critical filters: is_order_sm_valid = TRUE (exclude test/cancelled orders); sm_channel for segmentation. Platform caveat: TikTok Shop coverage may be limited. Key joins: obt_order_lines via sm_order_key (1:many); obt_customers via sm_customer_key (many:1); dim_orders via sm_order_key (1:1)."
   },
   "obt_inventory_positions": {
    "dataset": "transformed",
@@ -1431,204 +1705,253 @@
     {
      "name": "sm_store_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "key": true
     },
     {
      "name": "sm_inventory_position_key",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Stable key for the public inventory-position grain.",
+     "key": true
     },
     {
      "name": "sm_product_variant_key",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Best-match SourceMedium product-variant key. Null when unmatched.",
+     "key": true
     },
     {
      "name": "sm_product_key",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Best-match SourceMedium product key. Null when unmatched.",
+     "key": true
     },
     {
      "name": "source_system",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Inventory source family."
     },
     {
      "name": "inventory_source_name",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Specific source adapter name for the inventory row."
     },
     {
      "name": "inventory_snapshot_at",
      "type": "TIMESTAMP",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Timestamp representing the source snapshot used for the row."
     },
     {
      "name": "inventory_updated_at",
      "type": "TIMESTAMP",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Latest source update timestamp used for the row."
     },
     {
      "name": "sku",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Canonical normalized SKU when the public inventory position resolves to exactly one distinct upstream SKU after normalization. Null when multiple upstream SKUs collapse into the same public inventory position."
     },
     {
      "name": "inventory_skus_csv",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Distinct normalized upstream SKUs for the public inventory position, sorted and comma-separated. This preserves SKU visibility when multiple source rows collapse into one public position."
     },
     {
      "name": "inventory_item_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Inventory item identifier when the source provides one.",
+     "key": true
     },
     {
      "name": "marketplace_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Marketplace-specific product identifier, such as Amazon ASIN.",
+     "key": true
     },
     {
      "name": "product_variant_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source product-variant identifier when available.",
+     "key": true
     },
     {
      "name": "product_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source product identifier when available.",
+     "key": true
     },
     {
      "name": "product_title",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Product title from the matched product record."
     },
     {
      "name": "product_variant_title",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Product-variant title from the matched product record."
     },
     {
      "name": "product_type",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Product type from the matched product record."
     },
     {
      "name": "product_vendor",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Product vendor from the matched product record."
     },
     {
      "name": "product_tags_csv",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Product tags for grouping and downstream rules."
     },
     {
      "name": "product_collection_handles_csv",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Product collection handles for grouping and downstream rules."
     },
     {
      "name": "inventory_location_id",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source location identifier normalized to string.",
+     "key": true
     },
     {
      "name": "inventory_location_name",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source location name or derived virtual location name."
     },
     {
      "name": "inventory_location_type",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Standardized inventory location type. Derived from the Shopify v3 location schema (shipsinventory, isfulfillmentservice flags). Rows from classic-API Shopify tenants without v3 location data will have type 'unknown', which also means is_inventory_location_physical will be false for all their rows."
     },
     {
      "name": "inventory_fulfillment_method",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Standardized fulfillment method for the inventory row."
     },
     {
      "name": "inventory_quantity_available",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Default business quantity to sum. Signed values are preserved as-is from the source; negative values can represent oversold or backordered positions and are not clamped to zero."
     },
     {
      "name": "inventory_quantity_on_hand",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source on-hand quantity when available."
     },
     {
      "name": "inventory_quantity_committed",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source committed quantity when available."
     },
     {
      "name": "inventory_quantity_reserved",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source reserved quantity when available. This is the closest standardized analogue to an \"on hold\" quantity in v1, but exact source semantics can vary by platform."
     },
     {
      "name": "inventory_quantity_incoming",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source incoming quantity when available."
     },
     {
      "name": "inventory_quantity_quality_control",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source quality-control quantity when available."
     },
     {
      "name": "inventory_quantity_damaged",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source damaged quantity when available."
     },
     {
      "name": "inventory_quantity_safety_stock",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source safety-stock quantity when available."
     },
     {
      "name": "inventory_quantity_pending",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source pending quantity when available."
     },
     {
      "name": "inventory_quantity_unsellable",
      "type": "FLOAT",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Source unsellable quantity when available."
     },
     {
      "name": "is_inventory_source_attributed",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "True only when the source account or location is explicitly attributable to the tenant."
     },
     {
      "name": "is_inventory_quantity_trusted",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "True only when the source is approved as a quantity-of-truth source."
     },
     {
      "name": "is_inventory_location_physical",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "True when inventory_location_type is warehouse or fulfillment_service. Requires v3 location schema (shipsinventory / isfulfillmentservice columns). Always false for classic-API Shopify tenants that lack v3 location data \u2014 use is_inventory_quantity_eligible rather than is_inventory_default_total_eligible for those tenants."
     },
     {
      "name": "is_inventory_product_matched",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "True when the row matched a SourceMedium product or variant record."
     },
     {
      "name": "is_inventory_default_total_eligible",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Conservative default flag for safe public inventory totals. Requires is_inventory_location_physical, is_inventory_source_attributed, is_inventory_quantity_trusted, is_inventory_product_matched, and a non-null available quantity. Use is_inventory_quantity_eligible instead when location classification is unavailable (e.g. classic-API Shopify tenants without v3 location schema)."
     },
     {
      "name": "is_inventory_quantity_eligible",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "True when the quantity data is trustworthy for aggregation, regardless of whether the location type is classified. Relaxes the is_inventory_location_physical requirement from is_inventory_default_total_eligible, making classic-API Shopify tenants (which lack v3 location schema) usable for quantity totals. Amazon is always false here because is_inventory_quantity_trusted is false for Amazon active "
     }
-   ]
+   ],
+   "description": "Current-state inventory visibility across supported inventory sources. Grain: one row per smcid, source_system, inventory_source_name, inventory_location_id, and a source-aware inventory-position identity for the public inventory position. For quantity totals, prefer is_inventory_default_total_eligible (requires confirmed physical location) when location classification is available, or fall back to is_inventory_quantity_eligible for classic-API Shopify tenants that lack v3 location schema."
   },
   "dim_data_dictionary": {
    "dataset": "metadata",
@@ -1788,99 +2111,119 @@
     {
      "name": "metric_name",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Unique identifier for the metric (e.g., order_net_revenue)"
     },
     {
      "name": "metric_label",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Human-readable display name (e.g., \"Net Revenue\")"
     },
     {
      "name": "metric_description",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Detailed explanation of what the metric measures"
     },
     {
      "name": "metric_type",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Type of metric calculation"
     },
     {
      "name": "metric_category",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Business category for grouping related metrics: - Revenue: AOV, revenue totals, profit metrics - Orders: Order counts, order-related metrics - Customers: Customer counts, acquisition metrics - Conversion: Conversion rates, funnel metrics - Marketing: Ad spend, efficiency ratios (MER, CAC, CPO) - Products: Product/SKU counts, inventory metrics - Subscription: Subscriber metrics, churn rates - Web A"
     },
     {
      "name": "calculation",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Readable calculation formula showing how the metric is computed: - Simple: \"SUM(order_net_revenue)\", \"COUNT(sm_order_key)\", \"COUNT(DISTINCT sm_customer_key)\" - Ratio: \"total_revenue / order_count\", \"ad_spend / new_customers\" - Derived: \"regular_page_views + product_page_views + collection_page_views\" - Cumulative: \"CUMULATIVE_SUM(order_net_revenue) WHERE [filter applied]\" The aggregation is spelle"
     },
     {
      "name": "has_filter",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Boolean flag indicating whether the metric has a filter condition applied. True if the metric has any filter, false otherwise."
     },
     {
      "name": "filter_condition",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The metric's filter as a predicate over physical columns of underlying_model, ready to drop into a WHERE clause. MetricFlow's Dimension() references are resolved to the SQL each dimension stands for, so `{{ Dimension('orders__is_valid_order') }} = 'valid'` publishes as `is_order_sm_valid`. Literals are written in the spelling the PUBLISHED column carries, not the spelling Core carries. Publish nor"
     },
     {
      "name": "metric_time_grains",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Available time granularities for this metric: Default: \"day, week, month, quarter, year\""
     },
     {
      "name": "metric_time_expression",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The SQL that metric_time stands for on underlying_model, ready to GROUP BY or to join on: `date(coalesce(order_processed_at_local_datetime, order_created_at_local_datetime))` (the reporting date) for an obt_orders metric, plain `date` for an rpt_ad_performance_daily one. It is an expression, not necessarily a bare column, because four of the six semantic models declare their agg_time_dimension ove"
     },
     {
      "name": "cumulative_settings",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Settings for cumulative metrics: - \"month\", \"quarter\", \"year\" (grain_to_date settings) - \"30 days\", \"90 days\", \"365 days\" (window settings) - \"all_time\" (unbounded cumulative from beginning of time) - null for non-cumulative metrics"
     },
     {
      "name": "semantic_model_name",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The name of the semantic model that defines this metric's measures. The permitted values are defined once as the semantic_model_name_domain var in dbt_project.yml, and every check below reads them from there. Special values: 'Multiple' (uses multiple semantic models), 'Derived' (uses other metrics), 'None'"
     },
     {
      "name": "underlying_model",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The dbt model(s) that contain the actual data for this metric. Resolved through recursive dependency tracing. Common values: obt_orders, obt_customers, rpt_ad_performance_daily, etc. Can be comma-separated for metrics using multiple models."
     },
     {
      "name": "dependent_metrics",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Comma-separated list of metrics that this metric depends on. Populated for ratio and derived metrics to show dependencies. Example: \"total_ad_clicks, total_ad_impressions\" for click_through_rate"
     },
     {
      "name": "dependent_metric_count",
      "type": "INTEGER",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "The total number of metrics that this metric depends on. Useful for understanding metric complexity and dependency chains."
     },
     {
      "name": "is_abbreviation",
      "type": "BOOLEAN",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Boolean flag indicating if this metric is an abbreviation/legacy name. True for metrics like 'aov', 'mer', 'cac' that should use their full names."
     },
     {
      "name": "preferred_metric_name",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "For abbreviation metrics, this indicates the full descriptive metric name to use instead. Example: 'aov' \u2192 'average_order_value_net', 'mer' \u2192 'marketing_efficiency_ratio' NULL for primary metrics."
     },
     {
      "name": "abbreviations_list",
      "type": "STRING",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "For primary metrics, a comma-separated list of abbreviations that map to this metric. Example: 'average_order_value_net' has abbreviations 'aov, aov_net_revenue' NULL for abbreviation metrics."
     },
     {
      "name": "catalog_updated_at",
      "type": "TIMESTAMP",
-     "mode": "NULLABLE"
+     "mode": "NULLABLE",
+     "description": "Timestamp when this catalog entry was last refreshed"
     }
-   ]
+   ],
+   "description": "A machine-executable catalog of all semantic layer metrics, published to tenant sm_metadata and read by tools that compile a metric into SQL against its underlying_model. That contract is what the column definitions below enforce: `calculation` is SQL whose aggregation is a real SQL function over a physical column, `filter_condition` is a predicate over physical columns of the same model, and `metric_time_expression` is the SQL that carries the metric's time grain. A metric whose definition hides its grain or its filter inside a CASE cannot be compiled by a reader, so tests/semantic/test_catal"
   }
  }
 }

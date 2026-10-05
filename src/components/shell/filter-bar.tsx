@@ -23,6 +23,7 @@ export function FilterBar({
   maxDate,
   presets,
   preserved,
+  dates = true,
 }: {
   pathname: string;
   stores: { id: string; label: string }[];
@@ -33,6 +34,8 @@ export function FilterBar({
   presets: FilterPreset[];
   /** Other URL parameters this view keeps when filters change, such as a channel. */
   preserved: Record<string, string>;
+  /** False hides the date inputs; the URL's dates still pass through for other views. */
+  dates?: boolean;
 }) {
   const id = useId();
   return (
@@ -62,34 +65,43 @@ export function FilterBar({
           ))}
         </select>
       </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor={`${id}-from`} className="text-xs font-medium text-muted-foreground">
-          From
-        </label>
-        <input
-          id={`${id}-from`}
-          type="date"
-          name="from"
-          defaultValue={from}
-          max={maxDate}
-          required
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor={`${id}-to`} className="text-xs font-medium text-muted-foreground">
-          To
-        </label>
-        <input
-          id={`${id}-to`}
-          type="date"
-          name="to"
-          defaultValue={to}
-          max={maxDate}
-          required
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-        />
-      </div>
+      {dates ? (
+        <>
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${id}-from`} className="text-xs font-medium text-muted-foreground">
+              From
+            </label>
+            <input
+              id={`${id}-from`}
+              type="date"
+              name="from"
+              defaultValue={from}
+              max={maxDate}
+              required
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${id}-to`} className="text-xs font-medium text-muted-foreground">
+              To
+            </label>
+            <input
+              id={`${id}-to`}
+              type="date"
+              name="to"
+              defaultValue={to}
+              max={maxDate}
+              required
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <input type="hidden" name="from" value={from} />
+          <input type="hidden" name="to" value={to} />
+        </>
+      )}
       <Button type="submit" variant="secondary">
         Apply
       </Button>
