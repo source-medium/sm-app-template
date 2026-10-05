@@ -3,11 +3,14 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
+/** Absolute path with forward slashes: Vite's alias matching needs them on Windows too. */
+const path = (relative: string) => fileURLToPath(new URL(relative, import.meta.url)).replace(/\\/g, "/");
+
 const resolve = {
   alias: {
-    "@/app.config": fileURLToPath(new URL("./app.config.ts", import.meta.url)),
-    "@/": fileURLToPath(new URL("./src/", import.meta.url)),
-    "server-only": fileURLToPath(new URL("./tests/helpers/empty-module.ts", import.meta.url)),
+    "@/app.config": path("./app.config.ts"),
+    "@/": path("./src/"),
+    "server-only": path("./tests/helpers/empty-module.ts"),
   },
 };
 
