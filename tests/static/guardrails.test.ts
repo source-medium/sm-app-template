@@ -4,7 +4,7 @@
  */
 import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { ESLint, RuleTester } from "eslint";
 import tseslint from "typescript-eslint";
 import { afterAll, describe, expect, it } from "vitest";
@@ -116,7 +116,9 @@ describe("auth-coverage", () => {
       readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
         entry.isDirectory() ? walk(join(dir, entry.name)) : /\.tsx?$/.test(entry.name) ? [join(dir, entry.name)] : [],
       );
-    expect(findAuthGaps(walk("src").map((path) => ({ path, text: readFileSync(path, "utf8") })))).toEqual([]);
+    const files = walk("src").map((path) => ({ path: path.split(sep).join("/"), text: readFileSync(path, "utf8") }));
+    expect(files.some((file) => file.path.startsWith("src/features/"))).toBe(true);
+    expect(findAuthGaps(files)).toEqual([]);
   });
 });
 

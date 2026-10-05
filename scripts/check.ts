@@ -9,17 +9,18 @@ import { findAuthGaps } from "./lib/auth-coverage";
 import { root } from "./lib/environment";
 import { skillDifferences } from "./lib/skills";
 import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 
 type Step = { name: string; run: () => Promise<string[]> | string[] };
 
 function command(args: string[], explain: (output: string) => string[]): () => Promise<string[]> {
   return () =>
     new Promise((resolve, reject) => {
-      const child = spawn("pnpm", ["exec", ...args], {
+      // Windows resolves pnpm.cmd only through a shell, which takes one command string; these arguments are fixed.
+      const windows = process.platform === "win32";
+      const child = spawn(windows ? ["pnpm", "exec", ...args].join(" ") : "pnpm", windows ? [] : ["exec", ...args], {
         cwd: root,
-        // Windows resolves pnpm.cmd only through a shell.
-        shell: process.platform === "win32",
+        shell: windows,
         env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
       });
       let output = "";
@@ -83,7 +84,7 @@ const steps: Step[] = [
     run: () =>
       findAuthGaps(
         sourceFiles(join(root, "src")).map((path) => ({
-          path: relative(root, path),
+          path: relative(root, path).split(sep).join("/"),
           text: readFileSync(path, "utf8"),
         })),
       ),
@@ -91,12 +92,24 @@ const steps: Step[] = [
   { name: "skills", run: () => skillDifferences(root) },
   {
     name: "tests",
-    run: command(["vitest", "run", "--reporter", "dot"], (output) =>
-      [...output.matchAll(/FAIL\s+\|[^|]+\|\s+(.+?) > (.+)$/gm)].map(
-        (match) =>
-          `\`${match[1]}\` failed "${match[2]?.trim()}"; run \`pnpm test\` for the details and fix the code (or the test if it is wrong).`,
-      ),
-    ),
+    run: command(["vitest", "run", "--reporter", "dot"], (output) => {
+      const lines = output.split("\n");
+      const problems: string[] = [];
+      lines.forEach((line, index) => {
+        const match = /FAIL\s+\|[^|]+\|\s+(.+?) > (.+)$/.exec(line);
+        if (!match) return;
+        // The first error line after the failure header says what went wrong.
+        const reason = lines
+          .slice(index + 1, index + 12)
+          .find((next) => /(Error|expected|Expected)/.test(next))
+          ?.trim()
+          .slice(0, 200);
+        problems.push(
+          `\`${match[1]}\` failed "${match[2]?.trim()}"${reason ? ` (${reason})` : ""}; run \`pnpm test\` for the details and fix the code (or the test if it is wrong).`,
+        );
+      });
+      return problems;
+    }),
   },
 ];
 

@@ -4,7 +4,12 @@
  * checkouts, GitHub template copies, and zip downloads.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
+
+/** Repository paths always use "/", so messages and comparisons match on Windows too. */
+function toPosix(path: string): string {
+  return path.split(sep).join("/");
+}
 
 function files(dir: string): string[] {
   if (!existsSync(dir)) return [];
@@ -19,14 +24,14 @@ export function skillDifferences(root: string): string[] {
   const source = join(root, ".agents/skills");
   const target = join(root, ".claude/skills");
   const differences: string[] = [];
-  const sourceFiles = new Set(files(source).map((path) => relative(source, path)));
+  const sourceFiles = new Set(files(source).map((path) => toPosix(relative(source, path))));
   for (const file of sourceFiles) {
     const copy = join(target, file);
     if (!existsSync(copy) || !readFileSync(copy).equals(readFileSync(join(source, file)))) {
       differences.push(`\`.claude/skills/${file}\` differs from \`.agents/skills/${file}\`; run \`pnpm skills:sync\`.`);
     }
   }
-  for (const file of files(target).map((path) => relative(target, path))) {
+  for (const file of files(target).map((path) => toPosix(relative(target, path)))) {
     if (!sourceFiles.has(file)) {
       differences.push(
         `\`.claude/skills/${file}\` has no source in .agents/skills; run \`pnpm skills:sync\` to remove it.`,

@@ -33,6 +33,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - name: Test details (only when pnpm check failed)
+        if: failure()
+        run: pnpm exec vitest run
 
   e2e:
     name: Sample-mode end-to-end tests (Playwright + axe)
