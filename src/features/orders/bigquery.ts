@@ -1,13 +1,13 @@
 /**
- * Orders, live. One bounded query per page: newest first by creation time,
- * then by order key, starting after the cursor. The coarse timestamp bound
- * lets BigQuery prune partitions; the local-date predicate is the filter.
+ * Orders, live. One bounded query per page: newest first by processed time
+ * (store-local), then by order key, starting after the cursor. Filtering on
+ * the partition column keeps each page's scan to the selected months.
  */
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
-import { decodeRows } from "@/lib/data/decode";
 import type { QueryParameter } from "@/lib/data/bigquery-rest.server";
-import { PAGE_SIZE, type OrderCursor, type OrderDetail, type OrdersFilters, type OrdersPage } from "./queries";
+import { decodeRows } from "@/lib/data/decode";
+import { PAGE_SIZE, type OrderDetail, type OrderRef, type OrdersFilters, type OrdersPage } from "./queries";
 import {
   DETAIL_COLUMNS,
   ORDERS_RELATION,
@@ -28,9 +28,8 @@ export async function queryOrders(filters: OrdersFilters): Promise<OrdersPage> {
   ];
   const predicates = [
     "sm_store_id = @store_id",
-    "order_created_at >= TIMESTAMP_SUB(TIMESTAMP(@start_date), INTERVAL 1 DAY)",
-    "order_created_at < TIMESTAMP_ADD(TIMESTAMP(@end_date), INTERVAL 2 DAY)",
-    "COALESCE(DATE(order_created_at_local_datetime), DATE(order_created_at)) BETWEEN @start_date AND @end_date",
+    "order_processed_at_local_datetime >= DATETIME(@start_date)",
+    "order_processed_at_local_datetime < DATETIME(DATE_ADD(@end_date, INTERVAL 1 DAY))",
   ];
   if (filters.search) {
     params.push({ name: "search", type: "STRING", value: filters.search });
@@ -41,11 +40,11 @@ export async function queryOrders(filters: OrdersFilters): Promise<OrdersPage> {
       OR order_id = @search)`);
   }
   if (filters.cursor) {
-    params.push({ name: "cursor_micros", type: "INT64", value: filters.cursor.createdAtMicros });
+    params.push({ name: "cursor_at", type: "DATETIME", value: filters.cursor.processedLocal });
     params.push({ name: "cursor_key", type: "STRING", value: filters.cursor.key });
     predicates.push(`(
-      UNIX_MICROS(order_created_at) < @cursor_micros
-      OR (UNIX_MICROS(order_created_at) = @cursor_micros AND sm_order_key < @cursor_key))`);
+      order_processed_at_local_datetime < @cursor_at
+      OR (order_processed_at_local_datetime = @cursor_at AND sm_order_key < @cursor_key))`);
   }
 
   const result = await warehouse.query({
@@ -55,7 +54,7 @@ export async function queryOrders(filters: OrdersFilters): Promise<OrdersPage> {
       SELECT ${SUMMARY_COLUMNS}
       FROM ${warehouse.table(ORDERS_RELATION)}
       WHERE ${predicates.join("\n        AND ")}
-      ORDER BY order_created_at DESC, sm_order_key DESC
+      ORDER BY order_processed_at_local_datetime DESC, sm_order_key DESC
       LIMIT @limit`,
     params,
   });
@@ -64,11 +63,11 @@ export async function queryOrders(filters: OrdersFilters): Promise<OrdersPage> {
   const last = page.at(-1);
   return {
     orders: page,
-    nextCursor: orders.length > PAGE_SIZE && last ? { createdAtMicros: last.createdAt.micros, key: last.key } : null,
+    nextCursor: orders.length > PAGE_SIZE && last ? { processedLocal: last.processedLocal, key: last.key } : null,
   };
 }
 
-export async function queryOrderDetail(storeId: string, ref: OrderCursor): Promise<OrderDetail | null> {
+export async function queryOrderDetail(storeId: string, ref: OrderRef): Promise<OrderDetail | null> {
   const { warehouse } = await requireViewer({ live: true });
   const result = await warehouse.query({
     name: "order_detail",
@@ -77,12 +76,12 @@ export async function queryOrderDetail(storeId: string, ref: OrderCursor): Promi
       SELECT ${DETAIL_COLUMNS}
       FROM ${warehouse.table(ORDERS_RELATION)}
       WHERE sm_store_id = @store_id
-        AND order_created_at = TIMESTAMP_MICROS(@created_micros)
+        AND order_processed_at_local_datetime = @processed_at
         AND sm_order_key = @order_key
       LIMIT 1`,
     params: [
       { name: "store_id", type: "STRING", value: storeId },
-      { name: "created_micros", type: "INT64", value: ref.createdAtMicros },
+      { name: "processed_at", type: "DATETIME", value: ref.processedLocal },
       { name: "order_key", type: "STRING", value: ref.key },
     ],
   });

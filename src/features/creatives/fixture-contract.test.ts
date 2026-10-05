@@ -6,7 +6,7 @@ const FILTERS = { storeId: "sample-store-a", range: { from: "2026-09-01", to: "2
 
 describe("creatives fixture contract", () => {
   it("decodes through the live row schema, sorted by the chosen measure", async () => {
-    for (const sort of ["impressions", "clicks", "conversions", "ctr"] as const) {
+    for (const sort of ["spend", "impressions", "clicks", "conversions", "ctr"] as const) {
       const { creatives } = await sampleCreatives({ ...FILTERS, sort });
       expect(creatives.length).toBeGreaterThan(0);
       const values = creatives.map((creative) => Number(creative[sort] ?? -1));
@@ -26,6 +26,7 @@ describe("creatives fixture contract", () => {
   it("only renders https or same-origin images; anything else becomes a text card", () => {
     const base = {
       creative_id: "c1",
+      spend: "1.5",
       title: "t",
       body: "b",
       thumbnail_url: null,

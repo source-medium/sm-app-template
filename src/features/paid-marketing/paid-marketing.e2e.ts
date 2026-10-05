@@ -6,7 +6,7 @@ test("paid marketing: a channel filter narrows the campaigns", async ({ page }) 
   await expect(page).toHaveURL(/channel=Google/);
   await expect(page.getByRole("heading", { name: "Campaigns in Google" })).toBeVisible();
   const channels = await page
-    .getByRole("table", { name: "Campaigns by impressions" })
+    .getByRole("table", { name: "Campaigns by spend" })
     .locator("tbody tr td:nth-child(2)")
     .allTextContents();
   expect(new Set(channels)).toEqual(new Set(["Google"]));

@@ -1,0 +1,4 @@
+# LF everywhere, so formatting and the skill-copy check behave the same on Windows.
+* text=auto eol=lf
+*.png binary
+*.woff2 binary

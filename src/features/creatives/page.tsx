@@ -6,13 +6,14 @@ import { LoadingState } from "@/components/patterns/data-states";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { ReportPage } from "@/components/shell/report-page";
 import { parseChoice, preservedParams, type SearchParams } from "@/lib/filters";
-import { formatCount, formatMeasure, formatPercent } from "@/lib/format";
+import { formatCount, formatMeasure, formatMoney, formatPercent } from "@/lib/format";
 import { CREATIVE_SORTS, getCreatives, type CreativeSort, type CreativesData } from "./queries";
 
 export const metadata: Metadata = { title: "Creatives" };
 
 const PATHNAME = "/creatives";
 const SORT_LABELS: Record<CreativeSort, string> = {
+  spend: "Most spend",
   impressions: "Most impressions",
   clicks: "Most clicks",
   conversions: "Most conversions",
@@ -21,7 +22,7 @@ const SORT_LABELS: Record<CreativeSort, string> = {
 
 export default async function CreativesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
-  const sort = parseChoice(params, "sort", CREATIVE_SORTS, "impressions");
+  const sort = parseChoice(params, "sort", CREATIVE_SORTS, "spend");
   return (
     <ReportPage
       title="Creatives"
@@ -73,8 +74,8 @@ function CreativesView({ data }: { data: CreativesData }) {
           badge: creative.channel,
           imageUrl: creative.imageUrl,
           metrics: [
+            { label: "Spend", display: formatMoney(creative.spend) },
             { label: "Impressions", display: formatCount(creative.impressions) },
-            { label: "Clicks", display: formatCount(creative.clicks) },
             { label: "CTR", display: formatPercent(creative.ctr) },
             { label: "Conversions", display: formatMeasure(creative.conversions) },
           ],

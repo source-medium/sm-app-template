@@ -5,7 +5,7 @@
  * sidebar becomes a sheet opened from the top bar.
  */
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { appConfig } from "@/app.config";
 import {
   Sidebar,
@@ -20,8 +20,18 @@ import {
 } from "@/components/ui/sidebar";
 import { AppName } from "./app-name";
 
+/** Filters every view shares; carrying them keeps the same store and dates when switching views. */
+const SHARED_FILTERS = ["store", "from", "to"];
+
 export function AppSidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const shared = new URLSearchParams();
+  for (const name of SHARED_FILTERS) {
+    const value = searchParams.get(name);
+    if (value) shared.set(name, value);
+  }
+  const suffix = shared.size > 0 ? `?${shared.toString()}` : "";
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-3 py-4">
@@ -36,7 +46,7 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
-                      <Link href={item.href} aria-current={active ? "page" : undefined}>
+                      <Link href={`${item.href}${suffix}`} aria-current={active ? "page" : undefined}>
                         <item.icon aria-hidden />
                         <span>{item.label}</span>
                       </Link>

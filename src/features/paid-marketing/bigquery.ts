@@ -29,6 +29,7 @@ export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise
         SELECT
           IFNULL(sm_channel, '(none)') AS channel,
           date,
+          SUM(ad_spend) AS spend,
           SUM(ad_impressions) AS impressions,
           SUM(ad_clicks) AS clicks,
           SUM(ad_platform_reported_conversions) AS conversions
@@ -47,16 +48,18 @@ export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise
           ad_campaign_id AS campaign_id,
           MAX(ad_campaign_name) AS campaign_name,
           MAX(sm_channel) AS channel,
+          SUM(ad_spend) AS spend,
           SUM(ad_impressions) AS impressions,
           SUM(ad_clicks) AS clicks,
-          SUM(ad_platform_reported_conversions) AS conversions
+          SUM(ad_platform_reported_conversions) AS conversions,
+          SUM(ad_platform_reported_revenue) AS platform_revenue
         FROM ${table}
         WHERE sm_store_id = @store_id
           AND date BETWEEN @start_date AND @end_date
           AND ad_campaign_id IS NOT NULL
           AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
         GROUP BY campaign_id
-        ORDER BY impressions DESC, campaign_id
+        ORDER BY spend DESC, impressions DESC, campaign_id
         LIMIT @limit`,
       params: [
         ...scope,

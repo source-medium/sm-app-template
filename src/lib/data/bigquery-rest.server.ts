@@ -44,7 +44,7 @@ export type BigQueryClient = {
 };
 
 export type QueryParameter =
-  | { name: string; type: "STRING" | "DATE" | "TIMESTAMP"; value: string }
+  | { name: string; type: "STRING" | "DATE" | "DATETIME" | "TIMESTAMP"; value: string }
   | { name: string; type: "INT64"; value: bigint | number }
   | { name: string; type: "FLOAT64"; value: number }
   | { name: string; type: "BOOL"; value: boolean };

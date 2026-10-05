@@ -23,9 +23,11 @@ export async function queryOverview(filters: ReportFilters): Promise<OverviewDat
       WITH daily AS (
         SELECT
           date,
+          SUM(order_net_revenue) AS net_revenue,
           SUM(order_count) AS order_count,
           SUM(website_sessions) AS website_sessions,
-          SUM(ad_clicks) AS ad_clicks
+          SUM(ad_clicks) AS ad_clicks,
+          SUM(ad_spend) AS ad_spend
         FROM ${warehouse.table(OVERVIEW_RELATION)}
         WHERE sm_store_id = @store_id
           AND date BETWEEN @start_date AND @end_date
@@ -33,12 +35,16 @@ export async function queryOverview(filters: ReportFilters): Promise<OverviewDat
       )
       SELECT
         date,
+        net_revenue,
         order_count,
         website_sessions,
         ad_clicks,
+        ad_spend,
+        SUM(net_revenue) OVER () AS total_net_revenue,
         SUM(order_count) OVER () AS total_order_count,
         SUM(website_sessions) OVER () AS total_website_sessions,
-        SUM(ad_clicks) OVER () AS total_ad_clicks
+        SUM(ad_clicks) OVER () AS total_ad_clicks,
+        SUM(ad_spend) OVER () AS total_ad_spend
       FROM daily
       ORDER BY date`,
     params: [

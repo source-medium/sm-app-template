@@ -7,7 +7,8 @@ import { LoadingState } from "@/components/patterns/data-states";
 import { KpiCard } from "@/components/patterns/kpi-card";
 import { ReportPage } from "@/components/shell/report-page";
 import { datesInRange, type ReportFilters, type SearchParams } from "@/lib/filters";
-import { formatCount, formatDate, formatDay, formatMeasure } from "@/lib/format";
+import { decimalToNumber, ratio } from "@/lib/data/decimal";
+import { formatCount, formatDate, formatDay, formatMeasure, formatMoney, formatMultiple } from "@/lib/format";
 import { getOverview, type OverviewData } from "./queries";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -17,7 +18,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   return (
     <ReportPage
       title="Overview"
-      description="Orders, website sessions, and ad clicks by day for one store."
+      description="Revenue, orders, ad spend, and website sessions by day for one store."
       pathname="/overview"
       params={params}
     >
@@ -44,6 +45,16 @@ function OverviewView({ data, filters }: { data: OverviewData; filters: ReportFi
   const byDate = new Map(data.days.map((day) => [day.date, day]));
   // Every date in the range, so a date with no rows is a gap in the line, not a zero.
   const dates = datesInRange(filters.range);
+  const revenue = buildChartData(
+    dates.map((date) => {
+      const day = byDate.get(date);
+      const value = decimalToNumber(day?.netRevenue ?? null);
+      return {
+        label: formatDay(date),
+        values: { revenue: { value, display: day ? formatMoney(day.netRevenue) : "No rows" } },
+      };
+    }),
+  );
   const orders = buildChartData(
     dates.map((date) => {
       const day = byDate.get(date);
@@ -53,24 +64,37 @@ function OverviewView({ data, filters }: { data: OverviewData; filters: ReportFi
       };
     }),
   );
-  const sessions = buildChartData(
-    dates.map((date) => {
-      const day = byDate.get(date);
-      return {
-        label: formatDay(date),
-        values: { sessions: { value: day?.sessions ?? null, display: day ? formatCount(day.sessions) : "No rows" } },
-      };
-    }),
-  );
+  const totals = data.totals;
+  const netRevenue = decimalToNumber(totals?.netRevenue ?? null);
+  const adSpend = decimalToNumber(totals?.adSpend ?? null);
 
   return (
     <div className="flex flex-col gap-6">
-      <section aria-label="Period totals" className="grid gap-4 sm:grid-cols-3">
-        <KpiCard label="Orders" value={formatMeasure(data.totals?.orders ?? null)} period={period} />
-        <KpiCard label="Website sessions" value={formatCount(data.totals?.sessions ?? null)} period={period} />
-        <KpiCard label="Ad clicks" value={formatCount(data.totals?.adClicks ?? null)} period={period} />
+      <section aria-label="Period totals" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <KpiCard label="Net revenue" value={formatMoney(totals?.netRevenue ?? null)} period={period} />
+        <KpiCard label="Orders" value={formatMeasure(totals?.orders ?? null)} period={period} />
+        <KpiCard
+          label="Average order value"
+          value={formatMoney(ratio(netRevenue, totals?.orders ?? null))}
+          period={period}
+        />
+        <KpiCard label="Ad spend" value={formatMoney(totals?.adSpend ?? null)} period={period} />
+        <KpiCard
+          label="Marketing efficiency (MER)"
+          value={formatMultiple(ratio(netRevenue, adSpend))}
+          period={period}
+        />
+        <KpiCard label="Website sessions" value={formatCount(totals?.sessions ?? null)} period={period} />
       </section>
       <section aria-label="Daily trends" className="grid gap-4 lg:grid-cols-2">
+        <ChartCard
+          title="Net revenue by day"
+          kind="line"
+          categoryHeader="Date"
+          series={[{ key: "revenue", label: "Net revenue", color: "var(--chart-1)" }]}
+          data={revenue.data}
+          plottable={revenue.plottable}
+        />
         <ChartCard
           title="Orders by day"
           kind="line"
@@ -78,14 +102,6 @@ function OverviewView({ data, filters }: { data: OverviewData; filters: ReportFi
           series={[{ key: "orders", label: "Orders", color: "var(--chart-1)" }]}
           data={orders.data}
           plottable={orders.plottable}
-        />
-        <ChartCard
-          title="Website sessions by day"
-          kind="line"
-          categoryHeader="Date"
-          series={[{ key: "sessions", label: "Website sessions", color: "var(--chart-1)" }]}
-          data={sessions.data}
-          plottable={sessions.plottable}
         />
       </section>
     </div>

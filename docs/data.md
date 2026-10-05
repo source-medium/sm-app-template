@@ -23,16 +23,25 @@ snapshot of SourceMedium's published schema, which may differ from yours.
 
 ## The example's relations
 
-| View           | Relation                      | Grain                             | Columns used                                                                                                          |
-| -------------- | ----------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Overview       | `rpt_executive_summary_daily` | store, channel, sub-channel, date | `order_count` (FLOAT64), `website_sessions`, `ad_clicks` (INT64)                                                      |
-| Paid marketing | `rpt_ad_performance_daily`    | ad by day                         | `sm_channel`, `ad_campaign_id`, `ad_campaign_name`, `ad_impressions`, `ad_clicks`, `ad_platform_reported_conversions` |
-| Creatives      | `rpt_ad_performance_daily`    | ad by day, aggregated to creative | `ad_creative_*` text and image URLs, the same measures                                                                |
-| Orders         | `obt_orders`                  | one row per order                 | `sm_order_key`, `order_name`, `order_created_at`, channel, type, status, quantities                                   |
+| View           | Relation                      | Grain                             | Columns used                                                                                                                                                      |
+| -------------- | ----------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Overview       | `rpt_executive_summary_daily` | store, channel, sub-channel, date | `order_net_revenue`, `ad_spend` (NUMERIC), `order_count` (FLOAT64), `website_sessions`, `ad_clicks` (INT64)                                                       |
+| Paid marketing | `rpt_ad_performance_daily`    | ad by day                         | `sm_channel`, `ad_campaign_id`, `ad_campaign_name`, `ad_spend`, `ad_impressions`, `ad_clicks`, `ad_platform_reported_conversions`, `ad_platform_reported_revenue` |
+| Creatives      | `rpt_ad_performance_daily`    | ad by day, aggregated to creative | `ad_creative_*` text and image URLs, the same measures                                                                                                            |
+| Orders         | `obt_orders`                  | one row per order                 | `sm_order_key`, `order_name`, `order_processed_at_local_datetime`, channel, type, status, quantities, and the order's revenue columns                             |
+
+The formulas follow SourceMedium's metric catalog: net revenue is
+`SUM(order_net_revenue)`, average order value is net revenue ÷ orders, MER is
+net revenue ÷ ad spend, CPC is spend ÷ clicks, and platform ROAS is
+platform-reported revenue ÷ spend.
 
 Every query filters one store with `sm_store_id = @store_id`. There are no
 cross-store totals. The store picker lists the distinct `sm_store_id` values of
 `rpt_executive_summary_daily` (at most 50); name them in `app.config.ts`.
+
+Orders are listed by `order_processed_at_local_datetime`, the column
+SourceMedium partitions `obt_orders` on, so a date range reads only the months
+it covers. Filter large tables on their partition column whenever you can.
 
 ## Writing a query
 
@@ -91,17 +100,19 @@ integer into a plausible-looking chart value.
 
 ## Money and currency
 
-The example shows no revenue, spend, or other money yet. The report relations
-carry money columns but no currency or time-zone column, and a store's record
-in SourceMedium is not proof of the currency its reports use. Until the
-reporting currency for a store is verified:
+Money columns (revenue, spend, costs) are NUMERIC and already in your
+warehouse's reporting currency: SourceMedium's models convert orders before
+they publish them. The app shows them as published:
 
-- do not add revenue, spend, AOV, ROAS, or order amounts to a view,
-- never add a currency symbol you have not verified, and
-- never add money across stores.
+- Decode with `bq.numeric()`; values stay exact decimal text.
+- Add them with `sumDecimals` (`src/lib/data/decimal.ts`), never as JavaScript
+  numbers. Ratios such as AOV use `decimalToNumber` and `ratio`.
+- Format with `formatMoney`. Set `currency` in `app.config.ts` (for example
+  `"USD"`) to show a currency symbol; with `null`, amounts show without one.
+- Never add money across stores: stores can report in different currencies.
 
-`obt_orders` does carry a per-order `order_currency_code`, which the Orders
-drawer shows as a fact about each order.
+`obt_orders` also keeps each order's original amounts and currency
+(`order_original_*`, `order_original_currency_code`) if you need them.
 
 ## Freshness
 
@@ -126,11 +137,18 @@ deeper checks with your own BigQuery access, SourceMedium publishes the
 [SM BigQuery Analyst skill (v1.1.0)](https://github.com/source-medium/skills/tree/v1.1.0/skills/sm-bigquery-analyst);
 it uses your own `gcloud` login, not the app's key.
 
-## Query cost on the demo warehouse
+## Creative images
 
-Dry runs of the example's queries against SourceMedium's demo warehouse
-(2026-10-05, 28 days) estimated: overview 1.2 MiB, paid marketing 40 and 70 MiB,
-creatives 104 MiB, an orders page 271 MiB, one order's details 546 MiB. The
-demo's `obt_orders` is not partitioned, so its reads scan every order; a large
-store can reach the 1 GiB ceiling. Narrow the selected columns or date range
-if `pnpm diagnose` or a page reports "Query too large".
+The Creatives view loads each ad's image straight from the URL in your
+warehouse (`ad_creative_image_url`, else `ad_creative_thumbnail_url`), from any
+https host, without a referrer. Ad platforms do not promise how long those
+links last, so a card whose image fails shows the creative's text instead. To
+allow only specific image hosts, narrow `img-src` in
+`src/lib/security-headers.ts`.
+
+## Speed and cost
+
+Every page runs its queries in parallel with the store list when the URL names
+a store, which the filter bar and navigation keep doing. Each BigQuery query
+still takes a moment, so keep pages to a few queries each. `LIMIT` does not
+reduce cost; filtering on a partition column and selecting fewer columns do.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { decodeCursor, encodeCursor, PAGE_SIZE, type OrderCursor } from "./queries";
+import { sumDecimals, toUnits } from "@/lib/data/decimal";
+import { decodeRef, encodeRef, PAGE_SIZE, type OrderRef } from "./queries";
 import { sampleOrderDetail, sampleOrders } from "./sample";
 
 const FILTERS = {
@@ -10,17 +11,18 @@ const FILTERS = {
 };
 
 describe("orders fixture contract", () => {
-  it("keyset pages are newest first, never overlap, and reach every order", async () => {
+  it("keyset pages are newest first by processed time, never overlap, and reach every order", async () => {
     const seen = new Set<string>();
-    let cursor: OrderCursor | null = null;
-    let previous: bigint | null = null;
+    let cursor: OrderRef | null = null;
+    let previous: string | null = null;
     for (let page = 0; page < 50; page += 1) {
       const result = await sampleOrders({ ...FILTERS, cursor });
       for (const order of result.orders) {
         expect(seen.has(order.key)).toBe(false);
         seen.add(order.key);
-        if (previous !== null) expect(order.createdAt.micros <= previous).toBe(true);
-        previous = order.createdAt.micros;
+        if (previous !== null) expect(order.processedLocal <= previous).toBe(true);
+        expect(order.processedLocal.slice(0, 10) >= FILTERS.range.from).toBe(true);
+        previous = order.processedLocal;
       }
       expect(result.orders.length).toBeLessThanOrEqual(PAGE_SIZE);
       if (!result.nextCursor) break;
@@ -39,25 +41,41 @@ describe("orders fixture contract", () => {
     }
   });
 
-  it("reads one order's details by key and creation time", async () => {
+  it("reads one order's details, with amounts that add up exactly", async () => {
     const [order] = (await sampleOrders(FILTERS)).orders;
     if (!order) throw new Error("expected an order");
-    const detail = await sampleOrderDetail(FILTERS.storeId, {
-      createdAtMicros: order.createdAt.micros,
-      key: order.key,
-    });
+    const detail = await sampleOrderDetail(FILTERS.storeId, { processedLocal: order.processedLocal, key: order.key });
     expect(detail?.key).toBe(order.key);
-    expect(await sampleOrderDetail(FILTERS.storeId, { createdAtMicros: 1n, key: order.key })).toBeNull();
+    expect(detail?.netRevenue).toBe(order.netRevenue);
+    if (detail && detail.isValidOrder) {
+      // net = gross - discounts - refunds, in exact decimal arithmetic.
+      const expected =
+        toUnits(detail.grossRevenue ?? "0") - toUnits(detail.discounts ?? "0") - toUnits(detail.refunds ?? "0");
+      expect(toUnits(detail.netRevenue ?? "0")).toBe(expected);
+      expect(sumDecimals([detail.netRevenue, detail.shipping, detail.taxes])).toBe(detail.totalRevenue);
+    }
     expect(
-      await sampleOrderDetail("sample-store-b", { createdAtMicros: order.createdAt.micros, key: order.key }),
+      await sampleOrderDetail(FILTERS.storeId, { processedLocal: "2020-01-01T00:00:00", key: order.key }),
+    ).toBeNull();
+    expect(
+      await sampleOrderDetail("sample-store-b", { processedLocal: order.processedLocal, key: order.key }),
     ).toBeNull();
   });
 
-  it("round-trips the URL cursor and ignores anything malformed", () => {
-    const cursor = { createdAtMicros: 1_759_600_000_123_456n, key: "store-a-10042/ü" };
-    expect(decodeCursor(encodeCursor(cursor))).toEqual(cursor);
-    for (const bad of [undefined, "", "%%%", btoa("[1,2,3]"), btoa('["1.5","k"]'), btoa('["1",2]'), "x".repeat(500)]) {
-      expect(decodeCursor(bad)).toBeNull();
+  it("round-trips the URL reference and ignores anything malformed", () => {
+    const ref = { processedLocal: "2026-10-04T13:22:11.123456", key: "store-a-10042/ü" };
+    expect(decodeRef(encodeRef(ref))).toEqual(ref);
+    for (const bad of [
+      undefined,
+      "",
+      "%%%",
+      btoa("[1,2,3]"),
+      btoa('["2026-10-04 13:22:11","k"]'),
+      btoa('["2026-10-04T13:22:11",2]'),
+      btoa('["2026-10-04T13:22:11",""]'),
+      "x".repeat(500),
+    ]) {
+      expect(decodeRef(bad)).toBeNull();
     }
   });
 });

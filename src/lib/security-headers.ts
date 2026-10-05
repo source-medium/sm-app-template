@@ -3,15 +3,14 @@
  * (noindex). Remove noindex for a route only when you publish a public page
  * on purpose.
  *
- * Creative images are hotlinked from the ad platform's CDN. Only these hosts
- * may serve images; add a host here when a new platform's images should show.
- * Meta's CDN is listed provisionally until phase A records the observed set.
+ * Images: same-origin, data: URLs, and any https host, so ad creative images
+ * load straight from the URLs in your warehouse whatever platform served
+ * them. They load without a referrer, and an expired link shows the
+ * creative's text instead. Narrow img-src to specific hosts if you prefer.
  */
-export const IMAGE_HOSTS = ["https://*.fbcdn.net"];
-
 export const SECURITY_HEADERS: Record<string, string> = {
   "X-Robots-Tag": "noindex, nofollow",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
-  "Content-Security-Policy": `frame-ancestors 'none'; img-src 'self' data: ${IMAGE_HOSTS.join(" ")}`,
+  "Content-Security-Policy": "frame-ancestors 'none'; img-src 'self' data: https:",
 };

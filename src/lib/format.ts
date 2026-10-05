@@ -29,6 +29,27 @@ const clock = new Intl.DateTimeFormat(appConfig.locale, {
 
 export const EMPTY_VALUE = "—";
 
+const money = new Intl.NumberFormat(
+  appConfig.locale,
+  appConfig.currency
+    ? { style: "currency", currency: appConfig.currency }
+    : { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+);
+
+/**
+ * Money in the reporting currency. NUMERIC text is formatted exactly (no
+ * float rounding); ratios such as AOV arrive as numbers.
+ */
+export function formatMoney(value: string | number | null): string {
+  if (value === null) return EMPTY_VALUE;
+  return typeof value === "string" ? money.format(value as `${number}`) : money.format(value);
+}
+
+/** A multiple such as MER or ROAS: 3.42x. */
+export function formatMultiple(value: number | null): string {
+  return value === null || !Number.isFinite(value) ? EMPTY_VALUE : `${decimal.format(value)}x`;
+}
+
 /** Exact integers (INT64 as bigint) keep every digit. */
 export function formatCount(value: bigint | number | null): string {
   if (value === null) return EMPTY_VALUE;

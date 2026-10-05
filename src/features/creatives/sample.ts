@@ -5,6 +5,7 @@
  * external image host is referenced.
  */
 import { decodeRows } from "@/lib/data/decode";
+import { fromUnits, toUnits } from "@/lib/data/decimal";
 import { datesInRange } from "@/lib/filters";
 import { seededRandom } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
@@ -99,6 +100,7 @@ export async function sampleCreatives(filters: CreativesFilters): Promise<Creati
   const scale = SAMPLE_STORE_SCALE[filters.storeId] ?? 0;
   const dates = datesInRange(filters.range);
   const rows = CREATIVES.map((creative) => {
+    let spendCents = 0n;
     let impressions = 0n;
     let clicks = 0n;
     let conversions = 0;
@@ -106,6 +108,7 @@ export async function sampleCreatives(filters: CreativesFilters): Promise<Creati
       const random = seededRandom(`creative|${filters.storeId}|${creative.id}|${date}`);
       const dayImpressions = Math.round(18_000 * scale * creative.reach * (0.7 + random() * 0.6));
       const dayClicks = Math.round(dayImpressions * (0.005 + random() * 0.015));
+      spendCents += BigInt(Math.round((dayImpressions / 1000) * 1150 * (0.85 + random() * 0.3)));
       impressions += BigInt(dayImpressions);
       clicks += BigInt(dayClicks);
       conversions += Math.round(dayClicks * (0.02 + random() * 0.04) * 4) / 4;
@@ -118,6 +121,7 @@ export async function sampleCreatives(filters: CreativesFilters): Promise<Creati
       thumbnail_url: null,
       call_to_action: creative.cta,
       channel: creative.channel,
+      spend: fromUnits(spendCents * 10_000_000n),
       impressions: String(impressions),
       clicks: String(clicks),
       conversions: String(conversions),
@@ -125,7 +129,11 @@ export async function sampleCreatives(filters: CreativesFilters): Promise<Creati
     };
   });
 
-  const sortValue = (row: (typeof rows)[number], sort: CreativeSort) => (row[sort] === null ? -1 : Number(row[sort]));
+  const sortValue = (row: (typeof rows)[number], sort: CreativeSort) => {
+    const value = row[sort];
+    if (value === null) return -1;
+    return sort === "spend" ? Number(toUnits(value)) : Number(value);
+  };
   rows.sort(
     (a, b) => sortValue(b, filters.sort) - sortValue(a, filters.sort) || a.creative_id.localeCompare(b.creative_id),
   );

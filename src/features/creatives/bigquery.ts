@@ -9,6 +9,7 @@ import type { CreativeSort, CreativesData, CreativesFilters } from "./queries";
 import { CREATIVE_RELATION, CreativeRow, MAX_CREATIVES, toCreative } from "./rows";
 
 const ORDER_BY: Record<CreativeSort, string> = {
+  spend: "spend DESC",
   impressions: "impressions DESC",
   clicks: "clicks DESC",
   conversions: "conversions DESC",
@@ -29,6 +30,7 @@ export async function queryCreatives(filters: CreativesFilters): Promise<Creativ
         MAX(ad_creative_thumbnail_url) AS thumbnail_url,
         MAX(ad_creative_call_to_action_type) AS call_to_action,
         MAX(sm_channel) AS channel,
+        SUM(ad_spend) AS spend,
         SUM(ad_impressions) AS impressions,
         SUM(ad_clicks) AS clicks,
         SUM(ad_platform_reported_conversions) AS conversions,

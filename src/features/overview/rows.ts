@@ -11,12 +11,16 @@ export const OVERVIEW_RELATION = "rpt_executive_summary_daily";
 
 export const OverviewRow = z.object({
   date: bq.date(),
+  net_revenue: bq.numeric().nullable(),
   order_count: bq.float64().nullable(),
   website_sessions: bq.int64().nullable(),
   ad_clicks: bq.int64().nullable(),
+  ad_spend: bq.numeric().nullable(),
+  total_net_revenue: bq.numeric().nullable(),
   total_order_count: bq.float64().nullable(),
   total_website_sessions: bq.int64().nullable(),
   total_ad_clicks: bq.int64().nullable(),
+  total_ad_spend: bq.numeric().nullable(),
 });
 
 export type OverviewRowData = z.output<typeof OverviewRow>;
@@ -26,12 +30,20 @@ export function toOverviewData(rows: OverviewRowData[]): OverviewData {
   return {
     days: rows.map((row) => ({
       date: row.date,
+      netRevenue: row.net_revenue,
       orders: row.order_count,
       sessions: row.website_sessions,
       adClicks: row.ad_clicks,
+      adSpend: row.ad_spend,
     })),
     totals: first
-      ? { orders: first.total_order_count, sessions: first.total_website_sessions, adClicks: first.total_ad_clicks }
+      ? {
+          netRevenue: first.total_net_revenue,
+          orders: first.total_order_count,
+          sessions: first.total_website_sessions,
+          adClicks: first.total_ad_clicks,
+          adSpend: first.total_ad_spend,
+        }
       : null,
   };
 }

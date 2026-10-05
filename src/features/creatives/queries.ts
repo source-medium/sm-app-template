@@ -10,7 +10,7 @@ import type { ReportFilters } from "@/lib/filters";
 import { queryCreatives } from "./bigquery";
 import { sampleCreatives } from "./sample";
 
-export const CREATIVE_SORTS = ["impressions", "clicks", "conversions", "ctr"] as const;
+export const CREATIVE_SORTS = ["spend", "impressions", "clicks", "conversions", "ctr"] as const;
 export type CreativeSort = (typeof CREATIVE_SORTS)[number];
 
 export type Creative = {
@@ -21,6 +21,8 @@ export type Creative = {
   imageUrl: string | null;
   callToAction: string | null;
   channel: string | null;
+  /** NUMERIC, exact decimal text, in the reporting currency. */
+  spend: string | null;
   impressions: bigint | null;
   clicks: bigint | null;
   conversions: number | null;

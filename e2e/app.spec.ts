@@ -59,3 +59,14 @@ test("responses carry the private-app headers", async ({ request }) => {
   expect(response.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
   expect(response.headers()["cache-control"]).toMatch(/no-store/);
 });
+
+test.describe("dark mode", () => {
+  test.use({ colorScheme: "dark" });
+  for (const item of appConfig.nav) {
+    test(`${item.href} is accessible in dark mode`, async ({ page }) => {
+      await page.goto(item.href);
+      await expect(page.getByTestId("mode-chip")).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+  }
+});

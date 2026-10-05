@@ -16,8 +16,13 @@ concurrency:
 
 jobs:
   check:
-    name: pnpm check
-    runs-on: ubuntu-latest
+    name: pnpm check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows too: many customers' agents run there, and symlinks or CRLF would break the template.
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7

@@ -20,15 +20,19 @@ function source(
   clicks: bigint,
   store = "s1",
   sub = "Paid",
+  revenueCents = 0n,
+  spendCents = 0n,
 ): OverviewSourceRow {
   return {
     sm_store_id: store,
     sm_channel: "Online DTC",
     sm_sub_channel: sub,
     date,
+    order_net_revenue_cents: revenueCents,
     order_count: orders,
     website_sessions: sessions,
     ad_clicks: clicks,
+    ad_spend_cents: spendCents,
   };
 }
 
@@ -41,24 +45,24 @@ describe("overview fixture contract", () => {
     }
   });
 
-  it("sums sub-channels by date and totals the period exactly, with fractional orders", () => {
+  it("sums sub-channels by date and totals the period exactly, with fractional orders and exact money", () => {
     const rows = [
-      source("2026-09-01", 1.5, 10n, 3n, "s1", "Paid"),
-      source("2026-09-01", 2.5, 5n, 0n, "s1", "Email"),
-      source("2026-09-02", 4, 7n, 1n),
+      source("2026-09-01", 1.5, 10n, 3n, "s1", "Paid", 10_01n, 3_33n),
+      source("2026-09-01", 2.5, 5n, 0n, "s1", "Email", 20_02n, 0n),
+      source("2026-09-02", 4, 7n, 1n, "s1", "Paid", 30_03n, 1_10n),
     ];
     const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", RANGE), OVERVIEW_RELATION));
     expect(data.days).toEqual([
-      { date: "2026-09-01", orders: 4, sessions: 15n, adClicks: 3n },
-      { date: "2026-09-02", orders: 4, sessions: 7n, adClicks: 1n },
+      { date: "2026-09-01", netRevenue: "30.03", orders: 4, sessions: 15n, adClicks: 3n, adSpend: "3.33" },
+      { date: "2026-09-02", netRevenue: "30.03", orders: 4, sessions: 7n, adClicks: 1n, adSpend: "1.1" },
     ]);
-    expect(data.totals).toEqual({ orders: 8, sessions: 22n, adClicks: 4n });
+    expect(data.totals).toEqual({ netRevenue: "60.06", orders: 8, sessions: 22n, adClicks: 4n, adSpend: "4.43" });
   });
 
   it("keeps stores apart: there is no combined total", () => {
     const rows = [source("2026-09-01", 1, 1n, 1n, "s1"), source("2026-09-01", 100, 100n, 100n, "s2")];
     const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", RANGE), OVERVIEW_RELATION));
-    expect(data.totals).toEqual({ orders: 1, sessions: 1n, adClicks: 1n });
+    expect(data.totals).toEqual({ netRevenue: "0", orders: 1, sessions: 1n, adClicks: 1n, adSpend: "0" });
   });
 
   it("keeps large INT64 values exact and refuses to chart them", () => {
@@ -88,7 +92,15 @@ describe("overview fixture contract", () => {
   it("models forward-dated target rows with zero actuals, as the relation does", () => {
     const future = sampleOverviewSource("sample-store-a", { from: "2026-10-06", to: "2026-10-08" }, "2026-10-05");
     expect(future.length).toBeGreaterThan(0);
-    for (const row of future) expect([row.order_count, row.website_sessions, row.ad_clicks]).toEqual([0, 0n, 0n]);
+    for (const row of future) {
+      expect([
+        row.order_count,
+        row.website_sessions,
+        row.ad_clicks,
+        row.order_net_revenue_cents,
+        row.ad_spend_cents,
+      ]).toEqual([0, 0n, 0n, 0n, 0n]);
+    }
   });
 
   it("is deterministic: the same filters give the same numbers at any time", async () => {

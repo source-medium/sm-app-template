@@ -76,8 +76,8 @@ detail drawer). See `docs/removing-the-example.md` to delete any of them.
 - Aggregate in SQL. Every query has `maxRows`; check `result.truncated`. Totals
   are never computed from a truncated list.
 - INT64 decodes to `bigint`, FLOAT64 to a finite number, DATE stays a string.
-- No revenue, spend, or other money until a reporting currency is verified
-  (`docs/data.md`). Never add a currency symbol you have not verified.
+- Money (NUMERIC) is in the warehouse's reporting currency: keep it exact
+  text, add with `sumDecimals`, format with `formatMoney`, never add across stores.
 - Show "Queried at" and "Data freshness unknown"; never claim freshness from `MAX(date)`.
 
 ## UI
@@ -94,8 +94,8 @@ use `--chart-1`…`--chart-8` in order, one y-axis, and keep the table view.
 - `src/middleware.ts` runs in the edge runtime: no Node-only APIs there.
 - Configuration comes only from runtime variables, read per request through
   `readConfig()`. Never read configuration at module scope or build time.
-- Use plain `<img>` for remote images (no `next/image` optimization on Workers),
-  and add new image hosts to `src/lib/security-headers.ts`.
+- Use plain `<img>` for remote images (no `next/image` optimization on Workers);
+  any https image host is allowed (`src/lib/security-headers.ts`).
 - Pages are dynamic and private (`Cache-Control: private, no-store`); do not add
   shared caches of query results.
 

@@ -7,16 +7,16 @@ import { DataTable } from "@/components/patterns/data-table";
 import { buttonVariants } from "@/components/ui/button";
 import { ReportPage } from "@/components/shell/report-page";
 import { preservedParams, single, withParams, type SearchParams } from "@/lib/filters";
-import { EMPTY_VALUE, formatCount, formatInstant, formatWallTime } from "@/lib/format";
+import { EMPTY_VALUE, formatCount, formatInstant, formatMoney, formatWallTime } from "@/lib/format";
 import { OrderDrawer } from "./order-drawer";
 import { OrderSearchForm } from "./search-form";
 import {
-  decodeCursor,
-  encodeCursor,
+  decodeRef,
+  encodeRef,
   getOrderDetail,
   getOrders,
-  type OrderCursor,
   type OrderDetail,
+  type OrderRef,
   type OrdersFilters,
   type OrdersPage,
 } from "./queries";
@@ -28,18 +28,18 @@ const PATHNAME = "/orders";
 export default async function OrdersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const search = single(params, "q")?.trim().slice(0, 64) || null;
-  const cursor = decodeCursor(single(params, "cursor"));
-  const selected = decodeCursor(single(params, "order"));
+  const cursor = decodeRef(single(params, "cursor"));
+  const selected = decodeRef(single(params, "order"));
 
   return (
     <ReportPage
       title="Orders"
-      description="Every order for one store, newest first. Open an order to see its details."
+      description="Every order for one store by when it was processed, newest first. Open an order to see its details."
       pathname={PATHNAME}
       params={params}
       preserve={["q"]}
     >
-      {({ filters }) => {
+      {({ filters, params: linkParams }) => {
         const orderFilters: OrdersFilters = { ...filters, search, cursor };
         return (
           <div className="flex flex-col gap-4">
@@ -61,11 +61,11 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     : "This store has no orders in the selected dates."
                 }
               >
-                {(data) => <OrdersList data={data} params={params} paged={cursor !== null} />}
+                {(data) => <OrdersList data={data} params={linkParams} paged={cursor !== null} />}
               </DataRegion>
             </Suspense>
             {selected && (
-              <OrderDrawer title="Order details" closeHref={withParams(PATHNAME, params, { order: null })}>
+              <OrderDrawer title="Order details" closeHref={withParams(PATHNAME, linkParams, { order: null })}>
                 <Suspense fallback={<LoadingState variant="table" label="Loading the order" />}>
                   <DataRegion
                     load={() => getOrderDetail(filters.storeId, selected)}
@@ -85,7 +85,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 }
 
 function OrdersList({ data, params, paged }: { data: OrdersPage; params: SearchParams; paged: boolean }) {
-  const linkTo = (ref: OrderCursor) => withParams(PATHNAME, params, { order: encodeCursor(ref) });
+  const linkTo = (ref: OrderRef) => withParams(PATHNAME, params, { order: encodeRef(ref) });
   return (
     <div className="flex flex-col gap-3">
       <DataTable
@@ -93,24 +93,26 @@ function OrdersList({ data, params, paged }: { data: OrdersPage; params: SearchP
         paginate={false}
         columns={[
           { key: "order", header: "Order", sortable: false },
-          { key: "created", header: "Created (store time)", sortable: false },
+          { key: "processed", header: "Processed (store time)", sortable: false },
           { key: "channel", header: "Channel", sortable: false },
           { key: "type", header: "Type", sortable: false },
           { key: "status", header: "Payment", sortable: false },
           { key: "items", header: "Items", align: "right", sortable: false },
+          { key: "revenue", header: "Net revenue", align: "right", sortable: false },
         ]}
         rows={data.orders.map((order) => ({
           id: order.key,
           cells: {
             order: {
               display: order.name ?? order.key,
-              href: linkTo({ createdAtMicros: order.createdAt.micros, key: order.key }),
+              href: linkTo({ processedLocal: order.processedLocal, key: order.key }),
             },
-            created: { display: formatWallTime(order.createdLocal) },
+            processed: { display: formatWallTime(order.processedLocal) },
             channel: { display: [order.channel, order.subChannel].filter(Boolean).join(" · ") || EMPTY_VALUE },
             type: { display: order.orderType ?? EMPTY_VALUE },
             status: { display: order.paymentStatus ?? EMPTY_VALUE },
             items: { display: order.items ?? EMPTY_VALUE },
+            revenue: { display: formatMoney(order.netRevenue) },
           },
         }))}
       />
@@ -125,7 +127,7 @@ function OrdersList({ data, params, paged }: { data: OrdersPage; params: SearchP
         )}
         {data.nextCursor && (
           <Link
-            href={withParams(PATHNAME, params, { cursor: encodeCursor(data.nextCursor), order: null })}
+            href={withParams(PATHNAME, params, { cursor: encodeRef(data.nextCursor), order: null })}
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             Older orders
@@ -140,8 +142,8 @@ function OrderDetailList({ order }: { order: OrderDetail }) {
   const rows: [string, string][] = [
     ["Order", order.name ?? EMPTY_VALUE],
     ["Order id", order.orderId ?? EMPTY_VALUE],
-    ["Created (store time)", formatWallTime(order.createdLocal)],
-    ["Processed", order.processedAt ? formatInstant(order.processedAt.iso) : EMPTY_VALUE],
+    ["Processed (store time)", formatWallTime(order.processedLocal)],
+    ["Created", order.createdAt ? formatInstant(order.createdAt.iso) : EMPTY_VALUE],
     ["Channel", [order.channel, order.subChannel].filter(Boolean).join(" · ") || EMPTY_VALUE],
     ["Sales channel", order.salesChannel ?? EMPTY_VALUE],
     ["Source system", order.sourceSystem ?? EMPTY_VALUE],
@@ -151,8 +153,14 @@ function OrderDetailList({ order }: { order: OrderDetail }) {
     ["Items", order.items ?? EMPTY_VALUE],
     ["Items refunded", order.refundedItems ?? EMPTY_VALUE],
     ["Products", order.productTitles ?? EMPTY_VALUE],
+    ["Gross revenue", formatMoney(order.grossRevenue)],
+    ["Discounts", formatMoney(order.discounts)],
+    ["Refunds", formatMoney(order.refunds)],
+    ["Net revenue", formatMoney(order.netRevenue)],
+    ["Shipping", formatMoney(order.shipping)],
+    ["Taxes", formatMoney(order.taxes)],
+    ["Total revenue", formatMoney(order.totalRevenue)],
     ["Discount codes", order.discountCodes ?? EMPTY_VALUE],
-    ["Currency", order.currencyCode ?? EMPTY_VALUE],
     ["Ships to", [order.shippingState, order.shippingCountry].filter(Boolean).join(", ") || EMPTY_VALUE],
     ["UTM source / medium", [order.utmSource, order.utmMedium].filter(Boolean).join(" / ") || EMPTY_VALUE],
     ["UTM campaign", order.utmCampaign ?? EMPTY_VALUE],

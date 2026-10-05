@@ -13,32 +13,35 @@ afterEach(() => {
 const FIELDS = [
   "order_key",
   "order_name",
-  "order_created_at",
-  "order_created_at_local_datetime",
+  "order_processed_at_local_datetime",
   "sm_channel",
   "sm_sub_channel",
   "sm_order_type",
   "order_payment_status",
   "order_cart_quantity",
-].map((name) => ({
-  name,
-  type: name === "order_created_at" ? "TIMESTAMP" : "STRING",
-}));
+  "order_net_revenue",
+].map((name) => ({ name, type: name === "order_processed_at_local_datetime" ? "DATETIME" : "STRING" }));
+
 const order = (index: number) => ({
   order_key: `key-${String(100 - index).padStart(3, "0")}`,
   order_name: `#${1000 + index}`,
-  order_created_at: String(1_759_600_000_000_000n - BigInt(index) * 1_000_000n),
-  order_created_at_local_datetime: "2026-10-04T13:22:11",
+  order_processed_at_local_datetime: `2026-10-04T13:${String(59 - index).padStart(2, "0")}:00`,
   sm_channel: "Online DTC",
   sm_sub_channel: "Email",
   sm_order_type: "repeat",
   order_payment_status: "paid",
   order_cart_quantity: "2",
+  order_net_revenue: "123456789012345678901.123456789",
 });
 const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-10-04" }, search: null, cursor: null };
 
+type Submit = {
+  query: string;
+  queryParameters: { name: string; parameterType: { type: string }; parameterValue: { value: string } }[];
+};
+
 describe("orders, live", () => {
-  it("asks for one extra row to know whether another page exists, and returns an exact cursor", async () => {
+  it("filters on the partition column and asks for one extra row to know whether another page exists", async () => {
     const fake = await goLive({
       submit: () =>
         rowsResponse(
@@ -49,13 +52,12 @@ describe("orders, live", () => {
     const { getOrders } = await import("./queries");
     const page = await getOrders(FILTERS);
     expect(page.orders).toHaveLength(PAGE_SIZE);
-    expect(page.nextCursor).toEqual({
-      createdAtMicros: 1_759_600_000_000_000n - BigInt(PAGE_SIZE - 1) * 1_000_000n,
-      key: "key-076",
-    });
-    const submit = fake.calls.find((call) => call.kind === "submit")?.body as { query: string };
-    expect(submit.query).toContain("ORDER BY order_created_at DESC, sm_order_key DESC");
-    expect(submit.query).not.toContain("@cursor_micros");
+    expect(page.orders[0]?.netRevenue).toBe("123456789012345678901.123456789");
+    expect(page.nextCursor).toEqual({ processedLocal: "2026-10-04T13:35:00", key: "key-076" });
+    const submit = fake.calls.find((call) => call.kind === "submit")?.body as Submit;
+    expect(submit.query).toContain("order_processed_at_local_datetime >= DATETIME(@start_date)");
+    expect(submit.query).toContain("ORDER BY order_processed_at_local_datetime DESC, sm_order_key DESC");
+    expect(submit.query).not.toContain("@cursor_at");
   });
 
   it("continues after the cursor with typed parameters and searches by parameter, never by string building", async () => {
@@ -65,25 +67,22 @@ describe("orders, live", () => {
     const page = await getOrders({
       ...FILTERS,
       search,
-      cursor: { createdAtMicros: 1_759_600_000_000_000n, key: "key-100" },
+      cursor: { processedLocal: "2026-10-04T14:00:00", key: "key-100" },
     });
     expect(page.nextCursor).toBeNull();
-    const submit = fake.calls.find((call) => call.kind === "submit")?.body as {
-      query: string;
-      queryParameters: { name: string; parameterValue: { value: string } }[];
-    };
+    const submit = fake.calls.find((call) => call.kind === "submit")?.body as Submit;
     expect(submit.query).not.toContain(search);
     expect(submit.queryParameters.find((parameter) => parameter.name === "search")?.parameterValue.value).toBe(search);
-    expect(submit.queryParameters.find((parameter) => parameter.name === "cursor_micros")?.parameterValue.value).toBe(
-      "1759600000000000",
-    );
+    const cursorAt = submit.queryParameters.find((parameter) => parameter.name === "cursor_at");
+    expect(cursorAt?.parameterType.type).toBe("DATETIME");
+    expect(cursorAt?.parameterValue.value).toBe("2026-10-04T14:00:00");
   });
 
-  it("reads one order by key and creation time", async () => {
+  it("reads one order by key and processed time, pruning to its partition", async () => {
     const fake = await goLive({ submit: () => rowsResponse(FIELDS, []) });
     const { getOrderDetail } = await import("./queries");
-    expect(await getOrderDetail("store-1", { createdAtMicros: 5n, key: "k" })).toBeNull();
-    const submit = fake.calls.find((call) => call.kind === "submit")?.body as { query: string };
-    expect(submit.query).toContain("order_created_at = TIMESTAMP_MICROS(@created_micros)");
+    expect(await getOrderDetail("store-1", { processedLocal: "2026-10-04T13:22:11", key: "k" })).toBeNull();
+    const submit = fake.calls.find((call) => call.kind === "submit")?.body as Submit;
+    expect(submit.query).toContain("order_processed_at_local_datetime = @processed_at");
   });
 });

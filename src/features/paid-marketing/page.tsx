@@ -8,8 +8,17 @@ import { DataTable } from "@/components/patterns/data-table";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
+import { decimalToNumber, ratio, sumDecimals } from "@/lib/data/decimal";
 import { datesInRange, parseChoice, preservedParams, single, type SearchParams } from "@/lib/filters";
-import { EMPTY_VALUE, formatCount, formatDay, formatMeasure, formatPercent } from "@/lib/format";
+import {
+  EMPTY_VALUE,
+  formatCount,
+  formatDay,
+  formatMeasure,
+  formatMoney,
+  formatMultiple,
+  formatPercent,
+} from "@/lib/format";
 import {
   PAID_METRICS,
   getPaidMarketing,
@@ -23,6 +32,7 @@ export const metadata: Metadata = { title: "Paid marketing" };
 
 const PATHNAME = "/paid-marketing";
 const METRIC_LABELS: Record<PaidMetric, string> = {
+  spend: "Spend",
   impressions: "Impressions",
   clicks: "Clicks",
   conversions: "Platform-reported conversions",
@@ -32,13 +42,13 @@ const MAX_NAMED_CHANNELS = 7;
 
 export default async function PaidMarketingPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
-  const metric = parseChoice(params, "metric", PAID_METRICS, "impressions");
+  const metric = parseChoice(params, "metric", PAID_METRICS, "spend");
   const channel = single(params, "channel")?.slice(0, 100) || null;
 
   return (
     <ReportPage
       title="Paid marketing"
-      description="Impressions, clicks, and platform-reported conversions by channel and campaign for one store."
+      description="Spend and delivery by channel and campaign for one store."
       pathname={PATHNAME}
       params={params}
       preserve={["metric", "channel"]}
@@ -64,18 +74,25 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
   );
 }
 
-function metricValue(measures: AdMeasures, metric: PaidMetric): bigint | number | null {
-  return metric === "impressions" ? measures.impressions : metric === "clicks" ? measures.clicks : measures.conversions;
+type MetricValue = string | bigint | number | null;
+
+function metricValue(measures: AdMeasures, metric: PaidMetric): MetricValue {
+  return measures[metric];
 }
 
-function metricDisplay(value: bigint | number | null): string {
-  return typeof value === "number" ? formatMeasure(value) : formatCount(value);
-}
-
-function addValues(a: bigint | number | null, b: bigint | number | null): bigint | number | null {
+/** Sums one metric exactly: decimal text for money, bigint for counts, numbers for conversions. */
+function addValues(a: MetricValue, b: MetricValue): MetricValue {
   if (a === null) return b;
   if (b === null) return a;
-  return typeof a === "bigint" && typeof b === "bigint" ? a + b : Number(a) + Number(b);
+  if (typeof a === "string" && typeof b === "string") return sumDecimals([a, b]);
+  if (typeof a === "bigint" && typeof b === "bigint") return a + b;
+  return Number(a) + Number(b);
+}
+
+function point(value: MetricValue): PointValue {
+  if (typeof value === "string") return { value: decimalToNumber(value), display: formatMoney(value) };
+  if (typeof value === "number") return { value, display: formatMeasure(value) };
+  return { value, display: value === null ? EMPTY_VALUE : formatCount(value) };
 }
 
 function PaidMarketingView({
@@ -108,7 +125,7 @@ function PaidMarketingView({
   }));
   if (folded && !filters.channel) series.push({ key: "other", label: "Other", color: "var(--chart-8)" });
 
-  const byDate = new Map<string, Record<string, bigint | number | null>>();
+  const byDate = new Map<string, Record<string, MetricValue>>();
   for (const day of data.channelDays) {
     const values = byDate.get(day.date) ?? {};
     const index = named.indexOf(day.channel);
@@ -119,10 +136,7 @@ function PaidMarketingView({
   const chart = buildChartData(
     datesInRange(filters.range).map((date) => {
       const values: Record<string, PointValue> = {};
-      for (const item of series) {
-        const value = byDate.get(date)?.[item.key] ?? null;
-        values[item.key] = { value, display: value === null ? EMPTY_VALUE : metricDisplay(value) };
-      }
+      for (const item of series) values[item.key] = point(byDate.get(date)?.[item.key] ?? null);
       return { label: formatDay(date), values };
     }),
   );
@@ -171,29 +185,38 @@ function PaidMarketingView({
           Campaigns{filters.channel ? ` in ${filters.channel}` : ""}
         </h2>
         <DataTable
-          caption="Campaigns by impressions"
+          caption="Campaigns by spend"
           truncated={data.campaignsTruncated}
           columns={[
             { key: "campaign", header: "Campaign" },
             { key: "channel", header: "Channel" },
+            { key: "spend", header: "Spend", align: "right" },
             { key: "impressions", header: "Impressions", align: "right" },
             { key: "clicks", header: "Clicks", align: "right" },
             { key: "ctr", header: "CTR", align: "right" },
+            { key: "cpc", header: "CPC", align: "right" },
             { key: "conversions", header: "Conversions", align: "right" },
+            { key: "roas", header: "Platform ROAS", align: "right" },
           ]}
           rows={data.campaigns.map((campaign) => {
+            const spend = decimalToNumber(campaign.spend);
             const impressions = campaign.impressions === null ? null : toChartNumber(campaign.impressions);
             const clicks = campaign.clicks === null ? null : toChartNumber(campaign.clicks);
-            const ctr = impressions && clicks !== null ? clicks / impressions : null;
+            const ctr = ratio(clicks, impressions);
+            const cpc = ratio(spend, clicks);
+            const roas = ratio(campaign.platformRevenue, spend);
             return {
               id: campaign.campaignId,
               cells: {
                 campaign: { display: campaign.campaignName ?? campaign.campaignId },
                 channel: { display: campaign.channel ?? EMPTY_VALUE },
+                spend: { display: formatMoney(campaign.spend), sort: spend },
                 impressions: { display: formatCount(campaign.impressions), sort: impressions },
                 clicks: { display: formatCount(campaign.clicks), sort: clicks },
                 ctr: { display: formatPercent(ctr), sort: ctr },
+                cpc: { display: formatMoney(cpc), sort: cpc },
                 conversions: { display: formatMeasure(campaign.conversions), sort: campaign.conversions },
+                roas: { display: formatMultiple(roas), sort: roas },
               },
             };
           })}
