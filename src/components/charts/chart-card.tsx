@@ -54,7 +54,7 @@ export function ChartCard({
   );
 
   return (
-    <Card className="shadow-card">
+    <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}

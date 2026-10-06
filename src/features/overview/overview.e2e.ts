@@ -21,6 +21,41 @@ test("overview: a chart opens as an accessible table", async ({ page }) => {
   await expect(card.getByRole("columnheader", { name: "Summary orders" })).toBeVisible();
 });
 
+test("overview: chart labels and lines remain readable in both themes", async ({ page }) => {
+  await page.goto("/overview");
+  const chart = page.getByRole("img", { name: "Net revenue by day chart", exact: true });
+  await expect(chart.locator(".recharts-line-curve")).toBeVisible();
+  for (const theme of ["light", "dark"]) {
+    await page.getByLabel("Appearance").selectOption(theme);
+    const contrast = await chart.evaluate((element) => {
+      function luminance(color: string) {
+        const [r, g, b] = (color.match(/[\d.]+/g) ?? []).map((channel) => {
+          const value = Number(channel) / 255;
+          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        if (r === undefined || g === undefined || b === undefined) throw new Error(`Expected RGB: ${color}`);
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      }
+      const card = element.closest('[data-slot="card"]');
+      if (!card) throw new Error("The chart must have a card background");
+      const background = luminance(getComputedStyle(card).backgroundColor);
+      function ratio(color: string) {
+        const foreground = luminance(color);
+        return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+      }
+      return {
+        labels: [...element.querySelectorAll("text")].map((label) => ratio(getComputedStyle(label).fill)),
+        lines: [...element.querySelectorAll(".recharts-line-curve")].map((line) =>
+          ratio(getComputedStyle(line).stroke),
+        ),
+      };
+    });
+    expect(contrast.labels.length).toBeGreaterThan(0);
+    for (const ratio of contrast.labels) expect(ratio, `${theme} chart label`).toBeGreaterThanOrEqual(4.5);
+    for (const ratio of contrast.lines) expect(ratio, `${theme} chart line`).toBeGreaterThanOrEqual(3);
+  }
+});
+
 test("unknown stores remain unselected until the viewer chooses a valid store", async ({ page }) => {
   await page.goto("/overview?store=unknown-store");
   await expect(page.getByText("That store is not in this warehouse")).toBeVisible();

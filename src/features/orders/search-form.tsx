@@ -22,7 +22,7 @@ export function OrderSearchForm({
       {Object.entries(preserved).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}
-      <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-none">
         <label htmlFor={id} className="text-xs font-medium text-muted-foreground">
           Find an order
         </label>
@@ -33,7 +33,7 @@ export function OrderSearchForm({
           defaultValue={search}
           maxLength={64}
           placeholder="Order name, number, or id"
-          className="w-64"
+          className="sm:w-64"
         />
       </div>
       <Button type="submit" variant="secondary">

@@ -24,11 +24,11 @@ export function KpiCard({
 }) {
   const Arrow = delta?.direction === "down" ? ArrowDownRight : ArrowUpRight;
   return (
-    <Card className="gap-2 py-5 shadow-card">
+    <Card className="gap-2 py-5">
       <CardContent className="flex flex-col gap-1 px-5">
         {description ? (
           <details className="text-sm text-muted-foreground">
-            <summary className="flex min-h-6 cursor-pointer list-none items-center gap-1.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+            <summary className="flex min-h-6 cursor-pointer list-none items-center gap-1.5 rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden">
               <span>{label}</span>
               <Info className="size-3.5 shrink-0" aria-hidden />
               <span className="sr-only">definition</span>
@@ -38,7 +38,7 @@ export function KpiCard({
         ) : (
           <span className="text-sm text-muted-foreground">{label}</span>
         )}
-        <span className="text-3xl font-semibold tracking-tight">{value}</span>
+        <span className="text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
         <span className="text-xs text-muted-foreground">{period}</span>
         {delta && (
           <span

@@ -10,6 +10,8 @@ import Form from "next/form";
 import Link from "next/link";
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 
 export type FilterPreset = { label: string; href: string; active: boolean };
@@ -42,21 +44,20 @@ export function FilterBar({
     <Form
       action={pathname}
       aria-label="Report filters"
-      className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-3"
+      className="grid grid-cols-1 items-end gap-3 rounded-xl border bg-card p-4 min-[360px]:grid-cols-2 sm:flex sm:flex-wrap"
     >
       {Object.entries(preserved).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}
-      <div className="flex min-w-48 flex-col gap-1">
+      <div className="col-span-full flex min-w-0 flex-col gap-1.5 sm:w-48">
         <label htmlFor={`${id}-store`} className="text-xs font-medium text-muted-foreground">
           Store
         </label>
-        <select
+        <NativeSelect
           id={`${id}-store`}
           name="store"
           defaultValue={storeId}
           onChange={(event) => event.currentTarget.form?.requestSubmit()}
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
         >
           {!stores.some((store) => store.id === storeId) && <option value={storeId}>Choose a store</option>}
           {stores.map((store) => (
@@ -64,56 +65,40 @@ export function FilterBar({
               {store.label}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
       {dates ? (
-        <>
-          <div className="flex flex-col gap-1">
+        <div className="col-span-full grid min-w-0 grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+          <div className="flex min-w-0 flex-col gap-1.5 sm:w-36">
             <label htmlFor={`${id}-from`} className="text-xs font-medium text-muted-foreground">
               From
             </label>
-            <input
-              id={`${id}-from`}
-              type="date"
-              name="from"
-              defaultValue={from}
-              max={maxDate}
-              required
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-            />
+            <Input id={`${id}-from`} type="date" name="from" defaultValue={from} max={maxDate} required />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1.5 sm:w-36">
             <label htmlFor={`${id}-to`} className="text-xs font-medium text-muted-foreground">
               To
             </label>
-            <input
-              id={`${id}-to`}
-              type="date"
-              name="to"
-              defaultValue={to}
-              max={maxDate}
-              required
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-            />
+            <Input id={`${id}-to`} type="date" name="to" defaultValue={to} max={maxDate} required />
           </div>
-        </>
+        </div>
       ) : (
         <>
           <input type="hidden" name="from" value={from} />
           <input type="hidden" name="to" value={to} />
         </>
       )}
-      <Button type="submit" variant="secondary">
+      <Button type="submit" variant="secondary" className="col-span-full">
         Apply
       </Button>
-      <nav aria-label="Date presets" className="flex flex-wrap gap-1 sm:ml-auto">
+      <nav aria-label="Date presets" className="col-span-full grid grid-cols-3 gap-1 sm:ml-auto sm:flex">
         {presets.map((preset) => (
           <Link
             key={preset.label}
             href={preset.href}
             aria-current={preset.active ? "true" : undefined}
             className={cn(
-              "rounded-md px-2.5 py-1.5 text-xs font-medium",
+              "flex min-h-9 flex-1 items-center justify-center rounded-md px-1.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:px-2.5 pointer-coarse:min-h-11",
               preset.active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted",
             )}
           >

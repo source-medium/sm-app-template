@@ -8,6 +8,7 @@
 import Form from "next/form";
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
 
 export function SelectFilter({
   pathname,
@@ -31,23 +32,23 @@ export function SelectFilter({
       {Object.entries(preserved).map(([key, preservedValue]) => (
         <input key={key} type="hidden" name={key} value={preservedValue} />
       ))}
-      <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1.5">
         <label htmlFor={id} className="text-xs font-medium text-muted-foreground">
           {label}
         </label>
-        <select
+        <NativeSelect
           id={id}
           name={name}
           defaultValue={value}
           onChange={(event) => event.currentTarget.form?.requestSubmit()}
-          className="h-9 min-w-40 rounded-md border border-input bg-background px-2 text-sm"
+          className="min-w-40"
         >
           {options.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
       {/* Changing the selection submits; this button serves keyboard users and pages without JavaScript. */}
       <Button type="submit" variant="secondary" size="sm" className="sr-only focus:not-sr-only">

@@ -1,5 +1,21 @@
 import { expect, test } from "@playwright/test";
 
+test("orders: column headers stay visible while scrolling rows", async ({ page }) => {
+  await page.goto("/orders");
+  const table = page.getByRole("table");
+  await expect(table).toBeVisible();
+  const positions = await table.evaluate((element) => {
+    const scroller = element.parentElement;
+    const head = element.querySelector("thead");
+    if (!scroller || !head) throw new Error("Expected a scrolling table with headers");
+    const before = head.getBoundingClientRect().top;
+    scroller.scrollTop = 240;
+    return { before, after: head.getBoundingClientRect().top, scroll: scroller.scrollTop };
+  });
+  expect(positions.scroll).toBeGreaterThan(0);
+  expect(Math.abs(positions.after - positions.before)).toBeLessThanOrEqual(1);
+});
+
 test("orders: sharing preserves encoded search input and the selected store", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/orders?store=sample-store-b&q=%23%26%25");

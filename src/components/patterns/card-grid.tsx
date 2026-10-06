@@ -20,7 +20,7 @@ export function CardGrid({ cards, label }: { cards: GridCard[]; label: string })
     <ul aria-label={label} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((card) => (
         <li key={card.id}>
-          <Card className="h-full gap-0 overflow-hidden py-0 shadow-card">
+          <Card className="h-full gap-0 overflow-hidden py-0">
             {card.imageUrl ? (
               <CardImage src={card.imageUrl} alt={card.title} fallback={<TextPanel card={card} />} />
             ) : (

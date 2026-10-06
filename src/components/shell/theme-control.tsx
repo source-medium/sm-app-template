@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { SunMoon } from "lucide-react";
+import { NativeSelect } from "@/components/ui/native-select";
 import { parseTheme, THEME_COOKIE, type Theme } from "@/lib/theme";
 
 export function ThemeControl({ initialTheme }: { initialTheme: Theme }) {
+  const id = useId();
   const [theme, setTheme] = useState(initialTheme);
 
   function chooseTheme(value: string) {
@@ -15,18 +17,19 @@ export function ThemeControl({ initialTheme }: { initialTheme: Theme }) {
   }
 
   return (
-    <label className="flex items-center gap-2 text-muted-foreground">
+    <label htmlFor={id} className="flex items-center gap-2 text-muted-foreground">
       <SunMoon className="hidden size-4 sm:block" aria-hidden />
       <span className="sr-only">Appearance</span>
-      <select
+      <NativeSelect
+        id={id}
         value={theme}
         onChange={(event) => chooseTheme(event.currentTarget.value)}
-        className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+        className="w-auto"
       >
         <option value="light">Light</option>
         <option value="dark">Dark</option>
         <option value="system">System</option>
-      </select>
+      </NativeSelect>
     </label>
   );
 }

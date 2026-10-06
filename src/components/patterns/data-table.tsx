@@ -74,59 +74,57 @@ export function DataTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="max-h-[32rem] overflow-auto rounded-md border">
-        <Table>
-          <caption className="sr-only">{caption}</caption>
-          <TableHeader className="sticky top-0 z-10 bg-muted">
-            {table.getHeaderGroups().map((group) => (
-              <TableRow key={group.id}>
-                {group.headers.map((header) => {
-                  const column = columns.find((item) => item.key === header.column.id);
-                  const sorted = header.column.getIsSorted();
-                  const Icon = sorted === "asc" ? ArrowUp : sorted === "desc" ? ArrowDown : ArrowUpDown;
-                  return (
-                    <TableHead
-                      key={header.id}
-                      className={cn(column?.align === "right" && "text-right")}
-                      aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
-                    >
-                      {header.column.getCanSort() ? (
-                        <button
-                          type="button"
-                          onClick={header.column.getToggleSortingHandler()}
-                          className={cn(
-                            "inline-flex items-center gap-1 font-medium",
-                            column?.align === "right" && "flex-row-reverse",
-                          )}
-                        >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          <Icon className="size-3.5 text-muted-foreground" aria-hidden />
-                        </button>
-                      ) : (
-                        flexRender(header.column.columnDef.header, header.getContext())
-                      )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => {
-                  const column = columns.find((item) => item.key === cell.column.id);
-                  return (
-                    <TableCell key={cell.id} className={cn(column?.align === "right" && "text-right tabular-nums")}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <Table containerClassName="max-h-[32rem] rounded-xl border bg-card">
+        <caption className="sr-only">{caption}</caption>
+        <TableHeader className="sticky top-0 z-10 bg-muted">
+          {table.getHeaderGroups().map((group) => (
+            <TableRow key={group.id}>
+              {group.headers.map((header) => {
+                const column = columns.find((item) => item.key === header.column.id);
+                const sorted = header.column.getIsSorted();
+                const Icon = sorted === "asc" ? ArrowUp : sorted === "desc" ? ArrowDown : ArrowUpDown;
+                return (
+                  <TableHead
+                    key={header.id}
+                    className={cn(column?.align === "right" && "text-right")}
+                    aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
+                  >
+                    {header.column.getCanSort() ? (
+                      <button
+                        type="button"
+                        onClick={header.column.getToggleSortingHandler()}
+                        className={cn(
+                          "inline-flex min-h-9 items-center gap-2 rounded-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11",
+                          column?.align === "right" && "flex-row-reverse",
+                        )}
+                      >
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        <Icon className="size-3.5 text-muted-foreground" aria-hidden />
+                      </button>
+                    ) : (
+                      flexRender(header.column.columnDef.header, header.getContext())
+                    )}
+                  </TableHead>
+                );
+              })}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow key={row.id}>
+              {row.getVisibleCells().map((cell) => {
+                const column = columns.find((item) => item.key === cell.column.id);
+                return (
+                  <TableCell key={cell.id} className={cn(column?.align === "right" && "text-right tabular-nums")}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                );
+              })}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
         <span>
           {truncated
