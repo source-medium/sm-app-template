@@ -35,6 +35,7 @@ describe("URL filters", () => {
     [{ from: "2026-02-30", to: "2026-03-05" }],
     [{ from: "2026-09-10", to: "2026-09-01" }],
     [{ from: "yesterday", to: "today" }],
+    [{ from: "0000-01-01", to: "0000-01-02" }],
     [{ from: "2027-01-01", to: "2027-01-05" }],
     [{ from: ["2026-09-01", "x"], to: "2026-09-02'; DROP TABLE" }],
   ])("falls back to the default for %j", (params) => {

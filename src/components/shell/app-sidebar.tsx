@@ -21,7 +21,7 @@ import {
 import { AppName } from "./app-name";
 
 /** Filters every view shares; carrying them keeps the same store and dates when switching views. */
-const SHARED_FILTERS = ["store", "from", "to"];
+const SHARED_FILTERS = ["store", "from", "to", "compare"];
 
 export function AppSidebar() {
   const pathname = usePathname();

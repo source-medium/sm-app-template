@@ -35,7 +35,7 @@ export function datesInRange(range: DateRange): string[] {
 }
 
 function isCalendarDate(value: string | undefined): value is string {
-  if (!value || !DATE.test(value)) return false;
+  if (!value || !DATE.test(value) || value < "0001-01-01") return false;
   const time = Date.parse(`${value}T00:00:00Z`);
   return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value;
 }
@@ -90,7 +90,7 @@ export function preservedParams(
   applied: ReportFilters,
 ): Record<string, string> {
   const preserved: Record<string, string> = { store: applied.storeId, from: applied.range.from, to: applied.range.to };
-  for (const name of names) {
+  for (const name of [...names, "compare"]) {
     const value = single(params, name);
     if (value !== undefined) preserved[name] = value;
   }

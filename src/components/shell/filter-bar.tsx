@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
+import { COMPARISON_OPTIONS, type ComparisonMode } from "@/lib/comparison";
 
 export type FilterPreset = { label: string; href: string; active: boolean };
 
@@ -26,6 +27,7 @@ export function FilterBar({
   presets,
   preserved,
   dates = true,
+  comparison,
 }: {
   pathname: string;
   stores: { id: string; label: string }[];
@@ -38,6 +40,8 @@ export function FilterBar({
   preserved: Record<string, string>;
   /** False hides the date inputs; the URL's dates still pass through for other views. */
   dates?: boolean;
+  /** Only reports that implement comparisons show this control. */
+  comparison?: ComparisonMode;
 }) {
   const id = useId();
   return (
@@ -46,9 +50,11 @@ export function FilterBar({
       aria-label="Report filters"
       className="grid grid-cols-1 items-end gap-3 rounded-xl border bg-card p-4 min-[360px]:grid-cols-2 sm:flex sm:flex-wrap"
     >
-      {Object.entries(preserved).map(([name, value]) => (
-        <input key={name} type="hidden" name={name} value={value} />
-      ))}
+      {Object.entries(preserved)
+        .filter(([name]) => name !== "compare" || comparison === undefined)
+        .map(([name, value]) => (
+          <input key={name} type="hidden" name={name} value={value} />
+        ))}
       <div className="col-span-full flex min-w-0 flex-col gap-1.5 sm:w-48">
         <label htmlFor={`${id}-store`} className="text-xs font-medium text-muted-foreground">
           Store
@@ -87,6 +93,20 @@ export function FilterBar({
           <input type="hidden" name="from" value={from} />
           <input type="hidden" name="to" value={to} />
         </>
+      )}
+      {comparison !== undefined && (
+        <div className="col-span-full flex min-w-0 flex-col gap-1.5 sm:w-48">
+          <label htmlFor={`${id}-compare`} className="text-xs font-medium text-muted-foreground">
+            Compare with
+          </label>
+          <NativeSelect id={`${id}-compare`} name="compare" defaultValue={comparison}>
+            {COMPARISON_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
       )}
       <Button type="submit" variant="secondary" className="col-span-full">
         Apply

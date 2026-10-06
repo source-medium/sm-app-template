@@ -105,6 +105,8 @@ Use the shadcn primitives in `components/ui` and the patterns in
 `components/patterns`. Colors and fonts come only from `src/styles/tokens.css`;
 use theme classes (`bg-card`, `text-muted-foreground`), not raw colors. Charts
 use `--chart-1`…`--chart-8` in order, one y-axis, and keep the table view.
+Comparisons: opt into `ReportPage comparisons` only when the feature queries
+both periods. Reuse `lib/comparison.ts` and `patterns/kpi-delta.ts`; copy Overview.
 
 ## Route handlers and downloads
 

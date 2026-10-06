@@ -5,10 +5,16 @@
  */
 import "server-only";
 import { appConfig } from "@/app.config";
+import { fromUnits, toUnits } from "@/lib/data/decimal";
 
 const integer = new Intl.NumberFormat(appConfig.locale, { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat(appConfig.locale, { maximumFractionDigits: 2 });
 const percent = new Intl.NumberFormat(appConfig.locale, { style: "percent", maximumFractionDigits: 2 });
+const changePercent = new Intl.NumberFormat(appConfig.locale, {
+  style: "percent",
+  maximumFractionDigits: 2,
+  signDisplay: "exceptZero",
+});
 const shortDate = new Intl.DateTimeFormat(appConfig.locale, { month: "short", day: "numeric", timeZone: "UTC" });
 const longDate = new Intl.DateTimeFormat(appConfig.locale, {
   year: "numeric",
@@ -65,6 +71,13 @@ export function formatMeasure(value: number | null): string {
 
 export function formatPercent(value: number | null): string {
   return value === null || !Number.isFinite(value) ? EMPTY_VALUE : percent.format(value);
+}
+
+/** Input is already a percentage, preserving exact decimal comparison results. */
+export function formatChangePercent(value: string | number): string {
+  return typeof value === "string"
+    ? changePercent.format(fromUnits(toUnits(value) / 100n) as `${number}`)
+    : changePercent.format(value / 100);
 }
 
 /** A warehouse DATE ("2026-10-04"), shown as a calendar date in no time zone. */

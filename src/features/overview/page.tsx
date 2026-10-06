@@ -3,13 +3,15 @@ import { Suspense } from "react";
 import { ChartCard } from "@/components/charts/chart-card";
 import { buildChartData } from "@/components/charts/chart-data";
 import { DataRegion } from "@/components/patterns/data-region";
-import { LoadingState } from "@/components/patterns/data-states";
+import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { KpiCard } from "@/components/patterns/kpi-card";
+import { kpiDelta } from "@/components/patterns/kpi-delta";
+import { COMPARISON_OPTIONS, type Comparison } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
-import { datesInRange, type ReportFilters, type SearchParams } from "@/lib/filters";
+import { datesInRange, rangeLength, type ReportFilters, type SearchParams } from "@/lib/filters";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { formatCount, formatDate, formatDay, formatMeasure, formatMoney, formatMultiple } from "@/lib/format";
-import { getOverview, type OverviewData } from "./queries";
+import { getOverviewReport, type OverviewReport } from "./queries";
 
 export const metadata: Metadata = { title: "Overview" };
 
@@ -21,18 +23,19 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       description="Executive Summary metrics across all channels, by day for one store."
       pathname="/overview"
       params={params}
+      comparisons
     >
-      {({ filters }) => (
+      {({ filters, comparison }) => (
         <Suspense
-          key={`${filters.storeId}|${filters.range.from}|${filters.range.to}`}
+          key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${comparison?.mode}`}
           fallback={<LoadingState variant="kpis" label="Loading the overview" />}
         >
           <DataRegion
-            load={() => getOverview(filters)}
-            isEmpty={(data) => data.days.length === 0}
+            load={() => getOverviewReport(filters, comparison?.range ?? null)}
+            isEmpty={(report) => report.current.days.length === 0}
             emptyMessage="This store has no rows in the selected dates."
           >
-            {(data) => <OverviewView data={data} filters={filters} />}
+            {(report) => <OverviewView report={report} filters={filters} comparison={comparison} />}
           </DataRegion>
         </Suspense>
       )}
@@ -40,7 +43,21 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   );
 }
 
-function OverviewView({ data, filters }: { data: OverviewData; filters: ReportFilters }) {
+function OverviewView({
+  report,
+  filters,
+  comparison,
+}: {
+  report: OverviewReport;
+  filters: ReportFilters;
+  comparison?: Comparison;
+}) {
+  const data = report.current;
+  const previous = report.comparison?.data?.totals ?? null;
+  const baseline = comparison?.range;
+  const showDelta = Boolean(baseline && !report.comparison?.error);
+  const previousRevenue = decimalToNumber(previous?.netRevenue ?? null);
+  const previousSpend = decimalToNumber(previous?.adSpend ?? null);
   const period = `${formatDate(filters.range.from)} – ${formatDate(filters.range.to)}`;
   const byDate = new Map(data.days.map((day) => [day.date, day]));
   // Every date in the range, so a date with no rows is a gap in the line, not a zero.
@@ -74,47 +91,99 @@ function OverviewView({ data, filters }: { data: OverviewData; filters: ReportFi
         Summary orders sum every channel, including excluded, draft, and exchanged orders when published. They can
         differ from valid-order counts. Revenue per summary order uses this same count.
       </p>
+      {baseline && (
+        <section aria-label="Comparison period" className="flex flex-col gap-1 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">
+            {COMPARISON_OPTIONS.find((option) => option.value === comparison?.mode)?.label}: {formatDate(baseline.from)}{" "}
+            – {formatDate(baseline.to)}
+          </p>
+          <p>
+            {rangeLength(filters.range)} selected days vs {rangeLength(baseline)} comparison days.
+          </p>
+          {report.comparison?.data && (
+            <p>
+              Days with rows: {data.days.length}/{rangeLength(filters.range)} selected;{" "}
+              {report.comparison.data.days.length}/{rangeLength(baseline)} comparison. Missing days are not zeros; a day
+              with rows can still be incomplete.
+            </p>
+          )}
+          {comparison?.mode === "year" && <p>Calendar dates, not matched weekdays. Feb 29 uses Feb 28 when needed.</p>}
+        </section>
+      )}
+      {comparison && comparison.mode !== "off" && !baseline && (
+        <p>Comparison unavailable: the earlier period is outside supported warehouse dates.</p>
+      )}
+      {report.comparison?.error && (
+        <ErrorState
+          title={`Comparison unavailable: ${report.comparison.error.title}`}
+          remedy={report.comparison.error.remedy}
+          detail={report.comparison.error.detail}
+        />
+      )}
       <section aria-label="Period totals" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           label="Net revenue"
           description="Gross order revenue minus discounts and refunds, summed across all channels for this store and period. Amounts use the warehouse's reporting currency."
           value={formatMoney(totals?.netRevenue ?? null)}
+          delta={
+            showDelta
+              ? kpiDelta(totals?.netRevenue ?? null, previous?.netRevenue ?? null, formatMoney, "higher")
+              : undefined
+          }
           period={period}
         />
         <KpiCard
           label="Summary orders"
           description="Published order counts summed across every channel, including excluded, draft, and exchanged orders. This can differ from the number of valid orders."
           value={formatMeasure(totals?.orders ?? null)}
+          delta={showDelta ? kpiDelta(totals?.orders ?? null, previous?.orders ?? null, formatMeasure) : undefined}
           period={period}
         />
         <KpiCard
           label="Revenue per summary order"
           description="Net revenue divided by Summary orders for the same store and period. It uses the all-channel summary count, so it can differ from average revenue per valid order."
           value={formatMoney(ratio(netRevenue, totals?.orders ?? null))}
+          delta={
+            showDelta
+              ? kpiDelta(
+                  ratio(netRevenue, totals?.orders ?? null),
+                  ratio(previousRevenue, previous?.orders ?? null),
+                  formatMoney,
+                )
+              : undefined
+          }
           period={period}
         />
         <KpiCard
           label="Ad spend"
           description="Published advertising spend summed across all channels for this store and period, in the warehouse's reporting currency."
           value={formatMoney(totals?.adSpend ?? null)}
+          delta={showDelta ? kpiDelta(totals?.adSpend ?? null, previous?.adSpend ?? null, formatMoney) : undefined}
           period={period}
         />
         <KpiCard
           label="Marketing efficiency (MER)"
           description="Net revenue divided by ad spend for the same store and period. This is a blended revenue-to-spend ratio, not ad-platform attributed ROAS."
           value={formatMultiple(ratio(netRevenue, adSpend))}
+          delta={
+            showDelta
+              ? kpiDelta(ratio(netRevenue, adSpend), ratio(previousRevenue, previousSpend), formatMultiple, "higher")
+              : undefined
+          }
           period={period}
         />
         <KpiCard
           label="Website sessions"
           description="Published website session counts summed across all channels for this store and period. Sessions are visits, not unique people."
           value={formatCount(totals?.sessions ?? null)}
+          delta={showDelta ? kpiDelta(totals?.sessions ?? null, previous?.sessions ?? null, formatCount) : undefined}
           period={period}
         />
       </section>
       <section aria-label="Daily trends" className="grid gap-4 lg:grid-cols-2">
         <ChartCard
           title="Net revenue by day"
+          description="Selected period"
           kind="line"
           categoryHeader="Date"
           series={[{ key: "revenue", label: "Net revenue", color: "var(--chart-1)" }]}
@@ -123,6 +192,7 @@ function OverviewView({ data, filters }: { data: OverviewData; filters: ReportFi
         />
         <ChartCard
           title="Summary orders by day"
+          description="Selected period"
           kind="line"
           categoryHeader="Date"
           series={[{ key: "orders", label: "Summary orders", color: "var(--chart-1)" }]}

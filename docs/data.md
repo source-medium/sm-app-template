@@ -131,6 +131,38 @@ they publish them. The app shows them as published:
 `obt_orders` also keeps each order's original amounts and currency
 (`order_original_*`, `order_original_currency_code`) if you need them.
 
+## Period comparisons
+
+Overview defaults to **Previous period**: the same number of calendar days,
+immediately before the selected range. **Same dates last year** shifts the
+calendar dates back one year, clamping Feb 29 to Feb 28 when needed. It does
+not match weekdays; leap years can change the day count. Both ranges and
+their day counts are visible. **Off** skips the comparison query.
+
+The setting lives in `?compare=previous|year|off`, survives filters and report
+links, and travels with navigation. Only views that implement comparisons
+show the control. Daily charts show the selected period; KPI totals compare
+the periods. Missing days stay missing, never zero. Days with rows do not
+prove complete data, and a range including today may be incomplete.
+
+To add comparisons to a view, opt into `ReportPage comparisons`, use its
+`comparison.range`, and query each period with the same store and dimension
+filters. Copy Overview's `getOverviewReport`: it reuses the existing bounded
+query for each period in parallel, checks truncation, and keeps current data
+visible if the comparison query fails. This adds one query when enabled.
+Ratios are recomputed from each period's totals, not averaged from daily ratios.
+
+`lib/comparison.ts` owns date rules and arithmetic; `patterns/kpi-delta.ts`
+owns server-formatted KPI changes. Absolute money/count changes stay exact.
+Percentages are `(current - baseline) / baseline`, displayed to two decimals.
+Zero, negative, and missing baselines have explicit states instead of a
+misleading percentage. Unchanged values are neutral. The default color is
+neutral; a feature must explicitly choose whether higher or lower is better.
+Overview uses higher-is-better only for net revenue and MER. Percentage-valued
+metrics should label absolute changes as percentage points, distinct from
+relative percent changes. Custom ranges, targets and weekday-aligned calendars
+are intentionally left for apps that need them.
+
 ## Refresh and freshness
 
 **Refresh data** re-reads the current report with the filters already applied

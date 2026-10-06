@@ -1,6 +1,49 @@
 import { expect, test } from "@playwright/test";
 import { expectNoSeriousA11yViolations } from "../../../e2e/helpers";
 
+test("overview: period and year comparisons survive links, navigation, and refresh", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  const comparison = page.getByRole("region", { name: "Comparison period" });
+  await expect(comparison).toContainText("Aug 25, 2026 – Aug 31, 2026");
+  await expect(page.locator('[data-slot="kpi-comparison"]:visible')).toHaveCount(6);
+  await page.getByLabel("Compare with").selectOption("year");
+  await page.getByRole("button", { name: "Copy report link" }).click();
+  await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
+  expect(new URL(await page.evaluate(() => navigator.clipboard.readText())).searchParams.get("compare")).toBe(
+    "previous",
+  );
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(page).toHaveURL(/compare=year/);
+  await expect(comparison).toContainText("Sep 1, 2025 – Sep 7, 2025");
+  await page.reload();
+  await expect(page.getByLabel("Compare with")).toHaveValue("year");
+  await page.getByRole("button", { name: "Copy report link" }).click();
+  await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
+  expect(new URL(await page.evaluate(() => navigator.clipboard.readText())).searchParams.get("compare")).toBe("year");
+  await page.getByRole("button", { name: "Refresh data", exact: true }).click();
+  await expect(page.getByLabel("Compare with")).toHaveValue("year");
+  await page.getByRole("link", { name: "Last 7 days" }).click();
+  await expect(page).toHaveURL(/compare=year/);
+  await page.getByRole("link", { name: "Orders", exact: true }).click();
+  await expect(page).toHaveURL(/compare=year/);
+  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  await expect(page.getByLabel("Compare with")).toHaveValue("year");
+  await page.getByLabel("Compare with").selectOption("off");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(page).toHaveURL(/compare=off/);
+  await expect(comparison).toHaveCount(0);
+  await expect(page.locator('[data-slot="kpi-comparison"]:visible')).toHaveCount(0);
+});
+
+test("overview: calendar YoY explains different day counts across leap years", async ({ page }) => {
+  await page.goto("/overview?from=2025-02-28&to=2025-03-01&compare=year");
+  const comparison = page.getByRole("region", { name: "Comparison period" });
+  await expect(comparison).toContainText("Feb 28, 2024 – Mar 1, 2024");
+  await expect(comparison).toContainText("2 selected days vs 3 comparison days");
+  await expect(comparison).toContainText("Calendar dates, not matched weekdays");
+});
+
 test("overview: metric definitions open and close by keyboard", async ({ page }) => {
   await page.goto("/overview");
   const definition = page.locator("details", { hasText: "Marketing efficiency (MER)" });

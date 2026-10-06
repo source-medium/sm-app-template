@@ -1,12 +1,17 @@
 /**
  * A headline number. The value arrives formatted from the server. Show a
- * delta only when the comparison is real (a named, equal-length period).
+ * delta only when the comparison is real, with its dates explained by the report.
  */
-import { ArrowDownRight, ArrowUpRight, Info } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Info, Minus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-export type KpiDelta = { display: string; direction: "up" | "down"; good: boolean; comparedTo: string };
+export type KpiDelta = {
+  display: string;
+  direction: "up" | "down" | "flat" | null;
+  good: boolean | null;
+  comparedTo: string;
+};
 
 export function KpiCard({
   label,
@@ -22,7 +27,7 @@ export function KpiCard({
   /** A short, query-specific definition. Native details works with touch, keyboard, and no JavaScript. */
   description?: string;
 }) {
-  const Arrow = delta?.direction === "down" ? ArrowDownRight : ArrowUpRight;
+  const Arrow = delta?.direction === "flat" ? Minus : delta?.direction === "down" ? ArrowDownRight : ArrowUpRight;
   return (
     <Card className="gap-2 py-5">
       <CardContent className="flex flex-col gap-1 px-5">
@@ -41,15 +46,18 @@ export function KpiCard({
         <span className="text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
         <span className="text-xs text-muted-foreground">{period}</span>
         {delta && (
-          <span
-            className={cn(
-              "flex items-center gap-1 text-xs font-medium",
-              delta.good ? "text-success" : "text-destructive",
-            )}
-          >
-            <Arrow className="size-3.5" aria-hidden />
-            {delta.display} vs {delta.comparedTo}
-          </span>
+          <div data-slot="kpi-comparison" className="mt-1 flex flex-col gap-1 text-xs">
+            <span
+              className={cn(
+                "flex items-center gap-1 text-xs font-medium",
+                delta.good === null ? "text-muted-foreground" : delta.good ? "text-success" : "text-destructive",
+              )}
+            >
+              {delta.direction && <Arrow className="size-3.5 shrink-0" aria-hidden />}
+              {delta.display}
+            </span>
+            <span className="text-muted-foreground">vs {delta.comparedTo}</span>
+          </div>
         )}
       </CardContent>
     </Card>

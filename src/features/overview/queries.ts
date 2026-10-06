@@ -6,7 +6,8 @@
  */
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
-import type { ReportFilters } from "@/lib/filters";
+import type { DateRange, ReportFilters } from "@/lib/filters";
+import { WarehouseError } from "@/lib/data/warehouse-error";
 import { queryOverview } from "./bigquery";
 import { sampleOverview } from "./sample";
 
@@ -35,4 +36,25 @@ export type OverviewData = {
 export async function getOverview(filters: ReportFilters): Promise<OverviewData> {
   const access = await requireViewer();
   return access.mode === "live" ? queryOverview(filters) : sampleOverview(filters);
+}
+
+export type OverviewReport = {
+  current: OverviewData;
+  comparison: { data: OverviewData; error: null } | { data: null; error: WarehouseError } | null;
+};
+
+/** Two bounded, independently aggregated periods; Off makes only the current-period query. */
+export async function getOverviewReport(filters: ReportFilters, baseline: DateRange | null): Promise<OverviewReport> {
+  await requireViewer();
+  const comparison = baseline
+    ? getOverview({ ...filters, range: baseline }).then(
+        (data) => ({ data, error: null }),
+        (error: unknown) => {
+          if (!(error instanceof WarehouseError)) throw error;
+          return { data: null, error };
+        },
+      )
+    : null;
+  const [current, compared] = await Promise.all([getOverview(filters), comparison]);
+  return { current, comparison: compared };
 }

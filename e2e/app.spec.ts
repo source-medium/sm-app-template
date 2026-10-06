@@ -149,7 +149,13 @@ test("copy link freezes applied defaults and ignores unapplied filter edits", as
   const copied = new URL(await page.evaluate(() => navigator.clipboard.readText()));
   expect(copied.origin).toBe(new URL(page.url()).origin);
   expect(copied.pathname).toBe(home);
-  expect(Object.fromEntries(copied.searchParams)).toEqual({ store, from, to });
+  const compare = page.getByLabel("Compare with");
+  expect(Object.fromEntries(copied.searchParams)).toEqual({
+    store,
+    from,
+    to,
+    ...((await compare.count()) ? { compare: await compare.inputValue() } : {}),
+  });
   await page.goto(copied.href);
   await expect(page.getByLabel("Store", { exact: true })).toHaveValue(store);
   await expect(page.getByLabel("From", { exact: true })).toHaveValue(from);

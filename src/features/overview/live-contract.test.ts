@@ -32,6 +32,72 @@ const MONEY = {
 const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-09-02" } };
 
 describe("overview, live", () => {
+  it("queries comparison periods separately with identical store scope and exact SQL totals", async () => {
+    const fake = await goLive({
+      submit: (call) => {
+        const body = call.body as { queryParameters: { name: string; parameterValue: { value: string } }[] };
+        const from = body.queryParameters.find((param) => param.name === "start_date")?.parameterValue.value;
+        if (!from) throw new Error("Missing start_date parameter");
+        const revenue = from === "2026-09-01" ? "100.01" : "80.01";
+        return rowsResponse(FIELDS, [{ date: from, ...MONEY, total_net_revenue: revenue }]);
+      },
+    });
+    const { getOverviewReport } = await import("./queries");
+    const report = await getOverviewReport(FILTERS, { from: "2025-09-01", to: "2025-09-02" });
+    expect(report.current.totals?.netRevenue).toBe("100.01");
+    expect(report.comparison?.data?.totals?.netRevenue).toBe("80.01");
+    const submits = fake.calls.filter((call) => call.kind === "submit");
+    expect(submits).toHaveLength(2);
+    const bodies = submits.map(
+      (call) => call.body as { query: string; queryParameters: { name: string; parameterValue: { value: string } }[] },
+    );
+    expect(bodies[0]?.query).toBe(bodies[1]?.query);
+    const parameters = bodies.map((body) =>
+      Object.fromEntries(body.queryParameters.map((param) => [param.name, param.parameterValue.value])),
+    );
+    expect(parameters).toEqual(
+      expect.arrayContaining([
+        { store_id: "store-1", start_date: "2026-09-01", end_date: "2026-09-02" },
+        { store_id: "store-1", start_date: "2025-09-01", end_date: "2025-09-02" },
+      ]),
+    );
+  });
+
+  it("makes only one query when comparison is off", async () => {
+    const fake = await goLive({ submit: () => rowsResponse(FIELDS, []) });
+    const { getOverviewReport } = await import("./queries");
+    expect((await getOverviewReport(FILTERS, null)).comparison).toBeNull();
+    expect(fake.count("submit")).toBe(1);
+  });
+
+  it("keeps the current report when comparison data is truncated", async () => {
+    await goLive({
+      submit: (call) => {
+        const body = call.body as { queryParameters: { name: string; parameterValue: { value: string } }[] };
+        const from = body.queryParameters.find((param) => param.name === "start_date")?.parameterValue.value;
+        if (!from) throw new Error("Missing start_date parameter");
+        if (from === "2025-09-01")
+          return rowsResponse(FIELDS, [], {
+            pageToken: "more",
+            rows: Array.from({ length: 100 }, () => ({ f: FIELDS.map(() => ({ v: "1" })) })),
+          });
+        return rowsResponse(FIELDS, [{ date: from, ...MONEY }]);
+      },
+    });
+    const { getOverviewReport } = await import("./queries");
+    const report = await getOverviewReport(FILTERS, { from: "2025-09-01", to: "2025-09-02" });
+    expect(report.current.totals?.netRevenue).toBe("0.3");
+    expect(report.comparison?.data).toBeNull();
+    expect(report.comparison?.error).toMatchObject({ kind: "result_too_large" });
+  });
+
+  it("does not turn an empty baseline into zero totals", async () => {
+    await goLive({ submit: () => rowsResponse(FIELDS, []) });
+    const { getOverviewReport } = await import("./queries");
+    const report = await getOverviewReport(FILTERS, { from: "2025-09-01", to: "2025-09-02" });
+    expect(report.comparison).toEqual({ data: { days: [], totals: null }, error: null });
+  });
+
   it("queries one store and range, and decodes exact totals", async () => {
     const fake = await goLive({
       submit: () =>

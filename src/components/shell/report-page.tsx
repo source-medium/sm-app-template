@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { loadStores, type StoreOption } from "@/lib/data/stores.server";
 import { WarehouseError } from "@/lib/data/warehouse-error";
+import { parseComparison, type Comparison } from "@/lib/comparison";
 import {
   addDays,
   parseDateRange,
@@ -32,7 +33,7 @@ import {
 
 const PRESET_DAYS = [7, 28, 90];
 
-export type ReportContext = { filters: ReportFilters; params: SearchParams };
+export type ReportContext = { filters: ReportFilters; params: SearchParams; comparison?: Comparison };
 
 type FilterBarProps = {
   pathname: string;
@@ -41,6 +42,7 @@ type FilterBarProps = {
   now: Date;
   preserve: string[];
   dates: boolean;
+  comparison?: Comparison;
 };
 
 export async function ReportPage({
@@ -50,6 +52,7 @@ export async function ReportPage({
   params,
   preserve = [],
   dates = true,
+  comparisons = false,
   children,
 }: {
   title: string;
@@ -60,15 +63,19 @@ export async function ReportPage({
   preserve?: string[];
   /** False for current-state views (such as inventory) that have no date range. */
   dates?: boolean;
+  /** Opt in only after the feature queries and presents a comparison period. */
+  comparisons?: boolean;
   children: (context: ReportContext) => React.ReactNode;
 }) {
   const access = await requireViewer();
   const now = new Date();
   const range = parseDateRange(params, now);
+  const comparison = comparisons && dates ? parseComparison(params, range) : undefined;
+  if (comparison) params = { ...params, compare: comparison.mode };
   const roster = loadStores();
   // Handled where it is awaited; this keeps an early failure from being reported as unhandled.
   roster.catch(() => undefined);
-  const barProps: FilterBarProps = { pathname, params, range, now, preserve, dates };
+  const barProps: FilterBarProps = { pathname, params, range, now, preserve, dates, comparison };
 
   function header(storeId?: string) {
     const shareHref = storeId ? withParams(pathname, params, { store: storeId, ...(dates ? range : {}) }) : null;
@@ -91,6 +98,7 @@ export async function ReportPage({
         ? "Synthetic sample data for demonstration; not from any warehouse."
         : "Data freshness unknown."}
       {dates && " Dates are calendar dates as published in the warehouse."}
+      {dates && range.to === todayUtc(now) && " Today may be incomplete."}
     </footer>
   );
 
@@ -102,7 +110,7 @@ export async function ReportPage({
         <Suspense fallback={<Skeleton className="h-[4.75rem] rounded-lg" />}>
           <RosterFilterBar roster={roster} storeId={requested} {...barProps} />
         </Suspense>
-        {children({ filters: { storeId: requested, range }, params })}
+        {children({ filters: { storeId: requested, range }, params, comparison })}
         {footer}
       </div>
     );
@@ -134,7 +142,7 @@ export async function ReportPage({
       {header(first.id)}
       <StoreFilterBar stores={stores} storeId={first.id} {...barProps} />
       {/* Links built from params now name the store, so the next page runs its queries in parallel. */}
-      {children({ filters: { storeId: first.id, range }, params: { ...params, store: first.id } })}
+      {children({ filters: { storeId: first.id, range }, params: { ...params, store: first.id }, comparison })}
       {footer}
     </div>
   );
@@ -175,6 +183,7 @@ function StoreFilterBar({
   now,
   preserve,
   dates,
+  comparison,
 }: FilterBarProps & { stores: StoreOption[]; storeId: string }) {
   const yesterday = addDays(todayUtc(now), -1);
   const presets = PRESET_DAYS.map((days) => {
@@ -186,12 +195,13 @@ function StoreFilterBar({
     };
   });
   const preserved: Record<string, string> = {};
-  for (const name of preserve) {
+  for (const name of [...preserve, "compare"]) {
     const value = single(params, name);
     if (value !== undefined) preserved[name] = value;
   }
   return (
     <FilterBar
+      key={`${storeId}|${range.from}|${range.to}|${comparison?.mode}`}
       pathname={pathname}
       stores={stores}
       storeId={storeId}
@@ -201,6 +211,7 @@ function StoreFilterBar({
       presets={dates ? presets : []}
       preserved={preserved}
       dates={dates}
+      comparison={comparison?.mode}
     />
   );
 }
