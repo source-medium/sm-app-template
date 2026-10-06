@@ -1,9 +1,9 @@
 # Release readiness
 
-Status: unreleased 0.1.0 preview. Local tests and a demo deployment do not prove
-fresh-account onboarding. The template can be shared as a preview with these
-limits; do not label it a supported self-service v1 until the applicable gates
-below have evidence. Publication, tags, deployments, IAM and account changes
+Status: 0.1.0 preview, suitable for public source distribution. The tested
+path is local setup and Cloudflare Workers with a shared password. A fresh
+Cloudflare account, real Access offboarding and self-service Apps provisioning
+remain separate checks; do not advertise those journeys as verified. Publication, tags, deployments, IAM and account changes
 require the maintainer's explicit authorization.
 
 ## Local release gates
@@ -33,7 +33,26 @@ When replacing it, verify the exact upstream compiled code and retain the
 regression. A passing default build does not establish support for every
 experimental Next feature.
 
-## Open host and onboarding gates
+## Verified release evidence (2026-10-06)
+
+The release audit exercised all local gates above, 200 repeated browser tests
+without a hydration error, and deletion of each example and all examples.
+The repaired code passed Linux and Windows CI, production browser tests,
+secret isolation and the eleven-mode Worker smoke suite. The approved demo
+checkout passed diagnose and all five live browser tests. The actual Overview
+SQL and decoders matched independently queried catalog revenue, orders and
+ad spend exactly for the selected demo store and period.
+
+A temporary deployment in SourceMedium's existing Cloudflare account passed
+26 checks across the four views, password challenges, RSC/prefetch, action
+POST, public assets, path/header probes and cache headers. Redeploying without
+resupplying secrets retained the password. This does not establish the
+fresh-account button flow or a real Access identity policy. The source and
+all eight original commits were scanned; the only secret-scanner finding was
+a synthetic test password. See [SECURITY.md](../SECURITY.md) for the dependency
+review and the remaining development-only advisory.
+
+## Host and onboarding checks beyond the tested path
 
 | Gate                            | Evidence required before closing                                                                                                                                                                                                                                                                                           |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -94,8 +94,14 @@ exactly, so plain `pnpm update` changes nothing
 and `pnpm update --latest` crosses majors: find each version with `pnpm view
 <name> versions` and set it with `pnpm add -E <name>@<version>` (add -D for
 devDependencies). Keep Next, @next/env and @next/eslint-plugin-next aligned,
-and keep React and react-dom aligned. Do not add overrides or change pnpm's
-patch-failure settings. Run these gates sequentially because they share build
+and keep React and react-dom aligned. Review transitive dependencies with
+`pnpm audit`; direct package updates can leave vulnerable dependencies pinned
+by their parents. Preserve existing documented security overrides until the
+parent includes the fix. Do not add overrides merely to make installation
+pass, or change pnpm's patch-failure settings. For a security fix that requires
+an override, identify the upstream advisory, constrain it to the affected
+parent and fixed version, and run all gates below. Report any remaining
+advisory and whether its vulnerable path is used by this app. Run these gates sequentially because they share build
 output: pnpm install --frozen-lockfile, pnpm check, pnpm test:e2e,
 pnpm test:secrets, pnpm build:cloudflare, and pnpm smoke:worker. Fix failures;
 do not call the update complete if any gate was skipped. For a Next or React

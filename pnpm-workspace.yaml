@@ -27,3 +27,13 @@ patchedDependencies:
 peerDependencyRules:
   allowedVersions:
     eslint-plugin-jsx-a11y>eslint: "10"
+
+# Security fixes for dependencies pinned by the current upstream packages.
+# Remove each override when its parent ships the fixed dependency; verify with
+# pnpm audit and the full build/Worker gates. Exact parent selectors prevent an
+# unrelated future parent version from inheriting a stale override.
+overrides:
+  "next@15.5.27>postcss": "8.5.29" # GHSA-6g55-p6wh-862q, GHSA-r28c-9q8g-f849
+  "miniflare@5.20260815.0-alpha>sharp": "0.35.5" # libheif and librsvg fixes
+  "miniflare@5.20261001.0-alpha>sharp": "0.35.5" # GHSA-wq5f-xc86-pv6w
+  "miniflare@5.20260815.0-alpha>undici": "7.29.1" # GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3
