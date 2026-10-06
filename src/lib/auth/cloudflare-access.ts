@@ -1,5 +1,5 @@
 /**
- * sm-app-template integration file. Template version: 1.0.0.
+ * sm-app-template integration file. Template version: 0.1.0 (unreleased).
  *
  * Cloudflare Access, the per-person viewer guard. Access authenticates people
  * at the edge; this file verifies the token Access attaches, so a request that

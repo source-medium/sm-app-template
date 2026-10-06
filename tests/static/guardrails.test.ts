@@ -86,7 +86,8 @@ describe("auth-coverage", () => {
   });
 
   it("follows a guarded handler in the same file exported under a method name", () => {
-    const handler = 'async function handler() { await requireViewer(); return new Response(""); }\n';
+    const handler =
+      'import { requireViewer } from "@/lib/auth/require-viewer"; async function handler() { await requireViewer(); return new Response(""); }\n';
     expect(findAuthGaps([{ path: "src/app/a/route.ts", text: `${handler}export { handler as GET };` }])).toEqual([]);
     expect(findAuthGaps([{ path: "src/app/b/route.ts", text: `${handler}export const GET = handler;` }])).toEqual([]);
   });
@@ -98,7 +99,7 @@ describe("auth-coverage", () => {
     };
     const guarded = {
       path: "src/features/orders/safe.ts",
-      text: "export async function safeGET() { await requireViewer(); return new Response(''); }",
+      text: 'import { requireViewer } from "@/lib/auth/require-viewer"; export async function safeGET() { await requireViewer(); return new Response(""); }',
     };
     expect(
       findAuthGaps([
@@ -145,7 +146,7 @@ describe("auth-coverage", () => {
       findAuthGaps([
         {
           path: "src/features/a/bigquery.ts",
-          text: "export async function load() { const { warehouse } = await requireViewer({ live: true }); }",
+          text: 'import { requireViewer } from "@/lib/auth/require-viewer"; export async function load() { const { warehouse } = await requireViewer({ live: true }); }',
         },
         { path: "src/features/a/queries.ts", text: "export function encode(x: string) { return x; }" },
         { path: "src/app/healthz/route.ts", text: "export function GET() { return new Response('ok'); }" },
@@ -153,10 +154,116 @@ describe("auth-coverage", () => {
     ).toEqual([]);
   });
 
+  it.each([
+    "const guard = () => requireViewer(); return 1;",
+    "await requireViewer().catch(() => null); return 1;",
+    "try { await requireViewer(); } catch {} return 1;",
+    "if (false) await requireViewer(); return 1;",
+    "requireViewer(); return 1;",
+    "await rows(); await requireViewer();",
+    "const ignored = rows(), viewer = await requireViewer();",
+    "const requireViewer = async () => null; await requireViewer();",
+    "await requireViewer({ live: await rows() });",
+  ])("rejects ineffective guards: %s", (body) => {
+    expect(
+      findAuthGaps([
+        {
+          path: "src/app/x/route.ts",
+          text: `import { requireViewer } from "@/lib/auth/require-viewer"; export async function GET() { ${body} }`,
+        },
+      ]),
+    ).toHaveLength(1);
+  });
+
+  it("resolves the guard binding and rejects shadowing, fake imports and parameter side effects", () => {
+    for (const text of [
+      "export async function GET() { await requireViewer(); }",
+      'import { requireViewer } from "./fake"; export async function GET() { await requireViewer(); }',
+      'import { requireViewer } from "@/lib/auth/require-viewer"; export async function GET(requireViewer) { await requireViewer(); }',
+      'import { requireViewer } from "@/lib/auth/require-viewer"; export async function GET(x = rows()) { await requireViewer(); }',
+    ])
+      expect(findAuthGaps([{ path: "src/app/x/route.ts", text }])).toHaveLength(1);
+  });
+
+  it("accepts the canonical guard imported under an alias and a React cache wrapper", () => {
+    expect(
+      findAuthGaps([
+        {
+          path: "src/features/x/queries.ts",
+          text: 'import { requireViewer as guard } from "../../lib/auth/require-viewer"; import { cache } from "react"; export const load = cache(async () => { const viewer = await guard(); return viewer; });',
+        },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("follows re-exported loaders and actions, including default actions and export stars", () => {
+    const helper = { path: "src/lib/helper.ts", text: "export async function unsafe() {}" };
+    for (const path of ["src/app/actions.ts", "src/features/x/queries.ts"]) {
+      for (const exported of [
+        'export { unsafe as save } from "@/lib/helper";',
+        'export * from "@/lib/helper";',
+        'import { unsafe } from "@/lib/helper"; export const save = unsafe;',
+        "export default async function () {}",
+      ])
+        expect(findAuthGaps([helper, { path, text: '"use server"; ' + exported }])).toHaveLength(1);
+    }
+  });
+
+  it("checks nested actions even in use-server files", () => {
+    expect(
+      findAuthGaps([
+        {
+          path: "src/app/actions.ts",
+          text: '"use server"; import { requireViewer } from "@/lib/auth/require-viewer"; export async function outer() { await requireViewer(); async function inner() { "use server"; } }',
+        },
+      ]),
+    ).toHaveLength(1);
+  });
+
+  it.each([
+    'const path = "./warehouse.server"; export const load = () => import(path);',
+    'const load = require; export const warehouse = load("./warehouse.server");',
+    'export const warehouse = require("./warehouse.server");',
+    'import { createRequire } from "node:module";',
+    'import warehouse = require("./warehouse.server");',
+    'import "./warehouse.server";',
+    'export * from "./warehouse.server";',
+  ])("rejects hidden warehouse access: %s", (text) => {
+    expect(
+      findAuthGaps([
+        { path: "src/lib/data/warehouse.server.ts", text: "export function warehouseFor() {}" },
+        { path: "src/lib/data/helper.ts", text },
+      ]).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("rejects source extensions outside the typed and guarded contract", () => {
+    for (const path of ["src/app/x/route.js", "src/lib/helper.mjs", "src/lib/helper.cts"]) {
+      expect(findAuthGaps([{ path, text: "export const data = 1" }])[0]).toContain("use .ts or .tsx");
+    }
+  });
+
+  it("recognizes use-server anywhere in the directive prologue", () => {
+    expect(
+      findAuthGaps([
+        { path: "src/app/actions.ts", text: '"use strict"; "use server"; export async function save() {}' },
+      ]),
+    ).toHaveLength(1);
+    expect(
+      findAuthGaps([
+        { path: "src/features/x/page.tsx", text: 'async function save() { "use strict"; "use server"; }' },
+      ]),
+    ).toHaveLength(1);
+  });
+
   it("passes on this repository's own source", () => {
     const walk = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-        entry.isDirectory() ? walk(join(dir, entry.name)) : /\.tsx?$/.test(entry.name) ? [join(dir, entry.name)] : [],
+        entry.isDirectory()
+          ? walk(join(dir, entry.name))
+          : /\.[cm]?[jt]sx?$/.test(entry.name)
+            ? [join(dir, entry.name)]
+            : [],
       );
     const files = walk("src").map((path) => ({ path: path.split(sep).join("/"), text: readFileSync(path, "utf8") }));
     expect(files.some((file) => file.path.startsWith("src/features/"))).toBe(true);

@@ -13,10 +13,11 @@ onlyBuiltDependencies:
 #   (`a%26b` otherwise reaches route handlers and useSearchParams as `a&b=`).
 #   Remove when OpenNext encodes it itself.
 # - next: React 19.3's hydration-replay fix (facebook/react#35494), backported
-#   into Next's stable react-dom client bundles. The App Router runs that
-#   bundled copy, so updating the react and react-dom packages does not fix it.
-#   An experimental Next flag switches to react-dom-experimental, which is not
-#   patched. Remove on Next 16.
+#   into all of Next's stable and experimental DOM replay bundles, including
+#   profiling. Updating the react-dom package alone does not fix these copies.
+#   Remove only after checking the exact replacement's compiled bundles for
+#   the upstream fix and passing tests/static/react-hydration.test.ts and E2E.
+#   A major version (including Next 16) is not evidence that the fix shipped.
 patchedDependencies:
   "@opennextjs/aws@~4.1.7": patches/@opennextjs__aws@4.1.7.patch
   "next@~15.5.27": patches/next@15.5.27.patch

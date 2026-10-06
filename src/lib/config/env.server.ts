@@ -1,5 +1,5 @@
 /**
- * sm-app-template integration file. Template version: 1.0.0.
+ * sm-app-template integration file. Template version: 0.1.0 (unreleased).
  *
  * The one runtime configuration parser. The server, the middleware, the
  * doctor, and the tests all derive the app's mode from parseConfig(); nothing

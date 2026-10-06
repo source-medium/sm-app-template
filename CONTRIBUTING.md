@@ -20,8 +20,8 @@ For live checks, put a test app's configuration block in `.env.local` and run
 `pnpm diagnose` and `pnpm test:live`. They run real (small) BigQuery queries,
 so they never run by default or in CI.
 
-CI runs all of these on every pull request, without credentials or network
-access to any warehouse.
+CI runs the offline checks on every pull request. Live checks are opt-in and
+never run in CI; use only SourceMedium's demo tenant for template validation.
 
 ## Rules for changes
 
@@ -29,8 +29,9 @@ access to any warehouse.
 - Files with a "Template version" header (`env.server.ts`, the guards,
   `google-token.server.ts`, `bigquery-rest.server.ts`, `warehouse.server.ts`,
   `warehouse-error.ts`, `log.ts`) are what customers diff when they update.
-  Bump the version in every changed header and describe the change in the
-  release notes.
+  Headers currently identify the unreleased 0.1.0 template. When publishing a
+  release, align changed headers with that release and describe the changes
+  in its notes; a header alone is not evidence of a published tag.
 - Every new guardrail fails with one sentence naming the file and the fix, and
   has a test showing it fails on a deliberate violation (`tests/static`).
 - No real customer identifiers, values, URLs, or credentials anywhere,
@@ -42,7 +43,9 @@ access to any warehouse.
 
 ## Releases
 
-Releases are GitHub releases with semantic version tags. The release notes
+No stable tag or GitHub release has been published yet. Follow the open gates
+in [release readiness](docs/release-readiness.md) before claiming v1 readiness.
+Releases will be GitHub releases with semantic version tags. The release notes
 list every changed file that carries a "Template version" header, any change
 to configuration or the deploy flow, and the tested versions of Node.js,
 Next.js, the OpenNext adapter, Wrangler, and the Workers compatibility date.

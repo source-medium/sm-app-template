@@ -151,7 +151,7 @@ async function RosterFilterBar({
         title="That store is not in this warehouse"
         remedy="The link names a store this app cannot find. Choose a store below."
       />
-      {stores[0] && <StoreFilterBar stores={stores} storeId={stores[0].id} {...props} />}
+      {stores[0] && <StoreFilterBar stores={stores} storeId={storeId} {...props} />}
     </div>
   );
 }

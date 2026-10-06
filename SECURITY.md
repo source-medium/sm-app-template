@@ -7,16 +7,17 @@ Report security issues privately through GitHub: on this repository's
 public issue.
 
 If your report involves a live credential, do not include it. If you believe
-an app key or password was exposed, replace it from the Apps page in
-SourceMedium right away (`docs/operations.md`) and tell your SourceMedium
-contact.
+an app key or password was exposed, follow the replacement instructions in [operations](docs/operations.md)
+and contact SourceMedium immediately. Do not wait for the planned Apps page
+to become available.
 
 ## Supported versions
 
-Security fixes go to the latest release of this template. Your copy is your
+Until the first release, security fixes go to `main`; afterward they go to the
+latest release of this template. Your copy is your
 code: to take a fix, compare the files that carry a "Template version" header
 (the configuration parser, the viewer guards, the Google token exchange, and
-the BigQuery client) with the latest release.
+the BigQuery client) with `main` or the latest published release.
 
 ## Scope and design limits
 

@@ -1,5 +1,5 @@
 /**
- * sm-app-template integration file. Template version: 1.0.0.
+ * sm-app-template integration file. Template version: 0.1.0 (unreleased).
  *
  * Every warehouse failure becomes one classified error whose remedy follows
  * the provider's reason. A generic 403 is never called revocation, quota is
@@ -26,12 +26,12 @@ const COPY: Record<WarehouseErrorKind, { title: string; remedy: string }> = {
   credential_invalid: {
     title: "The app key was rejected",
     remedy:
-      "Google rejected SM_APP_KEY: it may have been replaced, paused, or revoked. Copy the current key from the Apps page in SourceMedium, or ask your SourceMedium admin.",
+      "Google rejected SM_APP_KEY: it may have been replaced, paused, or revoked. Ask your SourceMedium admin for an app-specific replacement key.",
   },
   permission_denied: {
     title: "The app cannot read this data",
     remedy:
-      "The app's identity lacks permission for this dataset or job project. Retry provisioning from the Apps page in SourceMedium; if it persists, contact SourceMedium support.",
+      "The app's identity lacks permission for this dataset or job project. Ask your SourceMedium admin to check the app provisioning; if it persists, contact SourceMedium support.",
   },
   quota_exceeded: {
     title: "Query allowance used up",
@@ -46,7 +46,7 @@ const COPY: Record<WarehouseErrorKind, { title: string; remedy: string }> = {
   not_found: {
     title: "Table or dataset not found",
     remedy:
-      "BigQuery could not find this table in the configured location. Recopy the configuration block from Apps, and check BIGQUERY_LOCATION.",
+      "BigQuery could not find this table in the configured location. Check BIGQUERY_LOCATION and the app-specific configuration block with your SourceMedium admin.",
   },
   invalid_query: {
     title: "The query is invalid",
@@ -78,7 +78,7 @@ const COPY: Record<WarehouseErrorKind, { title: string; remedy: string }> = {
   result_too_large: {
     title: "Too much data for this view",
     remedy:
-      "This view needs every row to be exact and the query returned more than its bound. Narrow the filters, or raise the bound in the feature's bigquery.ts deliberately.",
+      "The query exceeded its row bound or the 10 MiB response limit. Narrow the filters, select fewer columns, or aggregate more in SQL.",
   },
   unknown: { title: "Something went wrong", remedy: "Reload the page; if it persists, run `pnpm diagnose`." },
 };

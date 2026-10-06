@@ -9,7 +9,7 @@ patchedDependencies:
     hash: 143867681cee53f9eaf794626d67fe72783581f4487b3e36dd5f83efda1298ae
     path: patches/@opennextjs__aws@4.1.7.patch
   next@~15.5.27:
-    hash: 613892b80e1d36858a3ba49c85ca8d1a9af67af115f7f7bd2ccef4b06dcac69a
+    hash: e3ac1bfacd824bebcd2ef2a417033ef67ae0ec5bdc171def8ebc9a1e7dd190fd
     path: patches/next@15.5.27.patch
 
 importers:
@@ -18,7 +18,7 @@ importers:
     dependencies:
       '@opennextjs/cloudflare':
         specifier: 1.20.8
-        version: 1.20.8(next@15.5.27(patch_hash=613892b80e1d36858a3ba49c85ca8d1a9af67af115f7f7bd2ccef4b06dcac69a)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(wrangler@4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@24.19.1))
+        version: 1.20.8(next@15.5.27(patch_hash=e3ac1bfacd824bebcd2ef2a417033ef67ae0ec5bdc171def8ebc9a1e7dd190fd)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(wrangler@4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@24.19.1))
       '@tanstack/react-table':
         specifier: 8.21.3
         version: 8.21.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -36,7 +36,7 @@ importers:
         version: 1.52.0(@types/react@19.3.0)(react@19.3.0)
       next:
         specifier: 15.5.27
-        version: 15.5.27(patch_hash=613892b80e1d36858a3ba49c85ca8d1a9af67af115f7f7bd2ccef4b06dcac69a)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 15.5.27(patch_hash=e3ac1bfacd824bebcd2ef2a417033ef67ae0ec5bdc171def8ebc9a1e7dd190fd)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       radix-ui:
         specifier: 1.7.0
         version: 1.7.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -7025,7 +7025,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.3
 
-  '@opennextjs/aws@4.1.7(patch_hash=143867681cee53f9eaf794626d67fe72783581f4487b3e36dd5f83efda1298ae)(next@15.5.27(patch_hash=613892b80e1d36858a3ba49c85ca8d1a9af67af115f7f7bd2ccef4b06dcac69a)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))':
+  '@opennextjs/aws@4.1.7(patch_hash=143867681cee53f9eaf794626d67fe72783581f4487b3e36dd5f83efda1298ae)(next@15.5.27(patch_hash=e3ac1bfacd824bebcd2ef2a417033ef67ae0ec5bdc171def8ebc9a1e7dd190fd)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))':
     dependencies:
       '@ast-grep/napi': 0.40.5
       '@aws-sdk/client-cloudfront': 3.984.0
@@ -7041,24 +7041,24 @@ snapshots:
       cookie: 1.1.1
       esbuild: 0.25.4
       express: 5.2.1
-      next: 15.5.27(patch_hash=613892b80e1d36858a3ba49c85ca8d1a9af67af115f7f7bd2ccef4b06dcac69a)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      next: 15.5.27(patch_hash=e3ac1bfacd824bebcd2ef2a417033ef67ae0ec5bdc171def8ebc9a1e7dd190fd)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       path-to-regexp: 6.3.0
       urlpattern-polyfill: 10.1.0
       yaml: 2.9.1
     transitivePeerDependencies:
       - supports-color
 
-  '@opennextjs/cloudflare@1.20.8(next@15.5.27(patch_hash=613892b80e1d36858a3ba49c85ca8d1a9af67af115f7f7bd2ccef4b06dcac69a)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(wrangler@4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@24.19.1))':
+  '@opennextjs/cloudflare@1.20.8(next@15.5.27(patch_hash=e3ac1bfacd824bebcd2ef2a417033ef67ae0ec5bdc171def8ebc9a1e7dd190fd)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(wrangler@4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@24.19.1))':
     dependencies:
       '@ast-grep/napi': 0.40.5
       '@dotenvx/dotenvx': 1.31.0
-      '@opennextjs/aws': 4.1.7(patch_hash=143867681cee53f9eaf794626d67fe72783581f4487b3e36dd5f83efda1298ae)(next@15.5.27(patch_hash=613892b80e1d36858a3ba49c85ca8d1a9af67af115f7f7bd2ccef4b06dcac69a)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
+      '@opennextjs/aws': 4.1.7(patch_hash=143867681cee53f9eaf794626d67fe72783581f4487b3e36dd5f83efda1298ae)(next@15.5.27(patch_hash=e3ac1bfacd824bebcd2ef2a417033ef67ae0ec5bdc171def8ebc9a1e7dd190fd)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
       ci-info: 4.4.0
       cloudflare: 4.5.0
       comment-json: 4.6.2
       enquirer: 2.4.1
       glob: 12.0.0
-      next: 15.5.27(patch_hash=613892b80e1d36858a3ba49c85ca8d1a9af67af115f7f7bd2ccef4b06dcac69a)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      next: 15.5.27(patch_hash=e3ac1bfacd824bebcd2ef2a417033ef67ae0ec5bdc171def8ebc9a1e7dd190fd)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       ts-tqdm: 0.8.6
       wrangler: 4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@24.19.1)
       yargs: 18.2.0
@@ -9881,7 +9881,7 @@ snapshots:
     dependencies:
       content-type: 2.1.0
 
-  next@15.5.27(patch_hash=613892b80e1d36858a3ba49c85ca8d1a9af67af115f7f7bd2ccef4b06dcac69a)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+  next@15.5.27(patch_hash=e3ac1bfacd824bebcd2ef2a417033ef67ae0ec5bdc171def8ebc9a1e7dd190fd)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
     dependencies:
       '@next/env': 15.5.27
       '@swc/helpers': 0.5.15

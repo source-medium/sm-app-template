@@ -37,7 +37,8 @@ per-person removal; browsers have no "log out"; and it is not a design for
 writes, which would need real accounts and CSRF protection. Hosted apps are
 HTTPS; plain HTTP is only for the local dev server on 127.0.0.1.
 
-To remove someone, issue a replacement password on the Apps page and update
+To remove someone, replace the password through your app provisioning process
+(the planned Apps page will provide this) and update
 every deployment (`docs/operations.md`). SourceMedium cannot change your host's
 secrets, so the old password works until you do.
 
@@ -78,3 +79,19 @@ Removing a member from your SourceMedium organization changes neither who can
 open your app nor any key someone already copied. Rotate the password (or
 update Access) and, if they held the configuration block, issue a replacement
 key.
+
+## Extending the app safely
+
+`pnpm check` requires the first executable statement in a loader, handler or
+server action to await the canonical `requireViewer` import, directly or in a
+single variable declaration. Import aliases work; deferred callbacks, caught
+auth failures, computed imports and CommonJS loaders fail the check. It follows
+local re-exports and React `cache` wrappers.
+
+This is a development guardrail, not a security sandbox for arbitrary source
+changes. Keep the runtime guard and review new request entry points. The
+`.claude/settings.json` read-deny patterns cover `.env*` and `.dev.vars*`, with
+an exception for `.env.example`. Claude Code's file-tool rules do not prevent
+arbitrary subprocesses from opening secrets; follow AGENTS.md and never read
+secret files through shell commands or scripts either. Confirm permissions in
+your installed agent before using a real configuration block.

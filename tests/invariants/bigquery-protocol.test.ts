@@ -141,6 +141,17 @@ describe("BigQuery REST protocol", () => {
     expect(fake.count("poll")).toBe(3);
   });
 
+  it("retries an empty server-error response on the same job", async () => {
+    let polls = 0;
+    const { client, fake } = await clientFor({
+      submit: () => Response.json(queryResponse({ jobComplete: false })),
+      poll: () => (++polls === 1 ? new Response(null, { status: 503 }) : Response.json(queryResponse())),
+    });
+    await expect(runQuery(client, REQUEST)).resolves.toMatchObject({ truncated: false });
+    expect(fake.count("submit")).toBe(1);
+    expect(fake.count("poll")).toBe(2);
+  });
+
   it("retries a rate-limited poll on the same job instead of reporting the daily allowance", async () => {
     let polls = 0;
     const { client, fake } = await clientFor({
@@ -255,6 +266,65 @@ describe("BigQuery REST protocol", () => {
     const result = await runQuery(client, { ...REQUEST, maxRows: 2 });
     expect(result.rows).toHaveLength(2);
     expect(result.truncated).toBe(true);
+  });
+
+  it.each(["submit", "poll"] as const)("rejects an oversized %s response without retrying", async (stage) => {
+    const large = () =>
+      Response.json(
+        queryResponse({
+          rows: wireRows([
+            ["x".repeat(6 * 1024 * 1024), "1"],
+            ["y".repeat(6 * 1024 * 1024), "2"],
+          ]),
+        }),
+      );
+    const { client, fake } = await clientFor({
+      submit: stage === "submit" ? large : () => Response.json(queryResponse({ jobComplete: false })),
+      poll: large,
+    });
+    const error = await failure(runQuery(client, { ...REQUEST, maxRows: 2 }));
+    expect(error).toMatchObject({ kind: "result_too_large", reason: "response_bytes" });
+    expect(fake.count("submit")).toBe(1);
+    expect(fake.count("poll")).toBe(stage === "submit" ? 0 : 1);
+  });
+
+  it("bounds cumulative UTF-8 bytes across pages, including a final page without a token", async () => {
+    // Each page is <10 MiB, together >10 MiB; JS string lengths together are <10 MiB.
+    const value = "é".repeat(3 * 1024 * 1024);
+    const { client, fake } = await clientFor({
+      submit: () => Response.json(queryResponse({ rows: wireRows([[value, "1"]]), pageToken: "next" })),
+      poll: () => Response.json(queryResponse({ rows: wireRows([[value, "2"]]) })),
+    });
+    expect(await failure(runQuery(client, REQUEST))).toMatchObject({
+      kind: "result_too_large",
+      reason: "response_bytes",
+    });
+    expect(fake.count("poll")).toBe(1);
+  });
+
+  it("stops reading an oversized stream before buffering the whole response", async () => {
+    let reads = 0;
+    let cancelled = false;
+    const { client } = await clientFor({
+      submit: () =>
+        new Response(
+          new ReadableStream(
+            {
+              pull(controller) {
+                reads++;
+                controller.enqueue(new Uint8Array(1024 * 1024));
+              },
+              cancel() {
+                cancelled = true;
+              },
+            },
+            { highWaterMark: 0 },
+          ),
+        ),
+    });
+    expect((await failure(runQuery(client, REQUEST))).kind).toBe("result_too_large");
+    expect(reads).toBe(11);
+    expect(cancelled).toBe(true);
   });
 
   it.each([

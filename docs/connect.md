@@ -1,5 +1,10 @@
 # Connect and deploy
 
+This is a preview. SourceMedium's Apps page and its self-service credential
+flows are planned. The steps below describe that planned flow; live setup is
+currently possible only with an already provisioned app-specific block.
+Never use an admin credential. See [release readiness](release-readiness.md).
+
 The app has three states, always shown in the top bar:
 
 | State                   | When                                                     | What you see                                     |
@@ -23,7 +28,8 @@ SourceMedium is needed.
 
 ## 2. Get your configuration
 
-An organization **admin** opens **Apps** in SourceMedium and creates an app.
+When the Apps page is available, an organization **admin** opens **Apps** in
+SourceMedium and creates an app.
 The page states what the app will be able to read, then shows one
 configuration block **once**:
 
@@ -60,7 +66,9 @@ colon), even on localhost. The top bar shows **Live data**.
 
 ## 4. Deploy to Cloudflare
 
-Click **Deploy to Cloudflare** in the README. Cloudflare copies the repository
+The fresh-account button flow still needs a walkthrough after this repository
+is public. The intended flow is: click **Deploy to Cloudflare** in the README.
+Cloudflare copies the repository
 into your GitHub or GitLab account, then asks for each value from
 `.env.example` as an encrypted secret: paste each one from your block. Then
 deploy, open the URL, enter the password, and confirm **Live data** and the
@@ -69,7 +77,6 @@ store you expect.
 - **Plan: Workers Paid.** Rendering a page takes roughly 80 to 850 ms of CPU
   on a deployed Worker (Cloudflare's per-request CPU time, with sample and
   live data, 2026-10-05), far above the Free plan's 10 ms per request.
-  Vercel's Hobby and Pro plans have no comparable limit.
 - Values are runtime secrets, never build variables. The build needs none.
 - Later deploys keep the secrets you entered; nothing in `wrangler.jsonc`
   overwrites them.
@@ -79,9 +86,11 @@ store you expect.
   `pnpm deploy`, a pnpm built-in). It builds a Worker with no local secrets in
   it; set the secrets in the Cloudflare dashboard or with `wrangler secret put`.
 
-## 5. Or deploy to Vercel
+## 5. Vercel (unverified)
 
-Import the repository in Vercel (framework: Next.js), add the same eight values
+No Vercel deployment has been tested, and this preview does not claim Vercel
+support. To evaluate it yourself: import the repository (framework: Next.js),
+add the same eight values
 as environment variables for Production (mark the two secrets as sensitive),
 and deploy. Use the shared password on Vercel; Cloudflare Access is
 Cloudflare-only. Vercel's own deployment protection is optional and separate.
@@ -94,8 +103,10 @@ deployed Worker reads only its runtime variables.
 
 ## Lost a secret?
 
-SourceMedium never stores your key or password and cannot show them again.
-On the Apps page:
+Treat the configuration block as shown once. If it is lost before self-service
+replacement is available, contact your SourceMedium admin through your existing
+support channel; do not send them the old key or password.
+The planned Apps page will provide:
 
 - **Issue replacement key** returns a new `SM_APP_KEY`. The old key stops
   working; update every host and `.env.local`.

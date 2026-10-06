@@ -1,5 +1,5 @@
 /**
- * sm-app-template integration file. Template version: 1.0.0.
+ * sm-app-template integration file. Template version: 0.1.0 (unreleased).
  *
  * The one viewer decision, shared by middleware (early challenges) and
  * requireViewer() (the guard every data read calls). A browser-supplied

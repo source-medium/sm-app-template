@@ -1,5 +1,5 @@
 /**
- * sm-app-template integration file. Template version: 1.0.0.
+ * sm-app-template integration file. Template version: 0.1.0 (unreleased).
  *
  * One JSON object per line with a fixed key set and no free text, so a host's
  * log search works on day one. Never log rows, keys, Authorization headers,

@@ -1,5 +1,5 @@
 /**
- * sm-app-template integration file. Template version: 1.0.0.
+ * sm-app-template integration file. Template version: 0.1.0 (unreleased).
  *
  * Binds validated live configuration to the REST client. Pages get a
  * Warehouse only through requireViewer(); there is no other route from a

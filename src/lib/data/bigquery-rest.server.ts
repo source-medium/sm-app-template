@@ -1,12 +1,12 @@
 /**
- * sm-app-template integration file. Template version: 1.0.0.
+ * sm-app-template integration file. Template version: 0.1.0 (unreleased).
  *
  * A thin client over the BigQuery v2 REST API:
  *   1. Submit jobs.query once, with labels, a byte ceiling, and named parameters.
  *   2. If the job is still running, poll getQueryResults for that SAME job and
  *      location. A replacement query is never submitted.
- *   3. Follow page tokens up to the row and response-size bound and report
- *      truncation explicitly.
+ *   3. Follow page tokens up to the row bound and report truncation explicitly.
+ *      Stop reading with an error if cumulative responses exceed 10 MiB.
  *   4. On deadline or cancellation, ask BigQuery to cancel a known job. That
  *      is best effort and not proof the job stopped. If the submission
  *      response is lost before a job id is known, report an indeterminate
@@ -129,7 +129,6 @@ export async function runQuery(
 
     const fields = page.schema?.fields ?? first.schema?.fields ?? [];
     const rows: Record<string, unknown>[] = [];
-    let bytes = 0;
     let truncated = false;
     for (;;) {
       for (const row of page.rows ?? []) {
@@ -139,9 +138,8 @@ export async function runQuery(
         }
         rows.push(decodeRow(fields, row));
       }
-      bytes += call.lastResponseBytes;
       if (truncated || !page.pageToken) break;
-      if (rows.length >= maxRows || bytes >= MAX_RESPONSE_BYTES) {
+      if (rows.length >= maxRows) {
         truncated = true;
         break;
       }
@@ -264,7 +262,7 @@ class Call {
   private readonly now: () => number;
   private readonly unlink: () => void;
   private tokenValue: string | null = null;
-  lastResponseBytes = 0;
+  private responseBytes = 0;
 
   constructor(
     private readonly client: BigQueryClient,
@@ -332,7 +330,8 @@ class Call {
       }
       throw new WarehouseError("submission_indeterminate", { reason: "submit_no_response" });
     }
-    const parsed = await this.readJson(response).catch(() => {
+    const parsed = await this.readJson(response).catch((error: unknown) => {
+      if (error instanceof WarehouseError) throw error;
       throw new WarehouseError("submission_indeterminate", { reason: "submit_unreadable", status: response.status });
     });
     if (response.ok) return parsed as QueryResponse;
@@ -366,7 +365,11 @@ class Call {
         void error; // A transport failure on an idempotent GET: retry below.
       }
       if (response) {
-        const body = await this.readJson(response).catch(() => null);
+        const body = await this.readJson(response).catch((error: unknown) => {
+          if (error instanceof WarehouseError) throw error;
+          if (this.signal.aborted) throw this.signal.reason;
+          return null;
+        });
         if (response.ok && body !== null) return body;
         if (!response.ok && response.status !== 429 && response.status < 500) {
           const error = classifyBigQueryError(response.status, body, job);
@@ -412,9 +415,26 @@ class Call {
   }
 
   private async readJson(response: Response): Promise<unknown> {
-    const text = await response.text();
-    this.lastResponseBytes = text.length;
-    return JSON.parse(text);
+    const reader = response.body?.getReader();
+    if (!reader) throw new SyntaxError("Empty response body");
+    const decoder = new TextDecoder();
+    const chunks: string[] = [];
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        this.responseBytes += value.byteLength;
+        if (this.responseBytes > MAX_RESPONSE_BYTES) {
+          await reader.cancel();
+          throw new WarehouseError("result_too_large", { reason: "response_bytes" });
+        }
+        chunks.push(decoder.decode(value, { stream: true }));
+      }
+      chunks.push(decoder.decode());
+      return JSON.parse(chunks.join(""));
+    } finally {
+      reader.releaseLock();
+    }
   }
 }
 

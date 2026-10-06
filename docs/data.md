@@ -30,13 +30,20 @@ snapshot of SourceMedium's published schema, which may differ from yours.
 | Creatives      | `rpt_ad_performance_daily`    | ad by day, aggregated to creative | `ad_creative_*` text and image URLs, the same measures                                                                                                            |
 | Orders         | `obt_orders`                  | one row per order                 | `sm_order_key`, `order_name`, `order_processed_at_local_datetime`, channel, type, status, quantities, and the order's revenue columns                             |
 
-The formulas follow SourceMedium's metric catalog: net revenue is
-`SUM(order_net_revenue)`, average order value is net revenue ÷ orders, MER is
+The example uses these formulas: net revenue is
+`SUM(order_net_revenue)`, revenue per summary order is net revenue ÷ summary
+orders, MER is
 net revenue ÷ ad spend, CPC is spend ÷ clicks, and platform ROAS is
-platform-reported revenue ÷ spend. Overview's totals match the catalog's
-Executive Summary metrics (`order_net_revenue_summary`, `order_count_summary`,
+platform-reported revenue ÷ spend. Overview implements the all-channel sums
+used by the catalog's Executive Summary metrics (`order_net_revenue_summary`, `order_count_summary`,
 `total_ad_spend_summary`), which sum every `sm_channel` row; add an
-`sm_channel` filter to report only some channels.
+`sm_channel` filter to report only some channels. This is an implementation
+match, not an independent numerical reconciliation. Summary orders include
+excluded, draft and exchanged channels when published and can differ from
+valid orders in `obt_orders`. The UI labels that count and its revenue ratio
+explicitly; do not present the ratio as valid-order AOV without reconciling the
+definitions, dates and store. The demo discrepancy remains a release check in
+[release readiness](release-readiness.md).
 
 Every query filters one store with `sm_store_id = @store_id`. There are no
 cross-store totals. The store picker lists the distinct `sm_store_id` values of
@@ -80,7 +87,11 @@ const rows = decodeRows(TopProductRow, result.rows, "your_relation");
 - Aggregate in SQL. `maxRows` bounds the rows returned across pages, and
   `result.truncated` says when more matched. Show truncation (the data table
   does), and never compute a total from a truncated list: throw
-  `new WarehouseError("result_too_large")` instead.
+  `new WarehouseError("result_too_large")` instead. Independently, the client
+  stops when cumulative response bodies exceed 10 MiB across submission, polls
+  and retries, counting UTF-8 bytes as chunks arrive. Exceeding that limit
+  throws instead of returning partial
+  totals; reduce columns or aggregate more in SQL.
 - `LIMIT` bounds output, not cost: BigQuery bills the columns scanned. Each
   query also carries a byte ceiling (`BIGQUERY_MAX_BYTES_BILLED`, default 1 GiB).
 - Each query has one 30-second deadline. A query that is still running is
@@ -112,7 +123,7 @@ they publish them. The app shows them as published:
 
 - Decode with `bq.numeric()`; values stay exact decimal text.
 - Add them with `sumDecimals` (`src/lib/data/decimal.ts`), never as JavaScript
-  numbers. Ratios such as AOV use `decimalToNumber` and `ratio`.
+  numbers. Ratios such as revenue per summary order use `decimalToNumber` and `ratio`.
 - Format with `formatMoney`. Set `currency` in `app.config.ts` (for example
   `"USD"`) to show a currency symbol; with `null`, amounts show without one.
 - Never add money across stores: stores can report in different currencies.
@@ -156,6 +167,14 @@ links last, so a card whose image fails shows the creative's text instead. To
 allow only specific image hosts, narrow `img-src` in
 `src/lib/security-headers.ts`.
 
+The image host sees the viewer's IP address, request time and complete image
+URL, and may receive cookies permitted by the browser. `no-referrer` hides the
+app's URL, not those details. Warehouse URLs may contain tracking identifiers;
+opening Creatives can therefore reveal activity to an ad platform or another
+image host. Use this behavior only when acceptable for your team. To prevent
+external image requests, set `img-src` to `'self' data:`; remote cards then use
+the existing text fallback. Never put app credentials in image URLs.
+
 ## Speed and cost
 
 Every page runs its queries in parallel with the store list when the URL names
@@ -163,3 +182,11 @@ a store, which the filter bar and navigation keep doing. Each BigQuery query
 still takes a moment (on the demo warehouse, pages took 1 to 2.5 seconds from
 Cloudflare's edge), so keep pages to a few queries each. `LIMIT` does not
 reduce cost; filtering on a partition column and selecting fewer columns do.
+
+## Demo reconciliation
+
+The demo warehouse applies privacy masking to numeric metrics. Summary order
+counts are scaled, while the number of order rows is not. Consequently, demo
+Summary orders need not match a count of valid order rows. Compare Overview
+with the catalog's summary metrics, using the same store and dates and every
+channel. Do not apply a demo-specific adjustment to customer queries.

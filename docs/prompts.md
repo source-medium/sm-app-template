@@ -1,7 +1,9 @@
 # Starter prompts
 
-Copy one into your coding agent. Each sends the agent to the right guide; all
-of them end with `pnpm check`.
+Copy one into your coding agent. These are starting instructions, not proven
+end-to-end onboarding flows. "Connect my data" needs an already provisioned
+app block while the Apps page is unavailable. "Check a number" needs an
+independent, authorized source; a passing code check does not validate a metric.
 
 ## Connect my data
 
@@ -10,7 +12,9 @@ Help me connect this app to my SourceMedium warehouse. Follow docs/connect.md.
 I will paste the configuration block into .env.local myself; do not ask me to
 paste it into this chat and do not read .env.local. When I say it is done, ask
 me to run `pnpm diagnose` and tell you what it printed, then fix any problem it
-reports.
+reports. If app provisioning is unavailable, explain that prerequisite and
+keep sample mode; do not invent a configuration block. Run pnpm check and
+report separately whether live connection was actually verified.
 ```
 
 ## Rebrand it
@@ -56,7 +60,16 @@ page" in AGENTS.md, and run pnpm check.
 The <metric> on the <view> page shows <value> for <store> from <date> to
 <date>. Check it against the SourceMedium MCP's query_metrics for the same
 store and dates. If they differ, explain why from the SQL and the catalog
-definition, without changing anything yet.
+definition, without changing anything yet. Do not treat a catalog formula as
+an independently verified total. If query_metrics is unavailable, say the
+comparison needs another independent, authorized source. Use an existing
+read-only BigQuery login only with my authorization, after inspecting the
+schema; constrain the query to the agreed project, store and dates, use typed
+parameters and a maximum bytes billed limit. Never read or copy the app key.
+If neither source is available, report the comparison as unverified. For demo
+data, check whether privacy masking scales metric columns without multiplying
+rows before comparing summary counts with order-row counts. Run pnpm check and report it separately from the
+numerical comparison.
 ```
 
 ## Build something unrelated
@@ -73,14 +86,24 @@ read-only by design (docs/auth.md). Run pnpm check when done.
 Run it every few months, and soon after Next.js announces a security fix.
 
 ```text
-Update every package in package.json to its newest release within its current
-major version (within its current minor for 0.x), skipping deprecated
-releases. Versions are pinned exactly, so plain `pnpm update` changes nothing
+Update every package in package.json to the newest stable, non-deprecated
+release within its current major version (within its current minor for 0.x).
+Exclude prereleases such as alpha, beta, canary and rc even if their version
+sorts later; compare versions numerically, not as text. Versions are pinned
+exactly, so plain `pnpm update` changes nothing
 and `pnpm update --latest` crosses majors: find each version with `pnpm view
 <name> versions` and set it with `pnpm add -E <name>@<version>` (add -D for
-devDependencies). Do not add overrides. Then run pnpm check and pnpm test:e2e
-and fix anything that breaks. If install fails on a patch in
+devDependencies). Keep Next, @next/env and @next/eslint-plugin-next aligned,
+and keep React and react-dom aligned. Do not add overrides or change pnpm's
+patch-failure settings. Run these gates sequentially because they share build
+output: pnpm install --frozen-lockfile, pnpm check, pnpm test:e2e,
+pnpm test:secrets, pnpm build:cloudflare, and pnpm smoke:worker. Fix failures;
+do not call the update complete if any gate was skipped. For a Next or React
+change also run pnpm exec playwright test --repeat-each=8 after test:e2e,
+before test:secrets rebuilds .next. If install fails on a patch in
 pnpm-workspace.yaml, read its comment: remove the patch only if you can show
-the new release contains the fix, otherwise stop and tell me. List each
+the exact new release's compiled code contains the fix in every affected
+bundle, otherwise stop and tell me. A Next major version is not proof. Preserve
+the regression tests when removing a patch. List each
 package as old -> new, and anything you held back and why.
 ```

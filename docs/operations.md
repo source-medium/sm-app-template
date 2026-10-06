@@ -1,5 +1,10 @@
 # Operating the app
 
+Apps-page actions, revocation, resumption and provider query allowances below
+describe the planned SourceMedium provisioning service. They are not implemented
+by this template. For an already provisioned preview app, use your existing
+admin/support process until self-service is available.
+
 ## Replacing secrets
 
 | Action (Apps page)        | What changes                                | What it interrupts                                                                 |

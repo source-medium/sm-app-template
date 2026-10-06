@@ -1,5 +1,5 @@
 /**
- * sm-app-template integration file. Template version: 1.0.0.
+ * sm-app-template integration file. Template version: 0.1.0 (unreleased).
  *
  * requireViewer() runs before every data read. It re-derives the mode from
  * configuration, authenticates the request with the configured guard, and

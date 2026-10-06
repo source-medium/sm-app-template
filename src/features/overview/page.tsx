@@ -18,7 +18,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   return (
     <ReportPage
       title="Overview"
-      description="Revenue, orders, ad spend, and website sessions by day for one store."
+      description="Executive Summary metrics across all channels, by day for one store."
       pathname="/overview"
       params={params}
     >
@@ -70,11 +70,15 @@ function OverviewView({ data, filters }: { data: OverviewData; filters: ReportFi
 
   return (
     <div className="flex flex-col gap-6">
+      <p className="text-sm text-muted-foreground">
+        Summary orders sum every channel, including excluded, draft, and exchanged orders when published. They can
+        differ from valid-order counts. Revenue per summary order uses this same count.
+      </p>
       <section aria-label="Period totals" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard label="Net revenue" value={formatMoney(totals?.netRevenue ?? null)} period={period} />
-        <KpiCard label="Orders" value={formatMeasure(totals?.orders ?? null)} period={period} />
+        <KpiCard label="Summary orders" value={formatMeasure(totals?.orders ?? null)} period={period} />
         <KpiCard
-          label="Average order value"
+          label="Revenue per summary order"
           value={formatMoney(ratio(netRevenue, totals?.orders ?? null))}
           period={period}
         />
@@ -96,10 +100,10 @@ function OverviewView({ data, filters }: { data: OverviewData; filters: ReportFi
           plottable={revenue.plottable}
         />
         <ChartCard
-          title="Orders by day"
+          title="Summary orders by day"
           kind="line"
           categoryHeader="Date"
-          series={[{ key: "orders", label: "Orders", color: "var(--chart-1)" }]}
+          series={[{ key: "orders", label: "Summary orders", color: "var(--chart-1)" }]}
           data={orders.data}
           plottable={orders.plottable}
         />

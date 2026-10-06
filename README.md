@@ -1,7 +1,11 @@
 # SourceMedium App Starter
 
-Start with a working application, connect your SourceMedium warehouse, and use
-your coding agent to build what your business needs.
+Preview template: try the example views locally on sample data, then adapt them
+with your coding agent. No stable release has been published yet.
+
+Live onboarding through SourceMedium's Apps page is planned, not available in
+this starter release. The fresh-account Cloudflare button flow is not yet
+verified. See [release readiness](docs/release-readiness.md) before going live.
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/source-medium/sm-app-template)
 
@@ -13,6 +17,10 @@ delete.
 
 ## Try it in two commands
 
+Install Node.js 22.13 or newer (CI uses 24) and pnpm 10.34.5 first. Create your
+own repository with GitHub's **Use this template**, then clone it and open a
+terminal in that folder.
+
 ```sh
 pnpm install --frozen-lockfile
 pnpm dev
@@ -23,13 +31,12 @@ account, credential, database, or AI service needed.
 
 ## Use your data
 
-1. An organization admin creates an app on the **Apps** page in SourceMedium
-   and copies its configuration block (shown once).
-2. Paste it into `.env.local`, run `pnpm diagnose`, then `pnpm dev`.
-3. Deploy with the button above (or Vercel) and paste the same values when
-   asked. Open your URL, enter the password, and look for **Live data**.
+Live mode requires an app-specific configuration block issued for your warehouse.
+If you do not already have one, use sample mode and contact your SourceMedium
+admin about availability. Do not substitute an admin credential.
 
-Details, including lost secrets: [docs/connect.md](docs/connect.md).
+For an already provisioned app, follow [docs/connect.md](docs/connect.md).
+Cloudflare Workers is the tested runtime; Vercel deployment is unverified.
 
 ## Build with your coding agent
 
@@ -71,7 +78,7 @@ this template and its tested patterns; the code in your copy is yours.
 
 ## Stack
 
-Next.js (App Router) on Cloudflare Workers through OpenNext, or on Vercel ·
+Next.js (App Router) on Cloudflare Workers through OpenNext ·
 React · strict TypeScript · shadcn/ui on Tailwind CSS · Recharts · Zod ·
 jose · Vitest (Node and workerd) · Playwright with axe.
 

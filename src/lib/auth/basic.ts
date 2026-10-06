@@ -1,5 +1,5 @@
 /**
- * sm-app-template integration file. Template version: 1.0.0.
+ * sm-app-template integration file. Template version: 0.1.0 (unreleased).
  *
  * HTTP Basic, the default viewer guard: one shared, generated password.
  * Limits (docs/auth.md): a shared identity, no per-person audit, no browser

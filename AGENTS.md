@@ -51,7 +51,7 @@ docs/                         Guides (index below)
 4. **Inspect the schema before writing SQL**: the SourceMedium MCP
    (`describe_table`) or `pnpm schema <relation>`. Never guess a column.
 5. **Never paste a secret** into a chat, a file, a commit, or a log. Do not read
-   `.env.local`, `.env.production`, or `.dev.vars`; ask the person to run
+   any `.env*` (except `.env.example`) or `.dev.vars*`; ask the person to run
    `pnpm diagnose` and share its output instead.
 
 ## Add a page

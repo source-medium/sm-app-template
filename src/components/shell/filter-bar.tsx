@@ -58,6 +58,7 @@ export function FilterBar({
           onChange={(event) => event.currentTarget.form?.requestSubmit()}
           className="h-9 rounded-md border border-input bg-background px-2 text-sm"
         >
+          {!stores.some((store) => store.id === storeId) && <option value={storeId}>Choose a store</option>}
           {stores.map((store) => (
             <option key={store.id} value={store.id}>
               {store.label}

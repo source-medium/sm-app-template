@@ -16,6 +16,15 @@ test.describe("protected sample (shared password)", () => {
       [home, { RSC: "1", "Next-Router-Prefetch": "1" }],
       ["/robots.txt", {}],
       ["/.well-known/anything", {}],
+      ["/%5Fnext/static/x", {}],
+      ["/HEALTHZ", {}],
+      ["/overview;x", {}],
+      ["/sample-creatives/creative-01.svg", {}],
+      [home, { "x-middleware-subrequest": "middleware:middleware:middleware:middleware:middleware" }],
+      [
+        home,
+        { "x-middleware-subrequest": "src/middleware:src/middleware:src/middleware:src/middleware:src/middleware" },
+      ],
     ] as const) {
       const response = await anonymous.get(path, { headers });
       expect(response.status(), path).toBe(401);
