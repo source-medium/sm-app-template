@@ -7,6 +7,9 @@ independent, authorized source; a passing code check does not validate a metric.
 
 ## Connect my data
 
+**You provide:** an app-specific configuration block, entered privately into `.env.local`.
+**Expected result:** a verified live connection, or a clear explanation of the missing prerequisite.
+
 ```text
 Help me connect this app to my SourceMedium warehouse. Follow docs/connect.md.
 I will paste the configuration block into .env.local myself; do not ask me to
@@ -19,6 +22,9 @@ report separately whether live connection was actually verified.
 
 ## Rebrand it
 
+**You provide:** your company name, app name, primary color, and logo file.
+**Expected result:** your branding works in light and dark mode; the example views still work.
+
 ```text
 Rebrand this app for <company>: name "<app name>", primary color <hex>, and
 the logo at public/logo.svg. Change only src/styles/tokens.css and
@@ -27,6 +33,9 @@ pnpm check.
 ```
 
 ## Add a page
+
+**You provide:** the business question you want the page to answer.
+**Expected result:** a working view in navigation, with live and sample data, shared filters, and data states.
 
 ```text
 Add a page called "<name>" that shows <what you want to see>. Follow "Add a
@@ -37,6 +46,9 @@ data too, then run pnpm check.
 
 ## Add a page from my own table
 
+**You provide:** the dataset and table name, what it contains, and what you want to see.
+**Expected result:** a view based on the inspected schema, with matching sample data.
+
 ```text
 I have a table <dataset.table> in my warehouse with <what it holds>. Build a
 page that <what you want>. Read docs/data.md, inspect the table's columns with
@@ -45,6 +57,9 @@ schema, add sample data with the same shape, and run pnpm check.
 ```
 
 ## Build an inventory view
+
+**Data needed:** `obt_inventory_positions` with inventory for your store.
+**Expected result:** current units on hand by product, with the row grain explained and sample data included.
 
 ```text
 Build an Inventory page on obt_inventory_positions. First inspect its columns
@@ -55,6 +70,9 @@ page" in AGENTS.md, and run pnpm check.
 ```
 
 ## Check a number
+
+**You provide:** the metric, displayed value, store, dates, and an authorized comparison source.
+**Expected result:** an exact comparison and an explanation of any difference before code changes.
 
 ```text
 The <metric> on the <view> page shows <value> for <store> from <date> to
@@ -74,6 +92,9 @@ numerical comparison.
 
 ## Build something unrelated
 
+**You provide:** the feature and the job it should help you do.
+**Expected result:** a working feature, or an explicit authorization-design prerequisite if it needs writes.
+
 ```text
 Add <feature> to this app. Read AGENTS.md first. If it reads warehouse data,
 follow its five rules; if it needs to write anything or act on behalf of a
@@ -82,6 +103,9 @@ read-only by design (docs/auth.md). Run pnpm check when done.
 ```
 
 ## Update dependencies
+
+**Inputs:** the current package versions, lockfile, patches, and security advisories.
+**Expected result:** supported updates with passing release checks and a list of anything held back.
 
 Run it every few months, and soon after Next.js announces a security fix.
 

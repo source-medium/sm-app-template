@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces } from "next/font/google";
+import { cookies } from "next/headers";
 import { appConfig } from "@/app.config";
+import { parseTheme, THEME_COOKIE } from "@/lib/theme";
 import "./globals.css";
 
 // Fraunces is open-licensed and self-hosted by next/font. Satoshi's license
@@ -12,9 +14,10 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <html lang="en" className={fraunces.variable}>
+    <html lang="en" className={fraunces.variable} data-theme={theme}>
       <head>
         <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap" />

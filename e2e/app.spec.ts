@@ -73,3 +73,85 @@ test.describe("dark mode", () => {
     });
   }
 });
+
+test("appearance overrides the system, survives reloads, and can follow the system again", async ({ page }) => {
+  const problems = watchConsole(page);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto(home);
+  await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+
+  const appearance = page.getByRole("combobox", { name: "Appearance" });
+  await expect(appearance).toHaveValue("system");
+  await expectNoSeriousA11yViolations(page);
+  await appearance.selectOption("light");
+  await expect(page.locator("html")).toHaveCSS("color-scheme", "light");
+  const response = await page.reload();
+  expect(await response?.text()).toContain('data-theme="light"');
+  await expect(page.locator("html")).toHaveCSS("color-scheme", "light");
+
+  const target = appConfig.nav.at(-1);
+  if (target && appConfig.nav.length > 1) {
+    await page.getByRole("link", { name: target.label, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(target.href));
+    await expect(page.locator("html")).toHaveCSS("color-scheme", "light");
+  }
+  await expect(appearance).toHaveValue("light");
+  await appearance.selectOption("dark");
+  await page.emulateMedia({ colorScheme: "light" });
+  await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+
+  await appearance.selectOption("system");
+  await expect(page.locator("html")).toHaveCSS("color-scheme", "light");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+  expect(problems).toEqual([]);
+});
+
+test("a saved appearance renders correctly without JavaScript", async ({ browser, baseURL }) => {
+  if (!baseURL) throw new Error("The sample project needs a baseURL");
+  const context = await browser.newContext({ javaScriptEnabled: false, colorScheme: "light" });
+  try {
+    await context.addCookies([{ name: "sm-theme", value: "dark", url: baseURL }]);
+    const page = await context.newPage();
+    await page.goto(`${baseURL}${home}`);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+  } finally {
+    await context.close();
+  }
+});
+
+test("copy link freezes applied defaults and ignores unapplied filter edits", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto(`${home}?from=invalid&to=invalid`);
+  test.skip((await page.getByLabel("From", { exact: true }).count()) === 0, "the home page has no date range");
+  const store = await page.getByLabel("Store", { exact: true }).inputValue();
+  const from = await page.getByLabel("From", { exact: true }).inputValue();
+  const to = await page.getByLabel("To", { exact: true }).inputValue();
+  await page.getByLabel("From", { exact: true }).fill("2020-01-01");
+  await page.getByRole("button", { name: "Copy report link" }).click();
+  await expect(page.getByText("Report link copied.", { exact: true })).toHaveCount(1);
+  const copied = new URL(await page.evaluate(() => navigator.clipboard.readText()));
+  expect(copied.origin).toBe(new URL(page.url()).origin);
+  expect(copied.pathname).toBe(home);
+  expect(Object.fromEntries(copied.searchParams)).toEqual({ store, from, to });
+  await page.goto(copied.href);
+  await expect(page.getByLabel("Store", { exact: true })).toHaveValue(store);
+  await expect(page.getByLabel("From", { exact: true })).toHaveValue(from);
+  await expect(page.getByLabel("To", { exact: true })).toHaveValue(to);
+});
+
+test("copy failure offers the complete applied link for manual copying", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: () => Promise.reject(new DOMException("Denied", "NotAllowedError")) },
+    });
+  });
+  await page.goto(home);
+  test.skip((await page.getByRole("button", { name: "Copy report link" }).count()) === 0, "no report to share");
+  await page.getByRole("button", { name: "Copy report link" }).click();
+  await expect(page.getByText("Could not copy. Select and copy the link below.")).toBeVisible();
+  const manual = new URL(await page.getByRole("textbox", { name: "Report link" }).inputValue());
+  expect(manual.searchParams.get("store")).toBe(await page.getByLabel("Store", { exact: true }).inputValue());
+  await expectNoSeriousA11yViolations(page);
+});

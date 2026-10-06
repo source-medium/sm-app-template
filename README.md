@@ -75,6 +75,10 @@ does not include. See [docs/auth.md](docs/auth.md).
 - **Make it yours:** edit `app.config.ts` and `src/styles/tokens.css` to rebrand;
   reuse the chart, table and card patterns when adding pages.
 
+Viewers can choose Light, Dark, or System in the top bar. **Copy link** shares
+the applied store, date range, and view filters with another authorized viewer;
+it does not freeze the underlying data. Overview's info icons explain each KPI.
+
 SourceMedium maintains the connection and integration patterns. Your agent
 works with ordinary feature code when extending your copy.
 

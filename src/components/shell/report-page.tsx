@@ -13,6 +13,7 @@
 import { Suspense } from "react";
 import { EmptyState, ErrorState } from "@/components/patterns/data-states";
 import { FilterBar } from "@/components/shell/filter-bar";
+import { CopyReportLink } from "@/components/shell/copy-report-link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { loadStores, type StoreOption } from "@/lib/data/stores.server";
@@ -69,12 +70,18 @@ export async function ReportPage({
   roster.catch(() => undefined);
   const barProps: FilterBarProps = { pathname, params, range, now, preserve, dates };
 
-  const header = (
-    <header className="flex flex-col gap-1">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <p className="text-sm text-muted-foreground">{description}</p>
-    </header>
-  );
+  function header(storeId?: string) {
+    const shareHref = storeId ? withParams(pathname, params, { store: storeId, ...(dates ? range : {}) }) : null;
+    return (
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          <p className="max-w-prose text-sm text-muted-foreground">{description}</p>
+        </div>
+        {shareHref && <CopyReportLink key={shareHref} href={shareHref} />}
+      </header>
+    );
+  }
   const footer = (
     <footer className="border-t pt-4 text-xs text-muted-foreground">
       {access.mode === "sample"
@@ -88,7 +95,7 @@ export async function ReportPage({
   if (requested) {
     return (
       <div className="flex flex-col gap-6">
-        {header}
+        {header(requested)}
         <Suspense fallback={<Skeleton className="h-[4.75rem] rounded-lg" />}>
           <RosterFilterBar roster={roster} storeId={requested} {...barProps} />
         </Suspense>
@@ -105,7 +112,7 @@ export async function ReportPage({
     if (!(error instanceof WarehouseError)) throw error;
     return (
       <div className="flex flex-col gap-6">
-        {header}
+        {header()}
         <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} />
       </div>
     );
@@ -114,14 +121,14 @@ export async function ReportPage({
   if (!first) {
     return (
       <div className="flex flex-col gap-6">
-        {header}
+        {header()}
         <EmptyState message="This warehouse has no stores with data yet." />
       </div>
     );
   }
   return (
     <div className="flex flex-col gap-6">
-      {header}
+      {header(first.id)}
       <StoreFilterBar stores={stores} storeId={first.id} {...barProps} />
       {/* Links built from params now name the store, so the next page runs its queries in parallel. */}
       {children({ filters: { storeId: first.id, range }, params: { ...params, store: first.id } })}

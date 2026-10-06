@@ -1,4 +1,17 @@
 import { expect, test } from "@playwright/test";
+import { expectNoSeriousA11yViolations } from "../../../e2e/helpers";
+
+test("overview: metric definitions open and close by keyboard", async ({ page }) => {
+  await page.goto("/overview");
+  const definition = page.locator("details", { hasText: "Marketing efficiency (MER)" });
+  await expect(definition.locator("summary")).toBeVisible();
+  await definition.locator("summary").focus();
+  await page.keyboard.press("Enter");
+  await expect(definition.getByText(/Net revenue divided by ad spend/)).toBeVisible();
+  await expectNoSeriousA11yViolations(page);
+  await page.keyboard.press("Enter");
+  await expect(definition.getByText(/Net revenue divided by ad spend/)).toBeHidden();
+});
 
 test("overview: a chart opens as an accessible table", async ({ page }) => {
   await page.goto("/overview");

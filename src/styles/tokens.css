@@ -1,7 +1,8 @@
 /*
  * The rebrand file. SourceMedium's palette, mapped onto shadcn/ui's theme
  * variables. Change colors, radius, and fonts here; components read only
- * these variables. Light and dark follow the system preference.
+ * these variables. Appearance follows the system unless the viewer chooses
+ * Light or Dark in the top bar.
  *
  * Chart series use a categorical order checked for color-blind readers
  * (--chart-1..8). If you replace them, keep each at 3:1 contrast against the
@@ -10,6 +11,7 @@
  */
 
 :root {
+  color-scheme: light;
   --font-sans: "Satoshi", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
   --radius: 0.5rem;
@@ -62,8 +64,9 @@
   --shadow-card: 0 10px 24px -16px rgba(46, 61, 120, 0.35);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+:root {
+  @variant dark {
+    color-scheme: dark;
     --background: #0b1120;
     --foreground: #e2e8f0;
     --card: #111a2e;

@@ -75,20 +75,42 @@ function OverviewView({ data, filters }: { data: OverviewData; filters: ReportFi
         differ from valid-order counts. Revenue per summary order uses this same count.
       </p>
       <section aria-label="Period totals" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <KpiCard label="Net revenue" value={formatMoney(totals?.netRevenue ?? null)} period={period} />
-        <KpiCard label="Summary orders" value={formatMeasure(totals?.orders ?? null)} period={period} />
+        <KpiCard
+          label="Net revenue"
+          description="Gross order revenue minus discounts and refunds, summed across all channels for this store and period. Amounts use the warehouse's reporting currency."
+          value={formatMoney(totals?.netRevenue ?? null)}
+          period={period}
+        />
+        <KpiCard
+          label="Summary orders"
+          description="Published order counts summed across every channel, including excluded, draft, and exchanged orders. This can differ from the number of valid orders."
+          value={formatMeasure(totals?.orders ?? null)}
+          period={period}
+        />
         <KpiCard
           label="Revenue per summary order"
+          description="Net revenue divided by Summary orders for the same store and period. It uses the all-channel summary count, so it can differ from average revenue per valid order."
           value={formatMoney(ratio(netRevenue, totals?.orders ?? null))}
           period={period}
         />
-        <KpiCard label="Ad spend" value={formatMoney(totals?.adSpend ?? null)} period={period} />
+        <KpiCard
+          label="Ad spend"
+          description="Published advertising spend summed across all channels for this store and period, in the warehouse's reporting currency."
+          value={formatMoney(totals?.adSpend ?? null)}
+          period={period}
+        />
         <KpiCard
           label="Marketing efficiency (MER)"
+          description="Net revenue divided by ad spend for the same store and period. This is a blended revenue-to-spend ratio, not ad-platform attributed ROAS."
           value={formatMultiple(ratio(netRevenue, adSpend))}
           period={period}
         />
-        <KpiCard label="Website sessions" value={formatCount(totals?.sessions ?? null)} period={period} />
+        <KpiCard
+          label="Website sessions"
+          description="Published website session counts summed across all channels for this store and period. Sessions are visits, not unique people."
+          value={formatCount(totals?.sessions ?? null)}
+          period={period}
+        />
       </section>
       <section aria-label="Daily trends" className="grid gap-4 lg:grid-cols-2">
         <ChartCard
