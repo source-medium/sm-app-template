@@ -17,15 +17,25 @@ const noClientLocaleFormat = {
     type: "problem",
     messages: {
       locale:
-        "Client components must not format numbers or dates with {{name}} (server and browser can disagree, causing hydration errors); format on the server with src/lib/format.ts and pass the string as a prop.",
+        "Do not format numbers or dates with {{name}} outside src/lib/format.ts (server and browser can disagree, causing hydration errors); format on the server with src/lib/format.ts and pass the string as a prop.",
+      serverImport:
+        "Client components cannot import {{name}}, which runs only on the server; call it in the server page and pass the result as a prop.",
     },
-    schema: [],
+    schema: [{ type: "object", properties: { everywhere: { type: "boolean" } }, additionalProperties: false }],
   },
   create(context) {
     let client = false;
+    let useClient = false;
     return {
       Program(node) {
-        client = isUseClient(node);
+        useClient = isUseClient(node);
+        // A shared helper runs in the browser when a client component imports it, so src checks every file.
+        client = useClient || context.options[0]?.everywhere === true;
+      },
+      ImportDeclaration(node) {
+        if (useClient && node.importKind !== "type" && /(^|\/)lib\/format$|\.server$/.test(node.source.value)) {
+          context.report({ node, messageId: "serverImport", data: { name: node.source.value } });
+        }
       },
       MemberExpression(node) {
         if (!client || node.property.type !== "Identifier") return;

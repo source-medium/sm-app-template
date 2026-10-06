@@ -16,7 +16,16 @@ import { setLogEmitter } from "../src/lib/data/log";
 import { loadLocalEnvironment, root } from "./lib/environment";
 
 const offline = process.argv.includes("--offline");
-const REQUIRED_COLUMNS = ["sm_store_id", "date", "order_count", "website_sessions", "ad_clicks"];
+/** The store roster's and the Overview query's columns. */
+const REQUIRED_COLUMNS = [
+  "sm_store_id",
+  "date",
+  "order_net_revenue",
+  "order_count",
+  "website_sessions",
+  "ad_clicks",
+  "ad_spend",
+];
 
 const ok = (message: string) => console.log(`  ✓ ${message}`);
 const fail = (message: string) => console.error(`  ✗ ${message}`);

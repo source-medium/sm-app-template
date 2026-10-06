@@ -1,0 +1,37 @@
+diff --git a/dist/compiled/react-dom/cjs/react-dom-client.development.js b/dist/compiled/react-dom/cjs/react-dom-client.development.js
+index 4376913076151ad78dcc4059ad4152fad25478da..1b979c5b43755826161e5712ee9956ef269bc794 100644
+--- a/dist/compiled/react-dom/cjs/react-dom-client.development.js
++++ b/dist/compiled/react-dom/cjs/react-dom-client.development.js
+@@ -15776,6 +15776,14 @@
+           break;
+         case 5:
+           resetHooksOnUnwind(unitOfWork);
++          // Backport of React 19.3 (facebook/react#35494): rewind the hydration
++          // cursor before replaying a host fiber that already claimed its instance.
++          unitOfWork === hydrationParentFiber &&
++            (isHydrating
++              ? (popToNextHostParent(unitOfWork),
++                null != unitOfWork.stateNode &&
++                  (nextHydratableInstance = unitOfWork.stateNode))
++              : (popToNextHostParent(unitOfWork), (isHydrating = !0)));
+         default:
+           unwindInterruptedWork(current, unitOfWork),
+             (unitOfWork = workInProgress =
+diff --git a/dist/compiled/react-dom/cjs/react-dom-client.production.js b/dist/compiled/react-dom/cjs/react-dom-client.production.js
+index 755076a5cf15273f024c18fdc6a8805f1e36860b..effe356a15552750544e4bfad083fd4371f10667 100644
+--- a/dist/compiled/react-dom/cjs/react-dom-client.production.js
++++ b/dist/compiled/react-dom/cjs/react-dom-client.production.js
+@@ -11210,6 +11210,13 @@ function replaySuspendedUnitOfWork(unitOfWork) {
+       break;
+     case 5:
+       resetHooksOnUnwind(next);
++      // Backport of React 19.3 (facebook/react#35494): rewind the hydration
++      // cursor before replaying a host fiber that already claimed its instance.
++      next === hydrationParentFiber &&
++        (isHydrating
++          ? (popToNextHostParent(next),
++            null != next.stateNode && (nextHydratableInstance = next.stateNode))
++          : (popToNextHostParent(next), (isHydrating = !0)));
+     default:
+       unwindInterruptedWork(current, next),
+         (next = workInProgress =

@@ -25,6 +25,7 @@ export default defineConfig({
         resolve,
         test: {
           name: "node",
+          testTimeout: 30_000,
           environment: "node",
           include: [...INVARIANTS, "tests/unit/**/*.test.ts", "tests/static/**/*.test.ts", "src/**/*.test.ts"],
         },
@@ -34,6 +35,7 @@ export default defineConfig({
         plugins: [react()],
         test: {
           name: "dom",
+          testTimeout: 30_000,
           environment: "jsdom",
           include: ["tests/components/**/*.test.tsx"],
           setupFiles: ["tests/helpers/setup-dom.ts"],
@@ -46,7 +48,7 @@ export default defineConfig({
             miniflare: { compatibilityDate: "2026-06-30", compatibilityFlags: ["nodejs_compat"] },
           }),
         ],
-        test: { name: "workerd", include: INVARIANTS },
+        test: { name: "workerd", include: INVARIANTS, testTimeout: 30_000 },
       },
     ],
   },

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ChartCard, type ChartSeries } from "@/components/charts/chart-card";
+import { ChartCard } from "@/components/charts/chart-card";
 import { buildChartData, type PointValue } from "@/components/charts/chart-data";
 import { DataRegion } from "@/components/patterns/data-region";
 import { LoadingState } from "@/components/patterns/data-states";
@@ -8,7 +8,7 @@ import { DataTable } from "@/components/patterns/data-table";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
-import { decimalToNumber, ratio, sumDecimals } from "@/lib/data/decimal";
+import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { datesInRange, parseChoice, preservedParams, single, type SearchParams } from "@/lib/filters";
 import {
   EMPTY_VALUE,
@@ -19,10 +19,10 @@ import {
   formatMultiple,
   formatPercent,
 } from "@/lib/format";
+import { MAX_NAMED_CHANNELS, channelChart, type MetricValue } from "./chart";
 import {
   PAID_METRICS,
   getPaidMarketing,
-  type AdMeasures,
   type PaidMarketingData,
   type PaidMarketingFilters,
   type PaidMetric,
@@ -37,8 +37,6 @@ const METRIC_LABELS: Record<PaidMetric, string> = {
   clicks: "Clicks",
   conversions: "Platform-reported conversions",
 };
-/** Seven named series at most; the rest fold into "Other". Colors follow the channel, never its rank. */
-const MAX_NAMED_CHANNELS = 7;
 
 export default async function PaidMarketingPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
@@ -74,21 +72,6 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
   );
 }
 
-type MetricValue = string | bigint | number | null;
-
-function metricValue(measures: AdMeasures, metric: PaidMetric): MetricValue {
-  return measures[metric];
-}
-
-/** Sums one metric exactly: decimal text for money, bigint for counts, numbers for conversions. */
-function addValues(a: MetricValue, b: MetricValue): MetricValue {
-  if (a === null) return b;
-  if (b === null) return a;
-  if (typeof a === "string" && typeof b === "string") return sumDecimals([a, b]);
-  if (typeof a === "bigint" && typeof b === "bigint") return a + b;
-  return Number(a) + Number(b);
-}
-
 function point(value: MetricValue): PointValue {
   if (typeof value === "string") return { value: decimalToNumber(value), display: formatMoney(value) };
   if (typeof value === "number") return { value, display: formatMeasure(value) };
@@ -106,33 +89,7 @@ function PaidMarketingView({
   metric: PaidMetric;
   params: SearchParams;
 }) {
-  // Rank channels by impressions to choose which are named; color them in name order so filters never repaint.
-  const totals = new Map<string, bigint>();
-  for (const day of data.channelDays)
-    totals.set(day.channel, (totals.get(day.channel) ?? 0n) + (day.impressions ?? 0n));
-  const allChannels = [...totals.keys()].sort((a, b) => a.localeCompare(b));
-  const named = [...totals.entries()]
-    .sort(([, a], [, b]) => (a === b ? 0 : a > b ? -1 : 1))
-    .slice(0, MAX_NAMED_CHANNELS)
-    .map(([name]) => name)
-    .sort((a, b) => a.localeCompare(b));
-  const folded = allChannels.length > named.length;
-  const visible = filters.channel ? named.filter((name) => name === filters.channel) : named;
-  const series: ChartSeries[] = visible.map((name) => ({
-    key: `channel${named.indexOf(name)}`,
-    label: name,
-    color: `var(--chart-${named.indexOf(name) + 1})`,
-  }));
-  if (folded && !filters.channel) series.push({ key: "other", label: "Other", color: "var(--chart-8)" });
-
-  const byDate = new Map<string, Record<string, MetricValue>>();
-  for (const day of data.channelDays) {
-    const values = byDate.get(day.date) ?? {};
-    const index = named.indexOf(day.channel);
-    const key = index >= 0 ? `channel${index}` : "other";
-    values[key] = addValues(values[key] ?? null, metricValue(day, metric));
-    byDate.set(day.date, values);
-  }
+  const { series, byDate, channels, folded } = channelChart(data.channelDays, metric, filters.channel);
   const chart = buildChartData(
     datesInRange(filters.range).map((date) => {
       const values: Record<string, PointValue> = {};
@@ -143,7 +100,7 @@ function PaidMarketingView({
 
   const channelOptions = [
     { value: "", label: "All channels" },
-    ...allChannels.map((name) => ({ value: name, label: name })),
+    ...channels.map((name) => ({ value: name, label: name })),
   ];
   const preserved = preservedParams(params, ["metric", "channel"], filters);
 
@@ -170,7 +127,7 @@ function PaidMarketingView({
       <ChartCard
         title={`${METRIC_LABELS[metric]} by channel`}
         description={
-          folded
+          folded && !filters.channel
             ? `The ${MAX_NAMED_CHANNELS} largest channels by impressions are named; the rest are combined as Other.`
             : undefined
         }

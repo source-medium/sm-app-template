@@ -39,10 +39,13 @@ docs/                         Guides (index below)
 
 1. **Call `requireViewer()` in every data function.** Every exported async
    function in `bigquery.ts` and `queries.ts`, every route handler, and every
-   server action starts with `await requireViewer()`. `pnpm check` enforces it.
+   server action starts with `await requireViewer()`. The warehouse comes only
+   from `await requireViewer({ live: true })`; never import
+   `lib/data/warehouse.server.ts`. `pnpm check` enforces both.
 2. **Format dates and numbers on the server** with `src/lib/format.ts`, and pass
-   strings to client components. Locale formatting in a `"use client"` file
-   fails lint, because server and browser can disagree.
+   strings to client components. Locale formatting anywhere else in `src`, or
+   importing `format.ts` into a `"use client"` file, fails lint, because server
+   and browser can disagree.
 3. **Keep filters in the URL** (`?store=&from=&to=` plus the view's own). Read
    them in the page's `searchParams`; there is no client data store.
 4. **Inspect the schema before writing SQL**: the SourceMedium MCP
@@ -66,7 +69,7 @@ docs/                         Guides (index below)
    `dates={false}` to `ReportPage`.
 5. Add tests beside the view: `fixture-contract.test.ts` (sample shape and
    totals), `live-contract.test.ts` (the SQL, parameters, and truncation against
-   the fake BigQuery; copy overview's), and `<view>.e2e.ts` for interactions.
+   the fake BigQuery; copy an example view's), and `<view>.e2e.ts` for interactions.
    Then `pnpm check`, and `pnpm test:e2e` after UI changes.
 
 Copy `src/features/overview` (KPIs and charts), `paid-marketing` (dimension
@@ -104,9 +107,11 @@ acts for a person needs a real per-person authorization design first.
 
 ## Runtime constraints (Cloudflare Workers, tested)
 
-- Runs on workerd via OpenNext with `nodejs_compat` (Workers Paid plan: pages
-  use 80–850 ms of CPU). WebCrypto, `fetch`, and `jose` work; there is no file
-  system at runtime.
+- Runs on workerd via OpenNext with `nodejs_compat` (Workers Paid plan: a page
+  needs more than the Free plan's 10 ms of CPU). WebCrypto, `fetch`, and `jose`
+  work; there is no file system at runtime.
+- Files in `public/` pass the viewer guard like pages (`run_worker_first` in
+  `wrangler.jsonc`); only `/_next/static` skips the Worker.
 - `src/middleware.ts` runs in the edge runtime: no Node-only APIs there.
 - Configuration comes only from runtime variables, read per request through
   `readConfig()`. Never read configuration at module scope or build time.

@@ -7,6 +7,9 @@
  *   - each exported HTTP handler in a route.ts under src/app
  *   - each server action ("use server" files, or functions with that directive)
  *
+ * And requireViewer() stays the only way to reach the warehouse: no other file
+ * in src imports a value from the modules that build warehouse access.
+ *
  * PUBLIC_ROUTES lists the handlers that are public by design, each with why.
  */
 import { posix } from "node:path";
@@ -15,6 +18,13 @@ import ts from "typescript";
 export const PUBLIC_ROUTES: Record<string, string> = {
   "src/app/healthz/route.ts": "liveness only; returns the build id and reads no data",
 };
+
+const WAREHOUSE_MODULES = new Set([
+  "src/lib/data/warehouse.server.ts",
+  "src/lib/data/bigquery-rest.server.ts",
+  "src/lib/data/google-token.server.ts",
+]);
+const WAREHOUSE_IMPORTERS = new Set(["src/lib/auth/require-viewer.ts", "src/lib/data/warehouse.server.ts"]);
 
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 
@@ -63,7 +73,10 @@ function topLevelFunctions(source: ts.SourceFile): FunctionLike[] {
     }
     if (ts.isVariableStatement(statement)) {
       for (const declaration of statement.declarationList.declarations) {
-        const init = declaration.initializer;
+        let init = declaration.initializer;
+        // cache(async () => ...) and similar wrappers: check the function inside.
+        if (init && ts.isCallExpression(init))
+          init = init.arguments.find((arg) => ts.isArrowFunction(arg) || ts.isFunctionExpression(arg));
         if (ts.isIdentifier(declaration.name) && init && (ts.isArrowFunction(init) || ts.isFunctionExpression(init))) {
           found.push({ name: declaration.name.text, body: init.body, exported, async: isAsync(init) });
         }
@@ -115,8 +128,10 @@ function verifyExport(path: string, name: string, files: Map<string, SourceFile>
   }
   const followImport = (local: string): Verdict => {
     const origin = imports.get(local);
-    const target = origin && resolveModule(origin.module, path, files);
-    return origin && target ? verifyExport(target, origin.imported, files, depth + 1) : "unverifiable";
+    // A function in this file exported under another name: `export { handler as GET }`, `export const GET = handler`.
+    if (!origin) return local === name ? "unverifiable" : verifyExport(path, local, files, depth + 1);
+    const target = resolveModule(origin.module, path, files);
+    return target ? verifyExport(target, origin.imported, files, depth + 1) : "unverifiable";
   };
 
   for (const statement of source.statements) {
@@ -181,13 +196,52 @@ function exportedNames(source: ts.SourceFile): string[] {
   return names;
 }
 
+/** The warehouse modules this file imports a value (not only types) from, directly or by re-export. */
+function warehouseImports(source: ts.SourceFile, path: string, files: Map<string, SourceFile>): string[] {
+  const found: string[] = [];
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) continue;
+    const specifier = statement.moduleSpecifier;
+    const target = specifier && ts.isStringLiteral(specifier) ? resolveModule(specifier.text, path, files) : null;
+    if (!target || !WAREHOUSE_MODULES.has(target)) continue;
+    if (ts.isExportDeclaration(statement)) {
+      if (!statement.isTypeOnly) found.push(target);
+      continue;
+    }
+    const clause = statement.importClause;
+    if (!clause || clause.isTypeOnly) continue;
+    const bindings = clause.namedBindings;
+    const typesOnly =
+      !clause.name && bindings && ts.isNamedImports(bindings) && bindings.elements.every((e) => e.isTypeOnly);
+    if (!typesOnly) found.push(target);
+  }
+  // `await import(...)` loads the module too; `typeof import(...)` is a type and is not a call.
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      const [argument] = node.arguments;
+      const target = argument && ts.isStringLiteralLike(argument) ? resolveModule(argument.text, path, files) : null;
+      if (target && WAREHOUSE_MODULES.has(target)) found.push(target);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return found;
+}
+
 /** One sentence per gap: the file, the function, and the fix. */
 export function findAuthGaps(files: SourceFile[]): string[] {
   const byPath = new Map(files.map((file) => [file.path, file]));
   const gaps: string[] = [];
   for (const file of files) {
-    if (PUBLIC_ROUTES[file.path]) continue;
     const source = ts.createSourceFile(file.path, file.text, ts.ScriptTarget.Latest, true, scriptKind(file.path));
+    if (!WAREHOUSE_IMPORTERS.has(file.path)) {
+      for (const target of warehouseImports(source, file.path, byPath)) {
+        gaps.push(
+          `\`${file.path}\` imports \`${target}\`, which reaches the warehouse without \`requireViewer()\`; take the warehouse from \`await requireViewer({ live: true })\` in a feature's bigquery.ts instead.`,
+        );
+      }
+    }
+    if (PUBLIC_ROUTES[file.path]) continue;
     const isLoader = /^src\/features\/[^/]+\/(bigquery|queries)\.ts$/.test(file.path);
     const isRoute = /^src\/app\/(.*\/)?route\.tsx?$/.test(file.path);
     const firstStatement = source.statements[0];
@@ -214,13 +268,27 @@ export function findAuthGaps(files: SourceFile[]): string[] {
     }
 
     for (const fn of topLevelFunctions(source)) {
-      const inScope = (isLoader && fn.exported && fn.async) || (isActionFile && fn.exported) || hasUseServer(fn.body);
+      const inScope = (isLoader && fn.exported && fn.async) || (isActionFile && fn.exported && !hasUseServer(fn.body));
       if (!inScope || callsRequireViewer(fn.body ?? source)) continue;
       const what = isLoader ? "reads data" : "is a server action";
       gaps.push(
         `\`${file.path}\` exports \`${fn.name}\`, which ${what} without calling \`requireViewer()\`; call \`await requireViewer()\` first.`,
       );
     }
+
+    // Inline server actions ("use server" in the body) can sit anywhere, usually inside a page component.
+    const visit = (node: ts.Node) => {
+      const body = ts.isFunctionLike(node) && "body" in node ? node.body : undefined;
+      if (ts.isFunctionLike(node) && body && hasUseServer(body) && !callsRequireViewer(body)) {
+        const named = node.name ?? (ts.isVariableDeclaration(node.parent) ? node.parent.name : undefined);
+        const line = source.getLineAndCharacterOfPosition(node.getStart()).line + 1;
+        gaps.push(
+          `\`${file.path}:${line}\` defines the server action \`${named && ts.isIdentifier(named) ? named.text : "(inline)"}\`, which runs without calling \`requireViewer()\`; call \`await requireViewer()\` first in it.`,
+        );
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
   }
   return gaps;
 }

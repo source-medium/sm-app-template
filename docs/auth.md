@@ -8,6 +8,10 @@ needs a separate authorization design that this starter does not provide.
 Live data always needs exactly one viewer guard, even on localhost. With no
 live values, a guard is optional: it protects the sample preview.
 
+The guard covers every page, data request, and file in `public/`, on every
+host. Only `/healthz` (the build id), `/favicon.ico`, and the build's hashed
+scripts and styles under `/_next/static` are open; they carry no data.
+
 ## The options, with their real costs
 
 1. **Shared password (default).** In your configuration block as

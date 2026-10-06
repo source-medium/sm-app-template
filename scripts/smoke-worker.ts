@@ -26,6 +26,8 @@ const modes: { name: string; env: string; checks: [string, RequestInit, number, 
       ["/healthz", {}, 200],
       [FIRST, {}, 200, "Sample data"],
       [LAST, {}, 200, "Sample data"],
+      // An encoded # and & in one value must not cut or add parameters (the @opennextjs/aws patch).
+      [`${LAST}?q=%23smoke%26store%3Devil&store=smoke`, {}, 200, `href="${FIRST}?store=smoke"`],
     ],
   },
   {
@@ -35,6 +37,8 @@ const modes: { name: string; env: string; checks: [string, RequestInit, number, 
       [FIRST, {}, 401],
       [FIRST, { headers: { RSC: "1" } }, 401],
       [FIRST, { headers: { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` } }, 200, "Sample data"],
+      // Files from public/ (and the build id) pass the guard too (run_worker_first in wrangler.jsonc).
+      ["/BUILD_ID", {}, 401],
       ["/healthz", {}, 200],
     ],
   },

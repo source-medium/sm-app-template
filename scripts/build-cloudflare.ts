@@ -9,12 +9,11 @@
  * bindings, so the file is emptied after every build and then verified.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { root } from "./lib/environment";
+import { localSecretValues, root } from "./lib/environment";
 
 const ENV_MODULE = join(root, ".open-next/cloudflare/next-env.mjs");
-const SECRET_NAMES = ["SM_APP_KEY", "APP_BASIC_AUTH"];
 
 const build = spawnSync("pnpm", ["exec", "opennextjs-cloudflare", "build"], {
   cwd: root,
@@ -30,21 +29,20 @@ if (!existsSync(ENV_MODULE)) {
   process.exit(1);
 }
 writeFileSync(ENV_MODULE, "export const production = {};\nexport const development = {};\nexport const test = {};\n");
+// Next standalone copies .env and .env.production beside each server function; workerd never reads them.
+const FUNCTIONS = join(root, ".open-next/server-functions");
+for (const fn of readdirSync(FUNCTIONS)) {
+  for (const name of readdirSync(join(FUNCTIONS, fn))) if (name.startsWith(".env")) rmSync(join(FUNCTIONS, fn, name));
+}
 
 // Verify: no secret value from any local env file appears anywhere in the Worker output.
-const secrets: string[] = [];
-for (const file of readdirSync(root).filter((name) => name.startsWith(".env") && name !== ".env.example")) {
-  for (const line of readFileSync(join(root, file), "utf8").split("\n")) {
-    const match = /^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*["']?([^"'\n]+)["']?\s*$/.exec(line);
-    if (match?.[1] && match[2] && SECRET_NAMES.includes(match[1])) secrets.push(match[2].trim());
-  }
-}
+const secrets = localSecretValues();
 function scan(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return scan(path);
     const text = readFileSync(path, "latin1");
-    return secrets.some((secret) => secret.length >= 16 && text.includes(secret)) ? [path] : [];
+    return secrets.some((secret) => text.includes(secret)) ? [path] : [];
   });
 }
 const leaks = secrets.length > 0 ? scan(join(root, ".open-next")) : [];

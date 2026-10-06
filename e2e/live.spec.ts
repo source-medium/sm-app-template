@@ -24,13 +24,18 @@ test("the store and dates survive navigation, and the next page of orders loads"
   await page.goto(appConfig.nav[0]?.href ?? "/");
   await page.getByRole("link", { name: "Last 7 days" }).click();
   await expect(page).toHaveURL(/store=.+&from=/);
+  // Wait for the regions to load, so the next click does not cancel their queries.
+  await expect(page.getByRole("status")).toHaveCount(0, { timeout: 30_000 });
   test.skip(!appConfig.nav.some((item) => item.href === "/orders"), "no Orders view");
   await page.getByRole("link", { name: "Orders" }).click();
   await expect(page).toHaveURL(/\/orders\?store=/);
+  await expect(page.getByRole("status")).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
   const older = page.getByRole("link", { name: "Older orders" });
-  if (await older.count()) {
-    await older.click();
-    await expect(page).toHaveURL(/cursor=/);
-    await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
-  }
+  test.skip((await older.count()) === 0, "this store has one page of orders in the last 7 days");
+  await older.click();
+  await expect(page).toHaveURL(/cursor=/);
+  await expect(page.getByRole("status")).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Newest orders" })).toBeVisible();
 });

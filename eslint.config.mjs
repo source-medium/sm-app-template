@@ -50,7 +50,12 @@ export default tseslint.config(
     rules: { "template/no-process-env": "error" },
   },
   {
-    files: ["src/**/*.server.ts"],
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/lib/format.ts"],
+    rules: { "template/no-client-locale-format": ["error", { everywhere: true }] },
+  },
+  {
+    files: ["src/**/*.server.{ts,tsx}"],
     rules: { "template/server-only-import": "error" },
   },
   {

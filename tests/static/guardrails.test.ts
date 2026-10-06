@@ -49,6 +49,48 @@ describe("auth-coverage", () => {
     expect(gaps[2]).toContain("`act`");
   });
 
+  it("catches server actions inside a component and loaders wrapped in cache()", () => {
+    const gaps = findAuthGaps([
+      {
+        path: "src/features/x/page.tsx",
+        text: 'export default function P() {\n  async function act() { "use server"; }\n  return <form action={act} />;\n}',
+      },
+      {
+        path: "src/features/x/bigquery.ts",
+        text: 'import { cache } from "react";\nexport const load = cache(async () => 1);',
+      },
+    ]);
+    expect(gaps).toEqual([
+      "`src/features/x/page.tsx:2` defines the server action `act`, which runs without calling `requireViewer()`; call `await requireViewer()` first in it.",
+      "`src/features/x/bigquery.ts` exports `load`, which reads data without calling `requireViewer()`; call `await requireViewer()` first.",
+    ]);
+  });
+
+  it("keeps requireViewer() the only way to reach the warehouse", () => {
+    const warehouse = { path: "src/lib/data/warehouse.server.ts", text: "export function warehouseFor() {}" };
+    expect(
+      findAuthGaps([
+        warehouse,
+        { path: "src/app/(app)/x/page.tsx", text: 'import { warehouseFor } from "@/lib/data/warehouse.server";' },
+        {
+          path: "src/lib/y.ts",
+          text: 'export async function y() { return (await import("@/lib/data/warehouse.server")).warehouseFor; }',
+        },
+        { path: "src/lib/data/x.ts", text: 'import type { Warehouse } from "./warehouse.server";' },
+        { path: "src/lib/data/z.ts", text: 'export type W = typeof import("./warehouse.server");' },
+      ]),
+    ).toEqual([
+      "`src/app/(app)/x/page.tsx` imports `src/lib/data/warehouse.server.ts`, which reaches the warehouse without `requireViewer()`; take the warehouse from `await requireViewer({ live: true })` in a feature's bigquery.ts instead.",
+      "`src/lib/y.ts` imports `src/lib/data/warehouse.server.ts`, which reaches the warehouse without `requireViewer()`; take the warehouse from `await requireViewer({ live: true })` in a feature's bigquery.ts instead.",
+    ]);
+  });
+
+  it("follows a guarded handler in the same file exported under a method name", () => {
+    const handler = 'async function handler() { await requireViewer(); return new Response(""); }\n';
+    expect(findAuthGaps([{ path: "src/app/a/route.ts", text: `${handler}export { handler as GET };` }])).toEqual([]);
+    expect(findAuthGaps([{ path: "src/app/b/route.ts", text: `${handler}export const GET = handler;` }])).toEqual([]);
+  });
+
   it("follows route handlers that are re-exported or aliased from another module", () => {
     const unguarded = {
       path: "src/features/orders/csv.ts",
@@ -129,6 +171,8 @@ describe("lint rules", () => {
       { code: '"use client";\nconst s = value.toLocaleString();', errors: [{ messageId: "locale" }] },
       { code: '"use client";\nconst f = new Intl.DateTimeFormat("en");', errors: [{ messageId: "locale" }] },
       { code: '"use client";\nconst f = new Intl.NumberFormat("en");', errors: [{ messageId: "locale" }] },
+      { code: "const n = value.toLocaleString();", options: [{ everywhere: true }], errors: [{ messageId: "locale" }] },
+      { code: '"use client";\nimport { formatMoney } from "@/lib/format";', errors: [{ messageId: "serverImport" }] },
     ],
   });
   tester.run("no-process-env", template.rules["no-process-env"], {
@@ -152,12 +196,14 @@ describe("lint rules", () => {
       ((await eslint.calculateConfigForFile(path)) as { rules: Record<string, unknown> }).rules;
     const loader = await rulesFor("src/features/sales/bigquery.ts");
     expect(loader["template/no-process-env"]).toEqual([2]);
-    expect(loader["template/no-client-locale-format"]).toEqual([2]);
+    expect(loader["template/no-client-locale-format"]).toEqual([2, { everywhere: true }]);
+    expect((await rulesFor("src/lib/format.ts"))["template/no-client-locale-format"]).toEqual([2]);
     expect(loader["@typescript-eslint/no-floating-promises"]).toEqual([2]);
     expect(loader["jsx-a11y/alt-text"]).toBeDefined();
     expect(loader["react-hooks/rules-of-hooks"]).toBeDefined();
     expect((await rulesFor("src/lib/config/env.server.ts"))["template/no-process-env"]).toBeUndefined();
     expect((await rulesFor("src/lib/data/anything.server.ts"))["template/server-only-import"]).toEqual([2]);
+    expect((await rulesFor("src/lib/data/anything.server.tsx"))["template/server-only-import"]).toEqual([2]);
   });
 });
 
@@ -178,7 +224,7 @@ describe("skill copies", () => {
     mkdirSync(join(dir, ".agents/skills/sm-data"), { recursive: true });
     writeFileSync(join(dir, ".agents/skills/sm-data/SKILL.md"), "---\nname: sm-data\n---\nCanonical.\n");
     expect(skillDifferences(dir)).toEqual([
-      "`.claude/skills/sm-data/SKILL.md` differs from `.agents/skills/sm-data/SKILL.md`; run `pnpm skills:sync`.",
+      "`.claude/skills/sm-data/SKILL.md` differs from `.agents/skills/sm-data/SKILL.md`; make the change in `.agents/skills/sm-data/SKILL.md` (sync overwrites the copy), then run `pnpm skills:sync`.",
     ]);
     syncSkills(dir);
     expect(skillDifferences(dir)).toEqual([]);

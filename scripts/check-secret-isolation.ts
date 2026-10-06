@@ -7,13 +7,16 @@
  *   2. `next start` in live mode (sentinel key) and in protected sample mode;
  *      fetch every view's HTML and RSC payload, and the challenge, and scan.
  *
+ * The scan also looks for the real key and password in this checkout's local
+ * env files, which `next build` reads (a NEXT_PUBLIC_ copy would be inlined).
+ *
  * Builds into .next, so stop `pnpm dev` first. CI runs this on every change.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { appConfig } from "../app.config";
-import { root } from "./lib/environment";
+import { localSecretValues, root } from "./lib/environment";
 
 const PORT = 3107;
 const PASSWORD = "SentinelPasswordDoNotShip0123456789";
@@ -62,7 +65,7 @@ function files(dir: string, pattern: RegExp): string[] {
 }
 
 const key = await sentinelKey();
-const sentinels = [PASSWORD, key.base64.slice(40, 120), key.pemFragment];
+const sentinels = [PASSWORD, key.base64.slice(40, 120), key.pemFragment, ...localSecretValues()];
 const liveEnv = {
   SM_APPLICATION_ID: APP_ID,
   SM_APP_KEY: key.base64,
@@ -127,7 +130,9 @@ for (const mode of modes) {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
     let sawMode = false;
-    for (const path of [...appConfig.nav.map((item) => item.href), "/does-not-exist"]) {
+    // With ?store= a view renders its body even when the store list fails, as it does with the sentinel key.
+    const views = appConfig.nav.flatMap((item) => [item.href, `${item.href}?store=sentinel-store`]);
+    for (const path of [...views, "/does-not-exist"]) {
       for (const headers of [auth, { ...auth, RSC: "1" }, {}]) {
         const response = await fetch(`${base}${path}`, { headers });
         const body = await response.text();
@@ -151,7 +156,7 @@ console.log(`Scanned ${pages} rendered responses.`);
 
 if (leaks.length > 0) {
   console.error(
-    `A sentinel credential reached browser-facing output: ${[...new Set(leaks)].join(", ")}. Find where the value is read and keep it in a *.server.ts module.`,
+    `A sentinel or local credential reached browser-facing output: ${[...new Set(leaks)].join(", ")}. Find where the value is read and keep it in a *.server.ts module.`,
   );
   process.exit(1);
 }

@@ -141,6 +141,20 @@ describe("BigQuery REST protocol", () => {
     expect(fake.count("poll")).toBe(3);
   });
 
+  it("retries a rate-limited poll on the same job instead of reporting the daily allowance", async () => {
+    let polls = 0;
+    const { client, fake } = await clientFor({
+      submit: () => Response.json(queryResponse({ jobComplete: false })),
+      poll: () => {
+        polls += 1;
+        return polls === 1 ? googleError(403, "rateLimitExceeded") : Response.json(queryResponse());
+      },
+    });
+    await runQuery(client, REQUEST);
+    expect(fake.count("submit")).toBe(1);
+    expect(fake.count("poll")).toBe(2);
+  });
+
   it("keeps one deadline across retries and cancels the known job when it expires", async () => {
     const { client, fake } = await clientFor({
       submit: () => Response.json(queryResponse({ jobComplete: false })),
@@ -247,7 +261,7 @@ describe("BigQuery REST protocol", () => {
     [400, "bytesBilledLimitExceeded", "bytes_limit_exceeded"],
     [403, "accessDenied", "permission_denied"],
     [403, "quotaExceeded", "quota_exceeded"],
-    [403, "rateLimitExceeded", "quota_exceeded"],
+    [403, "rateLimitExceeded", "transient"],
     [404, "notFound", "not_found"],
     [400, "invalidQuery", "invalid_query"],
     [403, "somethingNew", "permission_denied"],

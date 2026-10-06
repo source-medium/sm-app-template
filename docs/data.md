@@ -33,7 +33,10 @@ snapshot of SourceMedium's published schema, which may differ from yours.
 The formulas follow SourceMedium's metric catalog: net revenue is
 `SUM(order_net_revenue)`, average order value is net revenue ÷ orders, MER is
 net revenue ÷ ad spend, CPC is spend ÷ clicks, and platform ROAS is
-platform-reported revenue ÷ spend.
+platform-reported revenue ÷ spend. Overview's totals match the catalog's
+Executive Summary metrics (`order_net_revenue_summary`, `order_count_summary`,
+`total_ad_spend_summary`), which sum every `sm_channel` row; add an
+`sm_channel` filter to report only some channels.
 
 Every query filters one store with `sm_store_id = @store_id`. There are no
 cross-store totals. The store picker lists the distinct `sm_store_id` values of

@@ -47,7 +47,7 @@ Run `pnpm diagnose` with the same values as the failing deployment (put them in
 | Query too large                          | The scan would exceed the byte ceiling              | Narrow the date range or columns                                  |
 | The data no longer matches this view     | A column changed type or disappeared                | `pnpm schema <relation>`, then update the view's row schema       |
 | The query may not have started           | The connection dropped before BigQuery confirmed it | Reload once; the app never resubmits automatically                |
-| The warehouse is temporarily unavailable | Google returned a temporary error                   | Reload in a minute                                                |
+| The warehouse is temporarily unavailable | A temporary error or a short-term rate limit        | Reload in a minute                                                |
 
 A deployment never falls back to sample data when live data fails.
 

@@ -28,9 +28,12 @@ test("the home page is the first navigation entry", async ({ page }) => {
 
 test("filters live in the URL and survive a reload", async ({ page }) => {
   await page.goto(home);
+  // A home page without a store picker or date range (dates={false}) has nothing here to keep.
+  test.skip((await page.getByLabel("Store").count()) === 0, "the home page has no store filter");
   await page.getByLabel("Store").selectOption("sample-store-b");
   await expect(page).toHaveURL(/store=sample-store-b/);
   const preset = page.getByRole("link", { name: "Last 7 days" });
+  test.skip((await preset.count()) === 0, "the home page has no date range");
   const href = (await preset.getAttribute("href")) ?? "";
   expect(href).toContain("store=sample-store-b");
   await preset.click();

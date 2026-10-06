@@ -26,8 +26,9 @@ export async function queryCreatives(filters: CreativesFilters): Promise<Creativ
         ad_creative_id AS creative_id,
         MAX(ad_creative_title) AS title,
         MAX(ad_creative_body) AS body,
-        MAX(ad_creative_image_url) AS image_url,
-        MAX(ad_creative_thumbnail_url) AS thumbnail_url,
+        -- The most recent URL: platform image links are signed and expire, and MAX() would pick by spelling.
+        ARRAY_AGG(ad_creative_image_url IGNORE NULLS ORDER BY date DESC LIMIT 1)[SAFE_OFFSET(0)] AS image_url,
+        ARRAY_AGG(ad_creative_thumbnail_url IGNORE NULLS ORDER BY date DESC LIMIT 1)[SAFE_OFFSET(0)] AS thumbnail_url,
         MAX(ad_creative_call_to_action_type) AS call_to_action,
         MAX(sm_channel) AS channel,
         SUM(ad_spend) AS spend,

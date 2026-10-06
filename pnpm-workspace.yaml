@@ -6,6 +6,19 @@ onlyBuiltDependencies:
   - workerd
   - simple-git-hooks
 
+# Upstream fixes not yet in the pinned versions. Each key covers its patch
+# releases, so a routine update keeps the patch; pnpm refuses to install when a
+# patch no longer applies, so an upgrade cannot drop one silently.
+# - @opennextjs/aws: re-encode the query when rebuilding req.url on Workers
+#   (`a%26b` otherwise reaches route handlers and useSearchParams as `a&b=`).
+#   Remove when OpenNext encodes it itself.
+# - next: React 19.3's hydration-replay fix (facebook/react#35494), backported
+#   into Next's stable react-dom client bundles. An experimental Next flag
+#   switches to react-dom-experimental, which is not patched. Remove on Next 16.
+patchedDependencies:
+  "@opennextjs/aws@~4.1.7": patches/@opennextjs__aws@4.1.7.patch
+  "next@~15.5.27": patches/next@15.5.27.patch
+
 # eslint-plugin-jsx-a11y 6.10.2 is the current release and works under
 # ESLint 10 (checked in the lint suite); its peer range predates ESLint 10.
 peerDependencyRules:

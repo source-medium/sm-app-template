@@ -146,7 +146,6 @@ export function classifyBigQueryError(status: number, body: unknown, job: Detail
 
   switch (reason) {
     case "quotaExceeded":
-    case "rateLimitExceeded":
       return new WarehouseError("quota_exceeded", base);
     case "bytesBilledLimitExceeded":
       return new WarehouseError("bytes_limit_exceeded", base);
@@ -159,6 +158,7 @@ export function classifyBigQueryError(status: number, body: unknown, job: Detail
       return new WarehouseError("invalid_query", { ...base, detail: message.slice(0, 500) });
     case "backendError":
     case "internalError":
+    case "rateLimitExceeded": // A per-second or concurrency limit, not the daily allowance.
       return new WarehouseError("transient", base);
   }
   if (status === 401) return new WarehouseError("credential_invalid", base);

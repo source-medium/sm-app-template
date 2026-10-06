@@ -369,7 +369,9 @@ class Call {
         const body = await this.readJson(response).catch(() => null);
         if (response.ok && body !== null) return body;
         if (!response.ok && response.status !== 429 && response.status < 500) {
-          throw classifyBigQueryError(response.status, body, job);
+          const error = classifyBigQueryError(response.status, body, job);
+          // A rate limit is temporary: retry it like a 429.
+          if (error.kind !== "transient") throw error;
         }
       }
       if (this.remainingMs() <= backoff) {

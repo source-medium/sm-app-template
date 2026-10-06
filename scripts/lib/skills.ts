@@ -28,7 +28,9 @@ export function skillDifferences(root: string): string[] {
   for (const file of sourceFiles) {
     const copy = join(target, file);
     if (!existsSync(copy) || !readFileSync(copy).equals(readFileSync(join(source, file)))) {
-      differences.push(`\`.claude/skills/${file}\` differs from \`.agents/skills/${file}\`; run \`pnpm skills:sync\`.`);
+      differences.push(
+        `\`.claude/skills/${file}\` differs from \`.agents/skills/${file}\`; make the change in \`.agents/skills/${file}\` (sync overwrites the copy), then run \`pnpm skills:sync\`.`,
+      );
     }
   }
   for (const file of files(target).map((path) => toPosix(relative(target, path)))) {
