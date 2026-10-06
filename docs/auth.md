@@ -44,30 +44,49 @@ secrets, so the old password works until you do.
 
 ## Cloudflare Access
 
-Access puts a Cloudflare sign-in in front of the app. Emailed one-time PINs
-need no identity provider; the free plan covers up to 50 users, although Zero
-Trust onboarding asks for payment details.
+Access puts a Cloudflare sign-in in front of the app. The app owner manages
+allowed viewers in **their own Cloudflare account**. Viewers need no Cloudflare
+account when using emailed one-time PINs; there is no signup form or user
+database to build in this app.
 
-1. In Cloudflare Zero Trust, add a **self-hosted application** for your app's
-   hostname, with a policy that allows specific emails or your email domain.
-2. Set the application's **session duration** to one hour.
-3. Copy your **team domain** (`yourteam.cloudflareaccess.com`) and the
+1. Complete [Zero Trust setup](https://developers.cloudflare.com/cloudflare-one/setup/)
+   in the account hosting your Worker. Cloudflare asks for a plan and payment
+   details, including for the Free plan.
+2. For email-code login, go to **Zero Trust > Integrations > Identity providers**,
+   choose **Add new identity provider**, then **One-time PIN**. New organizations
+   do not enable this automatically. You can use your existing SSO instead.
+   See [Cloudflare's login guide](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/).
+3. Add a **self-hosted application** for your app's exact hostname, with an
+   **Allow** policy for specific email addresses or your company's email domain.
+   Select **One-time PIN** as an available login method if using email codes.
+4. Set the application's **session duration** to one hour.
+5. Copy your **team domain** (`yourteam.cloudflareaccess.com`) and the
    application's **Audience (AUD) tag**.
-4. In your Worker's variables, set `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD`,
+6. In your Worker's variables, set `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD`,
    **remove `APP_BASIC_AUTH`** (both guards at once is a configuration error),
    and redeploy.
-5. Cover every hostname that reaches the Worker: add `*.workers.dev` for your
-   Worker to the Access application, or turn off workers.dev in the Worker's
-   settings. Keep preview URLs off (`wrangler.jsonc`); turning off workers.dev
-   does not turn off preview URLs.
+7. Cover every hostname that reaches the Worker, including its exact
+   `your-worker.your-account.workers.dev` hostname. If you use only a custom
+   domain, set `workers_dev` to `false` in `wrangler.jsonc` and redeploy instead.
+   Keep `preview_urls` set to `false` too. Disabling workers.dev only in the
+   dashboard can be undone by your next deploy; see
+   [Cloudflare's hostname guide](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/).
+8. Open the app in a private browser window. Sign in with an allowed email and
+   confirm the app loads and shows your email in the desktop top bar. Confirm
+   an email outside the policy cannot get in. Test each hostname you kept enabled.
 
 The app also verifies the token Access attaches (issuer, audience, RS256
 signature, expiry) against your team's published keys, and refuses everything
 if those keys cannot be fetched. That catches a request that skipped Access,
 but a valid token replayed against a hostname Access does not cover still
-verifies, so step 5 matters.
+verifies, so covering every hostname matters.
 
 The top bar shows the signed-in viewer's email.
+
+**Adding someone:** add their email to the application's Allow policy and send
+them the app link. They enter their email and the code they receive. If you
+allow your entire company email domain, colleagues in that domain do not need
+to be added individually. Every allowed viewer sees the same data.
 
 **Removing someone:** remove them from the policy **and** revoke their
 sessions in Zero Trust. Removing a policy entry alone does not end sessions
