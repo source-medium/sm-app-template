@@ -35,8 +35,10 @@ access to any warehouse.
   has a test showing it fails on a deliberate violation (`tests/static`).
 - No real customer identifiers, values, URLs, or credentials anywhere,
   including tests and fixtures. Sample data is synthetic.
-- Dependencies update monthly through one grouped Dependabot pull request.
-  Pin exact versions; never resolve `latest` in a build.
+- Before each release, update dependencies with the "Update dependencies"
+  prompt in [docs/prompts.md](docs/prompts.md). There is no update bot: its
+  pull requests would land in every customer's copy. Pin exact versions; never
+  resolve `latest` in a build.
 
 ## Releases
 

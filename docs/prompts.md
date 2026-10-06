@@ -67,3 +67,20 @@ follow its five rules; if it needs to write anything or act on behalf of a
 person, stop and tell me, because this app's viewer guards are shared and
 read-only by design (docs/auth.md). Run pnpm check when done.
 ```
+
+## Update dependencies
+
+Run it every few months, and soon after Next.js announces a security fix.
+
+```text
+Update every package in package.json to its newest release within its current
+major version (within its current minor for 0.x), skipping deprecated
+releases. Versions are pinned exactly, so plain `pnpm update` changes nothing
+and `pnpm update --latest` crosses majors: find each version with `pnpm view
+<name> versions` and set it with `pnpm add -E <name>@<version>` (add -D for
+devDependencies). Do not add overrides. Then run pnpm check and pnpm test:e2e
+and fix anything that breaks. If install fails on a patch in
+pnpm-workspace.yaml, read its comment: remove the patch only if you can show
+the new release contains the fix, otherwise stop and tell me. List each
+package as old -> new, and anything you held back and why.
+```
