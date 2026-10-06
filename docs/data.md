@@ -131,16 +131,33 @@ they publish them. The app shows them as published:
 `obt_orders` also keeps each order's original amounts and currency
 (`order_original_*`, `order_original_currency_code`) if you need them.
 
-## Freshness
+## Refresh and freshness
 
-Pages show **Queried at** and **Data freshness unknown**. The query time says
-when the app asked, not how current the warehouse is. Do not use `MAX(date)` as
+**Refresh data** re-reads the current report with the filters already applied
+in the URL. It keeps the report visible while loading and disables repeat clicks.
+Unapplied filter edits are not submitted. Refreshing the app does not trigger
+SourceMedium's ingestion pipeline. Reports do not poll or refresh automatically.
+
+Each `DataRegion` shows **Queried at** only after its data loads successfully,
+including an empty result. The time is when the section finished loading, not
+when page rendering began. Errors get no success timestamp. Sample mode labels
+the time **Sample loaded at**, since it runs no warehouse query.
+
+Pages also show **Data freshness unknown**. The query time does not tell you
+how current the warehouse is. Do not use `MAX(date)` as
 freshness: `rpt_executive_summary_daily` includes forward-dated target rows,
 which is also why date ranges end no later than today.
 
 Showing a table's own snapshot time, labeled as such (for example "Inventory
 snapshot as of …" from `inventory_snapshot_at`), is fine: it describes that
 table, not how current the whole warehouse is.
+
+There is no shared app or CDN cache of report data. Repeated auth and store-list
+reads are deduplicated within one server render; credentials are reused until
+shortly before expiry. BigQuery can serve eligible repeated queries from its
+[native query cache](https://docs.cloud.google.com/bigquery/docs/cached-results).
+Refresh does not bypass that cache. Browser Back/Forward can restore a previous
+report; use **Refresh data** to re-read it.
 
 ## Metadata
 

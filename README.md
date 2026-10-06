@@ -78,6 +78,9 @@ does not include. See [docs/auth.md](docs/auth.md).
 Viewers can choose Light, Dark, or System in the top bar. **Copy link** shares
 the applied store, date range, and view filters with another authorized viewer;
 it does not freeze the underlying data. Overview's info icons explain each KPI.
+**Refresh data** reloads the current report with its applied filters. Each
+successfully loaded section shows its query time; warehouse freshness remains
+unknown. Reports do not refresh automatically.
 
 SourceMedium maintains the connection and integration patterns. Your agent
 works with ordinary feature code when extending your copy.

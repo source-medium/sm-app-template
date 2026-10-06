@@ -17,7 +17,7 @@ const longDate = new Intl.DateTimeFormat(appConfig.locale, {
   day: "numeric",
   timeZone: "UTC",
 });
-const clock = new Intl.DateTimeFormat(appConfig.locale, {
+const clockOptions = {
   year: "numeric",
   month: "short",
   day: "numeric",
@@ -25,7 +25,9 @@ const clock = new Intl.DateTimeFormat(appConfig.locale, {
   minute: "2-digit",
   timeZone: "UTC",
   timeZoneName: "short",
-});
+} satisfies Intl.DateTimeFormatOptions;
+const clock = new Intl.DateTimeFormat(appConfig.locale, clockOptions);
+const preciseClock = new Intl.DateTimeFormat(appConfig.locale, { ...clockOptions, second: "2-digit" });
 
 export const EMPTY_VALUE = "—";
 
@@ -79,8 +81,8 @@ export function formatDate(date: string): string {
   return longDate.format(new Date(`${date}T00:00:00Z`));
 }
 
-export function formatInstant(iso: string): string {
-  return clock.format(new Date(iso));
+export function formatInstant(iso: string, includeSeconds = false): string {
+  return (includeSeconds ? preciseClock : clock).format(new Date(iso));
 }
 
 const wallTime = new Intl.DateTimeFormat(appConfig.locale, {

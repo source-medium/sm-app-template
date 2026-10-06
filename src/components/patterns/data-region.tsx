@@ -7,6 +7,8 @@
  * configuration) is rethrown to the route's error boundary.
  */
 import { WarehouseError } from "@/lib/data/warehouse-error";
+import { requireViewer } from "@/lib/auth/require-viewer";
+import { formatInstant } from "@/lib/format";
 import { EmptyState, ErrorState, IncompatibleState } from "./data-states";
 
 export async function DataRegion<T>({
@@ -20,6 +22,7 @@ export async function DataRegion<T>({
   emptyMessage: string;
   children: (data: T) => React.ReactNode;
 }) {
+  const access = await requireViewer();
   let data: T;
   try {
     data = await load();
@@ -30,5 +33,17 @@ export async function DataRegion<T>({
     }
     return <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} />;
   }
-  return isEmpty(data) ? <EmptyState message={emptyMessage} /> : <>{children(data)}</>;
+  // Stamp only successful loads, including empty results, after every query and decoder finishes.
+  const completedAt = new Date().toISOString();
+  return (
+    <div className="flex flex-col gap-3">
+      {isEmpty(data) ? <EmptyState message={emptyMessage} /> : children(data)}
+      <p className="text-xs text-muted-foreground">
+        {access.mode === "live" ? "Queried at " : "Sample loaded at "}
+        <time dateTime={completedAt} data-slot="data-loaded-at">
+          {formatInstant(completedAt, true)}
+        </time>
+      </p>
+    </div>
+  );
 }

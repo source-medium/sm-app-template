@@ -155,3 +155,52 @@ test("copy failure offers the complete applied link for manual copying", async (
   expect(manual.searchParams.get("store")).toBe(await page.getByLabel("Store", { exact: true }).inputValue());
   await expectNoSeriousA11yViolations(page);
 });
+
+test("refresh re-reads the report, shows progress, and keeps applied filters", async ({ page }) => {
+  const problems = watchConsole(page);
+  await page.goto(`${home}?store=sample-store-b&from=2026-09-01&to=2026-09-07`);
+  const refresh = page.getByRole("button", { name: "Refresh data", exact: true });
+  test.skip((await refresh.count()) === 0, "the home page does not use ReportPage");
+  test.skip((await page.locator('[data-slot="data-loaded-at"]').count()) === 0, "the home page has no data region");
+  const timestamp = page.locator('[data-slot="data-loaded-at"]:visible').first();
+  await expect(timestamp).toBeVisible();
+  const before = await timestamp.getAttribute("datetime");
+  const url = page.url();
+  const from = page.getByLabel("From", { exact: true });
+  if (await from.count()) await from.fill("2020-01-01");
+
+  // Hold the real server response so pending behavior is observable without a timing race.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let refreshRequests = 0;
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    if (request.headers().rsc === "1" && new URL(request.url()).pathname === home) {
+      refreshRequests += 1;
+      const response = await route.fetch();
+      await held;
+      await route.fulfill({ response });
+    } else {
+      await route.continue();
+    }
+  });
+  try {
+    await refresh.click();
+    await expect(refresh).toBeDisabled();
+    await expect(refresh).toHaveText("Refreshing…");
+    await expect(page.getByText("Refreshing report data.", { exact: true })).toHaveCount(1);
+    await expect(timestamp).toHaveAttribute("datetime", before ?? "");
+    await expect(page).toHaveURL(url);
+  } finally {
+    release();
+  }
+  await expect(refresh).toBeEnabled();
+  await expect(timestamp).not.toHaveAttribute("datetime", before ?? "");
+  await expect(page).toHaveURL(url);
+  await expect(page.getByLabel("Store", { exact: true })).toHaveValue("sample-store-b");
+  if (await from.count()) await expect(from).toHaveValue("2020-01-01");
+  expect(refreshRequests).toBe(1);
+  expect(problems).toEqual([]);
+});

@@ -1,7 +1,7 @@
 /**
  * The frame every report view shares: title, the store and date filters
- * parsed from the URL, the view's regions, and a footer that says when the
- * data was queried and that its freshness is unknown.
+ * parsed from the URL, refresh and share controls, and a freshness footer.
+ * Each DataRegion timestamps its own successful load.
  *
  * A view passes a render function that receives the applied filters.
  *
@@ -14,6 +14,7 @@ import { Suspense } from "react";
 import { EmptyState, ErrorState } from "@/components/patterns/data-states";
 import { FilterBar } from "@/components/shell/filter-bar";
 import { CopyReportLink } from "@/components/shell/copy-report-link";
+import { RefreshReport } from "@/components/shell/refresh-report";
 import { Skeleton } from "@/components/ui/skeleton";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { loadStores, type StoreOption } from "@/lib/data/stores.server";
@@ -28,7 +29,6 @@ import {
   type ReportFilters,
   type SearchParams,
 } from "@/lib/filters";
-import { formatInstant } from "@/lib/format";
 
 const PRESET_DAYS = [7, 28, 90];
 
@@ -78,7 +78,10 @@ export async function ReportPage({
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="max-w-prose text-sm text-muted-foreground">{description}</p>
         </div>
-        {shareHref && <CopyReportLink key={shareHref} href={shareHref} />}
+        <div className="flex flex-wrap items-start gap-2">
+          <RefreshReport />
+          {shareHref && <CopyReportLink key={shareHref} href={shareHref} />}
+        </div>
       </header>
     );
   }
@@ -86,7 +89,7 @@ export async function ReportPage({
     <footer className="border-t pt-4 text-xs text-muted-foreground">
       {access.mode === "sample"
         ? "Synthetic sample data for demonstration; not from any warehouse."
-        : `Queried at ${formatInstant(now.toISOString())} · Data freshness unknown.`}
+        : "Data freshness unknown."}
       {dates && " Dates are calendar dates as published in the warehouse."}
     </footer>
   );
