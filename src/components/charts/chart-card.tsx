@@ -49,6 +49,7 @@ export function ChartCard({
 }: ChartCardProps) {
   const [showTable, setShowTable] = useState(!plottable);
   const regionId = useId();
+  const Plot = kind === "line" ? LineChart : BarChart;
   const config: ChartConfig = Object.fromEntries(
     series.map((item) => [item.key, { label: item.label, color: item.color }]),
   );
@@ -82,14 +83,14 @@ export function ChartCard({
           <ChartTable title={title} categoryHeader={categoryHeader} series={series} data={data} />
         ) : (
           <ChartContainer config={config} className="aspect-auto h-64 w-full" role="img" aria-label={`${title} chart`}>
-            {kind === "line" ? (
-              <LineChart data={data} margin={{ left: 4, right: 12, top: 8 }}>
-                <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
-                <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={compactNumber} />
-                <ChartTooltip cursor content={<ChartTooltipContent indicator="line" />} />
-                {series.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
-                {series.map((item) => (
+            <Plot data={data} margin={{ left: 4, right: 12, top: 8 }}>
+              <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
+              <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={compactNumber} />
+              <ChartTooltip cursor content={<ChartTooltipContent indicator={kind === "line" ? "line" : "dot"} />} />
+              {series.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
+              {series.map((item) =>
+                kind === "line" ? (
                   <Line
                     key={item.key}
                     dataKey={item.key}
@@ -103,16 +104,7 @@ export function ChartCard({
                     connectNulls={false}
                     isAnimationActive={false}
                   />
-                ))}
-              </LineChart>
-            ) : (
-              <BarChart data={data} margin={{ left: 4, right: 12, top: 8 }}>
-                <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
-                <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={compactNumber} />
-                <ChartTooltip cursor content={<ChartTooltipContent />} />
-                {series.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
-                {series.map((item) => (
+                ) : (
                   <Bar
                     key={item.key}
                     dataKey={item.key}
@@ -121,9 +113,9 @@ export function ChartCard({
                     maxBarSize={24}
                     isAnimationActive={false}
                   />
-                ))}
-              </BarChart>
-            )}
+                ),
+              )}
+            </Plot>
           </ChartContainer>
         )}
       </CardContent>

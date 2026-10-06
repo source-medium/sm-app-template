@@ -23,15 +23,17 @@ export function SelectFilter({
   label: string;
   value: string;
   options: { value: string; label: string }[];
-  /** The other URL parameters to keep, such as store and dates. */
+  /** URL parameters to keep. This picker excludes its own name. */
   preserved: Record<string, string>;
 }) {
   const id = useId();
   return (
     <Form action={pathname} className="flex items-end gap-2">
-      {Object.entries(preserved).map(([key, preservedValue]) => (
-        <input key={key} type="hidden" name={key} value={preservedValue} />
-      ))}
+      {Object.entries(preserved)
+        .filter(([key]) => key !== name)
+        .map(([key, preservedValue]) => (
+          <input key={key} type="hidden" name={key} value={preservedValue} />
+        ))}
       <div className="flex min-w-0 flex-col gap-1.5">
         <label htmlFor={id} className="text-xs font-medium text-muted-foreground">
           {label}

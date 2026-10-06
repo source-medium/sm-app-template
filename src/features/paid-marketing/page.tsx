@@ -113,7 +113,7 @@ function PaidMarketingView({
           label="Measure"
           value={metric}
           options={PAID_METRICS.map((value) => ({ value, label: METRIC_LABELS[value] }))}
-          preserved={withoutKey(preserved, "metric")}
+          preserved={preserved}
         />
         <SelectFilter
           pathname={PATHNAME}
@@ -121,7 +121,7 @@ function PaidMarketingView({
           label="Channel"
           value={filters.channel ?? ""}
           options={channelOptions}
-          preserved={withoutKey(preserved, "channel")}
+          preserved={preserved}
         />
       </div>
       <ChartCard
@@ -181,9 +181,4 @@ function PaidMarketingView({
       </section>
     </div>
   );
-}
-
-function withoutKey(record: Record<string, string>, key: string): Record<string, string> {
-  const { [key]: _omitted, ...rest } = record;
-  return rest;
 }

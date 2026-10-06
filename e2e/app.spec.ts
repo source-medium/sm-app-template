@@ -56,6 +56,21 @@ test("keyboard users can reach the navigation", async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(target?.href ?? ""));
 });
 
+test("collapsed navigation keeps its labels available through tooltips", async ({ page }) => {
+  const target = appConfig.nav[0];
+  test.skip(!target, "needs a navigation entry");
+  const problems = watchConsole(page);
+  await page.goto(home);
+  const sidebar = page.locator('[data-slot="sidebar"]').first();
+  await page.getByRole("button", { name: "Toggle navigation" }).click();
+  await expect(sidebar).toHaveAttribute("data-state", "collapsed");
+  await page.getByRole("link", { name: target?.label ?? "", exact: true }).hover();
+  await expect(page.getByRole("tooltip")).toHaveText(target?.label ?? "");
+  await page.getByRole("button", { name: "Toggle navigation" }).click();
+  await expect(sidebar).toHaveAttribute("data-state", "expanded");
+  expect(problems).toEqual([]);
+});
+
 test("responses carry the private-app headers", async ({ request }) => {
   const response = await request.get(home);
   expect(response.headers()["x-robots-tag"]).toBe("noindex, nofollow");

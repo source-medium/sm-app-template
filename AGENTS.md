@@ -10,6 +10,9 @@ and copy the closest view before introducing a new pattern. Add configuration
 only for real customer differences; share code when multiple views need it.
 Keep feature code explicit and examples independently removable. Put release
 verification in maintainer docs, not extra steps in the customer's workflow.
+UI primitives own styling and interaction; shared patterns own report behavior;
+features own their queries and presentation. Shared code never imports a feature.
+Keep only UI components the app uses; add more when a view needs them.
 
 ## Commands
 

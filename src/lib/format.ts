@@ -9,7 +9,6 @@ import { appConfig } from "@/app.config";
 const integer = new Intl.NumberFormat(appConfig.locale, { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat(appConfig.locale, { maximumFractionDigits: 2 });
 const percent = new Intl.NumberFormat(appConfig.locale, { style: "percent", maximumFractionDigits: 2 });
-const compact = new Intl.NumberFormat(appConfig.locale, { notation: "compact", maximumFractionDigits: 1 });
 const shortDate = new Intl.DateTimeFormat(appConfig.locale, { month: "short", day: "numeric", timeZone: "UTC" });
 const longDate = new Intl.DateTimeFormat(appConfig.locale, {
   year: "numeric",
@@ -66,10 +65,6 @@ export function formatMeasure(value: number | null): string {
 
 export function formatPercent(value: number | null): string {
   return value === null || !Number.isFinite(value) ? EMPTY_VALUE : percent.format(value);
-}
-
-export function formatCompact(value: number): string {
-  return compact.format(value);
 }
 
 /** A warehouse DATE ("2026-10-04"), shown as a calendar date in no time zone. */

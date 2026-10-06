@@ -68,13 +68,6 @@ export function parseDateRange(params: SearchParams, now: Date): DateRange {
     : range;
 }
 
-/** The selected store, or the first store when none (or an unknown one) is selected. */
-export function parseStore(params: SearchParams, storeIds: readonly string[]): string | null {
-  const requested = single(params, "store");
-  if (requested && storeIds.includes(requested)) return requested;
-  return storeIds[0] ?? null;
-}
-
 /** A link to the same view with some parameters changed; null removes one. */
 export function withParams(pathname: string, params: SearchParams, changes: Record<string, string | null>): string {
   const next = new URLSearchParams();

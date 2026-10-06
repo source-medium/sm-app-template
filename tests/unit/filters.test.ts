@@ -1,13 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  addDays,
-  datesInRange,
-  defaultRange,
-  parseDateRange,
-  parseStore,
-  rangeLength,
-  withParams,
-} from "@/lib/filters";
+import { addDays, datesInRange, defaultRange, parseDateRange, rangeLength, withParams } from "@/lib/filters";
 
 const NOW = new Date("2026-10-05T03:00:00Z");
 
@@ -47,12 +39,6 @@ describe("URL filters", () => {
     [{ from: ["2026-09-01", "x"], to: "2026-09-02'; DROP TABLE" }],
   ])("falls back to the default for %j", (params) => {
     expect(parseDateRange(params, NOW)).toEqual(defaultRange(NOW));
-  });
-
-  it("selects the requested store only when it is in the roster, otherwise the first", () => {
-    expect(parseStore({ store: "b" }, ["a", "b"])).toBe("b");
-    expect(parseStore({ store: "zzz" }, ["a", "b"])).toBe("a");
-    expect(parseStore({}, [])).toBeNull();
   });
 
   it("builds links that change some parameters and keep the rest", () => {

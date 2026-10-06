@@ -1,23 +1,45 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChartCard } from "@/components/charts/chart-card";
 
 const DATA = [
   { label: "Oct 1", orders: 10, orders__display: "10" },
   { label: "Oct 2", orders: null, orders__display: "No rows" },
+  { label: "Oct 3", orders: 15, orders__display: "15" },
+  { label: "Oct 4", orders: 20, orders__display: "20" },
 ];
 
 describe("ChartCard", () => {
-  it("toggles to an accessible table of the server-formatted values", () => {
-    render(
+  beforeEach(() => {
+    // jsdom has no layout; give the real responsive chart a measurable container.
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 640,
+      height: 256,
+      top: 0,
+      left: 0,
+      bottom: 256,
+      right: 640,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each(["line", "bar"] as const)("renders a %s plot and toggles to the server-formatted table", (kind) => {
+    const { container } = render(
       <ChartCard
         title="Orders by day"
-        kind="line"
+        kind={kind}
         categoryHeader="Date"
         series={[{ key: "orders", label: "Orders", color: "red" }]}
         data={DATA}
       />,
     );
+    expect(screen.getByRole("img", { name: "Orders by day chart" })).toBeInTheDocument();
+    expect(
+      container.querySelector(kind === "line" ? ".recharts-line-curve" : ".recharts-bar-rectangle"),
+    ).not.toBeNull();
     const toggle = screen.getByRole("button", { name: "View as table" });
     expect(toggle).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(toggle);
