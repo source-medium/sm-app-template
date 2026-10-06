@@ -4,6 +4,11 @@ Thanks for improving the starter. Changes should keep it small: a customer
 must be able to read it, change it, and delete the examples without learning a
 framework.
 
+Judge additions by the recurring setup or data-app problem they solve.
+Prefer a working default and a copyable example. Configuration should express
+customer-specific values; shared abstractions should serve existing views.
+The release checks below are maintainer work, not customer onboarding steps.
+
 ## Development
 
 ```sh

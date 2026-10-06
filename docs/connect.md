@@ -3,7 +3,8 @@
 This is a preview. SourceMedium's Apps page and its self-service credential
 flows are planned. The steps below describe that planned flow; live setup is
 currently possible only with an already provisioned app-specific block.
-Never use an admin credential. See [release readiness](release-readiness.md).
+Start with the shared password and Cloudflare Workers Paid. Use the issued
+app credential; never substitute an admin credential.
 
 The app has three states, always shown in the top bar:
 
@@ -66,13 +67,12 @@ colon), even on localhost. The top bar shows **Live data**.
 
 ## 4. Deploy to Cloudflare
 
-The fresh-account button flow still needs a walkthrough after this repository
-is public. The intended flow is: click **Deploy to Cloudflare** in the README.
-Cloudflare copies the repository
-into your GitHub or GitLab account, then asks for each value from
-`.env.example` as an encrypted secret: paste each one from your block. Then
-deploy, open the URL, enter the password, and confirm **Live data** and the
-store you expect.
+Click **Deploy to Cloudflare** in the README. The button is configured to copy
+the repository into your GitHub or GitLab account and ask for each value from
+`.env.example` as an encrypted secret. Paste the values from your block, deploy,
+open the URL, enter the password, and confirm **Live data** and the right store.
+The fresh-account button walkthrough remains unverified; command-line Worker
+deployment and secret retention have been tested.
 
 - **Plan: Workers Paid.** Rendering a page takes roughly 80 to 850 ms of CPU
   on a deployed Worker (Cloudflare's per-request CPU time, with sample and

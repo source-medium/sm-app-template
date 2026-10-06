@@ -5,6 +5,12 @@ warehouse on the server and shows it to a small group of trusted viewers.
 Every viewer sees everything the app can read; there is no per-viewer data.
 Without configuration it runs on clearly labeled sample data.
 
+Make the first useful SourceMedium data app easy. Prefer the existing defaults
+and copy the closest view before introducing a new pattern. Add configuration
+only for real customer differences; share code when multiple views need it.
+Keep feature code explicit and examples independently removable. Put release
+verification in maintainer docs, not extra steps in the customer's workflow.
+
 ## Commands
 
 - `pnpm dev`: checks configuration, then serves on http://127.0.0.1:3000.

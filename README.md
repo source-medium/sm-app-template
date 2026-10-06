@@ -1,19 +1,14 @@
 # SourceMedium App Starter
 
-Preview template: try the example views locally on sample data, then adapt them
-with your coding agent. No stable release has been published yet.
+Start an internal data app on your SourceMedium warehouse, then make it yours
+with your coding agent. The starter handles the warehouse connection, shared
+password, store and date filters, charts, tables, and loading and error states.
 
-Live onboarding through SourceMedium's Apps page is planned, not available in
-this starter release. The fresh-account Cloudflare button flow is not yet
-verified. See [release readiness](docs/release-readiness.md) before going live.
+Four example views cover common starting points: Overview, Paid marketing,
+Creatives, and Orders. Copy the closest one, change its query and presentation,
+or delete it. You own a normal Next.js app with editable code throughout.
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/source-medium/sm-app-template)
-
-A normal Next.js app that you own and can change completely. It reads your
-SourceMedium BigQuery warehouse on the server and shows it to people you trust,
-behind a password or Cloudflare Access. It ships with four example views
-(Overview, Paid marketing, Creatives, Orders) that you can keep, change, or
-delete.
 
 ## Try it in two commands
 
@@ -69,17 +64,28 @@ does not include. See [docs/auth.md](docs/auth.md).
 | [removing-the-example.md](docs/removing-the-example.md) | Deleting one example view or all four                |
 | [prompts.md](docs/prompts.md)                           | Starter prompts for your agent                       |
 
-## What this is not
+## Conventions you can build on
 
-Not a hosted app builder, a dashboard framework, a query gateway, or a
-replacement for your BI tool. There is no app database, no shared cache of
-your data, no per-viewer permissions, and no writes. SourceMedium maintains
-this template and its tested patterns; the code in your copy is yours.
+- **Connect once:** one app-specific configuration block; warehouse queries
+  stay on the server and the shared password protects every view.
+- **Copy a view:** each feature owns its query, row schema, sample data and UI.
+  The same store and date filters work across views and stay in the URL.
+- **Keep data trustworthy:** typed SQL parameters, exact money values, bounded
+  queries and clear errors are built in.
+- **Make it yours:** edit `app.config.ts` and `src/styles/tokens.css` to rebrand;
+  reuse the chart, table and card patterns when adding pages.
+
+SourceMedium maintains the connection and integration patterns. Your agent
+works with ordinary feature code when extending your copy.
 
 ## Stack
 
 Next.js (App Router) on Cloudflare Workers through OpenNext ·
 React · strict TypeScript · shadcn/ui on Tailwind CSS · Recharts · Zod ·
 jose · Vitest (Node and workerd) · Playwright with axe.
+
+This is the 0.1.0 preview. Cloudflare Workers Paid is the deployment target.
+See [validation and current limits](docs/release-readiness.md); no stable
+release has been tagged yet.
 
 [License](LICENSE) · [Security](SECURITY.md) · [Support](SUPPORT.md) · [Contributing](CONTRIBUTING.md)
