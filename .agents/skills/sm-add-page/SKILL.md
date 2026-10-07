@@ -8,7 +8,7 @@ Follow "Add a page" in `AGENTS.md`, and `docs/removing-the-example.md` when dele
 1. A route file in `src/app/(app)/<route>/page.tsx` and one `nav` entry in `app.config.ts`.
 2. A feature folder copied from the closest example view.
 3. The patterns in `src/components/patterns` (KPI card, chart card, data table,
-   card grid), each region inside `<Suspense>` and `<DataRegion>` for its four
+   card grid, cohort matrix), each region inside `<Suspense>` and `<DataRegion>` for its four
    states.
 4. Data work per the `sm-data` skill.
 

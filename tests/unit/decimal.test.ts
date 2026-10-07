@@ -1,8 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { decimalToNumber, fromUnits, ratio, sumDecimals, toUnits } from "@/lib/data/decimal";
+import { decimalToNumber, fromUnits, nonnegativeShare, ratio, sumDecimals, toUnits } from "@/lib/data/decimal";
 import { formatMoney, formatMultiple } from "@/lib/format";
 
 describe("NUMERIC money", () => {
+  it("only shows shares for positive full totals without negative members", () => {
+    expect(nonnegativeShare("2", "10", "1")).toBe(0.2);
+    expect(nonnegativeShare("0", "10", "0")).toBe(0);
+    for (const [total, minimum] of [
+      ["0", "0"],
+      ["-1", "-1"],
+      ["10", "-1"],
+      [null, "0"],
+      ["10", null],
+    ] as const) {
+      expect(nonnegativeShare("1", total, minimum)).toBeNull();
+    }
+  });
   it("adds exactly where floats drift", () => {
     expect(sumDecimals(["0.1", "0.2"])).toBe("0.3");
     expect(sumDecimals(["99999999999999999999.999999999", "0.000000001"])).toBe("100000000000000000000");

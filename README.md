@@ -4,8 +4,8 @@ Start an internal data app on your SourceMedium warehouse, then make it yours
 with your coding agent. The starter handles the warehouse connection, shared
 password, store and date filters, charts, tables, and loading and error states.
 
-Four example views cover common starting points: Overview, Paid marketing,
-Creatives, and Orders. Copy the closest one, change its query and presentation,
+Six example views cover common starting points: Overview, Paid marketing,
+Creatives, Products, Retention, and Orders. Copy the closest one, change its query and presentation,
 or delete it. You own a normal Next.js app with editable code throughout.
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/source-medium/sm-app-template)
@@ -64,7 +64,7 @@ starter does not include. See [docs/auth.md](docs/auth.md).
 | [data.md](docs/data.md)                                 | Schemas, SQL rules, exact decoding, money, freshness |
 | [auth.md](docs/auth.md)                                 | The shared password, Cloudflare Access, sign-in      |
 | [operations.md](docs/operations.md)                     | Rotation, query allowances, errors and remedies      |
-| [removing-the-example.md](docs/removing-the-example.md) | Deleting one example view or all four                |
+| [removing-the-example.md](docs/removing-the-example.md) | Deleting one example view or all six                 |
 | [prompts.md](docs/prompts.md)                           | Starter prompts for your agent                       |
 
 ## Conventions you can build on
@@ -72,7 +72,7 @@ starter does not include. See [docs/auth.md](docs/auth.md).
 - **Connect once:** one app-specific configuration block; warehouse queries
   stay on the server and the shared password protects every view.
 - **Copy a view:** each feature owns its query, row schema, sample data and UI.
-  The same store and date filters work across views and stay in the URL.
+  Store and date filters stay in the URL; Retention uses a completed-month window.
 - **Separate store audiences:** optional `APP_STORE_ID` locks a deployment to
   one store. Give it its own URL and viewer guard; see [the setup](docs/auth.md#one-deployment-per-store).
 - **Keep data trustworthy:** typed SQL parameters, exact money values, bounded

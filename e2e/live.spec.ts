@@ -57,6 +57,23 @@ test("Paid marketing can rank campaigns against the previous year", async ({ pag
   expect(problems).toEqual([]);
 });
 
+test("Products variants and published retention cohorts have usable live data", async ({ page }) => {
+  if (appConfig.nav.some((item) => item.href === "/products")) {
+    await page.goto("/products?dimension=variant&metric=units&compare=year");
+    await expect(page.getByRole("status")).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
+    await expect(page.getByRole("table", { name: "Net units by variant details", exact: true })).toBeVisible();
+  }
+  if (appConfig.nav.some((item) => item.href === "/retention")) {
+    await page.goto("/retention");
+    await expect(page.getByRole("status")).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
+    const table = page.getByRole("table", { name: "Monthly retention", exact: true });
+    await expect(table).toBeVisible();
+    await expect(table.locator('td[data-state="value"]').first()).toBeVisible();
+  }
+});
+
 test("the store and dates survive navigation, and the next page of orders loads", async ({ page }) => {
   await page.goto(appConfig.nav[0]?.href ?? "/");
   await page.getByRole("link", { name: "Last 7 days" }).click();

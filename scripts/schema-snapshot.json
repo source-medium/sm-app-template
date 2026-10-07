@@ -1,5 +1,5 @@
 {
- "_note": "Column names, types, descriptions, and key flags of SourceMedium's published relations, read from the SourceMedium demo warehouse and its data dictionary on 2026-10-05. No data. Your warehouse may differ; with live configuration, pnpm schema reads your own.",
+ "_note": "Column names, types, descriptions, and key flags of SourceMedium's published relations, read from the SourceMedium demo warehouse and its data dictionary on 2026-10-05. No data. Your warehouse may differ; with live configuration, pnpm schema reads your own. Products and cohort schemas added from the demo warehouse on 2026-10-07.",
  "relations": {
   "rpt_executive_summary_daily": {
    "dataset": "transformed",
@@ -662,7 +662,7 @@
      "name": "source_system",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "Originating platform for the record (e.g., Shopify, Amazon, TikTok Shop, Chargebee). Used for platform\u2011specific behavior and coverage."
+     "description": "Originating platform for the record (e.g., Shopify, Amazon, TikTok Shop, Chargebee). Used for platform‑specific behavior and coverage."
     },
     {
      "name": "order_id",
@@ -688,7 +688,7 @@
      "name": "order_name",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "Platform-rendered name (human\u2011readable or platform\u2011specific). Not a stable join key."
+     "description": "Platform-rendered name (human‑readable or platform‑specific). Not a stable join key."
     },
     {
      "name": "order_number",
@@ -922,7 +922,7 @@
      "name": "order_payment_status",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "Financial status of the order (e.g., paid, partially_paid, partially_refunded, authorized, pending, refunded, voided, draft). Platform\u2011defined."
+     "description": "Financial status of the order (e.g., paid, partially_paid, partially_refunded, authorized, pending, refunded, voided, draft). Platform‑defined."
     },
     {
      "name": "order_processing_method",
@@ -1024,31 +1024,31 @@
      "name": "sm_utm_source",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "Last-click UTM source from attribution waterfall (Shopify visits/landing/order attributes \u2192 website events \u2192 GA/GA4 \u2192 referrer). For Shopify, order-level attribution includes allowlisted order `customAttributes` and legacy `note_attributes`, including parsing aggregate `utmParams`/`GE_utmParams`; if explicit `utm_source` is missing, `sm_utm_source` may be inferred from click IDs (e.g., `gclid` \u2192 g"
+     "description": "Last-click UTM source from attribution waterfall (Shopify visits/landing/order attributes → website events → GA/GA4 → referrer). For Shopify, order-level attribution includes allowlisted order `customAttributes` and legacy `note_attributes`, including parsing aggregate `utmParams`/`GE_utmParams`; if explicit `utm_source` is missing, `sm_utm_source` may be inferred from click IDs (e.g., `gclid` → g"
     },
     {
      "name": "sm_utm_medium",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "Last-click UTM medium from attribution waterfall (Shopify visits/landing/order attributes \u2192 website events \u2192 GA/GA4 \u2192 referrer). Native on Shopify/Chargebee; enriched via website tracking (Elevar, Blotout, Snowplow). Limited for marketplaces."
+     "description": "Last-click UTM medium from attribution waterfall (Shopify visits/landing/order attributes → website events → GA/GA4 → referrer). Native on Shopify/Chargebee; enriched via website tracking (Elevar, Blotout, Snowplow). Limited for marketplaces."
     },
     {
      "name": "sm_utm_campaign",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "Last-click UTM campaign from attribution waterfall (Shopify visits/landing/order attributes \u2192 website events \u2192 GA/GA4 \u2192 referrer). Native on Shopify/Chargebee; enriched via website tracking (Elevar, Blotout, Snowplow). Limited for marketplaces."
+     "description": "Last-click UTM campaign from attribution waterfall (Shopify visits/landing/order attributes → website events → GA/GA4 → referrer). Native on Shopify/Chargebee; enriched via website tracking (Elevar, Blotout, Snowplow). Limited for marketplaces."
     },
     {
      "name": "sm_utm_content",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "Last-click UTM content from attribution waterfall (Shopify visits/landing/order attributes \u2192 website events \u2192 GA/GA4 \u2192 referrer). Native on Shopify/Chargebee; enriched via website tracking (Elevar, Blotout, Snowplow). Limited for marketplaces."
+     "description": "Last-click UTM content from attribution waterfall (Shopify visits/landing/order attributes → website events → GA/GA4 → referrer). Native on Shopify/Chargebee; enriched via website tracking (Elevar, Blotout, Snowplow). Limited for marketplaces."
     },
     {
      "name": "sm_utm_term",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "Last-click UTM term from attribution waterfall (Shopify visits/landing/order attributes \u2192 website events \u2192 GA/GA4 \u2192 referrer). Native on Shopify/Chargebee; enriched via website tracking (Elevar, Blotout, Snowplow). Limited for marketplaces."
+     "description": "Last-click UTM term from attribution waterfall (Shopify visits/landing/order attributes → website events → GA/GA4 → referrer). Native on Shopify/Chargebee; enriched via website tracking (Elevar, Blotout, Snowplow). Limited for marketplaces."
     },
     {
      "name": "sm_utm_id",
@@ -1538,7 +1538,7 @@
      "name": "sm_zero_party_attribution_source",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "Attributable source from post\u2011purchase survey tags (e.g., Fairing/Enquire)."
+     "description": "Attributable source from post‑purchase survey tags (e.g., Fairing/Enquire)."
     },
     {
      "name": "order_discount_codes_csv",
@@ -1930,7 +1930,7 @@
      "name": "is_inventory_location_physical",
      "type": "BOOLEAN",
      "mode": "NULLABLE",
-     "description": "True when inventory_location_type is warehouse or fulfillment_service. Requires v3 location schema (shipsinventory / isfulfillmentservice columns). Always false for classic-API Shopify tenants that lack v3 location data \u2014 use is_inventory_quantity_eligible rather than is_inventory_default_total_eligible for those tenants."
+     "description": "True when inventory_location_type is warehouse or fulfillment_service. Requires v3 location schema (shipsinventory / isfulfillmentservice columns). Always false for classic-API Shopify tenants that lack v3 location data — use is_inventory_quantity_eligible rather than is_inventory_default_total_eligible for those tenants."
     },
     {
      "name": "is_inventory_product_matched",
@@ -2208,7 +2208,7 @@
      "name": "preferred_metric_name",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "For abbreviation metrics, this indicates the full descriptive metric name to use instead. Example: 'aov' \u2192 'average_order_value_net', 'mer' \u2192 'marketing_efficiency_ratio' NULL for primary metrics."
+     "description": "For abbreviation metrics, this indicates the full descriptive metric name to use instead. Example: 'aov' → 'average_order_value_net', 'mer' → 'marketing_efficiency_ratio' NULL for primary metrics."
     },
     {
      "name": "abbreviations_list",
@@ -2224,6 +2224,1223 @@
     }
    ],
    "description": "A machine-executable catalog of all semantic layer metrics, published to tenant sm_metadata and read by tools that compile a metric into SQL against its underlying_model. That contract is what the column definitions below enforce: `calculation` is SQL whose aggregation is a real SQL function over a physical column, `filter_condition` is a predicate over physical columns of the same model, and `metric_time_expression` is the SQL that carries the metric's time grain. A metric whose definition hides its grain or its filter inside a CASE cannot be compiled by a reader, so tests/semantic/test_catal"
+  },
+  "obt_order_lines": {
+   "dataset": "transformed",
+   "description": "Product-level analytics table for order line revenue, costs, and profitability. Grain: One row per sm_order_line_key. Date field: order_processed_at_local_datetime. Critical filters: is_order_sm_valid = TRUE (exclude test/cancelled orders); sm_channel for segmentation. Key joins: obt_orders via sm_order_key (many:1); dim_product_variants via sm_product_variant_key (many:1).  Snapshot from the demo warehouse on 2026-10-07; demo masking can change integer and money types to FLOAT64.",
+   "columns": [
+    {
+     "name": "sm_store_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_order_line_key",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Stable SourceMedium order line key."
+    },
+    {
+     "name": "sm_order_key",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Stable SourceMedium order key."
+    },
+    {
+     "name": "sm_customer_key",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Stable SourceMedium customer key."
+    },
+    {
+     "name": "sm_product_variant_key",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Stable SourceMedium join key for product variants to related tables."
+    },
+    {
+     "name": "order_line_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The ID of the order line."
+    },
+    {
+     "name": "order_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Platform order identifier."
+    },
+    {
+     "name": "customer_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The ID of the customer who placed the order."
+    },
+    {
+     "name": "order_number",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The order's position in the shop's count of orders."
+    },
+    {
+     "name": "source_system",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Originating platform for the record (e.g., Shopify, Amazon, TikTok Shop, Chargebee)."
+    },
+    {
+     "name": "sm_order_sales_channel",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The sales channel associated with an order, which is derived from the order source name and order tags."
+    },
+    {
+     "name": "sm_utm_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "SourceMedium-generated unique identifier for UTM parameter combinations on this order line."
+    },
+    {
+     "name": "sm_channel",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Sales channel via hierarchy: (1) exclusion tag 'sm-exclude-order' -> excluded; (2) config sheet overrides; (3) default logic (amazon/tikt…"
+    },
+    {
+     "name": "sm_sub_channel",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The sales sub-channel associated with an order, which is derived from the order source name and order tags and factors in manual override…"
+    },
+    {
+     "name": "sm_utm_source",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Last-click UTM source from the attribution waterfall (Shopify visits/landing/notes -> website events -> GA/GA4 -> referrer)."
+    },
+    {
+     "name": "sm_utm_medium",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Last-click UTM medium from the attribution waterfall (Shopify visits/landing/notes -> website events -> GA/GA4 -> referrer)."
+    },
+    {
+     "name": "sm_utm_source_medium",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "A concatenation of sm_utm_source and sm_utm_medium."
+    },
+    {
+     "name": "sm_zero_party_attribution_source",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Attributable source from post‑purchase survey tags (e.g., Fairing/Enquire)."
+    },
+    {
+     "name": "sm_utm_campaign",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Last-click UTM campaign from the attribution waterfall (Shopify visits/landing/notes -> website events -> GA/GA4 -> referrer)."
+    },
+    {
+     "name": "is_order_sm_valid",
+     "type": "BOOL",
+     "mode": "NULLABLE",
+     "description": "True if order is not voided, cancelled, uncollectible, draft, or refunded, and not cancelled for fraud or a declined payment (excluded ev…"
+    },
+    {
+     "name": "sm_valid_order_index",
+     "type": "INT64",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_valid_order_index_reversed",
+     "type": "INT64",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "sm_order_type",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Order classification (subscription vs one-time) derived from order attributes, tags, or subscription platforms (Shopify Subscription Cont…"
+    },
+    {
+     "name": "order_index",
+     "type": "INT64",
+     "mode": "NULLABLE",
+     "description": "An ordered index that can be used to identify the sequential position of an order relative to a customer's order history."
+    },
+    {
+     "name": "order_sequence",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Whether an order is the acquisition order or a repeat order."
+    },
+    {
+     "name": "order_line_discount_codes_csv",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "A list of discount codes applied to an order."
+    },
+    {
+     "name": "subscription_order_sequence",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Whether a subscription order is the first subscription order or a repeat subscription order based on the subscription order index or orde…"
+    },
+    {
+     "name": "product_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "A unique identifier for the product generated by the source system."
+    },
+    {
+     "name": "product_variant_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "A unique identifier for the product variant generated by the source system."
+    },
+    {
+     "name": "is_product_gift_card",
+     "type": "BOOL",
+     "mode": "NULLABLE",
+     "description": "Whether the product is a gift card."
+    },
+    {
+     "name": "primary_product_image_url",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_line_product_collection_titles_csv",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The titles of collections the product belongs to."
+    },
+    {
+     "name": "order_line_product_collection_handles_csv",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Unique, human-readable strings for the collections a product belongs to automatically generated from their titles."
+    },
+    {
+     "name": "product_variant_price",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "The price of the product variant at the time of purchase (per unit, before discounts)."
+    },
+    {
+     "name": "product_variant_compare_at_price",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The original/compare-at price for the product variant (typically MSRP or pre-sale price)."
+    },
+    {
+     "name": "is_order_only_gift_cards",
+     "type": "BOOL",
+     "mode": "NULLABLE",
+     "description": "Whether the order associated with the line item only contains gift cards."
+    },
+    {
+     "name": "order_processed_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": "UTC timestamp from source system when the order was processed."
+    },
+    {
+     "name": "order_processed_at_local_datetime",
+     "type": "DATETIME",
+     "mode": "NULLABLE",
+     "description": "Order processed timestamp converted to reporting timezone (from order_processed_at UTC)."
+    },
+    {
+     "name": "order_created_at_local_datetime",
+     "type": "DATETIME",
+     "mode": "NULLABLE",
+     "description": "Order created timestamp converted to reporting timezone (from order_created_at UTC)."
+    },
+    {
+     "name": "order_payment_status",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The financial status of an order, which indicates whether the order has been paid."
+    },
+    {
+     "name": "order_tags_csv",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Comma-separated order-level tags (free-form strings set by merchant/apps)."
+    },
+    {
+     "name": "customer_tags_csv",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Comma-separated customer tags at order time (free-form; convenience string form of array field)."
+    },
+    {
+     "name": "product_tags_csv",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Comma-separated product tags on the line's product (free-form; aggregated from product metadata)."
+    },
+    {
+     "name": "order_shipping_country_code",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The two-letter code (ISO 3166-1 format) for the country of the shipping address."
+    },
+    {
+     "name": "order_shipping_country",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The country of the shipping address."
+    },
+    {
+     "name": "order_shipping_state",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The state of the shipping address."
+    },
+    {
+     "name": "order_shipping_city",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The city, town, or village of the shipping address."
+    },
+    {
+     "name": "order_shipping_zip_code",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Postal/ZIP code of the shipping address for the order (country-dependent format; not geo-normalized)."
+    },
+    {
+     "name": "product_type",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "A categorization for the product used for filtering and searching for products."
+    },
+    {
+     "name": "sku",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The stock keeping unit (SKU) of the product variant."
+    },
+    {
+     "name": "product_title",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The title of the product."
+    },
+    {
+     "name": "product_variant_title",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The title of the product variant."
+    },
+    {
+     "name": "order_to_refund_days",
+     "type": "INT64",
+     "mode": "NULLABLE",
+     "description": "Days between order processing and first refund (non-negative; NULL when no refund)."
+    },
+    {
+     "name": "order_to_refund_weeks",
+     "type": "INT64",
+     "mode": "NULLABLE",
+     "description": "Weeks between order processing date and first refund date for the order/line; derived from days and rounded per model logic."
+    },
+    {
+     "name": "order_to_refund_months",
+     "type": "INT64",
+     "mode": "NULLABLE",
+     "description": "Months between order processing date and first refund date for the order/line; derived from days using average month length."
+    },
+    {
+     "name": "product_vendor",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The vendor of the product."
+    },
+    {
+     "name": "earliest_order_refund_date",
+     "type": "DATE",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "latest_order_refund_date",
+     "type": "DATE",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "order_line_quantity",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The quantity of order lines that were originally purchased in an order."
+    },
+    {
+     "name": "order_line_refund_quantity",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The quantity of items purchased for an order line that were refunded."
+    },
+    {
+     "name": "order_line_net_quantity",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The quantity of items that were originally purchased for an order line minus the quantity of items refunded."
+    },
+    {
+     "name": "order_line_original_currency_code",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Original order currency resolved by the currency conversion runtime for this order line."
+    },
+    {
+     "name": "order_line_converted_currency_code",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Target reporting currency resolved by the currency conversion runtime for this order line."
+    },
+    {
+     "name": "order_line_currency_conversion_currency_code",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Currency code that describes the current canonical order-line money fields."
+    },
+    {
+     "name": "order_line_currency_conversion_effective_date",
+     "type": "DATE",
+     "mode": "NULLABLE",
+     "description": "Date used to choose the daily FX rate for order-line currency conversion readiness."
+    },
+    {
+     "name": "order_line_currency_conversion_rate_applied",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Multiplicative rate that would be applied by the currency conversion runtime."
+    },
+    {
+     "name": "order_line_currency_conversion_status",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Runtime status explaining whether the order line is convertible, passthrough, not enabled, blocked by missing configuration/FX coverage, …"
+    },
+    {
+     "name": "order_line_currency_mismatch_flag",
+     "type": "BOOL",
+     "mode": "NULLABLE",
+     "description": "True when source-provided order currency conflicts with the configured mapping currency."
+    },
+    {
+     "name": "order_line_original_gross_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Gross order-line revenue expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_gross_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Gross order-line revenue converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Order-line discounts expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Order-line discounts converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Order-line refunds expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Order-line refunds converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_net_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Net order-line revenue expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_net_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Net order-line revenue converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_gross_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Gross order-line taxes expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_gross_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Gross order-line taxes converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_tax_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Order-line tax refunds expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_tax_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Order-line tax refunds converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_net_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Net order-line taxes expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_net_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Net order-line taxes converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_gross_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Gross shipping revenue on the line expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_gross_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Gross shipping revenue on the line converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_shipping_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Shipping discounts on the line expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_shipping_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Shipping discounts on the line converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_shipping_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Shipping refunds on the line expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_shipping_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Shipping refunds on the line converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_net_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Net shipping revenue on the line expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_net_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Net shipping revenue on the line converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_gross_shipping_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Gross shipping taxes on the line expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_gross_shipping_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Gross shipping taxes on the line converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_shipping_tax_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Shipping tax refunds on the line expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_shipping_tax_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Shipping tax refunds on the line converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_net_shipping_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Net shipping taxes on the line expressed in the original order currency."
+    },
+    {
+     "name": "order_line_converted_net_shipping_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Net shipping taxes on the line converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_total_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Total line and shipping taxes, net of refunds, in the original currency."
+    },
+    {
+     "name": "order_line_converted_total_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Total line and shipping taxes, net of refunds, converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_total_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Total discounts assigned to the line in the original order currency."
+    },
+    {
+     "name": "order_line_converted_total_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Total discounts assigned to the line converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_total_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Total refunds assigned to the line in the original order currency."
+    },
+    {
+     "name": "order_line_converted_total_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Total refunds assigned to the line converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_net_revenue_before_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Gross line revenue less discounts, before refunds, in the original currency."
+    },
+    {
+     "name": "order_line_converted_net_revenue_before_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Gross line revenue less discounts, before refunds, converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_total_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Total line revenue including shipping and taxes in the original currency."
+    },
+    {
+     "name": "order_line_converted_total_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Total line revenue including shipping and taxes converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_gross_duties",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Gross duties assigned to the line in the original order currency."
+    },
+    {
+     "name": "order_line_converted_gross_duties",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Gross duties assigned to the line converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_duty_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Duty refunds assigned to the line in the original order currency."
+    },
+    {
+     "name": "order_line_converted_duty_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Duty refunds assigned to the line converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_original_net_duties",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Net duties assigned to the line in the original order currency."
+    },
+    {
+     "name": "order_line_converted_net_duties",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Net duties assigned to the line converted using the applied FX rate."
+    },
+    {
+     "name": "order_line_currency_conversion_settings_version",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Published store-level currency conversion settings version used for this order line, or __NOT_ENABLED__."
+    },
+    {
+     "name": "order_line_currency_conversion_mapping_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Source/account mapping identifier used for this order line, or __NO_MAPPING__."
+    },
+    {
+     "name": "order_line_currency_conversion_mapping_source",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Source of the mapping used for this order line, such as operator override or generated mapping."
+    },
+    {
+     "name": "order_line_currency_conversion_resolution_method",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Method used to resolve original currency for this order line, or __NO_MAPPING__."
+    },
+    {
+     "name": "order_line_currency_conversion_mapping_from_currency",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Configured original currency from the mapping that applied to this order line, or __NO_MAPPING__."
+    },
+    {
+     "name": "order_line_currency_conversion_mapping_to_currency",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Configured target currency from the mapping that applied to this order line, or __NO_MAPPING__."
+    },
+    {
+     "name": "order_line_gross_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The gross revenue for an order line."
+    },
+    {
+     "name": "order_line_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount of discounts applied to an order line."
+    },
+    {
+     "name": "order_line_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount of refunds applied to an order line."
+    },
+    {
+     "name": "order_line_net_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The gross order line revenue minus order line discounts and refunds."
+    },
+    {
+     "name": "order_line_gross_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount of taxes associated with an order line, after discounts and before returns."
+    },
+    {
+     "name": "order_line_tax_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount of tax refunds applied to an order line."
+    },
+    {
+     "name": "order_line_net_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The gross order line tax minus the order line tax refunds."
+    },
+    {
+     "name": "order_line_gross_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount the customer paid in shipping for an order shipping line."
+    },
+    {
+     "name": "order_line_shipping_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount of discounts applied to an order shipping line."
+    },
+    {
+     "name": "order_line_shipping_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount of shipping refunds applied to an order shipping line."
+    },
+    {
+     "name": "order_line_net_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The gross shipping revenue for an order shipping line minus shipping discounts and shipping refunds."
+    },
+    {
+     "name": "order_line_gross_shipping_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The gross shipping tax for an order shipping line."
+    },
+    {
+     "name": "order_line_shipping_tax_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount of shipping tax refunds applied to an order shipping line."
+    },
+    {
+     "name": "order_line_net_shipping_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The shipping tax for an order shipping line minus shipping tax refunds."
+    },
+    {
+     "name": "order_line_total_taxes",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount of taxes for an order line minus tax refunds."
+    },
+    {
+     "name": "order_line_total_discounts",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount of discounts for an order line."
+    },
+    {
+     "name": "order_line_total_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount of refunds for an order line."
+    },
+    {
+     "name": "order_line_net_revenue_before_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The gross order line revenue minus order line discounts."
+    },
+    {
+     "name": "order_line_total_revenue",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Total order line revenue after factoring in shipping revenue, taxes collected, discounts, and refunds."
+    },
+    {
+     "name": "order_line_gross_duties",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount the customer paid in duties for an order."
+    },
+    {
+     "name": "order_line_duty_refunds",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The amount of duty refunds applied to an order line."
+    },
+    {
+     "name": "order_line_net_duties",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The gross order line duties minus order duty refunds."
+    },
+    {
+     "name": "order_line_currency_canonicalization_status",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Safety status for replacing canonical order-line money fields with converted values."
+    },
+    {
+     "name": "is_order_line_currency_canonicalized",
+     "type": "BOOL",
+     "mode": "NULLABLE",
+     "description": "True when canonical order-line money fields use the converted values for this row."
+    },
+    {
+     "name": "order_line_shipping_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Shipping COGS allocated from the order to product lines by quantity."
+    },
+    {
+     "name": "order_line_return_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Return-handling COGS allocated from the order to product lines by quantity."
+    },
+    {
+     "name": "order_line_fulfillment_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Fulfillment COGS allocated from the order to product lines by quantity."
+    },
+    {
+     "name": "order_line_merchant_processing_fees",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Payment fees allocated to product lines by gross-sales share."
+    },
+    {
+     "name": "order_line_allocated_shipping",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Net shipping revenue allocated across product lines by quantity."
+    },
+    {
+     "name": "source_system_configured_product_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Landed cost from platform-configured product costs (not SourceMedium configuration sheet)."
+    },
+    {
+     "name": "user_configured_product_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The landed cost of an order line as defined by the SourceMedium financial cost configuration sheet multiplied by the quantity purchased."
+    },
+    {
+     "name": "order_line_product_cost",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The landed cost of an order line as defined by the SourceMedium financial cost configuration sheet (or input into Shopify) multiplied by …"
+    },
+    {
+     "name": "order_cart_quantity",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "The quantity of items that were originally purchased in an order."
+    },
+    {
+     "name": "order_line_product_gross_profit",
+     "type": "NUMERIC",
+     "mode": "NULLABLE",
+     "description": "Net order line revenue minus product cost."
+    },
+    {
+     "name": "order_line_gross_profit",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Net order line revenue and shipping revenue minus order line product cost, order shipping cost, order fulfillment cost, and merchant proc…"
+    },
+    {
+     "name": "order_line_type",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The order line classification, such as a subscription or one-time order, which is derived from order attributes, order tags, or subscript…"
+    },
+    {
+     "name": "is_order_line_subscription",
+     "type": "BOOL",
+     "mode": "NULLABLE",
+     "description": "Whether the order line is a susbcription order."
+    },
+    {
+     "name": "subscription_order_index",
+     "type": "INT64",
+     "mode": "NULLABLE",
+     "description": "Ordered index identifying the sequential position of a subscription order in a customer's subscription order history."
+    },
+    {
+     "name": "subscription_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The ID of the subscription."
+    }
+   ]
+  },
+  "rpt_cohort_ltv_by_first_valid_purchase_attribute_no_product_filters": {
+   "dataset": "transformed",
+   "description": "Cohort LTV analysis by first valid purchase attributes (channel, campaign, source) with no product filters. Grain: One row per cohort_filter_name_filter_value_month_id. Date field: cohort_month. Critical filters: acquisition_order_filter_dimension for cohort grouping; cohort_month for time selection. Key joins: none; drill down to obt_orders using (cohort_month, attribute filters).  Snapshot from the demo warehouse on 2026-10-07; demo masking can change integer and money types to FLOAT64.",
+   "columns": [
+    {
+     "name": "sm_store_id",
+     "type": "STRING",
+     "mode": "NULLABLE"
+    },
+    {
+     "name": "cohort_filter_name_filter_value_month_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Unique identifier for the cohort row (name/value/month composite)."
+    },
+    {
+     "name": "cohort_filter_name_filter_value_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Unique identifier for the cohort grouping without time dimension (name/value composite)."
+    },
+    {
+     "name": "cohort_month",
+     "type": "DATE",
+     "mode": "NULLABLE",
+     "description": "Cohort acquisition month."
+    },
+    {
+     "name": "months_since_first_order",
+     "type": "INT64",
+     "mode": "NULLABLE",
+     "description": "Numeric offset from acquisition month (0 = acquisition month, 1 = month +1, etc.)."
+    },
+    {
+     "name": "months_since_first_order_name",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Label for months since first valid purchase (e.g., 'Acquisition Month', '+1')."
+    },
+    {
+     "name": "acquisition_order_filter_dimension",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Dimension name used to group cohorts by first valid purchase attribute (e.g., sm_channel)."
+    },
+    {
+     "name": "acquisition_order_filter_dimension_value",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Dimension value for the cohort grouping."
+    },
+    {
+     "name": "sm_order_line_type",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Order line type segmentation (mapped from slice field in parent model)."
+    },
+    {
+     "name": "sm_channel",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Acquisition channel for cohort segmentation (mapped from channel field in parent model)."
+    },
+    {
+     "name": "cost_per_acquisition",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Customer acquisition cost for the cohort based on marketing spend."
+    },
+    {
+     "name": "order_product_gross_profit",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Product gross profit (revenue minus product cost) for orders in the month offset period."
+    },
+    {
+     "name": "order_gross_profit",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Total gross profit including all costs for orders in the month offset period."
+    },
+    {
+     "name": "order_product_cost",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Product cost (COGS) for orders in the month offset period, sourced from the SourceMedium financial cost configuration sheet or Shopify pr…"
+    },
+    {
+     "name": "order_shipping_cost",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Shipping cost incurred for orders in the month offset period, sourced from the SourceMedium financial cost configuration sheet."
+    },
+    {
+     "name": "order_cost_of_returns",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Cost of returns processed in the month offset period."
+    },
+    {
+     "name": "order_fulfillment_cost",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Fulfillment and handling costs for orders in the month offset period, sourced from the SourceMedium financial cost configuration sheet."
+    },
+    {
+     "name": "order_merchant_processing_fees",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Payment processing fees for orders in the month offset period."
+    },
+    {
+     "name": "order_shipping",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Net shipping revenue (charged to customers) for orders in the month offset period."
+    },
+    {
+     "name": "order_net_revenue",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Net revenue after discounts and refunds for orders in the month offset period."
+    },
+    {
+     "name": "order_gross_revenue",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Gross revenue before discounts and refunds for orders in the month offset period."
+    },
+    {
+     "name": "ordered_quantity",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Total quantity of items ordered in the month offset period."
+    },
+    {
+     "name": "order_count",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Number of orders placed in the month offset period."
+    },
+    {
+     "name": "customer_count",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Number of distinct customers with orders in the month offset period."
+    },
+    {
+     "name": "cumulative_second_order_count",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running count of customers who have placed a second order through current month offset."
+    },
+    {
+     "name": "cumulative_third_order_count",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running count of customers who have placed a third order through current month offset."
+    },
+    {
+     "name": "cohort_size",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Number of customers in the acquisition cohort."
+    },
+    {
+     "name": "cumulative_order_net_revenue",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running total of net revenue from acquisition month through current month offset for LTV calculation."
+    },
+    {
+     "name": "cumulative_order_gross_revenue",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running total of gross revenue from acquisition month through current month offset."
+    },
+    {
+     "name": "cumulative_ordered_quantiy",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running total of items ordered from acquisition month through current month offset."
+    },
+    {
+     "name": "cumulative_order_count",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running total of orders from acquisition month through current month offset."
+    },
+    {
+     "name": "cumulative_order_shipping_cost",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running total of SourceMedium configuration sheet shipping costs from acquisition month through current month offset."
+    },
+    {
+     "name": "cumulative_order_cost_of_returns",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running total of return costs from acquisition month through current month offset."
+    },
+    {
+     "name": "cumulative_order_fulfillment_cost",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running total of SourceMedium configuration sheet fulfillment costs from acquisition month through current month offset."
+    },
+    {
+     "name": "cumulative_order_merchant_processing_fees",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running total of payment processing fees from acquisition month through current month offset."
+    },
+    {
+     "name": "cumulative_order_net_shipping",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running total of net shipping revenue from acquisition month through current month offset."
+    },
+    {
+     "name": "cumulative_order_product_cost",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running total of SourceMedium configuration sheet or Shopify product costs from acquisition month through current month offset."
+    },
+    {
+     "name": "cumulative_order_gross_profit",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running total of gross profit from acquisition month through current month offset."
+    },
+    {
+     "name": "cumulative_product_gross_profit",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Running total of product gross profit from acquisition month through current month offset."
+    },
+    {
+     "name": "cohort_month_order_gross_revenue",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Total gross revenue for the acquisition month only (baseline for cohort retention calculations)."
+    },
+    {
+     "name": "cohort_month_order_net_revenue",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Total net revenue for the acquisition month only (baseline for cohort retention calculations)."
+    },
+    {
+     "name": "cohort_month_order_count",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Total order count for the acquisition month only (baseline for cohort retention calculations)."
+    },
+    {
+     "name": "cohort_month_ordered_quantity",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Total quantity ordered for the acquisition month only (baseline for cohort retention calculations)."
+    },
+    {
+     "name": "cohort_month_product_gross_profit",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Total product gross profit for the acquisition month only (baseline for cohort profitability calculations)."
+    },
+    {
+     "name": "cohort_month_gross_profit",
+     "type": "FLOAT64",
+     "mode": "NULLABLE",
+     "description": "Total gross profit for the acquisition month only (baseline for cohort profitability calculations)."
+    }
+   ]
   }
  }
 }

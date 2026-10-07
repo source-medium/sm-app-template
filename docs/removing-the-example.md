@@ -13,8 +13,8 @@ The home page redirects to the first `nav` entry, so removing Overview just
 makes the next entry the home page. Keep at least one entry, or replace
 `src/app/(app)/page.tsx` with your own home page.
 
-To remove all four, repeat the steps for `overview`, `paid-marketing`,
-`creatives`, and `orders`, and add your own page first. Keep the shell
+To remove all six, repeat the steps for `overview`, `paid-marketing`,
+`creatives`, `products`, `retention`, and `orders`, and add your own page first. Keep the shell
 (`src/components/shell`), the patterns (`src/components/patterns`,
 `src/components/charts`), and `src/lib`; they are what new pages use. The
 guides name the example folders as models to copy ("Add a page" in

@@ -1,7 +1,7 @@
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
-import { decimalToNumber, ratio, toUnits } from "@/lib/data/decimal";
+import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import { preservedParams, withParams, type SearchParams } from "@/lib/filters";
 import type { Comparison } from "@/lib/comparison";
@@ -27,11 +27,6 @@ export function SpendBreakdownView({
 }) {
   const first = data.rows[0];
   const total = first?.total_spend ?? null;
-  const canShare =
-    total !== null &&
-    toUnits(total) > 0n &&
-    first?.minimum_spend !== null &&
-    toUnits(first?.minimum_spend ?? "-1") >= 0n;
   const baseline = comparison?.range;
   return (
     <section aria-label="Spend breakdown" className="flex flex-col gap-3">
@@ -59,7 +54,7 @@ export function SpendBreakdownView({
           id: row.dimension_key,
           label: dimension === "campaign" ? `${row.label} (${row.dimension_key})` : row.label,
           value: { value: decimalToNumber(row.spend), display: formatMoney(row.spend) },
-          share: formatPercent(canShare ? ratio(decimalToNumber(row.spend), decimalToNumber(total)) : null),
+          share: formatPercent(nonnegativeShare(row.spend, total, first?.minimum_spend ?? null)),
           change: baseline ? kpiDelta(row.spend, row.previous_spend, formatMoney).display : undefined,
           href:
             dimension === "channel"

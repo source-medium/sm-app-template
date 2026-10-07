@@ -22,6 +22,7 @@ const longDate = new Intl.DateTimeFormat(appConfig.locale, {
   day: "numeric",
   timeZone: "UTC",
 });
+const monthDate = new Intl.DateTimeFormat(appConfig.locale, { year: "numeric", month: "short", timeZone: "UTC" });
 const clockOptions = {
   year: "numeric",
   month: "short",
@@ -63,9 +64,10 @@ export function formatCount(value: bigint | number | null): string {
   return integer.format(value);
 }
 
-/** A FLOAT64 measure: whole numbers without decimals, fractional ones to two places. */
-export function formatMeasure(value: number | null): string {
+/** A decimal or FLOAT64 measure, to two places. Decimal text retains its integer precision. */
+export function formatMeasure(value: string | number | null): string {
   if (value === null) return EMPTY_VALUE;
+  if (typeof value === "string") return decimal.format(value as `${number}`);
   return Number.isInteger(value) ? integer.format(value) : decimal.format(value);
 }
 
@@ -87,6 +89,10 @@ export function formatDay(date: string): string {
 
 export function formatDate(date: string): string {
   return longDate.format(new Date(`${date}T00:00:00Z`));
+}
+
+export function formatMonth(date: string): string {
+  return monthDate.format(new Date(`${date}T00:00:00Z`));
 }
 
 export function formatInstant(iso: string, includeSeconds = false): string {

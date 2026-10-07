@@ -43,3 +43,9 @@ export function decimalToNumber(value: string | null): number | null {
 export function ratio(numerator: number | null, denominator: number | null): number | null {
   return numerator === null || denominator === null || denominator === 0 ? null : numerator / denominator;
 }
+
+/** A share is meaningful only for a positive total with no negative members. The caller supplies full-query totals. */
+export function nonnegativeShare(value: string | null, total: string | null, minimum: string | null): number | null {
+  if (total === null || minimum === null || toUnits(total) <= 0n || toUnits(minimum) < 0n) return null;
+  return ratio(decimalToNumber(value), decimalToNumber(total));
+}

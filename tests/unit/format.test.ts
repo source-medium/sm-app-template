@@ -29,6 +29,7 @@ describe("server formatting", () => {
   it("shows fractional measures to two places and whole ones without decimals", () => {
     expect(formatMeasure(1234)).toBe("1,234");
     expect(formatMeasure(12.345)).toBe("12.35");
+    expect(formatMeasure("9007199254740993.125")).toBe("9,007,199,254,740,993.13");
   });
 
   it("formats warehouse dates and wall times without shifting them into a time zone", () => {

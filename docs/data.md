@@ -23,12 +23,14 @@ snapshot of SourceMedium's published schema, which may differ from yours.
 
 ## The example's relations
 
-| View           | Relation                      | Grain                             | Columns used                                                                                                                                                      |
-| -------------- | ----------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Overview       | `rpt_executive_summary_daily` | store, channel, sub-channel, date | `order_net_revenue`, `ad_spend` (NUMERIC), `order_count` (FLOAT64), `website_sessions`, `ad_clicks` (INT64)                                                       |
-| Paid marketing | `rpt_ad_performance_daily`    | ad by day                         | `sm_channel`, `ad_campaign_id`, `ad_campaign_name`, `ad_spend`, `ad_impressions`, `ad_clicks`, `ad_platform_reported_conversions`, `ad_platform_reported_revenue` |
-| Creatives      | `rpt_ad_performance_daily`    | ad by day, aggregated to creative | `ad_creative_*` text and image URLs, the same measures                                                                                                            |
-| Orders         | `obt_orders`                  | one row per order                 | `sm_order_key`, `order_name`, `order_processed_at_local_datetime`, channel, type, status, quantities, and the order's revenue columns                             |
+| View           | Relation                                                              | Grain                                                               | Columns used                                                                                                                                                           |
+| -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Overview       | `rpt_executive_summary_daily`                                         | store, channel, sub-channel, date                                   | `order_net_revenue`, `ad_spend` (NUMERIC), `order_count` (FLOAT64), `website_sessions`, `ad_clicks` (INT64)                                                            |
+| Paid marketing | `rpt_ad_performance_daily`                                            | ad by day                                                           | `sm_channel`, `ad_campaign_id`, `ad_campaign_name`, `ad_spend`, `ad_impressions`, `ad_clicks`, `ad_platform_reported_conversions`, `ad_platform_reported_revenue`      |
+| Creatives      | `rpt_ad_performance_daily`                                            | ad by day, aggregated to creative                                   | `ad_creative_*` text and image URLs, the same measures                                                                                                                 |
+| Orders         | `obt_orders`                                                          | one row per order                                                   | `sm_order_key`, `order_name`, `order_processed_at_local_datetime`, channel, type, status, quantities, and the order's revenue columns                                  |
+| Products       | `obt_order_lines`                                                     | one row per order line, aggregated to product or variant            | `source_system`, product/variant ids and titles, `is_order_sm_valid`, `order_line_net_revenue`, `order_line_net_quantity`, `order_line_product_gross_profit` (NUMERIC) |
+| Retention      | `rpt_cohort_ltv_by_first_valid_purchase_attribute_no_product_filters` | channel, acquisition cohort month, month age, one unsegmented slice | `cohort_size`, `customer_count`, `cumulative_order_net_revenue`, `cumulative_order_gross_profit`                                                                       |
 
 The example uses these formulas: net revenue is
 `SUM(order_net_revenue)`, revenue per summary order is net revenue ÷ summary
@@ -237,6 +239,57 @@ totals, shares and changes; the component owns the horizontal chart and table.
 `ChartCard` supports dashed comparison series and horizontal bars, and
 `DataTable` accepts server-computed totals. Keep allowed SQL dimensions and
 calendar expressions in fixed maps. Do not build a general query builder.
+
+## Products and purchase cohorts
+
+**Products** groups valid-order lines by product or variant, with source-system
+identity in the key so repeated titles and platform ids do not merge. Unassigned
+product lines remain a named group. Net revenue, net units and product gross
+profit are summed in SQL across all sales channels for one store. Product gross
+profit is net revenue minus product cost, not profit after shipping, fulfillment
+or payment fees. Refund quantities reduce net units. Amounts use the canonical
+reporting-currency fields, not `original_*` amounts.
+
+One query covers both selected and comparison periods, with identical validity
+and store predicates. Ranking uses a fixed measure map; full-period totals and
+the share denominator are calculated before the top-10 limit. Negative members
+or a zero total suppress shares. Missing comparisons stay missing. The date
+predicate uses `order_processed_at_local_datetime` directly for partition pruning.
+
+**Retention** uses `?as_of=YYYY-MM&channel=online_dtc&measure=retention|revenue|profit`.
+The cutoff defaults to the last completed UTC calendar month and is frozen in
+shared links. It shows twelve acquisition months through that cutoff, at ages
+0–11. Month 0 means the acquisition calendar month, not a fixed 30-day window.
+Ordinary `from`/`to` filters do not define this report's observation window.
+
+The query selects exactly `acquisition_order_filter_dimension = 'no_filters'`
+and `sm_order_line_type = 'all_orders'`. Other acquisition dimensions overlap
+and must not be summed together. Each published row is already aggregated;
+the app does not recompute customer histories. It reads one bounded result for
+the selected store, derives available channels, and presents only the chosen
+channel. Duplicate channel/cohort/age rows or changing cohort sizes are errors.
+The published surface currently covers online DTC and Amazon separately.
+
+- Monthly retention = that month's purchasing customers / original cohort size.
+  It can rise after a customer skips a month; it is not subscription survival.
+- LTR = cumulative net revenue / original cohort size.
+- LTV = cumulative gross profit / original cohort size. Missing warehouse cost
+  inputs can overstate it; no CAC or payback claim is made.
+
+No averages across cohorts, stores or channels are shown. Unelapsed months are
+blank; missing published values say **No data**, and a real zero remains zero.
+Elapsed time does not establish warehouse completeness. Cohort money/counts
+are cast to NUMERIC in SQL: this preserves canonical INT64/NUMERIC inputs and
+accommodates demo masking's FLOAT64 values, rounded to nine fractional places.
+Per-customer ratios are approximate. The misleading `cohort_month_*` legacy
+fields are deliberately unused; some published implementations sum those across
+all ages despite their names. The [published cohort schema](https://sourcemedium.com/docs/data-activation/data-tables/sm_transformed_v2/rpt_cohort_ltv_by_first_valid_purchase_attribute_no_product_filters)
+and [query guidance](https://sourcemedium.com/docs/data-activation/template-resources/sql-query-library/ltv-and-retention)
+describe the underlying report.
+
+`CohortMatrix` only renders formatted cells and intensity shades. Retention owns
+the formulas, eligible ages and missing-value decisions. To remove either view,
+delete its feature folder, route folder and navigation entry as usual.
 
 ## Refresh and freshness
 

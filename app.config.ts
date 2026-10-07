@@ -6,7 +6,7 @@
  * Rebranding is this file (name, logo) plus src/styles/tokens.css (colors,
  * fonts, radius).
  */
-import { ImageIcon, LayoutDashboard, Megaphone, ShoppingBag, type LucideIcon } from "lucide-react";
+import { ImageIcon, LayoutDashboard, Megaphone, Package, Repeat2, ShoppingBag, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: `/${string}`; label: string; icon: LucideIcon };
 
@@ -34,6 +34,8 @@ export const appConfig = {
     { href: "/overview", label: "Overview", icon: LayoutDashboard },
     { href: "/paid-marketing", label: "Paid marketing", icon: Megaphone },
     { href: "/creatives", label: "Creatives", icon: ImageIcon },
+    { href: "/products", label: "Products", icon: Package },
+    { href: "/retention", label: "Retention", icon: Repeat2 },
     { href: "/orders", label: "Orders", icon: ShoppingBag },
   ] satisfies NavItem[] as NavItem[],
   /** Optional display names for warehouse store ids (sm_store_id). Unlisted stores show their id. */

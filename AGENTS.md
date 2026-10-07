@@ -80,9 +80,9 @@ docs/                         Guides (index below)
    the fake BigQuery; copy an example view's), and `<view>.e2e.ts` for interactions.
    Then `pnpm check`, and `pnpm test:e2e` after UI changes.
 
-Copy `src/features/overview` (KPIs and charts), `paid-marketing` (dimension
-filter and table), `creatives` (card grid), or `orders` (search, keyset pages,
-detail drawer). See `docs/removing-the-example.md` to delete any of them.
+Copy `overview` (summaries), `paid-marketing` (filters), `creatives` (cards),
+`orders` (search/detail), `products` (rankings), or `retention` (cohorts), all in
+`src/features`. See `docs/removing-the-example.md` to delete any of them.
 
 ## SQL and data
 
@@ -109,7 +109,7 @@ use theme classes (`bg-card`, `text-muted-foreground`), not raw colors. Charts
 use `--chart-1`…`--chart-8` in order, one y-axis, and keep the table view.
 Comparisons: opt into `ReportPage comparisons` only when querying both periods.
 Reuse `lib/comparison.ts`, `lib/time-grain.ts`, and `patterns/kpi-delta.ts`.
-Copy Overview for summaries/comparisons; Paid marketing for `RankedBreakdown`.
+Copy Overview for summaries, Products for rankings, Retention for `CohortMatrix`.
 
 ## Route handlers and downloads
 
@@ -140,7 +140,7 @@ acts for a person needs a real per-person authorization design first.
 - `docs/data.md`: MCP setup, schemas, SQL rules, decoding, money, freshness.
 - `docs/auth.md`: the shared password, Cloudflare Access, sign-in options.
 - `docs/operations.md`: rotating secrets, quotas, errors and their remedies.
-- `docs/removing-the-example.md`: deleting one view or all four.
+- `docs/removing-the-example.md`: deleting one view or all six.
 - `docs/prompts.md`: starter prompts.
 
 Publishing live data, production deploys, and destructive actions need the
