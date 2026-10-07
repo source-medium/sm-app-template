@@ -6,11 +6,39 @@
  */
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
-import { single, type ReportFilters, type SearchParams } from "@/lib/filters";
+import { parseChoice, single, type DateRange, type ReportFilters, type SearchParams } from "@/lib/filters";
+import type { z } from "zod";
+import type { SpendBreakdownRow } from "./rows";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { toChartNumber } from "@/lib/data/decode";
-import { queryPaidCampaigns, queryPaidMarketing } from "./bigquery";
-import { samplePaidMarketing } from "./sample";
+import { queryPaidCampaigns, queryPaidMarketing, querySpendBreakdown } from "./bigquery";
+import { samplePaidMarketing, sampleSpendBreakdown } from "./sample";
+
+export const BREAKDOWN_DIMENSIONS = [
+  { value: "channel", label: "Channel" },
+  { value: "campaign", label: "Campaign" },
+] as const;
+export type BreakdownDimension = (typeof BREAKDOWN_DIMENSIONS)[number]["value"];
+export type SpendBreakdown = { rows: z.output<typeof SpendBreakdownRow>[]; hasMore: boolean };
+export function breakdownDimension(params: SearchParams): BreakdownDimension {
+  return parseChoice(
+    params,
+    "breakdown",
+    BREAKDOWN_DIMENSIONS.map((item) => item.value),
+    "channel",
+  );
+}
+
+export async function getSpendBreakdown(
+  filters: PaidMarketingFilters,
+  dimension: BreakdownDimension,
+  baseline: DateRange | null,
+): Promise<SpendBreakdown> {
+  const access = await requireViewer({ storeId: filters.storeId });
+  return access.mode === "live"
+    ? querySpendBreakdown(filters, dimension, baseline)
+    : sampleSpendBreakdown(filters, dimension, baseline);
+}
 
 export const PAID_METRICS = ["spend", "impressions", "clicks", "conversions"] as const;
 export type PaidMetric = (typeof PAID_METRICS)[number];

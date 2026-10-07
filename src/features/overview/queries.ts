@@ -6,10 +6,11 @@
  */
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
-import type { DateRange, ReportFilters } from "@/lib/filters";
+import type { TimeGrain } from "@/lib/time-grain";
+import { single, todayUtc, type DateRange, type ReportFilters, type SearchParams } from "@/lib/filters";
 import { WarehouseError } from "@/lib/data/warehouse-error";
-import { queryOverview } from "./bigquery";
-import { sampleOverview } from "./sample";
+import { queryOverview, queryOverviewChannels } from "./bigquery";
+import { sampleOverview, sampleOverviewSource } from "./sample";
 
 export type OverviewMeasures = {
   /** NUMERIC, exact decimal text, in the reporting currency: SUM(order_net_revenue). */
@@ -24,6 +25,11 @@ export type OverviewMeasures = {
   adSpend: string | null;
 };
 
+export type OverviewFilters = ReportFilters & { channel?: string | null; grain?: TimeGrain };
+export function overviewChannel(params: SearchParams): string | null {
+  return single(params, "sales_channel")?.slice(0, 100) || null;
+}
+
 export type OverviewDay = OverviewMeasures & { date: string };
 
 export type OverviewData = {
@@ -31,11 +37,24 @@ export type OverviewData = {
   days: OverviewDay[];
   /** Period totals computed in the same query; null when the range is empty. */
   totals: OverviewMeasures | null;
+  summaries: OverviewDay[];
 };
 
-export async function getOverview(filters: ReportFilters): Promise<OverviewData> {
+export async function getOverview(filters: OverviewFilters): Promise<OverviewData> {
   const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live" ? queryOverview(filters) : sampleOverview(filters);
+}
+
+/** Options are scoped to the selected store and dates, before applying the channel filter. */
+export async function getOverviewChannels(filters: ReportFilters): Promise<string[]> {
+  const access = await requireViewer({ storeId: filters.storeId });
+  return access.mode === "live"
+    ? queryOverviewChannels(filters)
+    : [
+        ...new Set(
+          sampleOverviewSource(filters.storeId, filters.range, todayUtc(new Date())).map((row) => row.sm_channel),
+        ),
+      ].sort();
 }
 
 export type OverviewReport = {
@@ -44,7 +63,7 @@ export type OverviewReport = {
 };
 
 /** Two bounded, independently aggregated periods; Off makes only the current-period query. */
-export async function getOverviewReport(filters: ReportFilters, baseline: DateRange | null): Promise<OverviewReport> {
+export async function getOverviewReport(filters: OverviewFilters, baseline: DateRange | null): Promise<OverviewReport> {
   await requireViewer({ storeId: filters.storeId });
   const comparison = baseline
     ? getOverview({ ...filters, range: baseline }).then(

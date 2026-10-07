@@ -23,13 +23,14 @@ import {
 } from "@/components/ui/chart";
 import { compactNumber } from "./compact-number";
 
-export type ChartSeries = { key: string; label: string; color: string };
+export type ChartSeries = { key: string; label: string; color: string; dashed?: boolean };
 export type ChartDatum = { label: string } & Record<string, string | number | null>;
 
 export type ChartCardProps = {
   title: string;
   description?: string;
   kind: "line" | "bar";
+  horizontal?: boolean;
   series: ChartSeries[];
   data: ChartDatum[];
   /** False when a value cannot be plotted exactly; the card then opens on the table. */
@@ -42,6 +43,7 @@ export function ChartCard({
   title,
   description,
   kind,
+  horizontal = false,
   series,
   data,
   plottable = true,
@@ -83,10 +85,26 @@ export function ChartCard({
           <ChartTable title={title} categoryHeader={categoryHeader} series={series} data={data} />
         ) : (
           <ChartContainer config={config} className="aspect-auto h-64 w-full" role="img" aria-label={`${title} chart`}>
-            <Plot data={data} margin={{ left: 4, right: 12, top: 8 }}>
-              <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
-              <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={compactNumber} />
+            <Plot data={data} layout={horizontal ? "vertical" : "horizontal"} margin={{ left: 4, right: 12, top: 8 }}>
+              <CartesianGrid vertical={horizontal} horizontal={!horizontal} stroke="var(--chart-grid)" />
+              {horizontal ? (
+                <>
+                  <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={compactNumber} />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    width={100}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(label: string) => (label.length > 16 ? `${label.slice(0, 15)}…` : label)}
+                  />
+                </>
+              ) : (
+                <>
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
+                  <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={compactNumber} />
+                </>
+              )}
               <ChartTooltip cursor content={<ChartTooltipContent indicator={kind === "line" ? "line" : "dot"} />} />
               {series.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
               {series.map((item) =>
@@ -97,6 +115,7 @@ export function ChartCard({
                     type="linear"
                     stroke={`var(--color-${item.key})`}
                     strokeWidth={2}
+                    strokeDasharray={item.dashed ? "6 4" : undefined}
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     dot={false}
@@ -109,7 +128,7 @@ export function ChartCard({
                     key={item.key}
                     dataKey={item.key}
                     fill={`var(--color-${item.key})`}
-                    radius={[4, 4, 0, 0]}
+                    radius={horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]}
                     maxBarSize={24}
                     isAnimationActive={false}
                   />

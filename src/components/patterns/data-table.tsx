@@ -20,7 +20,7 @@ import {
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 export type DataTableColumn = { key: string; header: string; align?: "left" | "right"; sortable?: boolean };
@@ -34,6 +34,7 @@ export function DataTable({
   pageSize = 10,
   paginate = true,
   truncated = false,
+  totals,
 }: {
   caption: string;
   columns: DataTableColumn[];
@@ -41,6 +42,8 @@ export function DataTable({
   pageSize?: number;
   paginate?: boolean;
   truncated?: boolean;
+  /** Full-query totals supplied by the server, never the visible page's sum. */
+  totals?: DataTableRow;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const columnDefs: ColumnDef<DataTableRow>[] = columns.map((column) => ({
@@ -124,6 +127,23 @@ export function DataTable({
             </TableRow>
           ))}
         </TableBody>
+        {totals && (
+          <TableFooter>
+            <TableRow>
+              {columns.map((column, index) =>
+                index === 0 ? (
+                  <TableHead key={column.key} scope="row">
+                    {totals.cells[column.key]?.display}
+                  </TableHead>
+                ) : (
+                  <TableCell key={column.key} className={cn(column.align === "right" && "text-right tabular-nums")}>
+                    {totals.cells[column.key]?.display}
+                  </TableCell>
+                ),
+              )}
+            </TableRow>
+          </TableFooter>
+        )}
       </Table>
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
         <span>

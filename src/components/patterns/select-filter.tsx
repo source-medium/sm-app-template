@@ -39,6 +39,7 @@ export function SelectFilter({
           {label}
         </label>
         <NativeSelect
+          key={value}
           id={id}
           name={name}
           defaultValue={value}

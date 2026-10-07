@@ -1,7 +1,6 @@
 # AGENTS.md
 
-This is a customer-owned Next.js app that reads a SourceMedium BigQuery
-warehouse on the server and shows it to a small group of trusted viewers.
+This customer-owned Next.js app reads a SourceMedium BigQuery warehouse on the server for trusted viewers.
 Every viewer sees the same data; optional runtime `APP_STORE_ID` restricts a deployment to one store.
 Without configuration it runs on clearly labeled sample data.
 
@@ -108,8 +107,9 @@ Use the shadcn primitives in `components/ui` and the patterns in
 `components/patterns`. Colors and fonts come only from `src/styles/tokens.css`;
 use theme classes (`bg-card`, `text-muted-foreground`), not raw colors. Charts
 use `--chart-1`…`--chart-8` in order, one y-axis, and keep the table view.
-Comparisons: opt into `ReportPage comparisons` only when the feature queries
-both periods. Reuse `lib/comparison.ts` and `patterns/kpi-delta.ts`; copy Overview.
+Comparisons: opt into `ReportPage comparisons` only when querying both periods.
+Reuse `lib/comparison.ts`, `lib/time-grain.ts`, and `patterns/kpi-delta.ts`.
+Copy Overview for summaries/comparisons; Paid marketing for `RankedBreakdown`.
 
 ## Route handlers and downloads
 

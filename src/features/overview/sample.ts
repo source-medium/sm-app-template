@@ -12,10 +12,11 @@
  */
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits } from "@/lib/data/decimal";
-import { datesInRange, todayUtc, type DateRange, type ReportFilters } from "@/lib/filters";
+import { datesInRange, todayUtc, type DateRange } from "@/lib/filters";
 import { randomInt, seededRandom } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
-import type { OverviewData } from "./queries";
+import { periodStart, type TimeGrain } from "@/lib/time-grain";
+import type { OverviewData, OverviewFilters } from "./queries";
 import { OVERVIEW_RELATION, OverviewRow, toOverviewData } from "./rows";
 
 export type OverviewSourceRow = {
@@ -126,10 +127,22 @@ function add(sums: Sums, row: Sums): void {
 const money = (cents: bigint) => fromUnits(cents * 10_000_000n);
 
 /** The live SQL, in memory: sum by date, then period totals over those days, in BigQuery's wire format. */
-export function aggregateOverviewWire(source: OverviewSourceRow[], storeId: string, range: DateRange) {
+export function aggregateOverviewWire(
+  source: OverviewSourceRow[],
+  storeId: string,
+  range: DateRange,
+  grain: TimeGrain = "day",
+  channel: string | null = null,
+) {
   const byDate = new Map<string, Sums>();
   for (const row of source) {
-    if (row.sm_store_id !== storeId || row.date < range.from || row.date > range.to) continue;
+    if (
+      row.sm_store_id !== storeId ||
+      row.date < range.from ||
+      row.date > range.to ||
+      (channel && row.sm_channel !== channel)
+    )
+      continue;
     const sums = byDate.get(row.date) ?? zero();
     add(sums, {
       revenue: row.order_net_revenue_cents,
@@ -143,23 +156,41 @@ export function aggregateOverviewWire(source: OverviewSourceRow[], storeId: stri
   const days = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b));
   const totals = zero();
   for (const [, sums] of days) add(totals, sums);
-  return days.map(([date, sums]) => ({
-    date,
-    net_revenue: money(sums.revenue),
-    order_count: String(sums.orders),
-    website_sessions: String(sums.sessions),
-    ad_clicks: String(sums.clicks),
-    ad_spend: money(sums.spend),
-    total_net_revenue: money(totals.revenue),
-    total_order_count: String(totals.orders),
-    total_website_sessions: String(totals.sessions),
-    total_ad_clicks: String(totals.clicks),
-    total_ad_spend: money(totals.spend),
-  }));
+  const periods = new Map<string, Sums>();
+  for (const [date, sums] of days) {
+    const key = periodStart(date, grain);
+    const total = periods.get(key) ?? zero();
+    add(total, sums);
+    periods.set(key, total);
+  }
+  return days.map(([date, sums]) => {
+    const bucket = periodStart(date, grain);
+    const total = periods.get(bucket);
+    if (!total) throw new Error("Missing sample summary period");
+    return {
+      date,
+      net_revenue: money(sums.revenue),
+      order_count: String(sums.orders),
+      website_sessions: String(sums.sessions),
+      ad_clicks: String(sums.clicks),
+      ad_spend: money(sums.spend),
+      period_date: bucket,
+      period_net_revenue: money(total.revenue),
+      period_order_count: String(total.orders),
+      period_website_sessions: String(total.sessions),
+      period_ad_clicks: String(total.clicks),
+      period_ad_spend: money(total.spend),
+      total_net_revenue: money(totals.revenue),
+      total_order_count: String(totals.orders),
+      total_website_sessions: String(totals.sessions),
+      total_ad_clicks: String(totals.clicks),
+      total_ad_spend: money(totals.spend),
+    };
+  });
 }
 
-export async function sampleOverview(filters: ReportFilters, now: Date = new Date()): Promise<OverviewData> {
+export async function sampleOverview(filters: OverviewFilters, now: Date = new Date()): Promise<OverviewData> {
   const source = sampleOverviewSource(filters.storeId, filters.range, todayUtc(now));
-  const wire = aggregateOverviewWire(source, filters.storeId, filters.range);
+  const wire = aggregateOverviewWire(source, filters.storeId, filters.range, filters.grain, filters.channel);
   return toOverviewData(decodeRows(OverviewRow, wire, OVERVIEW_RELATION));
 }

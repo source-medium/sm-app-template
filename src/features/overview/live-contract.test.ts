@@ -11,6 +11,12 @@ afterEach(() => {
 
 const FIELDS = [
   { name: "date", type: "DATE" },
+  { name: "period_date", type: "DATE" },
+  { name: "period_net_revenue", type: "NUMERIC" },
+  { name: "period_order_count", type: "FLOAT" },
+  { name: "period_website_sessions", type: "INTEGER" },
+  { name: "period_ad_clicks", type: "INTEGER" },
+  { name: "period_ad_spend", type: "NUMERIC" },
   { name: "net_revenue", type: "NUMERIC" },
   { name: "order_count", type: "FLOAT" },
   { name: "website_sessions", type: "INTEGER" },
@@ -24,6 +30,12 @@ const FIELDS = [
 ];
 // NUMERIC money stays exact text, even past float precision.
 const MONEY = {
+  period_date: "2026-09-01",
+  period_net_revenue: "0.3",
+  period_order_count: "20.5",
+  period_website_sessions: "9007199254741000",
+  period_ad_clicks: "9",
+  period_ad_spend: "123456789012345678.123456789",
   net_revenue: "0.1",
   ad_spend: "0.2",
   total_net_revenue: "0.3",
@@ -32,6 +44,23 @@ const MONEY = {
 const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-09-02" } };
 
 describe("overview, live", () => {
+  it("uses a fixed calendar expression and parameterizes the sales channel for both periods", async () => {
+    const fake = await goLive({ submit: () => rowsResponse(FIELDS, []) });
+    const { getOverviewReport } = await import("./queries");
+    const channel = "online_dtc' OR TRUE --";
+    await getOverviewReport({ ...FILTERS, channel, grain: "week" }, { from: "2025-09-01", to: "2025-09-02" });
+    for (const call of fake.calls.filter((call) => call.kind === "submit")) {
+      const body = call.body as { query: string; queryParameters: unknown[] };
+      expect(body.query).toContain("DATE_TRUNC(date, WEEK(MONDAY))");
+      expect(body.query).toContain("SUM(net_revenue) OVER period");
+      expect(body.query).not.toContain(channel);
+      expect(body.queryParameters).toContainEqual({
+        name: "channel",
+        parameterType: { type: "STRING" },
+        parameterValue: { value: channel },
+      });
+    }
+  });
   it("queries comparison periods separately with identical store scope and exact SQL totals", async () => {
     const fake = await goLive({
       submit: (call) => {
@@ -57,8 +86,8 @@ describe("overview, live", () => {
     );
     expect(parameters).toEqual(
       expect.arrayContaining([
-        { store_id: "store-1", start_date: "2026-09-01", end_date: "2026-09-02" },
-        { store_id: "store-1", start_date: "2025-09-01", end_date: "2025-09-02" },
+        { store_id: "store-1", channel: "", start_date: "2026-09-01", end_date: "2026-09-02" },
+        { store_id: "store-1", channel: "", start_date: "2025-09-01", end_date: "2025-09-02" },
       ]),
     );
   });
@@ -95,7 +124,7 @@ describe("overview, live", () => {
     await goLive({ submit: () => rowsResponse(FIELDS, []) });
     const { getOverviewReport } = await import("./queries");
     const report = await getOverviewReport(FILTERS, { from: "2025-09-01", to: "2025-09-02" });
-    expect(report.comparison).toEqual({ data: { days: [], totals: null }, error: null });
+    expect(report.comparison).toEqual({ data: { days: [], summaries: [], totals: null }, error: null });
   });
 
   it("queries one store and range, and decodes exact totals", async () => {
@@ -133,6 +162,8 @@ describe("overview, live", () => {
       adClicks: 9n,
       adSpend: "123456789012345678.123456789",
     });
+    expect(data.summaries[0]?.netRevenue).toBe("0.3");
+    expect(data.summaries[0]?.sessions).toBe(9_007_199_254_741_000n);
     expect(data.days[0]?.sessions).toBe(9_007_199_254_740_993n);
 
     const submit = fake.calls.find((call) => call.kind === "submit")?.body as {
@@ -146,6 +177,7 @@ describe("overview, live", () => {
       { name: "store_id", parameterType: { type: "STRING" }, parameterValue: { value: "store-1" } },
       { name: "start_date", parameterType: { type: "DATE" }, parameterValue: { value: "2026-09-01" } },
       { name: "end_date", parameterType: { type: "DATE" }, parameterValue: { value: "2026-09-02" } },
+      { name: "channel", parameterType: { type: "STRING" }, parameterValue: { value: "" } },
     ]);
     expect(submit.labels.sm_query).toBe("overview_daily");
   });

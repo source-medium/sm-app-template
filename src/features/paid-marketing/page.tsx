@@ -24,6 +24,8 @@ import {
 import { MAX_NAMED_CHANNELS, channelChart, type MetricValue } from "./chart";
 import {
   PAID_METRICS,
+  getSpendBreakdown,
+  breakdownDimension,
   getPaidMarketing,
   paidChannel,
   campaignRatios,
@@ -31,6 +33,7 @@ import {
   type PaidMarketingFilters,
   type PaidMetric,
 } from "./queries";
+import { SpendBreakdownView } from "./breakdown";
 import { MAX_CAMPAIGNS } from "./rows";
 
 export const metadata: Metadata = { title: "Paid marketing" };
@@ -54,23 +57,46 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
       description="Spend and delivery by channel and campaign for one store."
       pathname={PATHNAME}
       params={params}
-      preserve={["metric", "channel"]}
+      preserve={["metric", "channel", "breakdown"]}
+      comparisons
     >
-      {({ filters }) => {
+      {({ filters, comparison, params: applied }) => {
         const paidFilters: PaidMarketingFilters = { ...filters, channel };
         return (
-          <Suspense
-            key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
-            fallback={<LoadingState variant="chart" label="Loading paid marketing" />}
-          >
-            <DataRegion
-              load={() => getPaidMarketing(paidFilters)}
-              isEmpty={(data) => data.channelDays.length === 0}
-              emptyMessage="This store has no ad delivery in the selected dates."
+          <>
+            <Suspense
+              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
+              fallback={<LoadingState variant="chart" label="Loading paid marketing" />}
             >
-              {(data) => <PaidMarketingView data={data} filters={paidFilters} metric={metric} params={params} />}
-            </DataRegion>
-          </Suspense>
+              <DataRegion
+                load={() => getPaidMarketing(paidFilters)}
+                isEmpty={(data) => data.channelDays.length === 0}
+                emptyMessage="This store has no ad delivery in the selected dates."
+              >
+                {(data) => <PaidMarketingView data={data} filters={paidFilters} metric={metric} params={applied} />}
+              </DataRegion>
+            </Suspense>
+            <Suspense
+              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${comparison?.mode}|${breakdownDimension(params)}`}
+              fallback={<LoadingState variant="chart" label="Loading spend breakdown" />}
+            >
+              <DataRegion
+                load={() => getSpendBreakdown(paidFilters, breakdownDimension(params), comparison?.range ?? null)}
+                isEmpty={(data) => data.rows.length === 0}
+                emptyMessage="No spend rows match these filters."
+              >
+                {(data) => (
+                  <SpendBreakdownView
+                    data={data}
+                    filters={paidFilters}
+                    dimension={breakdownDimension(params)}
+                    comparison={comparison}
+                    params={applied}
+                  />
+                )}
+              </DataRegion>
+            </Suspense>
+          </>
         );
       }}
     </ReportPage>
@@ -107,7 +133,7 @@ function PaidMarketingView({
     { value: "", label: "All channels" },
     ...channels.map((name) => ({ value: name, label: name })),
   ];
-  const preserved = preservedParams(params, ["metric", "channel"], filters);
+  const preserved = preservedParams(params, ["metric", "channel", "breakdown", "compare"], filters);
 
   return (
     <div className="flex flex-col gap-6">

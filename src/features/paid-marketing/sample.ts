@@ -10,6 +10,8 @@ import { randomInt, seededRandom } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import type { PaidMarketingData, PaidMarketingFilters } from "./queries";
 import { AD_RELATION, CampaignWireRow, ChannelDayRow, MAX_CAMPAIGNS, toCampaign, toChannelDay } from "./rows";
+import { SpendBreakdownRow, MAX_BREAKDOWN } from "./rows";
+import type { BreakdownDimension, SpendBreakdown } from "./queries";
 
 const CAMPAIGNS = [
   { id: "cmp-1001", name: "Prospecting – Broad", channel: "Meta", reach: 1, cpm: 1180 },
@@ -58,6 +60,58 @@ export function samplePaidSource(storeId: string, range: DateRange): PaidSourceR
 }
 
 const money = (cents: bigint) => fromUnits(cents * 10_000_000n);
+
+export async function sampleSpendBreakdown(
+  filters: PaidMarketingFilters,
+  dimension: BreakdownDimension,
+  baseline: DateRange | null,
+): Promise<SpendBreakdown> {
+  const grouped = new Map<string, { label: string; spend: bigint | null; previous: bigint | null }>();
+  for (const [period, range] of [
+    ["spend", filters.range],
+    ["previous", baseline],
+  ] as const) {
+    if (!range) continue;
+    for (const row of samplePaidSource(filters.storeId, range)) {
+      if (filters.channel && row.channel !== filters.channel) continue;
+      const key = dimension === "channel" ? row.channel : row.campaign.id;
+      const sums = grouped.get(key) ?? {
+        label: dimension === "channel" ? row.channel : row.campaign.name,
+        spend: null,
+        previous: null,
+      };
+      sums[period] = (sums[period] ?? 0n) + row.spendCents;
+      grouped.set(key, sums);
+    }
+  }
+  const current = [...grouped.values()].flatMap((row) => (row.spend === null ? [] : [row.spend]));
+  const total = current.length ? current.reduce((a, b) => a + b, 0n) : null;
+  const minimum = current.length ? current.reduce((a, b) => (a < b ? a : b)) : null;
+  const wire = [...grouped]
+    .sort(([a, x], [b, y]) =>
+      x.spend === y.spend
+        ? a.localeCompare(b)
+        : x.spend === null
+          ? 1
+          : y.spend === null
+            ? -1
+            : x.spend > y.spend
+              ? -1
+              : 1,
+    )
+    .map(([key, row]) => ({
+      dimension_key: key,
+      label: row.label,
+      spend: row.spend === null ? null : money(row.spend),
+      previous_spend: row.previous === null ? null : money(row.previous),
+      total_spend: total === null ? null : money(total),
+      minimum_spend: minimum === null ? null : money(minimum),
+    }));
+  return {
+    rows: decodeRows(SpendBreakdownRow, wire.slice(0, MAX_BREAKDOWN), AD_RELATION),
+    hasMore: wire.length > MAX_BREAKDOWN,
+  };
+}
 
 export async function samplePaidMarketing(filters: PaidMarketingFilters): Promise<PaidMarketingData> {
   const source = samplePaidSource(filters.storeId, filters.range);

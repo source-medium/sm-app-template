@@ -5,6 +5,15 @@ import type { CampaignRow, ChannelDay } from "./queries";
 export const AD_RELATION = "rpt_ad_performance_daily";
 /** The campaign table shows the top campaigns by spend; more is reported as truncation. */
 export const MAX_CAMPAIGNS = 200;
+export const MAX_BREAKDOWN = 10;
+export const SpendBreakdownRow = z.object({
+  dimension_key: bq.string(),
+  label: bq.string(),
+  spend: bq.numeric().nullable(),
+  previous_spend: bq.numeric().nullable(),
+  total_spend: bq.numeric().nullable(),
+  minimum_spend: bq.numeric().nullable(),
+});
 
 export const ChannelDayRow = z.object({
   channel: bq.string(),

@@ -31,11 +31,11 @@ test("overview: a chart tooltip separates its label and formatted money", async 
   await page.setViewportSize({ width: 1024, height: 900 });
   await page.goto("/overview");
   const chart = page.getByRole("img", { name: "Net revenue by day chart", exact: true });
-  await expect(chart.locator(".recharts-line-curve")).toBeVisible();
+  await expect(chart.locator(".recharts-line-curve").first()).toBeVisible();
   await chart.locator(".recharts-surface").hover({ position: { x: 150, y: 100 } });
   const tooltip = chart.locator('[data-slot="chart-tooltip"]:visible');
   await expect(tooltip).toBeVisible();
-  const value = tooltip.locator('[data-slot="chart-tooltip-value"]');
+  const value = tooltip.locator('[data-slot="chart-tooltip-value"]').first();
   await expect(value).toHaveText(/\d[\d,]*\.\d{2}/);
   const labelBounds = await tooltip.getByText("Net revenue", { exact: true }).boundingBox();
   const valueBounds = await value.boundingBox();
@@ -56,7 +56,7 @@ test("overview: period and year comparisons survive links, navigation, and refre
   expect(new URL(await page.evaluate(() => navigator.clipboard.readText())).searchParams.get("compare")).toBe(
     "previous",
   );
-  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/compare=year/);
   await expect(comparison).toContainText("Sep 1, 2025 – Sep 7, 2025");
   await page.reload();
@@ -64,19 +64,26 @@ test("overview: period and year comparisons survive links, navigation, and refre
   await page.getByRole("button", { name: "Copy report link" }).click();
   await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
   expect(new URL(await page.evaluate(() => navigator.clipboard.readText())).searchParams.get("compare")).toBe("year");
-  await page.getByRole("button", { name: "Refresh data", exact: true }).click();
+  const refresh = page.getByRole("button", { name: "Refresh data", exact: true });
+  await refresh.click();
+  await expect(refresh).toBeEnabled();
   await expect(page.getByLabel("Compare with")).toHaveValue("year");
-  await page.getByRole("link", { name: "Last 7 days" }).click();
-  await expect(page).toHaveURL(/compare=year/);
+  const preset = page.getByRole("link", { name: "Last 7 days" });
+  const presetHref = await preset.getAttribute("href");
+  if (!presetHref) throw new Error("Missing date preset link");
+  await preset.click();
+  await expect(page).toHaveURL(presetHref);
   const other = appConfig.nav.find((item) => item.href !== "/overview");
   if (other) {
     await page.getByRole("link", { name: other.label, exact: true }).click();
-    await expect(page).toHaveURL(/compare=year/);
+    await expect(page).toHaveURL(new RegExp(`${other.href}\\?`));
+    expect(new URL(page.url()).searchParams.get("compare")).toBe("year");
     await page.getByRole("link", { name: "Overview", exact: true }).click();
+    await expect(page).toHaveURL(/\/overview\?/);
   }
   await expect(page.getByLabel("Compare with")).toHaveValue("year");
   await page.getByLabel("Compare with").selectOption("off");
-  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/compare=off/);
   await expect(comparison).toHaveCount(0);
   await expect(page.locator('[data-slot="kpi-comparison"]:visible')).toHaveCount(0);
@@ -97,6 +104,7 @@ test("overview: metric definitions open and close by keyboard", async ({ page })
   await definition.locator("summary").focus();
   await page.keyboard.press("Enter");
   await expect(definition.getByText(/Net revenue divided by ad spend/)).toBeVisible();
+  await expect(page).toHaveTitle(/Overview/);
   await expectNoSeriousA11yViolations(page);
   await page.keyboard.press("Enter");
   await expect(definition.getByText(/Net revenue divided by ad spend/)).toBeHidden();
@@ -113,7 +121,7 @@ test("overview: a chart opens as an accessible table", async ({ page }) => {
 test("overview: chart labels and lines remain readable in both themes", async ({ page }) => {
   await page.goto("/overview");
   const chart = page.getByRole("img", { name: "Net revenue by day chart", exact: true });
-  await expect(chart.locator(".recharts-line-curve")).toBeVisible();
+  await expect(chart.locator(".recharts-line-curve").first()).toBeVisible();
   for (const theme of ["light", "dark"]) {
     await page.getByLabel("Appearance").selectOption(theme);
     const contrast = await chart.evaluate((element) => {
@@ -150,11 +158,56 @@ test("unknown stores remain unselected until the viewer chooses a valid store", 
   await expect(page.getByText("That store is not in this warehouse")).toBeVisible();
   await expect(page.getByLabel("Store")).toHaveValue("unknown-store");
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("href", /store=unknown-store/);
-  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/store=unknown-store/);
   await expect(page.getByText("That store is not in this warehouse")).toBeVisible();
   await page.getByLabel("Store").selectOption("sample-store-a");
   await expect(page).toHaveURL(/store=sample-store-a/);
   await expect(page.getByText("That store is not in this warehouse")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("href", /store=sample-store-a/);
+});
+
+test("overview: comparison dates and the dashed baseline survive the table toggle", async ({ page }) => {
+  await page.goto("/overview?store=sample-store-a&from=2026-09-02&to=2026-09-08&compare=previous");
+  const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
+  await expect(card.locator('.recharts-line-curve[stroke-dasharray="6 4"]')).toBeVisible();
+  await card.getByRole("button", { name: "View as table" }).click();
+  await expect(card.getByRole("columnheader", { name: "Comparison", exact: true })).toBeVisible();
+  await expect(card.getByRole("cell").filter({ hasText: "Aug 26, 2026" })).toBeVisible();
+  await page.getByLabel("Compare with").selectOption("off");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(page).toHaveURL(/compare=off/);
+  await expect(card.locator('.recharts-line-curve[stroke-dasharray="6 4"]')).toHaveCount(0);
+});
+
+test("overview: channel and grain filter the summary and raw export together", async ({ page, request }) => {
+  await page.goto("/overview?store=sample-store-a&from=2026-09-02&to=2026-09-08&compare=year");
+  await page.getByLabel("Sales channel", { exact: true }).selectOption("Amazon");
+  await expect(page).toHaveURL(/sales_channel=Amazon/);
+  await page.getByLabel("Summary rows", { exact: true }).selectOption("week");
+  await expect(page).toHaveURL(/grain=week/);
+  expect(new URL(page.url()).searchParams.get("compare")).toBe("year");
+  const table = page.getByRole("table", { name: "Business summary", exact: true });
+  await expect(table.getByRole("cell", { name: "Sep 2, 2026 – Sep 6, 2026", exact: true })).toBeVisible();
+  await expect(table.getByRole("rowheader", { name: "Selected period total" })).toBeVisible();
+  const href = await page.getByRole("link", { name: "Download CSV" }).getAttribute("href");
+  if (!href) throw new Error("Missing summary download");
+  await page.getByLabel("From", { exact: true }).fill("2020-01-01");
+  const response = await request.get(href);
+  expect(response.status()).toBe(200);
+  const lines = (await response.text()).trimEnd().split("\r\n");
+  expect(lines).toHaveLength(4);
+  expect(lines[0]).toContain('"row_type","period_from","period_to","net_revenue"');
+  expect(lines[1]).toContain('"Amazon","week","period","2026-09-02","2026-09-06"');
+  expect(lines[3]).toContain('"Amazon","week","total","2026-09-02","2026-09-08"');
+  await expect(page).toHaveTitle(/Overview/);
+  await expectNoSeriousA11yViolations(page);
+});
+
+test("overview: an unknown channel stays explicit and can be reset", async ({ page }) => {
+  await page.goto("/overview?store=sample-store-a&sales_channel=unknown");
+  await expect(page.getByText("No rows match this store, sales channel, and date range.")).toBeVisible();
+  await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("unknown");
+  await page.getByLabel("Sales channel", { exact: true }).selectOption("");
+  await expect(page.getByRole("table", { name: "Business summary", exact: true })).toBeVisible();
 });

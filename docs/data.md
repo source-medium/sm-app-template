@@ -36,8 +36,10 @@ orders, MER is
 net revenue ÷ ad spend, CPC is spend ÷ clicks, and platform ROAS is
 platform-reported revenue ÷ spend. Overview implements the all-channel sums
 used by the catalog's Executive Summary metrics (`order_net_revenue_summary`, `order_count_summary`,
-`total_ad_spend_summary`), which sum every `sm_channel` row; add an
-`sm_channel` filter to report only some channels. This is an implementation
+`total_ad_spend_summary`), which sum every `sm_channel` row. **Sales channel** defaults to **All sales channels**;
+select one to apply the same scope to KPIs, trends, comparisons, summaries and CSV.
+The options are queried for the selected store and dates. The Looker template may
+open on `online_dtc`, so match its channel before comparing numbers. This is an implementation
 match, not an independent numerical reconciliation. Summary orders include
 excluded, draft and exchanged channels when published and can differ from
 valid orders in `obt_orders`. The UI labels that count and its revenue ratio
@@ -183,8 +185,10 @@ their day counts are visible. **Off** skips the comparison query.
 
 The setting lives in `?compare=previous|year|off`, survives filters and report
 links, and travels with navigation. Only views that implement comparisons
-show the control. Daily charts show the selected period; KPI totals compare
-the periods. Missing days stay missing, never zero. Days with rows do not
+show the control. Overview daily charts overlay the comparison as a dashed line,
+with the actual comparison date in the tooltip and table. Previous-period days
+align by position; yearly days align by month and day. Unmatched leap days stay
+gaps. Period totals still include every date in the displayed comparison range. Missing days stay missing, never zero. Days with rows do not
 prove complete data, and a range including today may be incomplete.
 
 To add comparisons to a view, opt into `ReportPage comparisons`, use its
@@ -204,6 +208,35 @@ Overview uses higher-is-better only for net revenue and MER. Percentage-valued
 metrics should label absolute changes as percentage points, distinct from
 relative percent changes. Custom ranges, targets and weekday-aligned calendars
 are intentionally left for apps that need them.
+
+## Summary tables and ranked breakdowns
+
+Overview's **Business summary** offers Daily, Weekly and Monthly rows via
+`?grain=day|week|month`. Weeks begin Monday. SQL aggregates each bucket using
+only the selected dates; edge buckets show their actual partial date range.
+Daily charts stay daily. The footer always shows the full selected-period SQL
+totals, independent of table pagination. MER divides the summed revenue by
+summed spend. Missing days are not filled with zeros.
+
+**Download CSV** exports the same applied store, dates, `sales_channel`, and
+grain, with exact raw amounts. `row_type=period` rows are followed by one
+`row_type=total` row. Filter on row type before summing the file to avoid double
+counting. The download re-runs one bounded Overview query and fails on truncation.
+
+Paid marketing's **Spend breakdown** ranks channels or campaigns with
+`?breakdown=channel|campaign`. It adds one bounded SQL query that reads the
+selected and comparison periods with identical store/channel filters. Comparison
+Off excludes baseline rows. Shares use full-query spend before the top-10 limit;
+the caption identifies top-10 results. Zero totals and negative spend suppress
+shares; absent baseline values stay absent, not zero. The comparison control
+applies to this breakdown; the existing delivery chart and campaign table show
+the selected period.
+
+Reuse `RankedBreakdown` for another dimension: the feature owns SQL ranking,
+totals, shares and changes; the component owns the horizontal chart and table.
+`ChartCard` supports dashed comparison series and horizontal bars, and
+`DataTable` accepts server-computed totals. Keep allowed SQL dimensions and
+calendar expressions in fixed maps. Do not build a general query builder.
 
 ## Refresh and freshness
 

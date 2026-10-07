@@ -1,6 +1,6 @@
 /** Calendar comparisons and exact changes, independent of any report or UI. */
 import { fromUnits, toUnits } from "@/lib/data/decimal";
-import { addDays, parseChoice, rangeLength, type DateRange, type SearchParams } from "@/lib/filters";
+import { addDays, datesInRange, parseChoice, rangeLength, type DateRange, type SearchParams } from "@/lib/filters";
 
 export const COMPARISON_OPTIONS = [
   { value: "previous", label: "Previous period" },
@@ -35,6 +35,19 @@ export function parseComparison(params: SearchParams, range: DateRange): Compari
     "previous",
   );
   return { mode, range: comparisonRange(range, mode) };
+}
+
+/** Align prior-period days by position, or last-year days by calendar date. An unmatched leap day stays a gap. */
+export function comparisonDates(range: DateRange, comparison: Comparison): (string | null)[] {
+  return datesInRange(range).map((date, index) => {
+    if (!comparison.range) return null;
+    if (comparison.mode === "previous") return addDays(comparison.range.from, index);
+    if (comparison.mode === "year") {
+      const shifted = `${Number(date.slice(0, 4)) - 1}`.padStart(4, "0") + date.slice(4);
+      return new Date(`${shifted}T00:00:00Z`).toISOString().slice(0, 10) === shifted ? shifted : null;
+    }
+    return null;
+  });
 }
 
 export type MetricValue = string | bigint | number;

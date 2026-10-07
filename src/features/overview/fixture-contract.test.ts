@@ -9,6 +9,7 @@ import { WarehouseError } from "@/lib/data/warehouse-error";
 import { datesInRange } from "@/lib/filters";
 import { OVERVIEW_RELATION, OverviewRow, toOverviewData } from "./rows";
 import { aggregateOverviewWire, sampleOverview, sampleOverviewSource, type OverviewSourceRow } from "./sample";
+import { overviewSummaryRows } from "./summary-rows";
 
 const RANGE = { from: "2026-09-01", to: "2026-09-28" };
 const NOW = new Date("2026-10-05T12:00:00Z");
@@ -37,6 +38,41 @@ function source(
 }
 
 describe("overview fixture contract", () => {
+  it("summarizes only the selected sales channel, keeps exact amounts, and marks clipped period dates in exports", () => {
+    const range = { from: "2026-09-02", to: "2026-09-08" };
+    const rows = [
+      source("2026-09-01", 99, 1n, 1n, "s1", "Paid", 99999n),
+      source("2026-09-02", 1.5, 10n, 1n, "s1", "Paid", 10n, 1n),
+      source("2026-09-06", 2, 20n, 2n, "s1", "Email", 20n, 2n),
+      source("2026-09-08", 3, 30n, 3n, "s1", "Paid", 30n, 3n),
+      { ...source("2026-09-02", 100, 100n, 100n, "s1", "Other", 99999n), sm_channel: "Amazon" },
+    ];
+    const data = toOverviewData(
+      decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", range, "week", "Online DTC"), OVERVIEW_RELATION),
+    );
+    expect(data.summaries.map((row) => [row.date, row.netRevenue, row.orders, row.sessions])).toEqual([
+      ["2026-08-31", "0.3", 3.5, 30n],
+      ["2026-09-07", "0.3", 3, 30n],
+    ]);
+    expect(data.totals?.netRevenue).toBe("0.6");
+    expect(data.days).toHaveLength(3);
+    const exported = overviewSummaryRows(data, { storeId: "s1", range, grain: "week" });
+    expect(exported.map((row) => [row.rowType, row.from, row.to, row.netRevenue])).toEqual([
+      ["period", "2026-09-02", "2026-09-06", "0.3"],
+      ["period", "2026-09-07", "2026-09-08", "0.3"],
+      ["total", "2026-09-02", "2026-09-08", "0.6"],
+    ]);
+    const monthly = toOverviewData(
+      decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", range, "month", "Online DTC"), OVERVIEW_RELATION),
+    );
+    expect(monthly.summaries).toHaveLength(1);
+    expect(monthly.summaries[0]?.netRevenue).toBe("0.6");
+    expect(
+      toOverviewData(
+        decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", range, "day", "Unknown"), OVERVIEW_RELATION),
+      ).totals,
+    ).toBeNull();
+  });
   it("every generated row decodes through the live row schema", () => {
     for (const store of ["sample-store-a", "sample-store-b"]) {
       const wire = aggregateOverviewWire(sampleOverviewSource(store, RANGE, "2026-10-05"), store, RANGE);
@@ -86,7 +122,7 @@ describe("overview fixture contract", () => {
 
   it("returns no days and no totals for an empty range", () => {
     const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire([], "s1", RANGE), OVERVIEW_RELATION));
-    expect(data).toEqual({ days: [], totals: null });
+    expect(data).toEqual({ days: [], summaries: [], totals: null });
   });
 
   it("models forward-dated target rows with zero actuals, as the relation does", () => {
