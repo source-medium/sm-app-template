@@ -54,6 +54,20 @@ review and the remaining development-only advisory.
 
 ## Host and onboarding checks beyond the tested path
 
+On 2026-10-07, a self-led fresh-copy rehearsal of **Add a page** added a
+Traffic view using the bundled schema, existing report patterns, a guarded
+live query and matching sample rows. `pnpm check` and all 51 browser tests
+passed. Its live query was tested against fake BigQuery, not the demo warehouse.
+The exercise page is not included in the starter.
+
+A separate fresh copy rehearsed **Check a number** against the recorded app
+totals for demo store `democo`, 2026-09-08 through 2026-10-05. A fresh,
+independently authenticated read-only BigQuery query matched revenue, summary
+orders and ad spend exactly, with all channels included. The schema was
+inspected first; queries used typed parameters and a bytes-billed limit.
+`pnpm check` passed separately. This establishes numerical agreement, not the
+reporting-currency ISO code or reliability across other agents and tenants.
+
 | Gate                            | Evidence required before closing                                                                                                                                                                                                                                                                                           |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | SourceMedium Apps availability  | An admin can issue and replace an app-specific block through the published UI. Outside the starter release scope; keep planned-flow labels until it ships. Its absence does not block publishing the starter source.                                                                                                       |

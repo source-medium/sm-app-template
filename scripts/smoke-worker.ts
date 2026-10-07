@@ -57,6 +57,7 @@ const modes: { name: string; env: string; checks: [string, RequestInit, number, 
       ["/overview;x", {}, 401],
       ["/_next/static/../overview", {}, 401],
       ["/sample-creatives/creative-01.svg", {}, 401],
+      ["/paid-marketing/export", {}, 401],
       [FIRST, { headers: { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` } }, 200, "Sample data"],
       // Files from public/ (and the build id) pass the guard too (run_worker_first in wrangler.jsonc).
       ["/BUILD_ID", {}, 401],
@@ -81,6 +82,18 @@ const modes: { name: string; env: string; checks: [string, RequestInit, number, 
     checks: [[FIRST, {}, 503, "SM_APP_KEY is missing"]],
   },
 ];
+
+// The export belongs to the removable Paid marketing example.
+if (appConfig.nav.some((item) => item.href === "/paid-marketing")) {
+  const download = "/paid-marketing/export?store=sample-store-a&from=2026-09-01&to=2026-09-07&channel=Meta";
+  modes[0]?.checks.push([download, {}, 200, '"data_mode","store_id"']);
+  modes[1]?.checks.push([
+    download,
+    { headers: { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` } },
+    200,
+    '"sample","sample-store-a"',
+  ]);
+}
 
 async function waitForServer(): Promise<void> {
   for (let attempt = 0; attempt < 120; attempt += 1) {

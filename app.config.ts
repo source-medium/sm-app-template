@@ -23,9 +23,10 @@ export const appConfig = {
   /** Numbers and dates are formatted on the server in this locale. */
   locale: "en-US",
   /**
-   * Money is shown in your SourceMedium reporting currency, the one your
-   * warehouse already reports in. Set its ISO code (such as "USD" or "EUR") to
-   * show a currency symbol; leave null to show plain amounts.
+   * Your SourceMedium workspace's reporting currency, as an ISO code such as
+   * "USD" or "EUR". Confirm it when connecting data (docs/connect.md).
+   * All included money sources must already use this currency. This setting
+   * formats amounts; it does not convert them. Null leaves amounts unlabeled.
    */
   currency: null as string | null,
   /** The first entry is the home page. Adding a page is one route file and one entry here. */

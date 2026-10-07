@@ -15,6 +15,7 @@ test.describe("protected sample (shared password)", () => {
       [`${home}?_rsc=1`, { RSC: "1" }],
       [home, { RSC: "1", "Next-Router-Prefetch": "1" }],
       ["/robots.txt", {}],
+      ["/paid-marketing/export", {}],
       ["/.well-known/anything", {}],
       ["/%5Fnext/static/x", {}],
       ["/HEALTHZ", {}],

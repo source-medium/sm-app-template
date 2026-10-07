@@ -94,8 +94,10 @@ detail drawer). See `docs/removing-the-example.md` to delete any of them.
 - Aggregate in SQL. Every query has `maxRows`; check `result.truncated`. Totals
   are never computed from a truncated list.
 - INT64 decodes to `bigint`, FLOAT64 to a finite number, DATE stays a string.
-- Money (NUMERIC) is in the warehouse's reporting currency: keep it exact
-  text, add with `sumDecimals`, format with `formatMoney`, never add across stores.
+- Use the workspace reporting currency for money; confirm source alignment in
+  `docs/data.md` before combining amounts. Set `app.config.ts` currency once.
+  Keep NUMERIC exact, add with `sumDecimals`, format with `formatMoney`.
+  Read each field's type: platform-reported revenue is FLOAT64. Never add across stores.
 - Show "Queried at" and "Data freshness unknown"; never claim freshness from `MAX(date)`.
 
 ## UI

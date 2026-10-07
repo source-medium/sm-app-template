@@ -1,5 +1,47 @@
 import { expect, test } from "@playwright/test";
 
+test("paid marketing: downloads raw campaigns for the applied filters", async ({ page }) => {
+  await page.goto("/paid-marketing?store=sample-store-b&from=2026-09-01&to=2026-09-07&channel=Meta");
+  const link = page.getByRole("link", { name: "Download CSV" });
+  await expect(link).toBeVisible();
+  // An unsubmitted edit must not change the exported report.
+  await page.getByLabel("From", { exact: true }).fill("2020-01-01");
+  const pending = page.waitForEvent("download");
+  await link.click();
+  const download = await pending;
+  expect(download.suggestedFilename()).toBe("sample-campaigns-2026-09-01-2026-09-07.csv");
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  const lines = Buffer.concat(chunks).toString("utf8").trimEnd().split("\r\n");
+  expect(lines).toHaveLength(4); // Three Meta campaigns, plus the header.
+  expect(lines[0]).toContain('"spend","impressions","clicks"');
+  for (const line of lines.slice(1)) {
+    expect(line).toContain('"sample","sample-store-b","2026-09-01","2026-09-07","","false"');
+    expect(line).toMatch(/,"Meta","\d+(?:\.\d+)?","\d+","\d+",/);
+  }
+});
+
+test("paid marketing: calendar presets preserve the store and channel", async ({ page }) => {
+  await page.goto("/paid-marketing?store=sample-store-b&channel=Google&metric=clicks&compare=year");
+  const preset = page.getByRole("link", { name: "Last month", exact: true });
+  const href = await preset.getAttribute("href");
+  if (!href) throw new Error("Last month preset has no link");
+  await preset.click();
+  await expect(page).toHaveURL(href);
+  const params = new URL(page.url()).searchParams;
+  expect(params.get("store")).toBe("sample-store-b");
+  expect(params.get("channel")).toBe("Google");
+  expect(params.get("metric")).toBe("clicks");
+  expect(params.get("compare")).toBe("year");
+  expect(params.get("from")).toMatch(/-01$/);
+  await expect(preset).toHaveAttribute("aria-current", "true");
+  await expect(page.getByRole("link", { name: "Download CSV" })).toHaveAttribute(
+    "href",
+    new RegExp(`from=${params.get("from")}&to=${params.get("to")}`),
+  );
+});
+
 test("paid marketing: each picker replaces its own value and preserves the other filters", async ({ page }) => {
   await page.goto("/paid-marketing?store=sample-store-b&from=2026-09-01&to=2026-09-07&metric=spend&channel=Google");
   await page.getByLabel("Measure", { exact: true }).selectOption("clicks");

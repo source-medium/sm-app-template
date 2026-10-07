@@ -52,6 +52,64 @@ type Submitted = { query: string; queryParameters: unknown[]; labels: Record<str
 const queryName = (call: FakeCall) => (call.body as Submitted).labels.sm_query;
 
 describe("paid marketing, live", () => {
+  it("exports through the real guard, query, and decoders, without reading the chart", async () => {
+    const fake = await goLive({
+      submit: () =>
+        rowsResponse(CAMPAIGN_FIELDS, [{ ...CAMPAIGN_ROW, campaign_name: "=1+1", impressions: "9007199254740993" }]),
+    });
+    const { GET } = await import("./download");
+    const response = await GET(
+      new Request(
+        "https://example.test/paid-marketing/export?store=store-1&from=2026-09-01&to=2026-09-02&channel=Meta&channel=Google",
+      ),
+    );
+    const csv = await response.text();
+    expect(response.status).toBe(200);
+    expect(csv).toContain('"123456789012345678.123456789","9007199254740993"');
+    expect(csv).toContain('"\'=1+1"');
+    expect(csv).toContain('"live","store-1","2026-09-01","2026-09-02","","false"');
+    const queries = fake.calls.filter((call) => call.kind === "submit");
+    expect(queries).toHaveLength(1);
+    const submitted = queries[0];
+    if (!submitted) throw new Error("No campaign query submitted");
+    expect(queryName(submitted)).toBe("paid_campaigns");
+    expect((submitted.body as Submitted).queryParameters).toContainEqual({
+      name: "channel",
+      parameterType: { type: "STRING" },
+      parameterValue: { value: "Meta" },
+    });
+
+    requestHeaders.current = new Headers();
+    await expect(GET(new Request("https://example.test/paid-marketing/export?store=store-1"))).rejects.toThrow(
+      "not signed in",
+    );
+    expect(fake.calls.filter((call) => call.kind === "submit")).toHaveLength(1);
+  });
+
+  it("marks a bounded CSV as partial and returns actionable failures", async () => {
+    await goLive({
+      submit: () =>
+        rowsResponse(
+          CAMPAIGN_FIELDS,
+          Array.from({ length: 201 }, (_, i) => ({ ...CAMPAIGN_ROW, campaign_id: `c${i}` })),
+          { pageToken: "more" },
+        ),
+    });
+    const { GET } = await import("./download");
+    const url = "https://example.test/paid-marketing/export?store=store-1&from=2026-09-01&to=2026-09-02";
+    const partial = await GET(new Request(url));
+    expect(partial.headers.get("content-disposition")).toContain("-partial-");
+    const lines = (await partial.text()).trimEnd().split("\r\n");
+    expect(lines).toHaveLength(201);
+    expect(lines.slice(1).every((line) => line.includes(',"true",'))).toBe(true);
+
+    await goLive({ submit: () => Response.json({ error: { errors: [{ reason: "accessDenied" }] } }, { status: 403 }) });
+    const failure = await GET(new Request(url));
+    expect(failure.status).toBe(503);
+    expect(await failure.json()).toMatchObject({ title: expect.any(String), remedy: expect.any(String) });
+    expect(failure.headers.get("content-disposition")).toBeNull();
+  });
+
   it("runs both reads with typed parameters and decodes exact values", async () => {
     const fake = await goLive({
       submit: (call) =>

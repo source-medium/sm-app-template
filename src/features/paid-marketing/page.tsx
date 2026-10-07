@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { Download } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { ChartCard } from "@/components/charts/chart-card";
 import { buildChartData, type PointValue } from "@/components/charts/chart-data";
 import { DataRegion } from "@/components/patterns/data-region";
@@ -8,8 +10,8 @@ import { DataTable } from "@/components/patterns/data-table";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
-import { decimalToNumber, ratio } from "@/lib/data/decimal";
-import { datesInRange, parseChoice, preservedParams, single, type SearchParams } from "@/lib/filters";
+import { decimalToNumber } from "@/lib/data/decimal";
+import { datesInRange, parseChoice, preservedParams, withParams, type SearchParams } from "@/lib/filters";
 import {
   EMPTY_VALUE,
   formatCount,
@@ -23,10 +25,13 @@ import { MAX_NAMED_CHANNELS, channelChart, type MetricValue } from "./chart";
 import {
   PAID_METRICS,
   getPaidMarketing,
+  paidChannel,
+  campaignRatios,
   type PaidMarketingData,
   type PaidMarketingFilters,
   type PaidMetric,
 } from "./queries";
+import { MAX_CAMPAIGNS } from "./rows";
 
 export const metadata: Metadata = { title: "Paid marketing" };
 
@@ -41,7 +46,7 @@ const METRIC_LABELS: Record<PaidMetric, string> = {
 export default async function PaidMarketingPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const metric = parseChoice(params, "metric", PAID_METRICS, "spend");
-  const channel = single(params, "channel")?.slice(0, 100) || null;
+  const channel = paidChannel(params);
 
   return (
     <ReportPage
@@ -138,9 +143,24 @@ function PaidMarketingView({
         plottable={chart.plottable}
       />
       <section aria-labelledby="campaigns-heading" className="flex flex-col gap-3">
-        <h2 id="campaigns-heading" className="text-lg font-semibold">
-          Campaigns{filters.channel ? ` in ${filters.channel}` : ""}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="campaigns-heading" className="text-lg font-semibold">
+            Campaigns{filters.channel ? ` in ${filters.channel}` : ""}
+          </h2>
+          <a
+            href={withParams(
+              `${PATHNAME}/export`,
+              {},
+              { store: filters.storeId, ...filters.range, channel: filters.channel },
+            )}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <Download aria-hidden /> Download CSV
+          </a>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          CSV includes all loaded campaigns, up to {MAX_CAMPAIGNS}, with raw values and a partial-results flag.
+        </p>
         <DataTable
           caption="Campaigns by spend"
           truncated={data.campaignsTruncated}
@@ -159,9 +179,7 @@ function PaidMarketingView({
             const spend = decimalToNumber(campaign.spend);
             const impressions = campaign.impressions === null ? null : toChartNumber(campaign.impressions);
             const clicks = campaign.clicks === null ? null : toChartNumber(campaign.clicks);
-            const ctr = ratio(clicks, impressions);
-            const cpc = ratio(spend, clicks);
-            const roas = ratio(campaign.platformRevenue, spend);
+            const { ctr, cpc, roas } = campaignRatios(campaign);
             return {
               id: campaign.campaignId,
               cells: {

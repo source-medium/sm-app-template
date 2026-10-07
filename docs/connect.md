@@ -55,6 +55,15 @@ see all of it.
 
 ## 3. Go live locally
 
+Set `currency` in `app.config.ts` to your SourceMedium workspace's reporting
+currency, for example `"USD"`. All views use this one setting for money
+formatting and show the currency code in the report footer. Confirm that the
+order and advertising sources included in the app already report in that
+currency; setting the code does not convert values. Amazon Ads uses the store
+currency, which can differ from the workspace reporting currency. Resolve any
+mismatch in SourceMedium or a warehouse view before combining amounts or using
+MER. See [money and currency](data.md#money-and-currency).
+
 Paste the block into `.env.local` at the repository root (git ignores it), then:
 
 ```sh

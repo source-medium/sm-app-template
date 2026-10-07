@@ -6,8 +6,10 @@
  */
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
-import type { ReportFilters } from "@/lib/filters";
-import { queryPaidMarketing } from "./bigquery";
+import { single, type ReportFilters, type SearchParams } from "@/lib/filters";
+import { decimalToNumber, ratio } from "@/lib/data/decimal";
+import { toChartNumber } from "@/lib/data/decode";
+import { queryPaidCampaigns, queryPaidMarketing } from "./bigquery";
 import { samplePaidMarketing } from "./sample";
 
 export const PAID_METRICS = ["spend", "impressions", "clicks", "conversions"] as const;
@@ -40,7 +42,26 @@ export type PaidMarketingData = {
   campaignsTruncated: boolean;
 };
 
+export type CampaignData = Pick<PaidMarketingData, "campaigns" | "campaignsTruncated">;
+
+export function paidChannel(params: SearchParams): string | null {
+  return single(params, "channel")?.slice(0, 100) || null;
+}
+
+/** Ratios use the same totals in the report and download; missing or unsafe inputs stay missing. */
+export function campaignRatios(row: CampaignRow) {
+  const spend = decimalToNumber(row.spend);
+  const impressions = row.impressions === null ? null : toChartNumber(row.impressions);
+  const clicks = row.clicks === null ? null : toChartNumber(row.clicks);
+  return { ctr: ratio(clicks, impressions), cpc: ratio(spend, clicks), roas: ratio(row.platformRevenue, spend) };
+}
+
 export async function getPaidMarketing(filters: PaidMarketingFilters): Promise<PaidMarketingData> {
   const access = await requireViewer();
   return access.mode === "live" ? queryPaidMarketing(filters) : samplePaidMarketing(filters);
+}
+
+export async function getPaidCampaigns(filters: PaidMarketingFilters): Promise<CampaignData> {
+  const access = await requireViewer();
+  return access.mode === "live" ? queryPaidCampaigns(filters) : samplePaidMarketing(filters);
 }

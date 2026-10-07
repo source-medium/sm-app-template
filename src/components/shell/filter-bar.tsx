@@ -111,14 +111,14 @@ export function FilterBar({
       <Button type="submit" variant="secondary" className="col-span-full">
         Apply
       </Button>
-      <nav aria-label="Date presets" className="col-span-full grid grid-cols-3 gap-1 sm:ml-auto sm:flex">
+      <nav aria-label="Date presets" className="col-span-full flex basis-full flex-wrap gap-1">
         {presets.map((preset) => (
           <Link
             key={preset.label}
             href={preset.href}
             aria-current={preset.active ? "true" : undefined}
             className={cn(
-              "flex min-h-9 flex-1 items-center justify-center rounded-md px-1.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:px-2.5 pointer-coarse:min-h-11",
+              "flex min-h-9 items-center justify-center rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11",
               preset.active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted",
             )}
           >

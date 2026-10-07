@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { appConfig } from "@/app.config";
 import { expectNoSeriousA11yViolations, expectTextContained } from "../../../e2e/helpers";
 
 test("overview: full money values and comparison text stay inside their cards", async ({ page }) => {
@@ -67,9 +68,12 @@ test("overview: period and year comparisons survive links, navigation, and refre
   await expect(page.getByLabel("Compare with")).toHaveValue("year");
   await page.getByRole("link", { name: "Last 7 days" }).click();
   await expect(page).toHaveURL(/compare=year/);
-  await page.getByRole("link", { name: "Orders", exact: true }).click();
-  await expect(page).toHaveURL(/compare=year/);
-  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  const other = appConfig.nav.find((item) => item.href !== "/overview");
+  if (other) {
+    await page.getByRole("link", { name: other.label, exact: true }).click();
+    await expect(page).toHaveURL(/compare=year/);
+    await page.getByRole("link", { name: "Overview", exact: true }).click();
+  }
   await expect(page.getByLabel("Compare with")).toHaveValue("year");
   await page.getByLabel("Compare with").selectOption("off");
   await page.getByRole("button", { name: "Apply", exact: true }).click();

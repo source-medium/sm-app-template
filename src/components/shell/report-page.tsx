@@ -11,6 +11,7 @@
  * first visit with no store chosen waits for the list to pick one.
  */
 import { Suspense } from "react";
+import { appConfig } from "@/app.config";
 import { EmptyState, ErrorState } from "@/components/patterns/data-states";
 import { FilterBar } from "@/components/shell/filter-bar";
 import { CopyReportLink } from "@/components/shell/copy-report-link";
@@ -21,7 +22,7 @@ import { loadStores, type StoreOption } from "@/lib/data/stores.server";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { parseComparison, type Comparison } from "@/lib/comparison";
 import {
-  addDays,
+  datePresets,
   parseDateRange,
   single,
   todayUtc,
@@ -30,8 +31,6 @@ import {
   type ReportFilters,
   type SearchParams,
 } from "@/lib/filters";
-
-const PRESET_DAYS = [7, 28, 90];
 
 export type ReportContext = { filters: ReportFilters; params: SearchParams; comparison?: Comparison };
 
@@ -99,6 +98,7 @@ export async function ReportPage({
         : "Data freshness unknown."}
       {dates && " Dates are calendar dates as published in the warehouse."}
       {dates && range.to === todayUtc(now) && " Today may be incomplete."}
+      {appConfig.currency && <span className="mt-1 block">Reporting currency: {appConfig.currency}.</span>}
     </footer>
   );
 
@@ -185,13 +185,11 @@ function StoreFilterBar({
   dates,
   comparison,
 }: FilterBarProps & { stores: StoreOption[]; storeId: string }) {
-  const yesterday = addDays(todayUtc(now), -1);
-  const presets = PRESET_DAYS.map((days) => {
-    const from = addDays(yesterday, -(days - 1));
+  const presets = datePresets(now).map(({ label, range: preset }) => {
     return {
-      label: `Last ${days} days`,
-      href: withParams(pathname, params, { store: storeId, from, to: yesterday, cursor: null, order: null }),
-      active: range.from === from && range.to === yesterday,
+      label,
+      href: withParams(pathname, params, { store: storeId, ...preset, cursor: null, order: null }),
+      active: range.from === preset.from && range.to === preset.to,
     };
   });
   const preserved: Record<string, string> = {};

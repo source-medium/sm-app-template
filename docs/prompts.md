@@ -16,8 +16,13 @@ I will paste the configuration block into .env.local myself; do not ask me to
 paste it into this chat and do not read .env.local. When I say it is done, ask
 me to run `pnpm diagnose` and tell you what it printed, then fix any problem it
 reports. If app provisioning is unavailable, explain that prerequisite and
-keep sample mode; do not invent a configuration block. Run pnpm check and
-report separately whether live connection was actually verified.
+keep sample mode; do not invent a configuration block. Confirm the workspace
+reporting currency and that every included store and money source reports in
+it, following docs/data.md. Set app.config.ts currency to that ISO code; do not
+guess it from locale or order_currency_code, and do not add client-side FX.
+If sources differ, resolve that upstream before trusting combined totals or
+MER. Run pnpm check and report separately whether live connection was actually
+verified.
 ```
 
 ## Rebrand it
@@ -79,15 +84,17 @@ The <metric> on the <view> page shows <value> for <store> from <date> to
 <date>. Check it against the SourceMedium MCP's query_metrics for the same
 store and dates. If they differ, explain why from the SQL and the catalog
 definition, without changing anything yet. Do not treat a catalog formula as
-an independently verified total. If query_metrics is unavailable, say the
-comparison needs another independent, authorized source. Use an existing
+an independently verified total. Match the reporting currency as well as the
+metric and dates; check conversion status and source-account exceptions in
+docs/data.md. If query_metrics is unavailable, say the comparison needs another
+independent, authorized source. Use an existing
 read-only BigQuery login only with my authorization, after inspecting the
 schema; constrain the query to the agreed project, store and dates, use typed
 parameters and a maximum bytes billed limit. Never read or copy the app key.
 If neither source is available, report the comparison as unverified. For demo
 data, check whether privacy masking scales metric columns without multiplying
-rows before comparing summary counts with order-row counts. Run pnpm check and report it separately from the
-numerical comparison.
+rows before comparing summary counts with order-row counts. Run pnpm check
+and report it separately from the numerical comparison.
 ```
 
 ## Build something unrelated

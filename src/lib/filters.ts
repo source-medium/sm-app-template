@@ -50,6 +50,27 @@ export function defaultRange(now: Date): DateRange {
   return { from: addDays(to, -(appConfig.dateRange.defaultDays - 1)), to };
 }
 
+/** Calendar presets use UTC, matching the date picker. Weeks run Monday–Sunday. */
+export function datePresets(now: Date): { label: string; range: DateRange }[] {
+  const today = todayUtc(now);
+  const yesterday = addDays(today, -1);
+  const monthStart = `${today.slice(0, 8)}01`;
+  const lastMonthEnd = addDays(monthStart, -1);
+  const monday = addDays(today, -((now.getUTCDay() + 6) % 7));
+  const presets = [
+    { label: "Yesterday", range: { from: yesterday, to: yesterday } },
+    ...[7, 28, 90].map((days) => ({
+      label: `Last ${days} days`,
+      range: { from: addDays(yesterday, -(days - 1)), to: yesterday },
+    })),
+    { label: "Last full week", range: { from: addDays(monday, -7), to: addDays(monday, -1) } },
+    { label: "Last month", range: { from: `${lastMonthEnd.slice(0, 8)}01`, to: lastMonthEnd } },
+    // On the first of the month there are no completed days in this month yet.
+    ...(yesterday >= monthStart ? [{ label: "Month to date", range: { from: monthStart, to: yesterday } }] : []),
+  ];
+  return presets.filter((preset) => rangeLength(preset.range) <= appConfig.dateRange.maxDays);
+}
+
 /**
  * The applied range: the URL's range when it is valid, otherwise the default.
  * The end is clamped to today and the length to the configured maximum.

@@ -117,21 +117,47 @@ integer into a plausible-looking chart value.
 
 ## Money and currency
 
-Money columns (revenue, spend, costs) are NUMERIC and already in your
-warehouse's reporting currency: SourceMedium's models convert orders before
-they publish them. The app shows them as published:
+Use one SourceMedium workspace reporting currency throughout the app. Keep
+conversion in SourceMedium or the warehouse, and read the standard published
+fields (`order_net_revenue`, `ad_spend`, and related measures). Set `currency`
+in `app.config.ts` to the verified ISO code, for example `"USD"`; every view
+uses it through `formatMoney`, and the report footer identifies it. This
+setting formats amounts; it does not convert them. `null` leaves amounts
+unlabeled and is not a currency check.
 
-- Decode with `bq.numeric()`; values stay exact decimal text.
-- Add them with `sumDecimals` (`src/lib/data/decimal.ts`), never as JavaScript
-  numbers. Ratios such as revenue per summary order use `decimalToNumber` and `ratio`.
-- Format with `formatMoney`. Set `currency` in `app.config.ts` (for example
-  `"USD"`) to show a currency symbol; with `null`, amounts show without one.
-- Never add money across stores: stores can report in different currencies.
+Confirm alignment when connecting data. SourceMedium converts supported
+order money when reporting-currency conversion is enabled. Google Ads, Meta,
+TikTok, AppLovin, and Snapchat also use reporting currency when enabled.
+Amazon Ads uses the store currency, which may differ; other advertising
+sources may retain account currency. One store's combined spend and MER can
+therefore mix currencies. Resolve mismatches upstream before using these
+totals; never relabel a source-currency amount as reporting currency.
+See SourceMedium's [reporting currency rules](https://sourcemedium.com/docs/help-center/core-concepts/data-definitions/reporting-currency).
 
-`obt_orders` also keeps each order's original amounts and currency
-(`order_original_*`, `order_original_currency_code`) if you need them.
+- Inspect each column's type. Order revenue and ad spend are NUMERIC: decode
+  with `bq.numeric()` and keep exact decimal text. Platform-reported revenue
+  is FLOAT64: decode with `bq.float64()`; it is approximate at the source.
+- Add NUMERIC values with `sumDecimals` (`src/lib/data/decimal.ts`), never as
+  JavaScript numbers. Ratios use `decimalToNumber` and `ratio`.
+- Never add money across stores. The one configured currency must match every
+  store exposed by this app; use separately scoped apps if they differ.
+
+For order reconciliation, inspect `order_original_currency_code`,
+`order_converted_currency_code`, `is_order_currency_canonicalized`, and
+`order_original_*` / `order_converted_*` amounts. `order_currency_code` remains
+the source transaction currency; do not use it to label converted revenue.
+The summary and advertising report tables do not expose a common currency
+code, so the app cannot infer their reporting currency from an order row.
+Discounts and refunds are normally signed negative amounts; read published
+net revenue rather than subtracting those signed amounts again.
 
 ## Period comparisons
+
+Date presets include Yesterday, Last 7/28/90 days, Last full week
+(Monday–Sunday), Last month, and Month to date through yesterday. They use
+UTC calendar dates, like the picker defaults. Month to date is omitted on
+the first of the month, when it has no completed days. Presets longer than
+the configured maximum range are omitted rather than silently shortened.
 
 Overview defaults to **Previous period**: the same number of calendar days,
 immediately before the selected range. **Same dates last year** shifts the
@@ -190,6 +216,32 @@ shortly before expiry. BigQuery can serve eligible repeated queries from its
 [native query cache](https://docs.cloud.google.com/bigquery/docs/cached-results).
 Refresh does not bypass that cache. Browser Back/Forward can restore a previous
 report; use **Refresh data** to re-read it.
+
+## CSV downloads
+
+Paid marketing's **Download CSV** re-reads the applied store, dates and channel
+with the same campaign query as the table. It includes all loaded campaigns
+across the table's pages, up to 200, in the query's spend order. It does not
+run the chart query or start a background export job. Unapplied filter edits
+are ignored. Each row includes the store, inclusive dates, sample/live mode,
+configured reporting currency (blank when unset), and `export_truncated`.
+A bounded partial result sets that flag to `true` and uses `-partial-` in the
+filename; it is not a complete campaign export.
+
+Amounts and counts retain their raw precision in the CSV; ratios are numeric,
+and CTR is a fraction (`0.05` means 5%). Spreadsheet programs can round large
+numbers when opening CSVs: import exact amounts and identifiers as text when
+that precision matters. Text cells that could execute as spreadsheet formulas
+receive a leading apostrophe. Treat CSV as data when importing it: spreadsheet
+re-saving can remove formula escapes ([OWASP guidance](https://owasp.org/www-community/attacks/CSV_Injection)).
+Downloads require the same viewer guard as pages
+and use `private, no-store` responses.
+
+For another feature, copy `paid-marketing/download.ts` and its route re-export.
+Reuse `src/lib/csv.server.ts` for encoding, mark numeric columns explicitly,
+reuse the feature's guarded loader, and include its filter and truncation
+context. Keep the route under the feature's own route folder so removing the
+example removes its download too.
 
 ## Metadata
 
