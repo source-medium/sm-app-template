@@ -55,6 +55,11 @@ before sharing each deployment; see [one deployment per store](auth.md#one-deplo
 
 ## 3. Go live locally
 
+Store names and brand groups load automatically from `dim_stores`. No store
+list needs to be configured. Optional `storeLabels` in `app.config.ts` overrides
+individual names. See [store scope](data.md#store-scope) for warehouses awaiting
+the metadata table and stable links to each store.
+
 Set `currency` in `app.config.ts` to your SourceMedium workspace's reporting
 currency, for example `"USD"`. All views use this one setting for money
 formatting and show the currency code in the report footer. Confirm that the
@@ -62,7 +67,8 @@ order and advertising sources included in the app already report in that
 currency; setting the code does not convert values. Amazon Ads uses the store
 currency, which can differ from the workspace reporting currency. Resolve any
 mismatch in SourceMedium or a warehouse view before combining amounts or using
-MER. See [money and currency](data.md#money-and-currency).
+MER. `dim_stores.store_currency_code` alone does not verify reporting currency.
+See [money and currency](data.md#money-and-currency).
 
 Paste the block into `.env.local` at the repository root (git ignores it), then:
 

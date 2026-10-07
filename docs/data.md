@@ -52,8 +52,21 @@ definitions, dates and store. The demo discrepancy remains a release check in
 ## Store scope
 
 Every data query filters one store with `sm_store_id = @store_id`. There are no
-cross-store totals. The store picker lists the distinct `sm_store_id` values of
-`rpt_executive_summary_daily` (at most 50); name them in `app.config.ts`.
+cross-store totals. The store picker reads `dim_stores`: one row per active
+store, with `sm_store_id`, `store_name`, and `brand_name`. It groups stores by
+brand, uses their names automatically, and appends the ID when names repeat.
+The selected value and shareable URL remain `?store=<sm_store_id>`, so renaming
+a store does not break links. `app.config.ts` `storeLabels` is an optional
+name override, not a required setup step. The roster is bounded to 50 stores;
+overflow or duplicate IDs is an error rather than an incomplete picker.
+
+Some warehouses have not received `dim_stores` yet. Only when the table is
+missing does the app use distinct IDs from `rpt_executive_summary_daily`, with
+optional configured labels. `pnpm diagnose` reports this fallback. An empty
+dimension stays empty; permission and schema errors remain errors. Metadata
+describes active stores, including those without report rows yet. It is not
+an authorization policy: every viewer can access the deployment's allowed
+store scope, and historical IDs may still have report data.
 
 Set runtime `APP_STORE_ID` to restrict one deployment to that store. The roster
 query is filtered in SQL, so unrelated stores neither appear nor consume its
@@ -136,6 +149,15 @@ the server with `src/lib/format.ts`; `toChartNumber` refuses to round a large
 integer into a plausible-looking chart value.
 
 ## Money and currency
+
+`dim_stores.store_currency_code` is the currency configured for the store,
+not a reporting-currency guarantee for the report measures. Do not use it to
+automatically label combined revenue or spend. Its `store_timezone` describes
+store configuration, not every source's date convention (Amazon order local
+times use America/Los_Angeles). Neither field changes report calculations or
+date presets. The bundled schema documents all seven metadata fields; the
+picker reads only the identity, name, and brand it needs. Websites and logos
+are not fetched by the picker.
 
 Use one SourceMedium workspace reporting currency throughout the app. Keep
 conversion in SourceMedium or the warehouse, and read the standard published

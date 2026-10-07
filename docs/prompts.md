@@ -19,7 +19,9 @@ reports. If app provisioning is unavailable, explain that prerequisite and
 keep sample mode; do not invent a configuration block. Confirm the workspace
 reporting currency and that every included store and money source reports in
 it, following docs/data.md. Set app.config.ts currency to that ISO code; do not
-guess it from locale or order_currency_code, and do not add client-side FX.
+guess it from locale, order_currency_code, or dim_stores.store_currency_code,
+and do not add client-side FX. Store names and brand groups come from dim_stores
+automatically; use storeLabels only for a deliberate display override.
 If sources differ, resolve that upstream before trusting combined totals or
 MER. Run pnpm check and report separately whether live connection was actually
 verified.

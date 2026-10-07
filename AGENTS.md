@@ -88,6 +88,7 @@ Copy `overview` (summaries), `paid-marketing` (filters), `creatives` (cards),
 
 - SQL is written by developers, never built from browser input. Browser input
   becomes typed named parameters (`@store_id`), or picks from a fixed map in code.
+- Store names and brands come from `dim_stores` via `loadStores()`; keep IDs in URLs.
 - Keep `sm_store_id = @store_id` on every data source read; see `docs/data.md#store-scope`.
 - Fully qualified names come from `warehouse.table("<relation>")`; your own
   datasets in the warehouse project: `warehouse.table("customized_views.my_table")`.
@@ -96,6 +97,7 @@ Copy `overview` (summaries), `paid-marketing` (filters), `creatives` (cards),
 - INT64 decodes to `bigint`, FLOAT64 to a finite number, DATE stays a string.
 - Use the workspace reporting currency for money; confirm source alignment in
   `docs/data.md` before combining amounts. Set `app.config.ts` currency once.
+  `dim_stores.store_currency_code` alone does not establish reporting currency.
   Keep NUMERIC exact, add with `sumDecimals`, format with `formatMoney`.
   Read each field's type: platform-reported revenue is FLOAT64. Never add across stores.
 - Show "Queried at" and "Data freshness unknown"; never claim freshness from `MAX(date)`.

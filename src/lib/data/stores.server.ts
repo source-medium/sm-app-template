@@ -1,6 +1,7 @@
 /**
  * The store picker's roster, shared by every view's filter bar. Labels come
- * from app.config.ts. There is no cross-store total anywhere in the example.
+ * from dim_stores, with optional app.config.ts overrides. There is no
+ * cross-store total anywhere in the example.
  */
 import "server-only";
 import { cache } from "react";
@@ -9,7 +10,7 @@ import { requireViewer } from "@/lib/auth/require-viewer";
 import { SAMPLE_STORES } from "@/lib/sample/stores";
 import { queryStoreRoster } from "./store-roster.server";
 
-export type StoreOption = { id: string; label: string };
+export type StoreOption = { id: string; label: string; brand: string | null };
 
 export const loadStores = cache(async (): Promise<StoreOption[]> => {
   const access = await requireViewer();
@@ -17,6 +18,13 @@ export const loadStores = cache(async (): Promise<StoreOption[]> => {
     return SAMPLE_STORES.filter((store) => access.storeId === null || store.id === access.storeId).map((store) => ({
       ...store,
     }));
-  const ids = await queryStoreRoster(access.warehouse, access.storeId);
-  return ids.map((id) => ({ id, label: appConfig.storeLabels[id] ?? id }));
+  const { stores } = await queryStoreRoster(access.warehouse, access.storeId);
+  return stores.map((store) => ({
+    id: store.sm_store_id,
+    label:
+      (Object.hasOwn(appConfig.storeLabels, store.sm_store_id) && appConfig.storeLabels[store.sm_store_id]?.trim()) ||
+      store.store_name?.trim() ||
+      store.sm_store_id,
+    brand: store.brand_name?.trim() || null,
+  }));
 });

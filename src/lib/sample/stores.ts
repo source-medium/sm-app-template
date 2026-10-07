@@ -3,8 +3,8 @@
  * and the "no cross-store totals" rule are exercised from the first run.
  */
 export const SAMPLE_STORES = [
-  { id: "sample-store-a", label: "Sample Store A" },
-  { id: "sample-store-b", label: "Sample Store B" },
+  { id: "sample-store-a", label: "Sample Store A", brand: "Sample Brand" },
+  { id: "sample-store-b", label: "Sample Store B", brand: "Sample Brand" },
 ] as const;
 
 /** Per-store scale so the two stores look different. */

@@ -1,5 +1,5 @@
 {
- "_note": "Column names, types, descriptions, and key flags of SourceMedium's published relations, read from the SourceMedium demo warehouse and its data dictionary on 2026-10-05. No data. Your warehouse may differ; with live configuration, pnpm schema reads your own. Products and cohort schemas added from the demo warehouse on 2026-10-07.",
+ "_note": "Column names, types, descriptions, and key flags of SourceMedium's published relations, read from the SourceMedium demo warehouse and its data dictionary on 2026-10-05. No data. Your warehouse may differ; with live configuration, pnpm schema reads your own. Products and cohort schemas added from the demo warehouse on 2026-10-07. dim_stores schema checked against a published warehouse and the reporting_queries model on 2026-10-07; metadata descriptions are from that model, not customer rows.",
  "relations": {
   "rpt_executive_summary_daily": {
    "dataset": "transformed",
@@ -3439,6 +3439,55 @@
      "type": "FLOAT64",
      "mode": "NULLABLE",
      "description": "Total gross profit for the acquisition month only (baseline for cohort profitability calculations)."
+    }
+   ]
+  },
+  "dim_stores": {
+   "dataset": "transformed",
+   "description": "Store metadata from the SourceMedium registry. One row per active store, rebuilt whole each run. Join on sm_store_id; not a time series.",
+   "columns": [
+    {
+     "name": "sm_store_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Stable SourceMedium store identifier; one row per active store.",
+     "key": true
+    },
+    {
+     "name": "store_name",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The store's name in SourceMedium."
+    },
+    {
+     "name": "brand_name",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The brand the store belongs to; several stores can share a brand."
+    },
+    {
+     "name": "store_url",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The store's website as configured in SourceMedium; null when unset."
+    },
+    {
+     "name": "store_logo_url",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The store's own logo URL as configured in SourceMedium; null when unset."
+    },
+    {
+     "name": "store_currency_code",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "ISO 4217 currency configured for the store. This is not a reporting-currency guarantee; order money columns carry their own currency fields."
+    },
+    {
+     "name": "store_timezone",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "IANA timezone configured for the store. Order local-time columns use it, except Amazon orders, which use America/Los_Angeles."
     }
    ]
   }

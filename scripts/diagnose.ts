@@ -9,14 +9,19 @@ import { execFileSync } from "node:child_process";
 import { describeConfig, parseConfig, type LiveConfig } from "../src/lib/config/env.server";
 import { dryRunQuery, getDatasetMetadata, getTableMetadata } from "../src/lib/data/bigquery-rest.server";
 import { readDictionary, readMetricCatalog } from "../src/lib/data/catalog.server";
-import { queryStoreRoster, ROSTER_RELATION, storeRosterQuery } from "../src/lib/data/store-roster.server";
+import {
+  queryStoreRoster,
+  ROSTER_RELATION,
+  LEGACY_ROSTER_RELATION,
+  storeRosterQuery,
+} from "../src/lib/data/store-roster.server";
 import { bigQueryClientFor, warehouseFor } from "../src/lib/data/warehouse.server";
 import { WarehouseError } from "../src/lib/data/warehouse-error";
 import { setLogEmitter } from "../src/lib/data/log";
 import { loadLocalEnvironment, root } from "./lib/environment";
 
 const offline = process.argv.includes("--offline");
-/** The store roster's and the Overview query's columns. */
+/** Overview remains a separate schema check from the store dimension. */
 const REQUIRED_COLUMNS = [
   "sm_store_id",
   "date",
@@ -87,19 +92,36 @@ async function checkWarehouse(live: LiveConfig, storeId: string | null): Promise
   if (!healthy) return false;
 
   const table = await step(
-    () => getTableMetadata(client, live.dataProjectId, live.transformedDatasetId, ROSTER_RELATION),
-    (meta) => `${ROSTER_RELATION} is readable (${meta.fields.length} columns)`,
+    () => getTableMetadata(client, live.dataProjectId, live.transformedDatasetId, LEGACY_ROSTER_RELATION),
+    (meta) => `${LEGACY_ROSTER_RELATION} is readable (${meta.fields.length} columns)`,
   );
   if (!table) return false;
   const missing = REQUIRED_COLUMNS.filter((name) => !table.fields.some((field) => field.name === name));
   if (missing.length > 0) {
     fail(
-      `${ROSTER_RELATION} is missing ${missing.join(", ")}; the example views need them (run \`pnpm schema ${ROSTER_RELATION}\`).`,
+      `${LEGACY_ROSTER_RELATION} is missing ${missing.join(", ")}; the example views need them (run \`pnpm schema ${LEGACY_ROSTER_RELATION}\`).`,
     );
     return false;
   }
 
-  const example = storeRosterQuery(warehouse, storeId);
+  const stores = await step(
+    () => queryStoreRoster(warehouse, storeId),
+    ({ stores, relation }) => `Store roster: ${stores.length} store${stores.length === 1 ? "" : "s"} from ${relation}`,
+  );
+  if (!stores) return false;
+  if (stores.relation !== ROSTER_RELATION)
+    console.log("  ! dim_stores is not published yet; using store IDs. Names and brand groups appear when it arrives.");
+  const firstStore = stores.stores[0]?.sm_store_id;
+  if (!firstStore) {
+    fail(
+      storeId !== null
+        ? "APP_STORE_ID has no matching rows in the store roster; verify the exact store id and that SourceMedium has published data."
+        : `${stores.relation} has no stores yet; the views will show "No data" until SourceMedium publishes rows.`,
+    );
+    return false;
+  }
+
+  const example = storeRosterQuery(warehouse, storeId, stores.relation);
   const dry = await step(
     () => dryRunQuery(client, example),
     ({ bytesProcessed }) => `Example query would scan ${mib(bytesProcessed)} (ceiling ${mib(live.maxBytesBilled)})`,
@@ -112,24 +134,9 @@ async function checkWarehouse(live: LiveConfig, storeId: string | null): Promise
     return false;
   }
 
-  const stores = await step(
-    () => queryStoreRoster(warehouse, storeId),
-    (ids) => `Example query ran: ${ids.length} store${ids.length === 1 ? "" : "s"} with data`,
-  );
-  if (!stores) return false;
-  const [firstStore] = stores;
-  if (!firstStore) {
-    fail(
-      storeId !== null
-        ? "APP_STORE_ID has no matching rows in the store roster; verify the exact store id and that SourceMedium has published data."
-        : `${ROSTER_RELATION} has no stores yet; the views will show "No data" until SourceMedium publishes rows.`,
-    );
-    return false;
-  }
-
   const dictionary = await step(
-    () => readDictionary(warehouse, firstStore, ROSTER_RELATION),
-    (rows) => `Data dictionary readable for one store (${rows.length} documented columns of ${ROSTER_RELATION})`,
+    () => readDictionary(warehouse, firstStore, LEGACY_ROSTER_RELATION),
+    (rows) => `Data dictionary readable for one store (${rows.length} documented columns of ${LEGACY_ROSTER_RELATION})`,
   );
   const catalog = await step(
     () => readMetricCatalog(warehouse, 50),

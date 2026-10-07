@@ -21,7 +21,15 @@ it("the scoped warehouse rejects missing, mismatched and duplicate store paramet
   const config = parseConfig(liveEnv(await makeServiceAccountKey()));
   if (config.status !== "ok" || config.mode !== "live") throw new Error("Expected live configuration");
   const fake = createFakeBigQuery({
-    submit: () => rowsResponse([{ name: "sm_store_id", type: "STRING" }], [{ sm_store_id: "store-a" }]),
+    submit: () =>
+      rowsResponse(
+        [
+          { name: "sm_store_id", type: "STRING" },
+          { name: "store_name", type: "STRING" },
+          { name: "brand_name", type: "STRING" },
+        ],
+        [{ sm_store_id: "store-a", store_name: "Store A", brand_name: "Brand" }],
+      ),
   });
   vi.stubGlobal("fetch", fake.fetch);
   const warehouse = warehouseFor(config.live, "store-a");
@@ -39,7 +47,10 @@ it("the scoped warehouse rejects missing, mismatched and duplicate store paramet
     );
   }
   expect(fake.calls).toHaveLength(0);
-  expect(await queryStoreRoster(warehouse, "store-a")).toEqual(["store-a"]);
+  expect(await queryStoreRoster(warehouse, "store-a")).toEqual({
+    relation: "dim_stores",
+    stores: [{ sm_store_id: "store-a", store_name: "Store A", brand_name: "Brand" }],
+  });
   const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string; queryParameters: unknown[] };
   expect(body.query).toContain("AND sm_store_id = @store_id");
   expect(body.queryParameters).toContainEqual({

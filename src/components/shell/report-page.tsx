@@ -156,7 +156,7 @@ export async function ReportPage({
     return (
       <div className="flex flex-col gap-4">
         {header()}
-        <EmptyState message="This warehouse has no stores with data yet." />
+        <EmptyState message="This warehouse has no stores available yet." />
       </div>
     );
   }

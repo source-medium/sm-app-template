@@ -30,6 +30,8 @@ test("filters live in the URL and survive a reload", async ({ page }) => {
   await page.goto(home);
   // A home page without a store picker or date range (dates={false}) has nothing here to keep.
   test.skip((await page.getByLabel("Store").count()) === 0, "the home page has no store filter");
+  await expect(page.getByLabel("Store").locator('optgroup[label="Sample Brand"]')).toHaveCount(1);
+  await expect(page.getByLabel("Store").locator('option[value="sample-store-b"]')).toHaveText("Sample Store B");
   await page.getByLabel("Store").selectOption("sample-store-b");
   await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/store=sample-store-b/);

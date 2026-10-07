@@ -9,6 +9,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import { COMPARISON_OPTIONS, type ComparisonMode } from "@/lib/comparison";
 import { dateRangeIssue, REPORT_FILTER_FORM_ID } from "@/lib/filters";
+import type { StoreOption } from "@/lib/data/stores.server";
 
 export type FilterPreset = { label: string; href: string; active: boolean };
 
@@ -28,7 +29,7 @@ export function FilterBar({
   fixedStore = false,
 }: {
   pathname: string;
-  stores: { id: string; label: string }[];
+  stores: StoreOption[];
   storeId: string;
   from: string;
   to: string;
@@ -42,6 +43,19 @@ export function FilterBar({
 }) {
   const id = useId();
   const [error, setError] = useState<string | null>(null);
+  const brands = new Map<string | null, StoreOption[]>();
+  const labelCounts = new Map<string, number>();
+  for (const store of stores) {
+    const group = brands.get(store.brand) ?? [];
+    group.push(store);
+    brands.set(store.brand, group);
+    labelCounts.set(store.label, (labelCounts.get(store.label) ?? 0) + 1);
+  }
+  const storeOption = (store: StoreOption) => (
+    <option key={store.id} value={store.id}>
+      {(labelCounts.get(store.label) ?? 0) > 1 ? `${store.label} (${store.id})` : store.label}
+    </option>
+  );
   const frequent = new Set(["Last 7 days", "Last 28 days"]);
   const presetLink = (preset: FilterPreset) => (
     <Link
@@ -86,11 +100,15 @@ export function FilterBar({
         </label>
         <NativeSelect id={`${id}-store`} name="store" defaultValue={storeId} disabled={fixedStore}>
           {!stores.some((store) => store.id === storeId) && <option value={storeId}>Choose a store</option>}
-          {stores.map((store) => (
-            <option key={store.id} value={store.id}>
-              {store.label}
-            </option>
-          ))}
+          {Array.from(brands, ([brand, members]) =>
+            brand ? (
+              <optgroup key={brand} label={brand}>
+                {members.map(storeOption)}
+              </optgroup>
+            ) : (
+              members.map(storeOption)
+            ),
+          )}
         </NativeSelect>
       </div>
       {comparison !== undefined && (

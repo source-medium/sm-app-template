@@ -73,6 +73,8 @@ starter does not include. See [docs/auth.md](docs/auth.md).
   stay on the server and the shared password protects every view.
 - **Copy a view:** each feature owns its query, row schema, sample data and UI.
   Store and date filters stay in the URL; Retention uses a completed-month window.
+- **Multiple stores:** names and brand groups load from `dim_stores`; each store
+  keeps a shareable `?store=<sm_store_id>` URL. No manual store list required.
 - **Separate store audiences:** optional `APP_STORE_ID` locks a deployment to
   one store. Give it its own URL and viewer guard; see [the setup](docs/auth.md#one-deployment-per-store).
 - **Keep data trustworthy:** typed SQL parameters, exact money values, bounded

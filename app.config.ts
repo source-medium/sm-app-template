@@ -38,7 +38,7 @@ export const appConfig = {
     { href: "/retention", label: "Retention", icon: Repeat2 },
     { href: "/orders", label: "Orders", icon: ShoppingBag },
   ] satisfies NavItem[] as NavItem[],
-  /** Optional display names for warehouse store ids (sm_store_id). Unlisted stores show their id. */
+  /** Optional overrides for dim_stores.store_name. Names and brand groups otherwise come from SourceMedium. */
   storeLabels: {} as Record<string, string>,
   /** Date picker defaults: the default range ends yesterday (UTC). */
   dateRange: { defaultDays: 28, maxDays: 90 },
