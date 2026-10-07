@@ -35,7 +35,8 @@ export type PaidSourceRow = {
 };
 
 export function samplePaidSource(storeId: string, range: DateRange): PaidSourceRow[] {
-  const scale = SAMPLE_STORE_SCALE[storeId] ?? 0;
+  const scale = SAMPLE_STORE_SCALE.get(storeId);
+  if (scale === undefined) return [];
   const rows: PaidSourceRow[] = [];
   for (const date of datesInRange(range)) {
     for (const campaign of CAMPAIGNS) {

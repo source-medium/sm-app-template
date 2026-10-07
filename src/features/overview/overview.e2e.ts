@@ -47,7 +47,7 @@ test("overview: a chart tooltip separates its label and formatted money", async 
 test("overview: period and year comparisons survive links, navigation, and refresh", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07");
-  const comparison = page.getByRole("region", { name: "Comparison period" });
+  const comparison = page.locator('details[aria-label="Comparison period"]');
   await expect(comparison).toContainText("Aug 25, 2026 – Aug 31, 2026");
   await expect(page.locator('[data-slot="kpi-comparison"]:visible')).toHaveCount(6);
   await page.getByLabel("Compare with").selectOption("year");
@@ -91,7 +91,7 @@ test("overview: period and year comparisons survive links, navigation, and refre
 
 test("overview: calendar YoY explains different day counts across leap years", async ({ page }) => {
   await page.goto("/overview?from=2025-02-28&to=2025-03-01&compare=year");
-  const comparison = page.getByRole("region", { name: "Comparison period" });
+  const comparison = page.locator('details[aria-label="Comparison period"]');
   await expect(comparison).toContainText("Feb 28, 2024 – Mar 1, 2024");
   await expect(comparison).toContainText("2 selected days vs 3 comparison days");
   await expect(comparison).toContainText("Calendar dates, not matched weekdays");
@@ -157,11 +157,13 @@ test("unknown stores remain unselected until the viewer chooses a valid store", 
   await page.goto("/overview?store=unknown-store");
   await expect(page.getByText("That store is not in this warehouse")).toBeVisible();
   await expect(page.getByLabel("Store")).toHaveValue("unknown-store");
+  await expect(page.locator('[data-slot="kpi-value"]')).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("href", /store=unknown-store/);
   await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/store=unknown-store/);
   await expect(page.getByText("That store is not in this warehouse")).toBeVisible();
   await page.getByLabel("Store").selectOption("sample-store-a");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/store=sample-store-a/);
   await expect(page.getByText("That store is not in this warehouse")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("href", /store=sample-store-a/);
@@ -183,8 +185,10 @@ test("overview: comparison dates and the dashed baseline survive the table toggl
 test("overview: channel and grain filter the summary and raw export together", async ({ page, request }) => {
   await page.goto("/overview?store=sample-store-a&from=2026-09-02&to=2026-09-08&compare=year");
   await page.getByLabel("Sales channel", { exact: true }).selectOption("Amazon");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/sales_channel=Amazon/);
   await page.getByLabel("Summary rows", { exact: true }).selectOption("week");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/grain=week/);
   expect(new URL(page.url()).searchParams.get("compare")).toBe("year");
   const table = page.getByRole("table", { name: "Business summary", exact: true });
@@ -209,5 +213,46 @@ test("overview: an unknown channel stays explicit and can be reset", async ({ pa
   await expect(page.getByText("No rows match this store, sales channel, and date range.")).toBeVisible();
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("unknown");
   await page.getByLabel("Sales channel", { exact: true }).selectOption("");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByRole("table", { name: "Business summary", exact: true })).toBeVisible();
+});
+
+test("overview: date and channel drafts apply together, and invalid ranges never silently change", async ({ page }) => {
+  await page.goto("/overview?store=sample-store-a&from=2026-09-09&to=2026-09-28");
+  await page.getByLabel("From", { exact: true }).fill("2026-09-01");
+  await page.getByLabel("Sales channel", { exact: true }).selectOption("Amazon");
+  await expect(page).toHaveURL(/from=2026-09-09/);
+  await page.getByRole("button", { name: "Apply sales channel and all filters", exact: true }).click();
+  await expect(page).toHaveURL(
+    (url) => url.searchParams.get("from") === "2026-09-01" && url.searchParams.get("sales_channel") === "Amazon",
+  );
+  await page.getByLabel("From", { exact: true }).fill("2026-09-30");
+  await page.getByRole("button", { name: "Apply sales channel and all filters", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("start date must be on or before");
+  await expect(page).toHaveURL(/from=2026-09-01/);
+  await expect(page.getByLabel("From", { exact: true })).toBeFocused();
+  await page.getByLabel("From", { exact: true }).fill("2026-01-01");
+  await page.getByRole("button", { name: "Apply sales channel and all filters", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("90 days or fewer");
+  for (const dates of ["from=2026-09-30&to=2026-09-01", "from=2026-01-01&to=2026-09-30", "from=bad&to=bad"]) {
+    await page.goto(`/overview?store=sample-store-a&${dates}`);
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("Check the date range");
+    await expect(page.locator('[data-slot="kpi-value"]')).toHaveCount(0);
+  }
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-slot="kpi-value"]')).toHaveCount(6);
+});
+
+test("overview: the first KPI and full-width chart notes are readable on a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/overview");
+  const value = page.locator('[data-slot="kpi-value"]').first();
+  await expect(value).toBeVisible();
+  const bounds = await value.boundingBox();
+  expect(bounds?.y).toBeLessThan(844);
+  const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
+  const description = await card.locator('[data-slot="card-description"]:visible').boundingBox();
+  const header = await card.locator('[data-slot="card-header"]:visible').boundingBox();
+  expect(description?.width).toBeGreaterThan((header?.width ?? 0) * 0.7);
 });

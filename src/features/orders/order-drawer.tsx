@@ -11,19 +11,30 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 export function OrderDrawer({
   title,
   closeHref,
+  returnHref,
   children,
 }: {
   title: string;
   closeHref: string;
+  returnHref: string;
   children: React.ReactNode;
 }) {
   const router = useRouter();
   return (
     <Sheet open onOpenChange={(open) => !open && router.push(closeHref, { scroll: false })}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+      <SheetContent
+        className="w-full overflow-y-auto sm:max-w-md"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          const origin = [...document.querySelectorAll<HTMLAnchorElement>("a[href]")].find(
+            (link) => link.getAttribute("href") === returnHref,
+          );
+          (origin ?? document.getElementById("orders-heading"))?.focus({ preventScroll: true });
+        }}
+      >
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
-          <SheetDescription>One order from obt_orders.</SheetDescription>
+          <SheetDescription>Purchase, payment, and customer details for the selected order.</SheetDescription>
         </SheetHeader>
         <div className="px-4 pb-6">{children}</div>
       </SheetContent>

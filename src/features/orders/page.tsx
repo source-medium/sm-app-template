@@ -7,7 +7,7 @@ import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { DataTable } from "@/components/patterns/data-table";
 import { buttonVariants } from "@/components/ui/button";
 import { ReportPage } from "@/components/shell/report-page";
-import { parseSalesChannel, preservedParams, single, withParams, type SearchParams } from "@/lib/filters";
+import { parseSalesChannel, single, withParams, type SearchParams } from "@/lib/filters";
 import { EMPTY_VALUE, formatCount, formatInstant, formatMoney, formatWallTime } from "@/lib/format";
 import { OrderDrawer } from "./order-drawer";
 import { OrderSearchForm } from "./search-form";
@@ -40,7 +40,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       description="Every order for one store by when it was processed, newest first. Open an order to see its details."
       pathname={PATHNAME}
       params={params}
-      preserve={["q", "sales_channel"]}
     >
       {({ filters, params: linkParams }) => {
         const orderFilters: OrdersFilters = { ...filters, search, cursor, channel };
@@ -49,29 +48,26 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
             <div className="flex flex-wrap items-start gap-4">
               <Suspense
                 key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
-                fallback={<LoadingState variant="table" label="Loading sales channels" />}
+                fallback={<LoadingState variant="control" label="Loading sales channels" />}
               >
                 <DataRegion
+                  timestamp={false}
                   load={() => getOrderChannels(filters)}
                   isEmpty={() => false}
                   emptyMessage="No sales channels in this range."
                 >
-                  {(channels) => (
-                    <ChannelFilter
-                      pathname={PATHNAME}
-                      value={channel}
-                      channels={channels}
-                      preserved={preservedParams(params, ["q"], filters)}
-                    />
-                  )}
+                  {(channels) => <ChannelFilter value={channel} channels={channels} />}
                 </DataRegion>
               </Suspense>
-              <OrderSearchForm
-                pathname={PATHNAME}
-                search={search ?? ""}
-                preserved={preservedParams(params, ["sales_channel"], filters)}
-              />
+              <OrderSearchForm search={search ?? ""} />
             </div>
+            <h2
+              id="orders-heading"
+              tabIndex={-1}
+              className="text-lg font-semibold focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              Orders, newest first
+            </h2>
             <Suspense
               key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${search}|${single(params, "cursor")}`}
               fallback={<LoadingState variant="table" label="Loading orders" />}
@@ -89,7 +85,11 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               </DataRegion>
             </Suspense>
             {selected && (
-              <OrderDrawer title="Order details" closeHref={withParams(PATHNAME, linkParams, { order: null })}>
+              <OrderDrawer
+                title="Order details"
+                closeHref={withParams(PATHNAME, linkParams, { order: null })}
+                returnHref={withParams(PATHNAME, linkParams, { order: encodeRef(selected) })}
+              >
                 <Suspense fallback={<LoadingState variant="table" label="Loading the order" />}>
                   <DataRegion
                     load={() => getOrderDetail(filters.storeId, selected)}

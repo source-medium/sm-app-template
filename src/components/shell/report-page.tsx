@@ -23,6 +23,7 @@ import { WarehouseError } from "@/lib/data/warehouse-error";
 import { parseComparison, type Comparison } from "@/lib/comparison";
 import {
   datePresets,
+  dateRangeIssue,
   parseDateRange,
   single,
   todayUtc,
@@ -39,7 +40,7 @@ type FilterBarProps = {
   params: SearchParams;
   range: DateRange;
   now: Date;
-  preserve: string[];
+  comparisonLabel?: string;
   dates: boolean;
   comparison?: Comparison;
   fixedStore: boolean;
@@ -50,7 +51,7 @@ export async function ReportPage({
   description,
   pathname,
   params,
-  preserve = [],
+  comparisonLabel,
   dates = true,
   comparisons = false,
   children,
@@ -59,8 +60,8 @@ export async function ReportPage({
   description: string;
   pathname: string;
   params: SearchParams;
-  /** URL parameters (besides store and dates) that survive a filter change. */
-  preserve?: string[];
+  /** Name the comparison scope when it affects only part of the report. */
+  comparisonLabel?: string;
   /** False for current-state views (such as inventory) that have no date range. */
   dates?: boolean;
   /** Opt in only after the feature queries and presents a comparison period. */
@@ -73,6 +74,13 @@ export async function ReportPage({
   const requested = (suppliedStore ?? access.storeId)?.slice(0, 200);
   const now = new Date();
   const range = parseDateRange(params, now);
+  const issue = dates ? dateRangeIssue(params, now) : null;
+  const correction = issue ? (
+    <ErrorState
+      title="Check the date range"
+      remedy={`${issue} The controls show a suggested range. Apply it or choose another range to load the report.`}
+    />
+  ) : null;
   const comparison = comparisons && dates ? parseComparison(params, range) : undefined;
   if (comparison) params = { ...params, compare: comparison.mode };
   const roster = loadStores();
@@ -83,7 +91,7 @@ export async function ReportPage({
     params,
     range,
     now,
-    preserve,
+    comparisonLabel,
     dates,
     comparison,
     fixedStore: access.storeId !== null,
@@ -96,6 +104,9 @@ export async function ReportPage({
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="max-w-prose text-sm text-muted-foreground">{description}</p>
+          <p className="text-xs text-muted-foreground">
+            {appConfig.currency ? `Reporting currency: ${appConfig.currency}` : "Amounts in reporting currency"}
+          </p>
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <RefreshReport />
@@ -117,12 +128,12 @@ export async function ReportPage({
 
   if (requested) {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {header(requested)}
         <Suspense fallback={<Skeleton className="h-[4.75rem] rounded-lg" />}>
           <RosterFilterBar roster={roster} storeId={requested} {...barProps} />
         </Suspense>
-        {children({ filters: { storeId: requested, range }, params, comparison })}
+        {correction ?? children({ filters: { storeId: requested, range }, params, comparison })}
         {footer}
       </div>
     );
@@ -134,7 +145,7 @@ export async function ReportPage({
   } catch (error) {
     if (!(error instanceof WarehouseError)) throw error;
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {header()}
         <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} />
       </div>
@@ -143,18 +154,19 @@ export async function ReportPage({
   const first = stores[0];
   if (!first) {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {header()}
         <EmptyState message="This warehouse has no stores with data yet." />
       </div>
     );
   }
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {header(first.id)}
       <StoreFilterBar stores={stores} storeId={first.id} {...barProps} />
       {/* Links built from params now name the store, so the next page runs its queries in parallel. */}
-      {children({ filters: { storeId: first.id, range }, params: { ...params, store: first.id }, comparison })}
+      {correction ??
+        children({ filters: { storeId: first.id, range }, params: { ...params, store: first.id }, comparison })}
       {footer}
     </div>
   );
@@ -197,7 +209,7 @@ function StoreFilterBar({
   params,
   range,
   now,
-  preserve,
+  comparisonLabel,
   dates,
   comparison,
   fixedStore,
@@ -209,11 +221,6 @@ function StoreFilterBar({
       active: range.from === preset.from && range.to === preset.to,
     };
   });
-  const preserved: Record<string, string> = {};
-  for (const name of [...preserve, "compare"]) {
-    const value = single(params, name);
-    if (value !== undefined) preserved[name] = value;
-  }
   return (
     <FilterBar
       key={`${storeId}|${range.from}|${range.to}|${comparison?.mode}`}
@@ -224,7 +231,8 @@ function StoreFilterBar({
       to={range.to}
       maxDate={todayUtc(now)}
       presets={dates ? presets : []}
-      preserved={preserved}
+      carriedComparison={single(params, "compare")}
+      comparisonLabel={comparisonLabel}
       dates={dates}
       comparison={comparison?.mode}
       fixedStore={fixedStore}

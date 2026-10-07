@@ -97,7 +97,7 @@ const CREATIVES = [
 ] as const;
 
 export async function sampleCreatives(filters: CreativesFilters): Promise<CreativesData> {
-  const scale = SAMPLE_STORE_SCALE[filters.storeId];
+  const scale = SAMPLE_STORE_SCALE.get(filters.storeId);
   if (!scale) return { creatives: [], truncated: false };
   const dates = datesInRange(filters.range);
   const rows = CREATIVES.filter((creative) => !filters.channel || creative.channel === filters.channel).map(
@@ -147,5 +147,7 @@ export async function sampleCreatives(filters: CreativesFilters): Promise<Creati
 }
 
 export function sampleCreativeChannels(filters: ReportFilters): string[] {
-  return SAMPLE_STORE_SCALE[filters.storeId] ? [...new Set(CREATIVES.map((creative) => creative.channel))].sort() : [];
+  return SAMPLE_STORE_SCALE.get(filters.storeId)
+    ? [...new Set(CREATIVES.map((creative) => creative.channel))].sort()
+    : [];
 }

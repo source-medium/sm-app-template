@@ -16,6 +16,7 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type CellContext,
   type SortingState,
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
@@ -26,6 +27,19 @@ import { cn } from "@/lib/utils";
 export type DataTableColumn = { key: string; header: string; align?: "left" | "right"; sortable?: boolean };
 export type DataTableCell = { display: string; sort?: string | number | null; href?: string };
 export type DataTableRow = { id: string; cells: Record<string, DataTableCell> };
+
+/** A stable component identity preserves focused links when rows or sorting update. */
+function DataCell({ row, column }: CellContext<DataTableRow, unknown>) {
+  const cell = row.original.cells[column.id];
+  if (!cell) return null;
+  return cell.href ? (
+    <Link href={cell.href} scroll={false} className="font-medium text-primary underline-offset-4 hover:underline">
+      {cell.display}
+    </Link>
+  ) : (
+    cell.display
+  );
+}
 
 export function DataTable({
   caption,
@@ -52,17 +66,7 @@ export function DataTable({
     accessorFn: (row) => row.cells[column.key]?.sort ?? row.cells[column.key]?.display ?? null,
     enableSorting: column.sortable ?? true,
     sortUndefined: "last",
-    cell: ({ row }) => {
-      const cell = row.original.cells[column.key];
-      if (!cell) return null;
-      return cell.href ? (
-        <Link href={cell.href} scroll={false} className="font-medium text-primary underline-offset-4 hover:underline">
-          {cell.display}
-        </Link>
-      ) : (
-        cell.display
-      );
-    },
+    cell: DataCell,
   }));
 
   const table = useReactTable({
@@ -77,7 +81,10 @@ export function DataTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <Table containerClassName="max-h-[32rem] rounded-xl border bg-card">
+      <Table
+        containerClassName="max-h-[32rem] rounded-xl border bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        containerProps={{ tabIndex: 0, role: "region", "aria-label": caption }}
+      >
         <caption className="sr-only">{caption}</caption>
         <TableHeader className="sticky top-0 z-10 bg-muted">
           {table.getHeaderGroups().map((group) => (

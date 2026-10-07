@@ -3,7 +3,7 @@ import { SelectFilter } from "@/components/patterns/select-filter";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatDate, formatMoney, formatPercent } from "@/lib/format";
-import { preservedParams, withParams, type SearchParams } from "@/lib/filters";
+import { withParams, type SearchParams } from "@/lib/filters";
 import type { Comparison } from "@/lib/comparison";
 import {
   BREAKDOWN_DIMENSIONS,
@@ -31,12 +31,10 @@ export function SpendBreakdownView({
   return (
     <section aria-label="Spend breakdown" className="flex flex-col gap-3">
       <SelectFilter
-        pathname="/paid-marketing"
         name="breakdown"
         label="Break down spend by"
         value={dimension}
         options={[...BREAKDOWN_DIMENSIONS]}
-        preserved={preservedParams(params, ["channel", "metric", "compare"], filters)}
       />
       <p className="text-sm text-muted-foreground">
         Selected-period spend: {formatMoney(total)}.{" "}

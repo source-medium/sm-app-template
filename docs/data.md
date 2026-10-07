@@ -182,8 +182,7 @@ the configured maximum range are omitted rather than silently shortened.
 Overview defaults to **Previous period**: the same number of calendar days,
 immediately before the selected range. **Same dates last year** shifts the
 calendar dates back one year, clamping Feb 29 to Feb 28 when needed. It does
-not match weekdays; leap years can change the day count. Both ranges and
-their day counts are visible. **Off** skips the comparison query.
+not match weekdays; leap years can change the day count. Both ranges are visible; expand the comparison period for day counts and alignment notes. **Off** skips the comparison query.
 
 The setting lives in `?compare=previous|year|off`, survives filters and report
 links, and travels with navigation. Only views that implement comparisons
@@ -239,6 +238,21 @@ totals, shares and changes; the component owns the horizontal chart and table.
 `ChartCard` supports dashed comparison series and horizontal bars, and
 `DataTable` accepts server-computed totals. Keep allowed SQL dimensions and
 calendar expressions in fixed maps. Do not build a general query builder.
+
+## Applying report filters
+
+Store, dates, comparison, channel, and view controls are drafts until **Apply**
+(or **Search**) submits them together. Date preset links use the already applied
+filters. **More dates** holds the less frequent presets. Invalid or overlong date
+URLs show a correction message and no report until a valid range is applied.
+
+`FilterBar` owns the `report-filters` GET form. `SelectFilter` and the other
+feature inputs associate with it using `REPORT_FILTER_FORM_ID`, including when
+rendered outside it or streamed later. Do not add a separate filter form, hidden
+copies of those fields, or an automatic submission on selection change. Each
+control contributes its current value; navigation and downloads use applied URL
+values. Filter-option loaders use `DataRegion timestamp={false}` because their
+load time is not the report's query time.
 
 ## Channel filters
 

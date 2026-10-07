@@ -40,6 +40,7 @@ test("orders: search, open an order's details by URL, close, and page", async ({
   await expect(drawer.getByText(name, { exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page).not.toHaveURL(/order=/);
+  await expect(page.getByRole("link", { name, exact: true }).first()).toBeFocused();
   await page.goto("/orders");
   await page.getByRole("link", { name: "Older orders" }).click();
   await expect(page).toHaveURL(/cursor=/);
@@ -55,6 +56,7 @@ test("orders: channel selection survives paging and search, and changing it rese
   await expect(page).toHaveURL(/cursor=/);
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("Amazon");
   await page.getByLabel("Sales channel", { exact: true }).selectOption("Online DTC");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).not.toHaveURL(/cursor=/);
   await expect(table.locator("tbody tr").first()).toContainText("Online DTC");
   const name = await table.getByRole("link").first().innerText();
@@ -64,6 +66,7 @@ test("orders: channel selection survives paging and search, and changing it rese
   await expect(table.getByRole("link", { name, exact: true })).toBeVisible();
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("Online DTC");
   await page.getByLabel("Sales channel", { exact: true }).selectOption("Amazon");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(
     (url) => url.searchParams.get("q") === name && url.searchParams.get("sales_channel") === "Amazon",
   );
@@ -71,5 +74,21 @@ test("orders: channel selection survives paging and search, and changing it rese
   await page.goto("/orders?store=sample-store-a&sales_channel=unknown");
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("unknown");
   await page.getByLabel("Sales channel", { exact: true }).selectOption("");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(table).toBeVisible();
+});
+
+test("orders: closing a deep-linked drawer falls back to the list heading", async ({ page }) => {
+  await page.goto("/orders");
+  const href = await page
+    .getByRole("table", { name: "Orders, newest first" })
+    .getByRole("link")
+    .first()
+    .getAttribute("href");
+  if (!href) throw new Error("Missing order link");
+  await page.goto(`${href}&q=no-matching-order`);
+  await expect(page.getByRole("dialog", { name: "Order details" })).toBeVisible();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page).not.toHaveURL(/order=/);
+  await expect(page.getByRole("heading", { name: "Orders, newest first", exact: true })).toBeFocused();
 });

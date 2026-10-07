@@ -41,7 +41,7 @@ type WireOrder = Record<string, string | null>;
 const money = (cents: number) => fromUnits(BigInt(cents) * 10_000_000n);
 
 function ordersForDay(storeId: string, date: string): WireOrder[] {
-  const scale = SAMPLE_STORE_SCALE[storeId] ?? 0;
+  const scale = SAMPLE_STORE_SCALE.get(storeId) ?? 0;
   const day = seededRandom(`orders|${storeId}|${date}`);
   const count = Math.round(16 * scale * (0.8 + day() * 0.4));
   const dayNumber = Math.round(Date.parse(`${date}T00:00:00Z`) / 86_400_000 - EPOCH_DAY);

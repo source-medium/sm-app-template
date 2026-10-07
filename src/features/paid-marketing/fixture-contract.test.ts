@@ -5,6 +5,15 @@ import { samplePaidMarketing, samplePaidSource } from "./sample";
 const FILTERS = { storeId: "sample-store-a", range: { from: "2026-09-01", to: "2026-09-14" }, channel: null };
 
 describe("paid marketing fixture contract", () => {
+  it.each(["missing-store", "constructor", "__proto__"])(
+    "does not invent clicks or campaigns for %s",
+    async (storeId) => {
+      expect(samplePaidSource(storeId, FILTERS.range)).toEqual([]);
+      const data = await samplePaidMarketing({ ...FILTERS, storeId });
+      expect(data.channelDays).toEqual([]);
+      expect(data.campaigns).toEqual([]);
+    },
+  );
   it("decodes through the live row schemas and covers every channel and date", async () => {
     const data = await samplePaidMarketing(FILTERS);
     const channels = new Set(data.channelDays.map((day) => day.channel));

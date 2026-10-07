@@ -8,6 +8,8 @@
  */
 import { appConfig } from "@/app.config";
 
+export const REPORT_FILTER_FORM_ID = "report-filters";
+
 export type SearchParams = Record<string, string | string[] | undefined>;
 export type DateRange = { from: string; to: string };
 export type ReportFilters = { storeId: string; range: DateRange };
@@ -94,6 +96,19 @@ export function parseDateRange(params: SearchParams, now: Date): DateRange {
     : range;
 }
 
+/** A supplied URL must never silently report a different period. Missing dates use the default. */
+export function dateRangeIssue(params: SearchParams, now: Date): string | null {
+  const from = single(params, "from");
+  const to = single(params, "to");
+  if (from === undefined && to === undefined) return null;
+  if (!isCalendarDate(from) || !isCalendarDate(to)) return "Choose a valid start and end date.";
+  if (from > to) return "The start date must be on or before the end date.";
+  if (to > todayUtc(now)) return "The end date cannot be after today.";
+  if (rangeLength({ from, to }) > appConfig.dateRange.maxDays)
+    return `Choose a range of ${appConfig.dateRange.maxDays} days or fewer.`;
+  return null;
+}
+
 /** A link to the same view with some parameters changed; null removes one. */
 export function withParams(pathname: string, params: SearchParams, changes: Record<string, string | null>): string {
   const next = new URLSearchParams();
@@ -107,20 +122,6 @@ export function withParams(pathname: string, params: SearchParams, changes: Reco
   }
   const query = next.toString();
   return query ? `${pathname}?${query}` : pathname;
-}
-
-/** The parameters to carry into another filter form on the same view. */
-export function preservedParams(
-  params: SearchParams,
-  names: readonly string[],
-  applied: ReportFilters,
-): Record<string, string> {
-  const preserved: Record<string, string> = { store: applied.storeId, from: applied.range.from, to: applied.range.to };
-  for (const name of [...names, "compare"]) {
-    const value = single(params, name);
-    if (value !== undefined) preserved[name] = value;
-  }
-  return preserved;
 }
 
 /** One value from a fixed set, or the default. Browser input never becomes an identifier. */

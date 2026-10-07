@@ -12,17 +12,20 @@ test("retention: incomplete months, published gaps, and measure/channel selectio
   await expect(
     table.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "Sep 2026", exact: true }) }),
   ).toContainText("100%");
-  await page.getByLabel("Matrix measure").selectOption("revenue");
+  await page.getByLabel("Matrix measure", { exact: true }).selectOption("revenue");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/measure=revenue/);
   const revenue = page.getByRole("table", { name: "Cumulative revenue / customer (LTR)", exact: true });
   await expect(revenue).toBeVisible();
   const revenueValues = await revenue.locator('td[data-state="value"]').allTextContents();
-  await page.getByLabel("Matrix measure").selectOption("profit");
+  await page.getByLabel("Matrix measure", { exact: true }).selectOption("profit");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/measure=profit/);
   const profit = page.getByRole("table", { name: "Cumulative gross profit / customer (LTV)", exact: true });
   await expect(profit).toBeVisible();
   expect(await profit.locator('td[data-state="value"]').allTextContents()).not.toEqual(revenueValues);
-  await page.getByLabel("Acquisition sales channel").selectOption("amazon");
+  await page.getByLabel("Acquisition sales channel", { exact: true }).selectOption("amazon");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/channel=amazon/);
   expect(new URL(page.url()).searchParams.get("as_of")).toBe("2026-09");
   await page.getByLabel("Through completed month").fill("2026-08");
@@ -36,8 +39,9 @@ test("retention: incomplete months, published gaps, and measure/channel selectio
 test("retention: an unknown channel is never silently replaced", async ({ page }) => {
   await page.goto("/retention?store=sample-store-b&channel=unknown&as_of=2026-09");
   await expect(page.getByText("No cohorts for this channel. Choose another acquisition sales channel.")).toBeVisible();
-  await expect(page.getByLabel("Acquisition sales channel")).toHaveValue("unknown");
-  await page.getByLabel("Acquisition sales channel").selectOption("online_dtc");
+  await expect(page.getByLabel("Acquisition sales channel", { exact: true })).toHaveValue("unknown");
+  await page.getByLabel("Acquisition sales channel", { exact: true }).selectOption("online_dtc");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByRole("table", { name: "Monthly retention", exact: true })).toBeVisible();
 });
 
@@ -51,6 +55,7 @@ test("retention: separate retention and LTV curves share channel/window controls
   await expect(page.getByRole("img", { name: "Gross profit LTV by cohort age chart", exact: true })).toBeVisible();
   await expect(rate.getByText("100%", { exact: true })).toBeVisible();
   await page.getByLabel("Chart cohorts", { exact: true }).selectOption("earliest");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/cohorts=earliest/);
   await curves.getByRole("button", { name: "View as table", exact: true }).first().click();
   const retention = page.getByRole("table", { name: "Retention by cohort age", exact: true });
@@ -62,7 +67,22 @@ test("retention: separate retention and LTV curves share channel/window controls
   await expect(page).toHaveTitle(/Retention/);
   await expectNoSeriousA11yViolations(page);
   await page.getByLabel("Acquisition sales channel", { exact: true }).selectOption("amazon");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByLabel("Chart cohorts", { exact: true })).toHaveValue("earliest");
   expect(new URL(page.url()).searchParams.get("as_of")).toBe("2026-09");
   await expect(rate).toBeVisible();
+});
+
+test("retention: keyboard scrolling keeps cohort labels pinned on a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/retention?as_of=2026-09");
+  const scroller = page.getByRole("region", { name: "Monthly retention", exact: true });
+  await scroller.focus();
+  await expect(scroller).toBeFocused();
+  const label = scroller.getByRole("rowheader").first();
+  const before = await label.boundingBox();
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(() => scroller.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+  const after = await label.boundingBox();
+  expect(Math.abs((after?.x ?? 0) - (before?.x ?? 0))).toBeLessThanOrEqual(1);
 });

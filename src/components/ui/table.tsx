@@ -18,7 +18,14 @@ function Table({
       className={cn("relative w-full overflow-auto", containerClassName)}
       {...containerProps}
     >
-      <table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />
+      <table
+        data-slot="table"
+        className={cn(
+          "w-full caption-bottom text-sm [&_tbody_tr>:first-child]:bg-card [&_tfoot_tr>:first-child]:bg-muted [&_thead_tr>:first-child]:bg-muted [&_tr>:first-child]:sticky [&_tr>:first-child]:left-0 [&_tr>:first-child]:z-1 [&_tr>:first-child]:max-w-48 [&_tr>:first-child]:break-words [&_tr>:first-child]:whitespace-normal",
+          className,
+        )}
+        {...props}
+      />
     </div>
   );
 }

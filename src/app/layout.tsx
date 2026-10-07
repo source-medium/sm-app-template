@@ -22,7 +22,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap" />
       </head>
-      <body>{children}</body>
+      <body>
+        <noscript>
+          <p className="m-4 rounded-lg border p-4 text-sm">Enable JavaScript to load reports and use their filters.</p>
+        </noscript>
+        {children}
+      </body>
     </html>
   );
 }

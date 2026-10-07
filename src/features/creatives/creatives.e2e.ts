@@ -31,12 +31,15 @@ test("creatives: ad-channel filtering survives sorting and unknown selections ca
   await expect(page.getByRole("heading", { name: "Official store – free shipping", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Meet the everyday tote", exact: true })).toHaveCount(0);
   await page.getByLabel("Sort by", { exact: true }).selectOption("ctr");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByLabel("Ad channel", { exact: true })).toHaveValue("Google");
   await page.getByLabel("Ad channel", { exact: true }).selectOption("Meta");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Meet the everyday tote", exact: true })).toBeVisible();
   await page.goto("/creatives?store=sample-store-a&channel=unknown");
   await expect(page.getByText("No ad creatives match this store, ad channel, and date range.")).toBeVisible();
   await expect(page.getByLabel("Ad channel", { exact: true })).toHaveValue("unknown");
   await page.getByLabel("Ad channel", { exact: true }).selectOption("");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Meet the everyday tote", exact: true })).toBeVisible();
 });

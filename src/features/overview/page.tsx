@@ -30,22 +30,17 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       pathname="/overview"
       params={params}
       comparisons
-      preserve={["sales_channel", "grain"]}
     >
-      {({ filters, comparison, params: applied }) => {
+      {({ filters, comparison }) => {
         const selected: OverviewFilters = { ...filters, channel, grain };
         return (
           <>
             <Suspense
               key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${grain}`}
-              fallback={<LoadingState variant="table" label="Loading sales channels" />}
+              fallback={<LoadingState variant="control" label="Loading sales channels" />}
             >
-              <OverviewControls filters={selected} params={applied} />
+              <OverviewControls filters={selected} />
             </Suspense>
-            <p className="text-sm text-muted-foreground">
-              Sales-channel scope:{" "}
-              <strong className="font-medium text-foreground">{channel ?? "All sales channels"}</strong>
-            </p>
             <Suspense
               key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${comparison?.mode}|${channel}|${grain}`}
               fallback={<LoadingState variant="kpis" label="Loading the overview" />}
@@ -55,9 +50,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                 isEmpty={(report) => report.current.days.length === 0}
                 emptyMessage="No rows match this store, sales channel, and date range."
               >
-                {(report) => (
-                  <OverviewView report={report} filters={selected} comparison={comparison} params={applied} />
-                )}
+                {(report) => <OverviewView report={report} filters={selected} comparison={comparison} />}
               </DataRegion>
             </Suspense>
           </>
@@ -71,11 +64,9 @@ function OverviewView({
   report,
   filters,
   comparison,
-  params,
 }: {
   report: OverviewReport;
   filters: OverviewFilters;
-  params: SearchParams;
   comparison?: Comparison;
 }) {
   const data = report.current;
@@ -132,16 +123,12 @@ function OverviewView({
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-sm text-muted-foreground">
-        Summary orders sum the selected sales channels, including excluded, draft, and exchanged orders when in scope.
-        They can differ from valid-order counts. Revenue per summary order uses this same count.
-      </p>
       {baseline && (
-        <section aria-label="Comparison period" className="flex flex-col gap-1 text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">
+        <details aria-label="Comparison period" className="text-sm text-muted-foreground">
+          <summary className="cursor-pointer font-medium text-foreground">
             {COMPARISON_OPTIONS.find((option) => option.value === comparison?.mode)?.label}: {formatDate(baseline.from)}{" "}
             – {formatDate(baseline.to)}
-          </p>
+          </summary>
           <p>
             {rangeLength(filters.range)} selected days vs {rangeLength(baseline)} comparison days.
           </p>
@@ -158,8 +145,15 @@ function OverviewView({
               gaps in comparison lines.
             </p>
           )}
-        </section>
+        </details>
       )}
+      {report.comparison?.data &&
+        (data.days.length < rangeLength(filters.range) ||
+          (baseline && report.comparison.data.days.length < rangeLength(baseline))) && (
+          <p className="text-sm text-muted-foreground">
+            Some dates have no rows. Compare period totals with care; missing days are not zeros.
+          </p>
+        )}
       {comparison && comparison.mode !== "off" && !baseline && (
         <p>Comparison unavailable: the earlier period is outside supported warehouse dates.</p>
       )}
@@ -258,7 +252,7 @@ function OverviewView({
           plottable={orders.plottable}
         />
       </section>
-      <OverviewSummary data={data} filters={filters} params={params} />
+      <OverviewSummary data={data} filters={filters} />
     </div>
   );
 }

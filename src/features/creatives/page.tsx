@@ -6,7 +6,7 @@ import { LoadingState } from "@/components/patterns/data-states";
 import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { ReportPage } from "@/components/shell/report-page";
-import { parseChoice, preservedParams, single, type SearchParams } from "@/lib/filters";
+import { parseChoice, single, type SearchParams } from "@/lib/filters";
 import { formatCount, formatMeasure, formatMoney, formatPercent } from "@/lib/format";
 import { CREATIVE_SORTS, getCreativeChannels, getCreatives, type CreativeSort, type CreativesData } from "./queries";
 
@@ -31,40 +31,36 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
       description="Every ad creative that ran in the selected dates, with its delivery."
       pathname={PATHNAME}
       params={params}
-      preserve={["sort", "channel"]}
     >
       {({ filters }) => (
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-4">
             <Suspense
               key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
-              fallback={<LoadingState variant="table" label="Loading ad channels" />}
+              fallback={<LoadingState variant="control" label="Loading ad channels" />}
             >
               <DataRegion
+                timestamp={false}
                 load={() => getCreativeChannels(filters)}
                 isEmpty={() => false}
                 emptyMessage="No ad channels in this range."
               >
                 {(channels) => (
                   <ChannelFilter
-                    pathname={PATHNAME}
                     name="channel"
                     label="Ad channel"
                     allLabel="All ad channels"
                     value={channel}
                     channels={channels}
-                    preserved={preservedParams(params, ["sort"], filters)}
                   />
                 )}
               </DataRegion>
             </Suspense>
             <SelectFilter
-              pathname={PATHNAME}
               name="sort"
               label="Sort by"
               value={sort}
               options={CREATIVE_SORTS.map((value) => ({ value, label: SORT_LABELS[value] }))}
-              preserved={preservedParams(params, ["channel"], filters)}
             />
           </div>
           <Suspense

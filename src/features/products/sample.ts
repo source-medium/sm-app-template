@@ -37,7 +37,7 @@ const TITLES = [
 const money = (cents: number) => fromUnits(BigInt(cents) * 10_000_000n);
 
 export function sampleProductSource(storeId: string, range: DateRange): ProductSource[] {
-  const scale = SAMPLE_STORE_SCALE[storeId];
+  const scale = SAMPLE_STORE_SCALE.get(storeId);
   if (!scale) return [];
   return datesInRange(range).flatMap((date) =>
     TITLES.flatMap((title, index) =>

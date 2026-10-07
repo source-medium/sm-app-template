@@ -15,11 +15,14 @@ export async function DataRegion<T>({
   load,
   isEmpty,
   emptyMessage,
+  timestamp = true,
   children,
 }: {
   load: () => Promise<T>;
   isEmpty: (data: T) => boolean;
   emptyMessage: string;
+  /** Controls load options, not the displayed report. */
+  timestamp?: boolean;
   children: (data: T) => React.ReactNode;
 }) {
   const access = await requireViewer();
@@ -38,12 +41,14 @@ export async function DataRegion<T>({
   return (
     <div className="flex flex-col gap-3">
       {isEmpty(data) ? <EmptyState message={emptyMessage} /> : children(data)}
-      <p className="text-xs text-muted-foreground">
-        {access.mode === "live" ? "Queried at " : "Sample loaded at "}
-        <time dateTime={completedAt} data-slot="data-loaded-at">
-          {formatInstant(completedAt, true)}
-        </time>
-      </p>
+      {timestamp && (
+        <p className="text-xs text-muted-foreground">
+          {access.mode === "live" ? "Queried at " : "Sample loaded at "}
+          <time dateTime={completedAt} data-slot="data-loaded-at">
+            {formatInstant(completedAt, true)}
+          </time>
+        </p>
+      )}
     </div>
   );
 }

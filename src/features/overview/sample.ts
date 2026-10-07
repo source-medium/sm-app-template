@@ -70,7 +70,8 @@ const ORDER_VALUE_CENTS = 6840;
 
 /** The relation's rows for one store. Dates after `today` carry targets only, so every actual measure is zero. */
 export function sampleOverviewSource(storeId: string, range: DateRange, today: string): OverviewSourceRow[] {
-  const scale = SAMPLE_STORE_SCALE[storeId] ?? 0;
+  const scale = SAMPLE_STORE_SCALE.get(storeId);
+  if (scale === undefined) return [];
   const rows: OverviewSourceRow[] = [];
   for (const date of datesInRange(range)) {
     const day = seededRandom(`overview|${storeId}|${date}`);

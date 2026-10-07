@@ -38,6 +38,17 @@ function source(
 }
 
 describe("overview fixture contract", () => {
+  it.each(["missing-store", "constructor", "__proto__"])(
+    "does not generate spend, clicks, or totals for %s",
+    async (storeId) => {
+      expect(sampleOverviewSource(storeId, RANGE, "2026-10-05")).toEqual([]);
+      expect(await sampleOverview({ storeId, range: RANGE }, NOW)).toEqual({
+        days: [],
+        summaries: [],
+        totals: null,
+      });
+    },
+  );
   it("summarizes only the selected sales channel, keeps exact amounts, and marks clipped period dates in exports", () => {
     const range = { from: "2026-09-02", to: "2026-09-08" };
     const rows = [

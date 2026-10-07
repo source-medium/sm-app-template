@@ -31,6 +31,7 @@ test("filters live in the URL and survive a reload", async ({ page }) => {
   // A home page without a store picker or date range (dates={false}) has nothing here to keep.
   test.skip((await page.getByLabel("Store").count()) === 0, "the home page has no store filter");
   await page.getByLabel("Store").selectOption("sample-store-b");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/store=sample-store-b/);
   const preset = page.getByRole("link", { name: "Last 7 days" });
   test.skip((await preset.count()) === 0, "the home page has no date range");
@@ -122,7 +123,7 @@ test("appearance overrides the system, survives reloads, and can follow the syst
   expect(problems).toEqual([]);
 });
 
-test("a saved appearance renders correctly without JavaScript", async ({ browser, baseURL }) => {
+test("a saved appearance and the JavaScript requirement render without JavaScript", async ({ browser, baseURL }) => {
   if (!baseURL) throw new Error("The sample project needs a baseURL");
   const context = await browser.newContext({ javaScriptEnabled: false, colorScheme: "light" });
   try {
@@ -131,6 +132,8 @@ test("a saved appearance renders correctly without JavaScript", async ({ browser
     await page.goto(`${baseURL}${home}`);
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+    await expect(page.locator("noscript p")).toBeVisible();
+    await expect(page.locator("noscript p")).toHaveText("Enable JavaScript to load reports and use their filters.");
   } finally {
     await context.close();
   }

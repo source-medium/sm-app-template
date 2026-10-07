@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   datePresets,
+  dateRangeIssue,
   datesInRange,
   defaultRange,
   parseDateRange,
@@ -12,6 +13,19 @@ import {
 const NOW = new Date("2026-10-05T03:00:00Z");
 
 describe("URL filters", () => {
+  it.each([
+    [{ from: "2026-09-30", to: "2026-09-01" }, "start date"],
+    [{ from: "2026-02-30", to: "2026-03-01" }, "valid start"],
+    [{ from: "2026-01-01", to: "2026-09-30" }, "90 days"],
+    [{ from: "2026-10-01", to: "2026-10-06" }, "after today"],
+    [{ from: "2026-09-01" }, "valid start"],
+  ])("explains a rejected supplied range %j", (params, message) => {
+    expect(dateRangeIssue(params, NOW)).toContain(message);
+  });
+  it("accepts defaults and valid dates without a correction", () => {
+    expect(dateRangeIssue({}, NOW)).toBeNull();
+    expect(dateRangeIssue({ from: "2026-09-01", to: "2026-09-30" }, NOW)).toBeNull();
+  });
   it("offers completed calendar periods, including Monday–Sunday weeks", () => {
     const presets = Object.fromEntries(datePresets(new Date("2026-10-07T23:59:00Z")).map((p) => [p.label, p.range]));
     expect(presets.Yesterday).toEqual({ from: "2026-10-06", to: "2026-10-06" });

@@ -5,7 +5,7 @@ import { SelectFilter } from "@/components/patterns/select-filter";
 import { buttonVariants } from "@/components/ui/button";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { toChartNumber } from "@/lib/data/decode";
-import { preservedParams, withParams, type SearchParams } from "@/lib/filters";
+import { withParams } from "@/lib/filters";
 import { formatCount, formatDate, formatMeasure, formatMoney, formatMultiple } from "@/lib/format";
 import { TIME_GRAINS } from "@/lib/time-grain";
 import { overviewSummaryRows } from "./summary-rows";
@@ -27,15 +27,7 @@ function cells(label: string, measures: OverviewMeasures): DataTableRow["cells"]
   };
 }
 
-export function OverviewSummary({
-  data,
-  filters,
-  params,
-}: {
-  data: OverviewData;
-  filters: OverviewFilters;
-  params: SearchParams;
-}) {
+export function OverviewSummary({ data, filters }: { data: OverviewData; filters: OverviewFilters }) {
   const records = overviewSummaryRows(data, filters);
   const rows = records
     .filter((row) => row.rowType === "period")
@@ -55,14 +47,7 @@ export function OverviewSummary({
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <SelectFilter
-            pathname="/overview"
-            name="grain"
-            label="Summary rows"
-            value={filters.grain ?? "day"}
-            options={[...TIME_GRAINS]}
-            preserved={preservedParams(params, ["sales_channel", "compare"], filters)}
-          />
+          <SelectFilter name="grain" label="Summary rows" value={filters.grain ?? "day"} options={[...TIME_GRAINS]} />
           <a
             className={buttonVariants({ variant: "outline", size: "sm" })}
             href={withParams(

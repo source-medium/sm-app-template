@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Download } from "lucide-react";
@@ -5,14 +6,14 @@ import { buttonVariants } from "@/components/ui/button";
 import { ChartCard } from "@/components/charts/chart-card";
 import { buildChartData, type PointValue } from "@/components/charts/chart-data";
 import { DataRegion } from "@/components/patterns/data-region";
-import { LoadingState } from "@/components/patterns/data-states";
+import { EmptyState, LoadingState } from "@/components/patterns/data-states";
 import { DataTable } from "@/components/patterns/data-table";
 import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber } from "@/lib/data/decimal";
-import { datesInRange, parseChoice, preservedParams, withParams, type SearchParams } from "@/lib/filters";
+import { datesInRange, parseChoice, withParams, type SearchParams } from "@/lib/filters";
 import {
   EMPTY_VALUE,
   formatCount,
@@ -58,8 +59,8 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
       description="Spend and delivery by channel and campaign for one store."
       pathname={PATHNAME}
       params={params}
-      preserve={["metric", "channel", "breakdown"]}
       comparisons
+      comparisonLabel="Compare spend breakdown with"
     >
       {({ filters, comparison, params: applied }) => {
         const paidFilters: PaidMarketingFilters = { ...filters, channel };
@@ -130,97 +131,105 @@ function PaidMarketingView({
     }),
   );
 
-  const preserved = preservedParams(params, ["metric", "channel", "breakdown", "compare"], filters);
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap gap-4">
         <SelectFilter
-          pathname={PATHNAME}
           name="metric"
           label="Measure"
           value={metric}
           options={PAID_METRICS.map((value) => ({ value, label: METRIC_LABELS[value] }))}
-          preserved={preserved}
         />
         <ChannelFilter
-          pathname={PATHNAME}
           name="channel"
           label="Channel"
           value={filters.channel ?? ""}
           allLabel="All channels"
           channels={channels}
-          preserved={preserved}
         />
       </div>
-      <ChartCard
-        title={`${METRIC_LABELS[metric]} by channel`}
-        description={
-          folded && !filters.channel
-            ? `The ${MAX_NAMED_CHANNELS} largest channels by impressions are named; the rest are combined as Other.`
-            : undefined
-        }
-        kind="line"
-        categoryHeader="Date"
-        series={series}
-        data={chart.data}
-        plottable={chart.plottable}
-      />
-      <section aria-labelledby="campaigns-heading" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="campaigns-heading" className="text-lg font-semibold">
-            Campaigns{filters.channel ? ` in ${filters.channel}` : ""}
-          </h2>
-          <a
-            href={withParams(
-              `${PATHNAME}/export`,
-              {},
-              { store: filters.storeId, ...filters.range, channel: filters.channel },
-            )}
+      {filters.channel && !data.channelDays.some((day) => day.channel === filters.channel) ? (
+        <div className="flex flex-col items-start gap-3">
+          <EmptyState message="No ad delivery matches this channel and date range." />
+          <Link
             className={buttonVariants({ variant: "outline", size: "sm" })}
+            href={withParams(PATHNAME, params, { channel: null })}
           >
-            <Download aria-hidden /> Download CSV
-          </a>
+            Show all channels
+          </Link>
         </div>
-        <p className="text-xs text-muted-foreground">
-          CSV includes all loaded campaigns, up to {MAX_CAMPAIGNS}, with raw values and a partial-results flag.
-        </p>
-        <DataTable
-          caption="Campaigns by spend"
-          truncated={data.campaignsTruncated}
-          columns={[
-            { key: "campaign", header: "Campaign" },
-            { key: "channel", header: "Channel" },
-            { key: "spend", header: "Spend", align: "right" },
-            { key: "impressions", header: "Impressions", align: "right" },
-            { key: "clicks", header: "Clicks", align: "right" },
-            { key: "ctr", header: "CTR", align: "right" },
-            { key: "cpc", header: "CPC", align: "right" },
-            { key: "conversions", header: "Conversions", align: "right" },
-            { key: "roas", header: "Platform ROAS", align: "right" },
-          ]}
-          rows={data.campaigns.map((campaign) => {
-            const spend = decimalToNumber(campaign.spend);
-            const impressions = campaign.impressions === null ? null : toChartNumber(campaign.impressions);
-            const clicks = campaign.clicks === null ? null : toChartNumber(campaign.clicks);
-            const { ctr, cpc, roas } = campaignRatios(campaign);
-            return {
-              id: campaign.campaignId,
-              cells: {
-                campaign: { display: campaign.campaignName ?? campaign.campaignId },
-                channel: { display: campaign.channel ?? EMPTY_VALUE },
-                spend: { display: formatMoney(campaign.spend), sort: spend },
-                impressions: { display: formatCount(campaign.impressions), sort: impressions },
-                clicks: { display: formatCount(campaign.clicks), sort: clicks },
-                ctr: { display: formatPercent(ctr), sort: ctr },
-                cpc: { display: formatMoney(cpc), sort: cpc },
-                conversions: { display: formatMeasure(campaign.conversions), sort: campaign.conversions },
-                roas: { display: formatMultiple(roas), sort: roas },
-              },
-            };
-          })}
-        />
-      </section>
+      ) : (
+        <>
+          <ChartCard
+            title={`${METRIC_LABELS[metric]} by channel`}
+            description={
+              folded && !filters.channel
+                ? `The ${MAX_NAMED_CHANNELS} largest channels by impressions are named; the rest are combined as Other.`
+                : undefined
+            }
+            kind="line"
+            categoryHeader="Date"
+            series={series}
+            data={chart.data}
+            plottable={chart.plottable}
+          />
+          <section aria-labelledby="campaigns-heading" className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 id="campaigns-heading" className="text-lg font-semibold">
+                Campaigns{filters.channel ? ` in ${filters.channel}` : ""}
+              </h2>
+              <a
+                href={withParams(
+                  `${PATHNAME}/export`,
+                  {},
+                  { store: filters.storeId, ...filters.range, channel: filters.channel },
+                )}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                <Download aria-hidden /> Download CSV
+              </a>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              CSV includes all loaded campaigns, up to {MAX_CAMPAIGNS}, with raw values and a partial-results flag.
+            </p>
+            <DataTable
+              caption="Campaigns by spend"
+              truncated={data.campaignsTruncated}
+              columns={[
+                { key: "campaign", header: "Campaign" },
+                { key: "channel", header: "Channel" },
+                { key: "spend", header: "Spend", align: "right" },
+                { key: "impressions", header: "Impressions", align: "right" },
+                { key: "clicks", header: "Clicks", align: "right" },
+                { key: "ctr", header: "CTR", align: "right" },
+                { key: "cpc", header: "CPC", align: "right" },
+                { key: "conversions", header: "Conversions", align: "right" },
+                { key: "roas", header: "Platform ROAS", align: "right" },
+              ]}
+              rows={data.campaigns.map((campaign) => {
+                const spend = decimalToNumber(campaign.spend);
+                const impressions = campaign.impressions === null ? null : toChartNumber(campaign.impressions);
+                const clicks = campaign.clicks === null ? null : toChartNumber(campaign.clicks);
+                const { ctr, cpc, roas } = campaignRatios(campaign);
+                return {
+                  id: campaign.campaignId,
+                  cells: {
+                    campaign: { display: campaign.campaignName ?? campaign.campaignId },
+                    channel: { display: campaign.channel ?? EMPTY_VALUE },
+                    spend: { display: formatMoney(campaign.spend), sort: spend },
+                    impressions: { display: formatCount(campaign.impressions), sort: impressions },
+                    clicks: { display: formatCount(campaign.clicks), sort: clicks },
+                    ctr: { display: formatPercent(ctr), sort: ctr },
+                    cpc: { display: formatMoney(cpc), sort: cpc },
+                    conversions: { display: formatMeasure(campaign.conversions), sort: campaign.conversions },
+                    roas: { display: formatMultiple(roas), sort: roas },
+                  },
+                };
+              })}
+            />
+          </section>
+        </>
+      )}
     </div>
   );
 }

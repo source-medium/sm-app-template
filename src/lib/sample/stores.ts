@@ -8,7 +8,7 @@ export const SAMPLE_STORES = [
 ] as const;
 
 /** Per-store scale so the two stores look different. */
-export const SAMPLE_STORE_SCALE: Record<string, number> = {
-  "sample-store-a": 1,
-  "sample-store-b": 0.35,
-};
+export const SAMPLE_STORE_SCALE: ReadonlyMap<string, number> = new Map([
+  ["sample-store-a", 1],
+  ["sample-store-b", 0.35],
+]);

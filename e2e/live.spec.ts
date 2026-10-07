@@ -29,10 +29,18 @@ test("Overview summaries and exports work at each grain with a sales-channel fil
   const value = await channel.locator('option:not([value=""])').first().getAttribute("value");
   if (value) {
     await channel.selectOption(value);
+    await page
+      .getByRole("form", { name: "Report filters" })
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
     await expect(page).toHaveURL(/sales_channel=/);
   }
   for (const grain of ["week", "month"]) {
     await page.getByLabel("Summary rows", { exact: true }).selectOption(grain);
+    await page
+      .getByRole("form", { name: "Report filters" })
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
     await expect(page).toHaveURL(new RegExp(`grain=${grain}`));
     await expect(page.getByRole("status")).toHaveCount(0, { timeout: 30_000 });
     await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
@@ -108,6 +116,10 @@ test("channel controls load complete rosters and apply a warehouse channel", asy
     const channel = await option.getAttribute("value");
     if (!channel) throw new Error("Expected a published demo channel");
     await select.selectOption(channel);
+    await page
+      .getByRole("form", { name: "Report filters" })
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
     await expect(select).toHaveValue(channel);
     await expect(page.getByRole("status")).toHaveCount(0, { timeout: 30000 });
     await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);

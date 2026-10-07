@@ -6,7 +6,7 @@ import { COHORT_MONTHS, cohortMonths, monthIsElapsed } from "./filters";
 import { decodeRetention } from "./rows";
 
 export function sampleRetentionWire(filters: RetentionFilters) {
-  const scale = SAMPLE_STORE_SCALE[filters.storeId];
+  const scale = SAMPLE_STORE_SCALE.get(filters.storeId);
   if (!scale) return [];
   return ["online_dtc", "amazon"].flatMap((channel) =>
     cohortMonths(filters.asOf).flatMap((cohort) => {

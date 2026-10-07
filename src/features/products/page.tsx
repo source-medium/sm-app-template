@@ -10,7 +10,7 @@ import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatDate, formatMeasure, formatMoney, formatPercent } from "@/lib/format";
-import { parseSalesChannel, preservedParams, type SearchParams } from "@/lib/filters";
+import { parseSalesChannel, type SearchParams } from "@/lib/filters";
 import { getProductChannels, getProducts, productOptions, PRODUCT_DIMENSIONS, PRODUCT_METRICS } from "./queries";
 
 export const metadata: Metadata = { title: "Products" };
@@ -24,11 +24,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       description="Product and variant performance from valid-order lines, in reporting currency."
       pathname="/products"
       params={params}
-      preserve={["dimension", "metric", "sales_channel"]}
       comparisons
     >
-      {({ filters, comparison, params: applied }) => {
-        const preserved = preservedParams(applied, ["dimension", "metric", "sales_channel", "compare"], filters);
+      {({ filters, comparison }) => {
         const baseline = comparison?.range ?? null;
         const format = options.metric === "units" ? formatMeasure : formatMoney;
         const metricLabel = PRODUCT_METRICS.find((item) => item.value === options.metric)?.label ?? "Net revenue";
@@ -37,41 +35,33 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             <div className="flex flex-wrap gap-4">
               <Suspense
                 key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
-                fallback={<LoadingState variant="table" label="Loading sales channels" />}
+                fallback={<LoadingState variant="control" label="Loading sales channels" />}
               >
                 <DataRegion
+                  timestamp={false}
                   load={() => getProductChannels(filters)}
                   isEmpty={() => false}
                   emptyMessage="No sales channels in this range."
                 >
-                  {(channels) => (
-                    <ChannelFilter pathname="/products" value={channel} channels={channels} preserved={preserved} />
-                  )}
+                  {(channels) => <ChannelFilter value={channel} channels={channels} />}
                 </DataRegion>
               </Suspense>
               <SelectFilter
-                pathname="/products"
                 name="dimension"
                 label="Group by"
                 value={options.dimension}
                 options={[...PRODUCT_DIMENSIONS]}
-                preserved={preserved}
               />
-              <SelectFilter
-                pathname="/products"
-                name="metric"
-                label="Rank by"
-                value={options.metric}
-                options={[...PRODUCT_METRICS]}
-                preserved={preserved}
-              />
+              <SelectFilter name="metric" label="Rank by" value={options.metric} options={[...PRODUCT_METRICS]} />
             </div>
-            <p className="max-w-prose text-sm text-muted-foreground">
-              Sales-channel scope:{" "}
-              <strong className="font-medium text-foreground">{channel ?? "All sales channels"}</strong>. Valid orders
-              only. Net units subtract refunded quantities. Product gross profit subtracts product cost from net
-              revenue; it excludes shipping, fulfillment and payment costs. Missing product costs can overstate profit.
-            </p>
+            <details className="text-sm text-muted-foreground">
+              <summary className="cursor-pointer font-medium">About product metrics</summary>
+              <p className="mt-2 max-w-prose">
+                Valid orders only. Net units subtract refunded quantities. Product gross profit subtracts product cost
+                from net revenue; it excludes shipping, fulfillment and payment costs. Missing product costs can
+                overstate profit.
+              </p>
+            </details>
             {baseline && (
               <p className="text-sm text-muted-foreground">
                 Compared with {formatDate(baseline.from)} – {formatDate(baseline.to)}.

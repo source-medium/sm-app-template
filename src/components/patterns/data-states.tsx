@@ -8,9 +8,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cardGridStyles } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-export function LoadingState({ variant, label }: { variant: "kpis" | "chart" | "table" | "grid"; label: string }) {
+export function LoadingState({
+  variant,
+  label,
+}: {
+  variant: "kpis" | "chart" | "table" | "grid" | "control";
+  label: string;
+}) {
   return (
     <div role="status" aria-live="polite" aria-label={label} className="flex flex-col gap-4">
+      {variant === "control" && <Skeleton className="h-16 w-60 rounded-md" />}
       {variant === "kpis" && (
         <div className={cardGridStyles}>
           {[0, 1, 2, 3, 4, 5].map((index) => (
