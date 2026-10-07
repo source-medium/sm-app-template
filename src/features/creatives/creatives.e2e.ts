@@ -25,3 +25,18 @@ test("creatives: an unreachable image shows the card's text, never a broken imag
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("src") ?? ""));
   for (const src of sources) expect(src.startsWith("/sample-creatives/")).toBe(true);
 });
+
+test("creatives: ad-channel filtering survives sorting and unknown selections can be reset", async ({ page }) => {
+  await page.goto("/creatives?store=sample-store-a&channel=Google");
+  await expect(page.getByRole("heading", { name: "Official store – free shipping", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Meet the everyday tote", exact: true })).toHaveCount(0);
+  await page.getByLabel("Sort by", { exact: true }).selectOption("ctr");
+  await expect(page.getByLabel("Ad channel", { exact: true })).toHaveValue("Google");
+  await page.getByLabel("Ad channel", { exact: true }).selectOption("Meta");
+  await expect(page.getByRole("heading", { name: "Meet the everyday tote", exact: true })).toBeVisible();
+  await page.goto("/creatives?store=sample-store-a&channel=unknown");
+  await expect(page.getByText("No ad creatives match this store, ad channel, and date range.")).toBeVisible();
+  await expect(page.getByLabel("Ad channel", { exact: true })).toHaveValue("unknown");
+  await page.getByLabel("Ad channel", { exact: true }).selectOption("");
+  await expect(page.getByRole("heading", { name: "Meet the everyday tote", exact: true })).toBeVisible();
+});

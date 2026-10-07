@@ -26,14 +26,21 @@ export function retentionMatrix(rows: RetentionRowData[], channel: string, metri
       id: cohort,
       label: formatMonth(cohort),
       size: first ? formatMeasure(first.cohort_size) : "No data",
-      cells: Array.from({ length: COHORT_MONTHS }, (_, age): CohortCell => {
+      cells: Array.from({ length: COHORT_MONTHS }, (_, age): CohortCell & { value: number | null } => {
         if (!monthIsElapsed(cohort, age, asOf))
-          return { display: "—", description: "Not yet elapsed", intensity: null, state: "immature" };
+          return { value: null, display: "—", description: "Not yet elapsed", intensity: null, state: "immature" };
         const row = byKey.get(`${cohort}|${age}`);
         const value = row ? cohortValue(row, metric) : null;
         if (value === null)
-          return { display: "No data", description: "No published value", intensity: null, state: "missing" };
+          return {
+            value: null,
+            display: "No data",
+            description: "No published value",
+            intensity: null,
+            state: "missing",
+          };
         return {
+          value,
           display: format(value),
           description: format(value),
           intensity: value < 0 ? null : metric === "retention" ? value : maximum > 0 ? value / maximum : 0,

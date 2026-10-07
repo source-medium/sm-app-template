@@ -67,12 +67,19 @@ describe("orders, live", () => {
     const page = await getOrders({
       ...FILTERS,
       search,
+      channel: search,
       cursor: { processedLocal: "2026-10-04T14:00:00", key: "key-100" },
     });
     expect(page.nextCursor).toBeNull();
     const submit = fake.calls.find((call) => call.kind === "submit")?.body as Submit;
     expect(submit.query).not.toContain(search);
     expect(submit.queryParameters.find((parameter) => parameter.name === "search")?.parameterValue.value).toBe(search);
+    expect(submit.query).toContain("IFNULL(sm_channel, '(none)') = @channel");
+    expect(submit.queryParameters.find((parameter) => parameter.name === "channel")).toEqual({
+      name: "channel",
+      parameterType: { type: "STRING" },
+      parameterValue: { value: search },
+    });
     const cursorAt = submit.queryParameters.find((parameter) => parameter.name === "cursor_at");
     expect(cursorAt?.parameterType.type).toBe("DATETIME");
     expect(cursorAt?.parameterValue.value).toBe("2026-10-04T14:00:00");
@@ -91,10 +98,12 @@ describe("orders, live", () => {
 it("refuses another store in dispatch and live loaders before any warehouse call", async () => {
   const fake = await goLive({ submit: () => rowsResponse([], []) });
   vi.stubEnv("APP_STORE_ID", "allowed-store");
-  const { getOrders } = await import("./queries");
-  const { queryOrders } = await import("./bigquery");
+  const { getOrderChannels, getOrders } = await import("./queries");
+  const { queryOrderChannels, queryOrders } = await import("./bigquery");
   await expect(getOrders(FILTERS)).rejects.toThrow("This store is not available");
   await expect(queryOrders(FILTERS)).rejects.toThrow("This store is not available");
+  await expect(getOrderChannels(FILTERS)).rejects.toThrow("This store is not available");
+  await expect(queryOrderChannels(FILTERS)).rejects.toThrow("This store is not available");
   expect(fake.calls).toHaveLength(0);
 });
 
@@ -125,4 +134,30 @@ it("allows the fixed store and keeps every SQL read scoped to it", async () => {
       parameterValue: { value: FILTERS.storeId },
     });
   }
+});
+
+it("scopes the complete channel roster to store/date and refuses a truncated picker", async () => {
+  let truncate = false;
+  const fake = await goLive({
+    submit: () =>
+      rowsResponse(
+        [{ name: "channel", type: "STRING" }],
+        truncate
+          ? Array.from({ length: 50 }, (_, i) => ({ channel: String(i) }))
+          : [{ channel: "(none)" }, { channel: "Amazon" }],
+        truncate ? { pageToken: "more" } : {},
+      ),
+  });
+  const { getOrderChannels } = await import("./queries");
+  expect(await getOrderChannels(FILTERS)).toEqual(["(none)", "Amazon"]);
+  const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string; queryParameters: unknown[] };
+  expect(body.query).toContain("SELECT DISTINCT IFNULL(sm_channel, '(none)') AS channel");
+  expect(body.query).toContain("sm_store_id = @store_id");
+  expect(body.query).toContain("order_processed_at_local_datetime >= DATETIME(@start_date)");
+  expect(body.query).not.toContain("@channel");
+  expect(body.query).not.toContain("@cursor");
+  expect(body.query).not.toContain("@search");
+  expect(body.query).not.toContain("is_order_sm_valid = TRUE");
+  truncate = true;
+  await expect(getOrderChannels(FILTERS)).rejects.toMatchObject({ kind: "result_too_large" });
 });

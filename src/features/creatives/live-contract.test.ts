@@ -45,7 +45,8 @@ describe("creatives, live", () => {
   it("sorts by a column from the fixed map and takes each creative's latest image", async () => {
     const fake = await goLive({ submit: () => rowsResponse(FIELDS, [ROW]) });
     const { getCreatives } = await import("./queries");
-    const data = await getCreatives({ ...FILTERS, sort: "ctr" });
+    const channel = "Meta' OR TRUE --";
+    const data = await getCreatives({ ...FILTERS, sort: "ctr", channel });
     expect(data.creatives[0]).toMatchObject({
       creativeId: "cr1",
       imageUrl: "https://cdn.example.com/t.jpg",
@@ -55,11 +56,20 @@ describe("creatives, live", () => {
 
     const submit = fake.calls.find((call) => call.kind === "submit")?.body as Submitted;
     expect(submit.query).toContain("ORDER BY ctr DESC NULLS LAST, creative_id");
+    expect(submit.query).toContain("GROUP BY creative_id, channel");
+    expect(submit.query).toContain("(@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)");
+    expect(submit.query).not.toContain(channel);
+    expect(submit.queryParameters).toContainEqual({
+      name: "channel",
+      parameterType: { type: "STRING" },
+      parameterValue: { value: channel },
+    });
     expect(submit.query).toContain("ARRAY_AGG(ad_creative_image_url IGNORE NULLS ORDER BY date DESC LIMIT 1)");
     expect(submit.queryParameters.map((parameter) => parameter.name)).toEqual([
       "store_id",
       "start_date",
       "end_date",
+      "channel",
       "limit",
     ]);
   });
@@ -87,10 +97,12 @@ describe("creatives, live", () => {
 it("refuses another store in dispatch and live loaders before any warehouse call", async () => {
   const fake = await goLive({ submit: () => rowsResponse([], []) });
   vi.stubEnv("APP_STORE_ID", "allowed-store");
-  const { getCreatives } = await import("./queries");
-  const { queryCreatives } = await import("./bigquery");
+  const { getCreativeChannels, getCreatives } = await import("./queries");
+  const { queryCreativeChannels, queryCreatives } = await import("./bigquery");
   await expect(getCreatives({ ...FILTERS, sort: "spend" })).rejects.toThrow("This store is not available");
   await expect(queryCreatives({ ...FILTERS, sort: "spend" })).rejects.toThrow("This store is not available");
+  await expect(getCreativeChannels(FILTERS)).rejects.toThrow("This store is not available");
+  await expect(queryCreativeChannels(FILTERS)).rejects.toThrow("This store is not available");
   expect(fake.calls).toHaveLength(0);
 });
 
@@ -110,4 +122,26 @@ it("allows the fixed store and keeps every SQL read scoped to it", async () => {
       parameterValue: { value: FILTERS.storeId },
     });
   }
+});
+
+it("lists channels before the creative cap and rejects a truncated roster", async () => {
+  let truncate = false;
+  const fake = await goLive({
+    submit: () =>
+      rowsResponse(
+        [{ name: "channel", type: "STRING" }],
+        truncate
+          ? Array.from({ length: 50 }, (_, i) => ({ channel: String(i) }))
+          : [{ channel: "Meta" }, { channel: "Google" }],
+        truncate ? { pageToken: "more" } : {},
+      ),
+  });
+  const { getCreativeChannels } = await import("./queries");
+  expect(await getCreativeChannels(FILTERS)).toEqual(["Meta", "Google"]);
+  const body = fake.calls.find((call) => call.kind === "submit")?.body as Submitted;
+  expect(body.query).toContain("sm_store_id = @store_id AND date BETWEEN @start_date AND @end_date");
+  expect(body.query).toContain("ad_creative_id IS NOT NULL");
+  expect(body.query).not.toContain("@channel");
+  truncate = true;
+  await expect(getCreativeChannels(FILTERS)).rejects.toMatchObject({ kind: "result_too_large" });
 });

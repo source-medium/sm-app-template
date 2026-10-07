@@ -6,6 +6,7 @@ export const CREATIVE_RELATION = "rpt_ad_performance_daily";
 /** Cards per page of the grid; more is reported as truncation. */
 export const MAX_CREATIVES = 48;
 
+export const CreativeChannelRow = z.object({ channel: bq.string() });
 export const CreativeRow = z.object({
   creative_id: bq.string(),
   title: bq.string().nullable(),

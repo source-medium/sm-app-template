@@ -10,6 +10,7 @@ export type ProductSource = {
   storeId: string;
   date: string;
   valid: boolean;
+  channel: string | null;
   source: string;
   productId: string;
   variantId: string;
@@ -48,7 +49,8 @@ export function sampleProductSource(storeId: string, range: DateRange): ProductS
           storeId,
           date,
           valid: true,
-          source: "shopify",
+          channel: index % 3 === 0 ? "Amazon" : "Online DTC",
+          source: index % 3 === 0 ? "amazon" : "shopify",
           productId: `p${index + 1}`,
           variantId: `p${index + 1}-v${v + 1}`,
           title,
@@ -74,6 +76,7 @@ export function aggregateProducts(
     if (
       row.storeId !== filters.storeId ||
       !row.valid ||
+      (Boolean(filters.channel) && (row.channel ?? "(none)") !== filters.channel) ||
       (!inRange(row.date, filters.range) && !inRange(row.date, baseline))
     )
       continue;

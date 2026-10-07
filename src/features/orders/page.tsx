@@ -3,10 +3,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { DataRegion } from "@/components/patterns/data-region";
 import { LoadingState } from "@/components/patterns/data-states";
+import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { DataTable } from "@/components/patterns/data-table";
 import { buttonVariants } from "@/components/ui/button";
 import { ReportPage } from "@/components/shell/report-page";
-import { preservedParams, single, withParams, type SearchParams } from "@/lib/filters";
+import { parseSalesChannel, preservedParams, single, withParams, type SearchParams } from "@/lib/filters";
 import { EMPTY_VALUE, formatCount, formatInstant, formatMoney, formatWallTime } from "@/lib/format";
 import { OrderDrawer } from "./order-drawer";
 import { OrderSearchForm } from "./search-form";
@@ -15,6 +16,7 @@ import {
   encodeRef,
   getOrderDetail,
   getOrders,
+  getOrderChannels,
   type OrderDetail,
   type OrderRef,
   type OrdersFilters,
@@ -28,6 +30,7 @@ const PATHNAME = "/orders";
 export default async function OrdersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const search = single(params, "q")?.trim().slice(0, 64) || null;
+  const channel = parseSalesChannel(params);
   const cursor = decodeRef(single(params, "cursor"));
   const selected = decodeRef(single(params, "order"));
 
@@ -37,19 +40,40 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       description="Every order for one store by when it was processed, newest first. Open an order to see its details."
       pathname={PATHNAME}
       params={params}
-      preserve={["q"]}
+      preserve={["q", "sales_channel"]}
     >
       {({ filters, params: linkParams }) => {
-        const orderFilters: OrdersFilters = { ...filters, search, cursor };
+        const orderFilters: OrdersFilters = { ...filters, search, cursor, channel };
         return (
           <div className="flex flex-col gap-4">
-            <OrderSearchForm
-              pathname={PATHNAME}
-              search={search ?? ""}
-              preserved={preservedParams(params, [], filters)}
-            />
+            <div className="flex flex-wrap items-start gap-4">
+              <Suspense
+                key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
+                fallback={<LoadingState variant="table" label="Loading sales channels" />}
+              >
+                <DataRegion
+                  load={() => getOrderChannels(filters)}
+                  isEmpty={() => false}
+                  emptyMessage="No sales channels in this range."
+                >
+                  {(channels) => (
+                    <ChannelFilter
+                      pathname={PATHNAME}
+                      value={channel}
+                      channels={channels}
+                      preserved={preservedParams(params, ["q"], filters)}
+                    />
+                  )}
+                </DataRegion>
+              </Suspense>
+              <OrderSearchForm
+                pathname={PATHNAME}
+                search={search ?? ""}
+                preserved={preservedParams(params, ["sales_channel"], filters)}
+              />
+            </div>
             <Suspense
-              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${search}|${single(params, "cursor")}`}
+              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${search}|${single(params, "cursor")}`}
               fallback={<LoadingState variant="table" label="Loading orders" />}
             >
               <DataRegion
@@ -57,8 +81,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                 isEmpty={(data) => data.orders.length === 0}
                 emptyMessage={
                   search
-                    ? "No orders match that search in the selected dates. Try a wider date range."
-                    : "This store has no orders in the selected dates."
+                    ? "No orders match that search, sales channel, and date range."
+                    : "No orders match this store, sales channel, and date range."
                 }
               >
                 {(data) => <OrdersList data={data} params={linkParams} paged={cursor !== null} />}

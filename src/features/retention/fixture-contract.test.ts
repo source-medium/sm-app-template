@@ -68,3 +68,42 @@ it("has deterministic store-specific sample cohorts, no future months, and a del
   expect(sampleRetention({ ...filters, storeId: "sample-store-b" })[0]?.cohort_size).not.toBe(rows[0]?.cohort_size);
   expect(sampleRetention({ ...filters, storeId: "unknown" })).toEqual([]);
 });
+
+it("plots the same values as the matrix, preserving missing and unelapsed ages and separate channels", async () => {
+  const { retentionChart } = await import("./chart");
+  const rows = decodeRetention([
+    row,
+    { ...row, month_age: "1", customers: "0", cumulative_profit: "300" },
+    { ...row, month_age: "3", customers: "20", cumulative_profit: "500" },
+    { ...row, channel: "amazon", customers: "50", cumulative_profit: "1000" },
+  ]);
+  const chart = retentionChart(rows, "online_dtc", "retention", "2026-09", "earliest");
+  const january = chart.series.find((series) => series.label === "Jan 2026");
+  if (!january) throw new Error("Missing cohort series");
+  expect(chart.series).toHaveLength(6);
+  expect(chart.data[0]?.[january.key]).toBe(1);
+  expect(chart.data[1]?.[january.key]).toBe(0);
+  expect(chart.data[2]?.[january.key]).toBeNull();
+  expect(chart.data[2]?.[`${january.key}__display`]).toBe("No data");
+  expect(chart.data[3]?.[january.key]).toBe(0.2);
+  expect(chart.data[9]?.[january.key]).toBeNull();
+  expect(chart.data[9]?.[`${january.key}__display`]).toBe("—");
+  const profit = retentionChart(rows, "online_dtc", "profit", "2026-09", "earliest");
+  expect(profit.data[1]?.[january.key]).toBe(3);
+  const matrix = retentionMatrix(rows, "online_dtc", "profit", "2026-09").find(
+    (cohort) => cohort.id === row.cohort_month,
+  );
+  expect(profit.data[1]?.[`${january.key}__display`]).toBe(matrix?.cells[1]?.display);
+  expect(retentionChart(rows, "amazon", "profit", "2026-09", "earliest").data[0]?.[january.key]).toBe(10);
+  const recent = retentionChart(rows, "online_dtc", "profit", "2026-09", "recent");
+  expect(recent.series.map((series) => series.label)).toEqual([
+    "Apr 2026",
+    "May 2026",
+    "Jun 2026",
+    "Jul 2026",
+    "Aug 2026",
+    "Sep 2026",
+  ]);
+  expect(recent.data).toHaveLength(6);
+  expect(retentionOptions({ cohorts: "invalid" }, new Date("2026-10-07")).curveWindow).toBe("recent");
+});

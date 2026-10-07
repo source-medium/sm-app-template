@@ -7,7 +7,7 @@
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { TimeGrain } from "@/lib/time-grain";
-import { single, todayUtc, type DateRange, type ReportFilters, type SearchParams } from "@/lib/filters";
+import { todayUtc, type DateRange, type ReportFilters } from "@/lib/filters";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { queryOverview, queryOverviewChannels } from "./bigquery";
 import { sampleOverview, sampleOverviewSource } from "./sample";
@@ -26,9 +26,6 @@ export type OverviewMeasures = {
 };
 
 export type OverviewFilters = ReportFilters & { channel?: string | null; grain?: TimeGrain };
-export function overviewChannel(params: SearchParams): string | null {
-  return single(params, "sales_channel")?.slice(0, 100) || null;
-}
 
 export type OverviewDay = OverviewMeasures & { date: string };
 

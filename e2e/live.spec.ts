@@ -93,3 +93,29 @@ test("the store and dates survive navigation, and the next page of orders loads"
   await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Newest orders" })).toBeVisible();
 });
+
+test("channel controls load complete rosters and apply a warehouse channel", async ({ page }) => {
+  for (const [href, label] of [
+    ["/products", "Sales channel"],
+    ["/orders", "Sales channel"],
+    ["/creatives", "Ad channel"],
+  ]) {
+    if (!appConfig.nav.some((item) => item.href === href)) continue;
+    await page.goto(href as string);
+    const select = page.getByLabel(label as string, { exact: true });
+    await expect(select).toBeVisible({ timeout: 30000 });
+    const option = select.locator('option:not([value=""])').first();
+    const channel = await option.getAttribute("value");
+    if (!channel) throw new Error("Expected a published demo channel");
+    await select.selectOption(channel);
+    await expect(select).toHaveValue(channel);
+    await expect(page.getByRole("status")).toHaveCount(0, { timeout: 30000 });
+    await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
+  }
+  if (appConfig.nav.some((item) => item.href === "/retention")) {
+    await page.goto("/retention?cohorts=earliest");
+    await expect(page.getByRole("img", { name: "Gross profit LTV by cohort age chart", exact: true })).toBeVisible({
+      timeout: 30000,
+    });
+  }
+});

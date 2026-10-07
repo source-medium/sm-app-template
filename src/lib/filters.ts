@@ -45,6 +45,11 @@ export function single(params: SearchParams, name: string): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
+/** Sales-channel values are data, never SQL identifiers. Keep unknown choices explicit. */
+export function parseSalesChannel(params: SearchParams): string | null {
+  return single(params, "sales_channel")?.slice(0, 100) || null;
+}
+
 export function defaultRange(now: Date): DateRange {
   const to = addDays(todayUtc(now), -1);
   return { from: addDays(to, -(appConfig.dateRange.defaultDays - 1)), to };

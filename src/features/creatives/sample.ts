@@ -6,7 +6,7 @@
  */
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits, toUnits } from "@/lib/data/decimal";
-import { datesInRange } from "@/lib/filters";
+import { datesInRange, type ReportFilters } from "@/lib/filters";
 import { seededRandom } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import type { CreativeSort, CreativesData, CreativesFilters } from "./queries";
@@ -97,37 +97,40 @@ const CREATIVES = [
 ] as const;
 
 export async function sampleCreatives(filters: CreativesFilters): Promise<CreativesData> {
-  const scale = SAMPLE_STORE_SCALE[filters.storeId] ?? 0;
+  const scale = SAMPLE_STORE_SCALE[filters.storeId];
+  if (!scale) return { creatives: [], truncated: false };
   const dates = datesInRange(filters.range);
-  const rows = CREATIVES.map((creative) => {
-    let spendCents = 0n;
-    let impressions = 0n;
-    let clicks = 0n;
-    let conversions = 0;
-    for (const date of dates) {
-      const random = seededRandom(`creative|${filters.storeId}|${creative.id}|${date}`);
-      const dayImpressions = Math.round(18_000 * scale * creative.reach * (0.7 + random() * 0.6));
-      const dayClicks = Math.round(dayImpressions * (0.005 + random() * 0.015));
-      spendCents += BigInt(Math.round((dayImpressions / 1000) * 1150 * (0.85 + random() * 0.3)));
-      impressions += BigInt(dayImpressions);
-      clicks += BigInt(dayClicks);
-      conversions += Math.round(dayClicks * (0.02 + random() * 0.04) * 4) / 4;
-    }
-    return {
-      creative_id: creative.id,
-      title: creative.title,
-      body: creative.body,
-      image_url: creative.image,
-      thumbnail_url: null,
-      call_to_action: creative.cta,
-      channel: creative.channel,
-      spend: fromUnits(spendCents * 10_000_000n),
-      impressions: String(impressions),
-      clicks: String(clicks),
-      conversions: String(conversions),
-      ctr: impressions === 0n ? null : String(Number(clicks) / Number(impressions)),
-    };
-  });
+  const rows = CREATIVES.filter((creative) => !filters.channel || creative.channel === filters.channel).map(
+    (creative) => {
+      let spendCents = 0n;
+      let impressions = 0n;
+      let clicks = 0n;
+      let conversions = 0;
+      for (const date of dates) {
+        const random = seededRandom(`creative|${filters.storeId}|${creative.id}|${date}`);
+        const dayImpressions = Math.round(18_000 * scale * creative.reach * (0.7 + random() * 0.6));
+        const dayClicks = Math.round(dayImpressions * (0.005 + random() * 0.015));
+        spendCents += BigInt(Math.round((dayImpressions / 1000) * 1150 * (0.85 + random() * 0.3)));
+        impressions += BigInt(dayImpressions);
+        clicks += BigInt(dayClicks);
+        conversions += Math.round(dayClicks * (0.02 + random() * 0.04) * 4) / 4;
+      }
+      return {
+        creative_id: creative.id,
+        title: creative.title,
+        body: creative.body,
+        image_url: creative.image,
+        thumbnail_url: null,
+        call_to_action: creative.cta,
+        channel: creative.channel,
+        spend: fromUnits(spendCents * 10_000_000n),
+        impressions: String(impressions),
+        clicks: String(clicks),
+        conversions: String(conversions),
+        ctr: impressions === 0n ? null : String(Number(clicks) / Number(impressions)),
+      };
+    },
+  );
 
   const sortValue = (row: (typeof rows)[number], sort: CreativeSort) => {
     const value = row[sort];
@@ -141,4 +144,8 @@ export async function sampleCreatives(filters: CreativesFilters): Promise<Creati
     creatives: decodeRows(CreativeRow, rows.slice(0, MAX_CREATIVES), CREATIVE_RELATION).map(toCreative),
     truncated: rows.length > MAX_CREATIVES,
   };
+}
+
+export function sampleCreativeChannels(filters: ReportFilters): string[] {
+  return SAMPLE_STORE_SCALE[filters.storeId] ? [...new Set(CREATIVES.map((creative) => creative.channel))].sort() : [];
 }

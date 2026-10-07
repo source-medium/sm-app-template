@@ -12,8 +12,8 @@ import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { Instant } from "@/lib/data/decode";
 import type { ReportFilters } from "@/lib/filters";
-import { queryOrderDetail, queryOrders } from "./bigquery";
-import { sampleOrderDetail, sampleOrders } from "./sample";
+import { queryOrderChannels, queryOrderDetail, queryOrders } from "./bigquery";
+import { sampleOrderChannels, sampleOrderDetail, sampleOrders } from "./sample";
 
 export const PAGE_SIZE = 25;
 
@@ -60,7 +60,7 @@ export type OrderDetail = OrderSummary & {
   isValidOrder: boolean | null;
 };
 
-export type OrdersFilters = ReportFilters & { search: string | null; cursor: OrderRef | null };
+export type OrdersFilters = ReportFilters & { search: string | null; cursor: OrderRef | null; channel?: string | null };
 export type OrdersPage = { orders: OrderSummary[]; nextCursor: OrderRef | null };
 
 export async function getOrders(filters: OrdersFilters): Promise<OrdersPage> {
@@ -99,4 +99,9 @@ export function decodeRef(value: string | undefined): OrderRef | null {
   } catch {
     return null;
   }
+}
+
+export async function getOrderChannels(filters: ReportFilters): Promise<string[]> {
+  const access = await requireViewer({ storeId: filters.storeId });
+  return access.mode === "live" ? queryOrderChannels(filters) : sampleOrderChannels(filters);
 }

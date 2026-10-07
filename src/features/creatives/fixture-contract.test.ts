@@ -47,3 +47,12 @@ describe("creatives fixture contract", () => {
     expect(urlFor("//evil.example/a.jpg")).toBeNull();
   });
 });
+
+it("filters channels before sorting and does not silently substitute unknown channels", async () => {
+  const { sampleCreativeChannels } = await import("./sample");
+  expect(sampleCreativeChannels(FILTERS)).toEqual(["Google", "Meta", "TikTok"]);
+  const google = await sampleCreatives({ ...FILTERS, sort: "spend", channel: "Google" });
+  expect(google.creatives.length).toBeGreaterThan(0);
+  expect(google.creatives.every((row) => row.channel === "Google")).toBe(true);
+  expect((await sampleCreatives({ ...FILTERS, sort: "ctr", channel: "unknown" })).creatives).toEqual([]);
+});

@@ -13,6 +13,7 @@ const line: ProductSource = {
   storeId: filters.storeId,
   date: "2026-09-01",
   valid: true,
+  channel: "Online DTC",
   source: "shopify",
   productId: "p1",
   variantId: "v1",
@@ -71,4 +72,21 @@ it("provides deterministic sample rows for both stores and empty results for an 
     sampleProducts(filters, null).rows[0]?.total_revenue,
   );
   expect(sampleProducts({ ...filters, storeId: "unknown" }, null)).toEqual({ rows: [], hasMore: false });
+});
+
+it("filters channels before both period totals and leaves unknown channels empty", () => {
+  const baseline = { from: "2026-08-01", to: "2026-08-31" };
+  const source = [
+    line,
+    { ...line, date: "2026-08-01", revenue: "0.2" },
+    { ...line, channel: "Amazon", revenue: "100" },
+    { ...line, channel: "Amazon", date: "2026-08-01", revenue: "200" },
+    { ...line, channel: null, revenue: "4" },
+  ];
+  expect(aggregateProducts(source, { ...filters, channel: "Online DTC" }, baseline).rows[0]).toMatchObject({
+    total_revenue: "0.1",
+    total_previous_revenue: "0.2",
+  });
+  expect(aggregateProducts(source, { ...filters, channel: "(none)" }, baseline).rows[0]?.total_revenue).toBe("4");
+  expect(aggregateProducts(source, { ...filters, channel: "unknown" }, baseline).rows).toEqual([]);
 });

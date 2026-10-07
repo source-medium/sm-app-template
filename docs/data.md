@@ -240,18 +240,39 @@ totals, shares and changes; the component owns the horizontal chart and table.
 `DataTable` accepts server-computed totals. Keep allowed SQL dimensions and
 calendar expressions in fixed maps. Do not build a general query builder.
 
+## Channel filters
+
+Every example exposes `sm_channel` in its own report context. Overview, Products,
+and Orders use **Sales channel** (`?sales_channel=`); Paid marketing and Creatives
+use the advertising report's channels (`?channel=`). Retention selects one
+**Acquisition sales channel** from its published cohort report. Advertising
+channels and sales channels are different domains; navigation does not silently
+carry a channel into another view.
+
+The default is all channels except Retention, which keeps acquisition channels
+separate. Options come from the selected store and date range, before top-N
+limits, pagination or search. Missing warehouse channels appear as `(none)`.
+Unknown URL choices remain visible with an empty result and can be reset.
+Filters use typed SQL parameters and affect Products' comparison period, ranking,
+shares and totals together. Orders keeps the channel through search and paging;
+changing it resets the cursor and closes the selected order. Creatives groups
+by both channel and creative id so equal platform ids cannot merge.
+
+`ChannelFilter` owns consistent picker behavior; each feature owns its roster
+query and data predicates. No shared code imports an example feature.
+
 ## Products and purchase cohorts
 
 **Products** groups valid-order lines by product or variant, with source-system
 identity in the key so repeated titles and platform ids do not merge. Unassigned
 product lines remain a named group. Net revenue, net units and product gross
-profit are summed in SQL across all sales channels for one store. Product gross
+profit are summed in SQL for the selected sales channel (or all channels) in one store. Product gross
 profit is net revenue minus product cost, not profit after shipping, fulfillment
 or payment fees. Refund quantities reduce net units. Amounts use the canonical
 reporting-currency fields, not `original_*` amounts.
 
 One query covers both selected and comparison periods, with identical validity
-and store predicates. Ranking uses a fixed measure map; full-period totals and
+store and sales-channel predicates. Ranking uses a fixed measure map; full-period totals and
 the share denominator are calculated before the top-10 limit. Negative members
 or a zero total suppress shares. Missing comparisons stay missing. The date
 predicate uses `order_processed_at_local_datetime` directly for partition pruning.
@@ -275,6 +296,18 @@ The published surface currently covers online DTC and Amazon separately.
 - LTR = cumulative net revenue / original cohort size.
 - LTV = cumulative gross profit / original cohort size. Missing warehouse cost
   inputs can overstate it; no CAC or payback claim is made.
+
+Two **cohort-age curves** show monthly retention and cumulative gross profit LTV
+on separate axes. **Chart cohorts** (`?cohorts=recent|earliest`) selects the latest
+or earliest six of the twelve acquisition months. Every cohort gets its own
+line; only elapsed ages are plotted. Markers keep a cohort's first observation
+visible; missing values break the line. Percentage ticks and server-formatted
+tooltips make the units explicit. Both charts retain **View as table**.
+
+The curves and matrix reuse the same values, denominators and missing-age rules
+from `retentionMatrix`; they add no warehouse query. **Matrix measure** changes
+the twelve-cohort heatmap between retention, LTR and LTV independently of the two
+fixed charts.
 
 No averages across cohorts, stores or channels are shown. Unelapsed months are
 blank; missing published values say **No data**, and a real zero remains zero.

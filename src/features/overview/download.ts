@@ -4,8 +4,8 @@ import { StoreAccessError } from "@/lib/auth/store-access";
 import { csvResponse } from "@/lib/csv.server";
 import { loadStores } from "@/lib/data/stores.server";
 import { WarehouseError } from "@/lib/data/warehouse-error";
-import { parseDateRange, single, type SearchParams } from "@/lib/filters";
-import { getOverview, overviewChannel } from "./queries";
+import { parseSalesChannel, parseDateRange, single, type SearchParams } from "@/lib/filters";
+import { getOverview } from "./queries";
 import { parseTimeGrain } from "@/lib/time-grain";
 import { overviewSummaryRows } from "./summary-rows";
 
@@ -24,7 +24,7 @@ export async function GET(request: Request): Promise<Response> {
         { title: "No store selected" },
         { status: 400, headers: { "Cache-Control": "private, no-store" } },
       );
-    const filters = { storeId, range, channel: overviewChannel(params), grain: parseTimeGrain(params) };
+    const filters = { storeId, range, channel: parseSalesChannel(params), grain: parseTimeGrain(params) };
     const data = await getOverview(filters);
     const rows = overviewSummaryRows(data, filters);
     return csvResponse(

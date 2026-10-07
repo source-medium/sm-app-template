@@ -7,7 +7,7 @@
  */
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits } from "@/lib/data/decimal";
-import { datesInRange } from "@/lib/filters";
+import { datesInRange, type ReportFilters } from "@/lib/filters";
 import { randomInt, seededRandom } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import { PAGE_SIZE, type OrderDetail, type OrderRef, type OrdersFilters, type OrdersPage } from "./queries";
@@ -125,6 +125,7 @@ export async function sampleOrders(filters: OrdersFilters): Promise<OrdersPage> 
   const rows = datesInRange(filters.range)
     .flatMap((date) => ordersForDay(filters.storeId, date))
     .filter((order) => processed(order).slice(0, 10) <= filters.range.to)
+    .filter((order) => !filters.channel || (order.sm_channel ?? "(none)") === filters.channel)
     .filter((order) => !filters.search || matchesSearch(order, filters.search))
     .filter((order) => !filters.cursor || isAfterCursor(order, filters.cursor))
     .sort(compareNewestFirst)
@@ -145,4 +146,14 @@ export async function sampleOrderDetail(storeId: string, ref: OrderRef): Promise
   if (!match) return null;
   const [row] = decodeRows(OrderDetailRow, [match], ORDERS_RELATION);
   return row ? toOrderDetail(row) : null;
+}
+
+export function sampleOrderChannels(filters: ReportFilters): string[] {
+  return [
+    ...new Set(
+      datesInRange(filters.range)
+        .flatMap((date) => ordersForDay(filters.storeId, date))
+        .map((row) => row.sm_channel ?? "(none)"),
+    ),
+  ].sort();
 }

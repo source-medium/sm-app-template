@@ -1,5 +1,5 @@
 import { DataRegion } from "@/components/patterns/data-region";
-import { SelectFilter } from "@/components/patterns/select-filter";
+import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { preservedParams, type SearchParams } from "@/lib/filters";
 import { getOverviewChannels, type OverviewFilters } from "./queries";
 
@@ -11,18 +11,10 @@ export function OverviewControls({ filters, params }: { filters: OverviewFilters
       emptyMessage="No sales channels in this range."
     >
       {(channels) => (
-        <SelectFilter
+        <ChannelFilter
           pathname="/overview"
-          name="sales_channel"
-          label="Sales channel"
-          value={filters.channel ?? ""}
-          options={[
-            { value: "", label: "All sales channels" },
-            ...[...new Set([...(filters.channel ? [filters.channel] : []), ...channels])].map((value) => ({
-              value,
-              label: value,
-            })),
-          ]}
+          value={filters.channel}
+          channels={channels}
           preserved={preservedParams(params, ["grain", "compare"], filters)}
         />
       )}

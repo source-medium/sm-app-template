@@ -2,6 +2,7 @@ import { z } from "zod";
 import { bq } from "@/lib/data/decode";
 
 export const PRODUCTS_RELATION = "obt_order_lines";
+export const ProductChannelRow = z.object({ channel: bq.string() });
 export const MAX_PRODUCTS = 10;
 const amount = bq.numeric().nullable();
 export const ProductRow = z.object({

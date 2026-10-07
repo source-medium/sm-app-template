@@ -17,6 +17,7 @@ export const SUMMARY_COLUMNS = `
   order_cart_quantity,
   order_net_revenue`;
 
+export const OrderChannelRow = z.object({ channel: bq.string() });
 export const OrderSummaryRow = z.object({
   order_key: bq.string(),
   order_name: bq.string().nullable(),

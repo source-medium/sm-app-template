@@ -1,9 +1,9 @@
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { parseChoice, type DateRange, type ReportFilters, type SearchParams } from "@/lib/filters";
-import { queryProducts } from "./bigquery";
+import { queryProductChannels, queryProducts } from "./bigquery";
 import type { Product } from "./rows";
-import { sampleProducts } from "./sample";
+import { sampleProductSource, sampleProducts } from "./sample";
 
 export const PRODUCT_DIMENSIONS = [
   { value: "product", label: "Product" },
@@ -16,7 +16,11 @@ export const PRODUCT_METRICS = [
 ] as const;
 export type ProductDimension = (typeof PRODUCT_DIMENSIONS)[number]["value"];
 export type ProductMetric = (typeof PRODUCT_METRICS)[number]["value"];
-export type ProductFilters = ReportFilters & { dimension: ProductDimension; metric: ProductMetric };
+export type ProductFilters = ReportFilters & {
+  dimension: ProductDimension;
+  metric: ProductMetric;
+  channel?: string | null;
+};
 export type ProductsData = { rows: Product[]; hasMore: boolean };
 
 export function productOptions(params: SearchParams) {
@@ -39,4 +43,17 @@ export function productOptions(params: SearchParams) {
 export async function getProducts(filters: ProductFilters, baseline: DateRange | null): Promise<ProductsData> {
   const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live" ? queryProducts(filters, baseline) : sampleProducts(filters, baseline);
+}
+
+export async function getProductChannels(filters: ReportFilters): Promise<string[]> {
+  const access = await requireViewer({ storeId: filters.storeId });
+  return access.mode === "live"
+    ? queryProductChannels(filters)
+    : [
+        ...new Set(
+          sampleProductSource(filters.storeId, filters.range)
+            .filter((row) => row.valid)
+            .map((row) => row.channel ?? "(none)"),
+        ),
+      ].sort();
 }

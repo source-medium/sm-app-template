@@ -12,6 +12,7 @@
 import { useId, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
+import { Table } from "@/components/ui/table";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -37,6 +38,10 @@ export type ChartCardProps = {
   plottable?: boolean;
   /** Header for the first table column, such as "Date". */
   categoryHeader: string;
+  /** Ratio values use percentage ticks; labels and tooltips still arrive formatted by the server. */
+  valueFormat?: "number" | "percent";
+  /** Keep single-observation cohort curves visible. */
+  showPoints?: boolean;
 };
 
 export function ChartCard({
@@ -48,10 +53,14 @@ export function ChartCard({
   data,
   plottable = true,
   categoryHeader,
+  valueFormat = "number",
+  showPoints = false,
 }: ChartCardProps) {
   const [showTable, setShowTable] = useState(!plottable);
   const regionId = useId();
   const Plot = kind === "line" ? LineChart : BarChart;
+  const tickValue = (value: number) =>
+    valueFormat === "percent" ? `${compactNumber(value * 100)}%` : compactNumber(value);
   const config: ChartConfig = Object.fromEntries(
     series.map((item) => [item.key, { label: item.label, color: item.color }]),
   );
@@ -89,7 +98,7 @@ export function ChartCard({
               <CartesianGrid vertical={horizontal} horizontal={!horizontal} stroke="var(--chart-grid)" />
               {horizontal ? (
                 <>
-                  <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={compactNumber} />
+                  <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={tickValue} />
                   <YAxis
                     type="category"
                     dataKey="label"
@@ -102,7 +111,7 @@ export function ChartCard({
               ) : (
                 <>
                   <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
-                  <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={compactNumber} />
+                  <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={tickValue} />
                 </>
               )}
               <ChartTooltip cursor content={<ChartTooltipContent indicator={kind === "line" ? "line" : "dot"} />} />
@@ -118,7 +127,7 @@ export function ChartCard({
                     strokeDasharray={item.dashed ? "6 4" : undefined}
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    dot={false}
+                    dot={showPoints ? { r: 3, strokeWidth: 0, fill: `var(--color-${item.key})` } : false}
                     activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--card)" }}
                     connectNulls={false}
                     isAnimationActive={false}
@@ -154,36 +163,37 @@ function ChartTable({
   data: ChartDatum[];
 }) {
   return (
-    <div className="max-h-80 overflow-auto rounded-md border">
-      <table className="w-full text-sm">
-        <caption className="sr-only">{title}</caption>
-        <thead className="sticky top-0 bg-muted">
-          <tr>
-            <th scope="col" className="px-3 py-2 text-left font-medium">
-              {categoryHeader}
+    <Table
+      containerClassName="max-h-80 rounded-md border focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      containerProps={{ tabIndex: 0, role: "region", "aria-label": `${title} table` }}
+    >
+      <caption className="sr-only">{title}</caption>
+      <thead className="sticky top-0 bg-muted">
+        <tr>
+          <th scope="col" className="px-3 py-2 text-left font-medium">
+            {categoryHeader}
+          </th>
+          {series.map((item) => (
+            <th key={item.key} scope="col" className="px-3 py-2 text-right font-medium">
+              {item.label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {data.map((datum) => (
+          <tr key={datum.label} className="border-t">
+            <th scope="row" className="px-3 py-2 text-left font-normal">
+              {datum.label}
             </th>
             {series.map((item) => (
-              <th key={item.key} scope="col" className="px-3 py-2 text-right font-medium">
-                {item.label}
-              </th>
+              <td key={item.key} className="px-3 py-2 text-right tabular-nums">
+                {String(datum[`${item.key}__display`] ?? "—")}
+              </td>
             ))}
           </tr>
-        </thead>
-        <tbody>
-          {data.map((datum) => (
-            <tr key={datum.label} className="border-t">
-              <th scope="row" className="px-3 py-2 text-left font-normal">
-                {datum.label}
-              </th>
-              {series.map((item) => (
-                <td key={item.key} className="px-3 py-2 text-right tabular-nums">
-                  {String(datum[`${item.key}__display`] ?? "—")}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </Table>
   );
 }

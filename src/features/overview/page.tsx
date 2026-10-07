@@ -9,10 +9,10 @@ import { cardGridStyles } from "@/components/ui/card";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { COMPARISON_OPTIONS, comparisonDates, type Comparison } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
-import { datesInRange, rangeLength, type SearchParams } from "@/lib/filters";
+import { parseSalesChannel, datesInRange, rangeLength, type SearchParams } from "@/lib/filters";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { formatCount, formatDate, formatDay, formatMeasure, formatMoney, formatMultiple } from "@/lib/format";
-import { getOverviewReport, overviewChannel, type OverviewFilters, type OverviewReport } from "./queries";
+import { getOverviewReport, type OverviewFilters, type OverviewReport } from "./queries";
 import { parseTimeGrain } from "@/lib/time-grain";
 import { OverviewControls } from "./controls";
 import { OverviewSummary } from "./summary";
@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: "Overview" };
 
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
-  const channel = overviewChannel(params);
+  const channel = parseSalesChannel(params);
   const grain = parseTimeGrain(params);
   return (
     <ReportPage

@@ -10,14 +10,21 @@ import { Input } from "@/components/ui/input";
 import { formatMonth } from "@/lib/format";
 import type { SearchParams } from "@/lib/filters";
 import { getRetention } from "./queries";
-import { COHORT_MONTHS, RETENTION_METRICS, retentionOptions } from "./filters";
+import { RetentionCurves } from "./curves";
+import { COHORT_WINDOWS, COHORT_MONTHS, RETENTION_METRICS, retentionOptions } from "./filters";
 import { retentionMatrix } from "./matrix";
 
 export const metadata: Metadata = { title: "Retention" };
 export default async function RetentionPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const options = retentionOptions(params, new Date());
-  const applied = { ...params, as_of: options.asOf, channel: options.channel, measure: options.metric };
+  const applied = {
+    ...params,
+    as_of: options.asOf,
+    channel: options.channel,
+    measure: options.metric,
+    cohorts: options.curveWindow,
+  };
   const metricLabel = RETENTION_METRICS.find((item) => item.value === options.metric)?.label ?? "Monthly retention";
   return (
     <ReportPage
@@ -25,7 +32,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
       description="Compare monthly purchase cohorts at the same age, one sales channel at a time."
       pathname="/retention"
       params={applied}
-      preserve={["as_of", "channel", "measure"]}
+      preserve={["as_of", "channel", "measure", "cohorts"]}
       dates={false}
     >
       {({ filters }) => {
@@ -34,6 +41,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
           as_of: options.asOf,
           channel: options.channel,
           measure: options.metric,
+          cohorts: options.curveWindow,
         };
         return (
           <>
@@ -62,14 +70,6 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                   Apply month
                 </Button>
               </form>
-              <SelectFilter
-                pathname="/retention"
-                name="measure"
-                label="Cohort measure"
-                value={options.metric}
-                options={[...RETENTION_METRICS]}
-                preserved={preserved}
-              />
             </div>
             <p className="max-w-prose text-sm text-muted-foreground">
               Twelve acquisition cohorts through {formatMonth(`${options.asOf}-01`)}. Month 0 is the acquisition
@@ -77,7 +77,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
               not prove the warehouse is complete.
             </p>
             <Suspense
-              key={`${filters.storeId}|${options.asOf}|${options.channel}|${options.metric}`}
+              key={`${filters.storeId}|${options.asOf}|${options.channel}|${options.metric}|${options.curveWindow}`}
               fallback={<LoadingState variant="table" label="Loading retention cohorts" />}
             >
               <DataRegion
@@ -89,14 +89,43 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                   const channels = [...new Set([options.channel, ...rows.map((row) => row.channel)])].sort();
                   return (
                     <div className="flex flex-col gap-4">
-                      <SelectFilter
-                        pathname="/retention"
-                        name="channel"
-                        label="Acquisition sales channel"
-                        value={options.channel}
-                        options={channels.map((value) => ({ value, label: value }))}
-                        preserved={preserved}
-                      />
+                      <div className="flex flex-wrap gap-4">
+                        <SelectFilter
+                          pathname="/retention"
+                          name="channel"
+                          label="Acquisition sales channel"
+                          value={options.channel}
+                          options={channels.map((value) => ({ value, label: value }))}
+                          preserved={preserved}
+                        />
+                        <SelectFilter
+                          pathname="/retention"
+                          name="cohorts"
+                          label="Chart cohorts"
+                          value={options.curveWindow}
+                          options={[...COHORT_WINDOWS]}
+                          preserved={preserved}
+                        />
+                      </div>
+                      {rows.some((row) => row.channel === options.channel) && (
+                        <RetentionCurves
+                          rows={rows}
+                          channel={options.channel}
+                          asOf={options.asOf}
+                          window={options.curveWindow}
+                        />
+                      )}
+                      <div className="flex flex-wrap items-end justify-between gap-4 border-t pt-6">
+                        <h2 className="text-lg font-semibold">All twelve cohorts</h2>
+                        <SelectFilter
+                          pathname="/retention"
+                          name="measure"
+                          label="Matrix measure"
+                          value={options.metric}
+                          options={[...RETENTION_METRICS]}
+                          preserved={preserved}
+                        />
+                      </div>
                       <p className="max-w-prose text-sm text-muted-foreground">
                         {options.metric === "retention"
                           ? "Monthly retention is customers who purchased in that month divided by the original cohort size. Month 0 includes the acquisition purchase. A customer may return after skipping a month."

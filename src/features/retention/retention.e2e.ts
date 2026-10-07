@@ -12,12 +12,12 @@ test("retention: incomplete months, published gaps, and measure/channel selectio
   await expect(
     table.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "Sep 2026", exact: true }) }),
   ).toContainText("100%");
-  await page.getByLabel("Cohort measure").selectOption("revenue");
+  await page.getByLabel("Matrix measure").selectOption("revenue");
   await expect(page).toHaveURL(/measure=revenue/);
   const revenue = page.getByRole("table", { name: "Cumulative revenue / customer (LTR)", exact: true });
   await expect(revenue).toBeVisible();
   const revenueValues = await revenue.locator('td[data-state="value"]').allTextContents();
-  await page.getByLabel("Cohort measure").selectOption("profit");
+  await page.getByLabel("Matrix measure").selectOption("profit");
   await expect(page).toHaveURL(/measure=profit/);
   const profit = page.getByRole("table", { name: "Cumulative gross profit / customer (LTV)", exact: true });
   await expect(profit).toBeVisible();
@@ -39,4 +39,30 @@ test("retention: an unknown channel is never silently replaced", async ({ page }
   await expect(page.getByLabel("Acquisition sales channel")).toHaveValue("unknown");
   await page.getByLabel("Acquisition sales channel").selectOption("online_dtc");
   await expect(page.getByRole("table", { name: "Monthly retention", exact: true })).toBeVisible();
+});
+
+test("retention: separate retention and LTV curves share channel/window controls and accessible tables", async ({
+  page,
+}) => {
+  await page.goto("/retention?store=sample-store-a&as_of=2026-09");
+  const curves = page.getByRole("region", { name: "Retention and lifetime value curves", exact: true });
+  const rate = page.getByRole("img", { name: "Retention by cohort age chart", exact: true });
+  await expect(rate).toBeVisible();
+  await expect(page.getByRole("img", { name: "Gross profit LTV by cohort age chart", exact: true })).toBeVisible();
+  await expect(rate.getByText("100%", { exact: true })).toBeVisible();
+  await page.getByLabel("Chart cohorts", { exact: true }).selectOption("earliest");
+  await expect(page).toHaveURL(/cohorts=earliest/);
+  await curves.getByRole("button", { name: "View as table", exact: true }).first().click();
+  const retention = page.getByRole("table", { name: "Retention by cohort age", exact: true });
+  await expect(retention.getByRole("columnheader", { name: "Jan 2026", exact: true })).toBeVisible();
+  await expect(retention.getByRole("rowheader", { name: "Month 11", exact: true })).toBeVisible();
+  await curves.getByRole("button", { name: "View as table", exact: true }).click();
+  const ltv = page.getByRole("table", { name: "Gross profit LTV by cohort age", exact: true });
+  await expect(ltv).toBeVisible();
+  await expect(page).toHaveTitle(/Retention/);
+  await expectNoSeriousA11yViolations(page);
+  await page.getByLabel("Acquisition sales channel", { exact: true }).selectOption("amazon");
+  await expect(page.getByLabel("Chart cohorts", { exact: true })).toHaveValue("earliest");
+  expect(new URL(page.url()).searchParams.get("as_of")).toBe("2026-09");
+  await expect(rate).toBeVisible();
 });

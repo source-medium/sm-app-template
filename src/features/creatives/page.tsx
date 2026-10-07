@@ -3,11 +3,12 @@ import { Suspense } from "react";
 import { CardGrid } from "@/components/patterns/card-grid";
 import { DataRegion } from "@/components/patterns/data-region";
 import { LoadingState } from "@/components/patterns/data-states";
+import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { ReportPage } from "@/components/shell/report-page";
-import { parseChoice, preservedParams, type SearchParams } from "@/lib/filters";
+import { parseChoice, preservedParams, single, type SearchParams } from "@/lib/filters";
 import { formatCount, formatMeasure, formatMoney, formatPercent } from "@/lib/format";
-import { CREATIVE_SORTS, getCreatives, type CreativeSort, type CreativesData } from "./queries";
+import { CREATIVE_SORTS, getCreativeChannels, getCreatives, type CreativeSort, type CreativesData } from "./queries";
 
 export const metadata: Metadata = { title: "Creatives" };
 
@@ -22,6 +23,7 @@ const SORT_LABELS: Record<CreativeSort, string> = {
 
 export default async function CreativesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
+  const channel = single(params, "channel")?.slice(0, 100) || null;
   const sort = parseChoice(params, "sort", CREATIVE_SORTS, "spend");
   return (
     <ReportPage
@@ -29,26 +31,50 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
       description="Every ad creative that ran in the selected dates, with its delivery."
       pathname={PATHNAME}
       params={params}
-      preserve={["sort"]}
+      preserve={["sort", "channel"]}
     >
       {({ filters }) => (
         <div className="flex flex-col gap-4">
-          <SelectFilter
-            pathname={PATHNAME}
-            name="sort"
-            label="Sort by"
-            value={sort}
-            options={CREATIVE_SORTS.map((value) => ({ value, label: SORT_LABELS[value] }))}
-            preserved={preservedParams(params, [], filters)}
-          />
+          <div className="flex flex-wrap gap-4">
+            <Suspense
+              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
+              fallback={<LoadingState variant="table" label="Loading ad channels" />}
+            >
+              <DataRegion
+                load={() => getCreativeChannels(filters)}
+                isEmpty={() => false}
+                emptyMessage="No ad channels in this range."
+              >
+                {(channels) => (
+                  <ChannelFilter
+                    pathname={PATHNAME}
+                    name="channel"
+                    label="Ad channel"
+                    allLabel="All ad channels"
+                    value={channel}
+                    channels={channels}
+                    preserved={preservedParams(params, ["sort"], filters)}
+                  />
+                )}
+              </DataRegion>
+            </Suspense>
+            <SelectFilter
+              pathname={PATHNAME}
+              name="sort"
+              label="Sort by"
+              value={sort}
+              options={CREATIVE_SORTS.map((value) => ({ value, label: SORT_LABELS[value] }))}
+              preserved={preservedParams(params, ["channel"], filters)}
+            />
+          </div>
           <Suspense
-            key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${sort}`}
+            key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${sort}|${channel}`}
             fallback={<LoadingState variant="grid" label="Loading creatives" />}
           >
             <DataRegion
-              load={() => getCreatives({ ...filters, sort })}
+              load={() => getCreatives({ ...filters, sort, channel })}
               isEmpty={(data) => data.creatives.length === 0}
-              emptyMessage="No ad creatives ran for this store in the selected dates."
+              emptyMessage="No ad creatives match this store, ad channel, and date range."
             >
               {(data) => <CreativesView data={data} />}
             </DataRegion>
@@ -65,7 +91,7 @@ function CreativesView({ data }: { data: CreativesData }) {
       <CardGrid
         label="Ad creatives"
         cards={data.creatives.map((creative) => ({
-          id: creative.creativeId,
+          id: JSON.stringify([creative.channel, creative.creativeId]),
           title: creative.title ?? creative.body ?? `Creative ${creative.creativeId}`,
           body:
             [creative.body, creative.callToAction ? `Call to action: ${humanize(creative.callToAction)}` : null]

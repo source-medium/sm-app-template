@@ -45,3 +45,31 @@ test("orders: search, open an order's details by URL, close, and page", async ({
   await expect(page).toHaveURL(/cursor=/);
   await expect(page.getByRole("link", { name: "Newest orders" })).toBeVisible();
 });
+
+test("orders: channel selection survives paging and search, and changing it resets the cursor", async ({ page }) => {
+  await page.goto("/orders?store=sample-store-a&from=2026-09-01&to=2026-09-28&sales_channel=Amazon");
+  const table = page.getByRole("table", { name: "Orders, newest first" });
+  await expect(table).toBeVisible();
+  await expect(table.locator("tbody tr").first()).toContainText("Amazon");
+  await page.getByRole("link", { name: "Older orders", exact: true }).click();
+  await expect(page).toHaveURL(/cursor=/);
+  await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("Amazon");
+  await page.getByLabel("Sales channel", { exact: true }).selectOption("Online DTC");
+  await expect(page).not.toHaveURL(/cursor=/);
+  await expect(table.locator("tbody tr").first()).toContainText("Online DTC");
+  const name = await table.getByRole("link").first().innerText();
+  await page.getByLabel("Find an order").fill(name);
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page).toHaveURL((url) => url.searchParams.get("q") === name);
+  await expect(table.getByRole("link", { name, exact: true })).toBeVisible();
+  await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("Online DTC");
+  await page.getByLabel("Sales channel", { exact: true }).selectOption("Amazon");
+  await expect(page).toHaveURL(
+    (url) => url.searchParams.get("q") === name && url.searchParams.get("sales_channel") === "Amazon",
+  );
+  await expect(page.getByText("No orders match that search, sales channel, and date range.")).toBeVisible();
+  await page.goto("/orders?store=sample-store-a&sales_channel=unknown");
+  await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("unknown");
+  await page.getByLabel("Sales channel", { exact: true }).selectOption("");
+  await expect(table).toBeVisible();
+});

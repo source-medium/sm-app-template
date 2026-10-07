@@ -7,8 +7,8 @@
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { ReportFilters } from "@/lib/filters";
-import { queryCreatives } from "./bigquery";
-import { sampleCreatives } from "./sample";
+import { queryCreativeChannels, queryCreatives } from "./bigquery";
+import { sampleCreativeChannels, sampleCreatives } from "./sample";
 
 export const CREATIVE_SORTS = ["spend", "impressions", "clicks", "conversions", "ctr"] as const;
 export type CreativeSort = (typeof CREATIVE_SORTS)[number];
@@ -30,10 +30,15 @@ export type Creative = {
   ctr: number | null;
 };
 
-export type CreativesFilters = ReportFilters & { sort: CreativeSort };
+export type CreativesFilters = ReportFilters & { sort: CreativeSort; channel?: string | null };
 export type CreativesData = { creatives: Creative[]; truncated: boolean };
 
 export async function getCreatives(filters: CreativesFilters): Promise<CreativesData> {
   const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live" ? queryCreatives(filters) : sampleCreatives(filters);
+}
+
+export async function getCreativeChannels(filters: ReportFilters): Promise<string[]> {
+  const access = await requireViewer({ storeId: filters.storeId });
+  return access.mode === "live" ? queryCreativeChannels(filters) : sampleCreativeChannels(filters);
 }

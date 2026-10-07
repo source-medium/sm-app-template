@@ -7,6 +7,11 @@ export const RETENTION_METRICS = [
   { value: "profit", label: "Cumulative gross profit / customer (LTV)" },
 ] as const;
 export type RetentionMetric = (typeof RETENTION_METRICS)[number]["value"];
+export const COHORT_WINDOWS = [
+  { value: "recent", label: "Latest 6 cohorts" },
+  { value: "earliest", label: "Earliest 6 cohorts" },
+] as const;
+export type CohortWindow = (typeof COHORT_WINDOWS)[number]["value"];
 
 /** Calendar months, including years below 100 (Date.UTC would reinterpret those as 1900+). */
 export function shiftMonth(month: string, offset: number): string {
@@ -23,6 +28,12 @@ export function retentionOptions(params: SearchParams, now: Date) {
     asOf,
     maxMonth,
     channel: single(params, "channel")?.slice(0, 100) || "online_dtc",
+    curveWindow: parseChoice(
+      params,
+      "cohorts",
+      COHORT_WINDOWS.map((item) => item.value),
+      "recent",
+    ),
     metric: parseChoice(
       params,
       "measure",

@@ -7,6 +7,7 @@ import { buildChartData, type PointValue } from "@/components/charts/chart-data"
 import { DataRegion } from "@/components/patterns/data-region";
 import { LoadingState } from "@/components/patterns/data-states";
 import { DataTable } from "@/components/patterns/data-table";
+import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
@@ -129,10 +130,6 @@ function PaidMarketingView({
     }),
   );
 
-  const channelOptions = [
-    { value: "", label: "All channels" },
-    ...channels.map((name) => ({ value: name, label: name })),
-  ];
   const preserved = preservedParams(params, ["metric", "channel", "breakdown", "compare"], filters);
 
   return (
@@ -146,12 +143,13 @@ function PaidMarketingView({
           options={PAID_METRICS.map((value) => ({ value, label: METRIC_LABELS[value] }))}
           preserved={preserved}
         />
-        <SelectFilter
+        <ChannelFilter
           pathname={PATHNAME}
           name="channel"
           label="Channel"
           value={filters.channel ?? ""}
-          options={channelOptions}
+          allLabel="All channels"
+          channels={channels}
           preserved={preserved}
         />
       </div>

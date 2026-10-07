@@ -6,33 +6,49 @@ import { LoadingState } from "@/components/patterns/data-states";
 import { KpiCard } from "@/components/patterns/kpi-card";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
+import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatDate, formatMeasure, formatMoney, formatPercent } from "@/lib/format";
-import { preservedParams, type SearchParams } from "@/lib/filters";
-import { getProducts, productOptions, PRODUCT_DIMENSIONS, PRODUCT_METRICS } from "./queries";
+import { parseSalesChannel, preservedParams, type SearchParams } from "@/lib/filters";
+import { getProductChannels, getProducts, productOptions, PRODUCT_DIMENSIONS, PRODUCT_METRICS } from "./queries";
 
 export const metadata: Metadata = { title: "Products" };
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const options = productOptions(params);
+  const channel = parseSalesChannel(params);
   return (
     <ReportPage
       title="Products"
       description="Product and variant performance from valid-order lines, in reporting currency."
       pathname="/products"
       params={params}
-      preserve={["dimension", "metric"]}
+      preserve={["dimension", "metric", "sales_channel"]}
       comparisons
     >
       {({ filters, comparison, params: applied }) => {
-        const preserved = preservedParams(applied, ["dimension", "metric", "compare"], filters);
+        const preserved = preservedParams(applied, ["dimension", "metric", "sales_channel", "compare"], filters);
         const baseline = comparison?.range ?? null;
         const format = options.metric === "units" ? formatMeasure : formatMoney;
         const metricLabel = PRODUCT_METRICS.find((item) => item.value === options.metric)?.label ?? "Net revenue";
         return (
           <>
             <div className="flex flex-wrap gap-4">
+              <Suspense
+                key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
+                fallback={<LoadingState variant="table" label="Loading sales channels" />}
+              >
+                <DataRegion
+                  load={() => getProductChannels(filters)}
+                  isEmpty={() => false}
+                  emptyMessage="No sales channels in this range."
+                >
+                  {(channels) => (
+                    <ChannelFilter pathname="/products" value={channel} channels={channels} preserved={preserved} />
+                  )}
+                </DataRegion>
+              </Suspense>
               <SelectFilter
                 pathname="/products"
                 name="dimension"
@@ -51,9 +67,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               />
             </div>
             <p className="max-w-prose text-sm text-muted-foreground">
-              All sales channels, valid orders only. Net units subtract refunded quantities. Product gross profit
-              subtracts product cost from net revenue; it excludes shipping, fulfillment and payment costs. Missing
-              product costs can overstate profit.
+              Sales-channel scope:{" "}
+              <strong className="font-medium text-foreground">{channel ?? "All sales channels"}</strong>. Valid orders
+              only. Net units subtract refunded quantities. Product gross profit subtracts product cost from net
+              revenue; it excludes shipping, fulfillment and payment costs. Missing product costs can overstate profit.
             </p>
             {baseline && (
               <p className="text-sm text-muted-foreground">
@@ -61,13 +78,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               </p>
             )}
             <Suspense
-              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${options.dimension}|${options.metric}|${comparison?.mode}`}
+              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${options.dimension}|${options.metric}|${comparison?.mode}|${channel}`}
               fallback={<LoadingState variant="chart" label="Loading products" />}
             >
               <DataRegion
-                load={() => getProducts({ ...filters, ...options }, baseline)}
+                load={() => getProducts({ ...filters, ...options, channel }, baseline)}
                 isEmpty={(data) => data.rows.length === 0}
-                emptyMessage="No valid-order product lines match this store and date range."
+                emptyMessage="No valid-order product lines match this store, sales channel, and date range."
               >
                 {(data) => {
                   const first = data.rows[0];

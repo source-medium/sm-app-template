@@ -79,3 +79,18 @@ describe("orders fixture contract", () => {
     }
   });
 });
+
+it("keeps channel filtering through search and keyset pages", async () => {
+  const filters = { ...FILTERS, range: { from: "2026-09-01", to: "2026-09-28" }, channel: "Amazon" };
+  const first = await sampleOrders(filters);
+  expect(first.nextCursor).not.toBeNull();
+  const next = await sampleOrders({ ...filters, cursor: first.nextCursor });
+  expect([...first.orders, ...next.orders].every((order) => order.channel === "Amazon")).toBe(true);
+  expect(new Set([...first.orders, ...next.orders].map((row) => row.key)).size).toBe(
+    first.orders.length + next.orders.length,
+  );
+  const match = first.orders[0];
+  if (!match?.name) throw new Error("Missing order fixture");
+  expect((await sampleOrders({ ...filters, search: match.name })).orders.map((row) => row.key)).toContain(match.key);
+  expect((await sampleOrders({ ...filters, channel: "unknown" })).orders).toEqual([]);
+});
