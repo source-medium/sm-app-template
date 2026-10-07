@@ -1,5 +1,47 @@
 import { expect, test } from "@playwright/test";
-import { expectNoSeriousA11yViolations } from "../../../e2e/helpers";
+import { expectNoSeriousA11yViolations, expectTextContained } from "../../../e2e/helpers";
+
+test("overview: full money values and comparison text stay inside their cards", async ({ page }) => {
+  await page.goto("/overview");
+  await expect(page.locator('[data-slot="kpi-value"]:visible')).toHaveCount(6);
+  // Exercise the layout with a valid large NUMERIC display, independently of the sample's small totals.
+  await page
+    .locator('[data-slot="kpi-value"]')
+    .first()
+    .evaluate((node) => {
+      node.textContent = "$12,345,678,901,234,567,890.12";
+    });
+  await page
+    .locator('[data-slot="kpi-comparison"]')
+    .first()
+    .evaluate((node) => {
+      const display = node.querySelector("span span");
+      if (!display) throw new Error("Missing change text");
+      display.textContent = "+$1,234,567,890,123,456.78 (+123.45%)";
+    });
+  for (const width of [320, 640, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expectTextContained(page.locator('[data-slot="kpi-value"]:visible, [data-slot="kpi-comparison"]:visible'));
+  }
+  await expect(page.locator('[data-slot="kpi-value"]').first()).toHaveText("$12,345,678,901,234,567,890.12");
+});
+
+test("overview: a chart tooltip separates its label and formatted money", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.goto("/overview");
+  const chart = page.getByRole("img", { name: "Net revenue by day chart", exact: true });
+  await expect(chart.locator(".recharts-line-curve")).toBeVisible();
+  await chart.locator(".recharts-surface").hover({ position: { x: 150, y: 100 } });
+  const tooltip = chart.locator('[data-slot="chart-tooltip"]:visible');
+  await expect(tooltip).toBeVisible();
+  const value = tooltip.locator('[data-slot="chart-tooltip-value"]');
+  await expect(value).toHaveText(/\d[\d,]*\.\d{2}/);
+  const labelBounds = await tooltip.getByText("Net revenue", { exact: true }).boundingBox();
+  const valueBounds = await value.boundingBox();
+  if (!labelBounds || !valueBounds) throw new Error("Missing tooltip content");
+  expect(valueBounds.x - labelBounds.x - labelBounds.width).toBeGreaterThanOrEqual(8);
+  await expectTextContained(tooltip);
+});
 
 test("overview: period and year comparisons survive links, navigation, and refresh", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);

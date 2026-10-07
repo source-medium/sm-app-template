@@ -43,7 +43,9 @@ export function KpiCard({
         ) : (
           <span className="text-sm text-muted-foreground">{label}</span>
         )}
-        <span className="text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
+        <span data-slot="kpi-value" className="text-3xl font-semibold tracking-tight tabular-nums">
+          {value}
+        </span>
         <span className="text-xs text-muted-foreground">{period}</span>
         {delta && (
           <div data-slot="kpi-comparison" className="mt-1 flex flex-col gap-1 text-xs">
@@ -54,7 +56,7 @@ export function KpiCard({
               )}
             >
               {delta.direction && <Arrow className="size-3.5 shrink-0" aria-hidden />}
-              {delta.display}
+              <span className="min-w-0">{delta.display}</span>
             </span>
             <span className="text-muted-foreground">vs {delta.comparedTo}</span>
           </div>

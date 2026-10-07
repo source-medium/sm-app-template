@@ -129,8 +129,9 @@ function ChartTooltipContent({
 
   return (
     <div
+      data-slot="chart-tooltip"
       className={cn(
-        "grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl",
+        "grid max-w-[min(24rem,calc(100vw-2rem))] min-w-48 items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs wrap-anywhere shadow-xl",
         className,
       )}
     >
@@ -177,16 +178,19 @@ function ChartTooltipContent({
                     )}
                     <div
                       className={cn(
-                        "flex flex-1 justify-between leading-none",
+                        "flex min-w-0 flex-1 justify-between gap-3 leading-snug",
                         nestLabel ? "items-end" : "items-center",
                       )}
                     >
-                      <div className="grid gap-1.5">
+                      <div className="grid min-w-0 gap-1.5">
                         {nestLabel ? tooltipLabel : null}
                         <span className="text-muted-foreground">{itemConfig?.label ?? item.name}</span>
                       </div>
                       {item.value != null && (
-                        <span className="font-mono font-medium text-foreground tabular-nums">
+                        <span
+                          data-slot="chart-tooltip-value"
+                          className="min-w-0 text-right font-mono font-medium text-foreground tabular-nums"
+                        >
                           {/* Values are formatted on the server and sent as `<key>__display`;
                               client-side locale formatting risks hydration mismatches. */}
                           {String(
@@ -226,7 +230,13 @@ function ChartLegendContent({
   }
 
   return (
-    <div className={cn("flex items-center justify-center gap-4", verticalAlign === "top" ? "pb-3" : "pt-3", className)}>
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-center gap-x-4 gap-y-2",
+        verticalAlign === "top" ? "pb-3" : "pt-3",
+        className,
+      )}
+    >
       {payload
         .filter((item) => item.type !== "none")
         .map((item, index) => {
@@ -236,7 +246,9 @@ function ChartLegendContent({
           return (
             <div
               key={index}
-              className={cn("flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground")}
+              className={cn(
+                "flex min-w-0 items-center gap-1.5 wrap-anywhere [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground",
+              )}
             >
               {itemConfig?.icon && !hideIcon ? (
                 <itemConfig.icon />

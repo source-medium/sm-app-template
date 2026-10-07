@@ -1,11 +1,17 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+/** Size columns by the space left for the report, including when the sidebar is open. */
+export const cardGridStyles = "grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4";
+
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card"
-      className={cn("flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-card", className)}
+      className={cn(
+        "flex min-w-0 flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-card",
+        className,
+      )}
       {...props}
     />
   );
@@ -25,7 +31,13 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="card-title" className={cn("leading-snug font-semibold", className)} {...props} />;
+  return (
+    <div
+      data-slot="card-title"
+      className={cn("min-w-0 leading-snug font-semibold wrap-anywhere", className)}
+      {...props}
+    />
+  );
 }
 
 function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
@@ -43,7 +55,7 @@ function CardAction({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function CardContent({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="card-content" className={cn("px-5", className)} {...props} />;
+  return <div data-slot="card-content" className={cn("min-w-0 px-5 wrap-anywhere", className)} {...props} />;
 }
 
 export { Card, CardHeader, CardTitle, CardAction, CardDescription, CardContent };

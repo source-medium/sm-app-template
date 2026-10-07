@@ -5,13 +5,14 @@
  */
 import { AlertTriangle, FileWarning, Inbox } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cardGridStyles } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export function LoadingState({ variant, label }: { variant: "kpis" | "chart" | "table" | "grid"; label: string }) {
   return (
     <div role="status" aria-live="polite" aria-label={label} className="flex flex-col gap-4">
       {variant === "kpis" && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={cardGridStyles}>
           {[0, 1, 2, 3, 4, 5].map((index) => (
             <Skeleton key={index} className="h-28 rounded-lg" />
           ))}
@@ -26,7 +27,7 @@ export function LoadingState({ variant, label }: { variant: "kpis" | "chart" | "
         </div>
       )}
       {variant === "grid" && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={cardGridStyles}>
           {[0, 1, 2, 3, 4, 5].map((index) => (
             <Skeleton key={index} className="h-64 rounded-lg" />
           ))}

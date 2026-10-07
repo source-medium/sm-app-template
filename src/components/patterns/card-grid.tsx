@@ -3,7 +3,7 @@
  * row of metrics. The image slot owns its load-failure fallback, so a card
  * never shows a broken image.
  */
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, cardGridStyles } from "@/components/ui/card";
 import { CardImage } from "./card-image";
 
 export type GridCard = {
@@ -17,9 +17,9 @@ export type GridCard = {
 
 export function CardGrid({ cards, label }: { cards: GridCard[]; label: string }) {
   return (
-    <ul aria-label={label} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <ul aria-label={label} className={cardGridStyles}>
       {cards.map((card) => (
-        <li key={card.id}>
+        <li key={card.id} className="min-w-0">
           <Card className="h-full gap-0 overflow-hidden py-0">
             {card.imageUrl ? (
               <CardImage src={card.imageUrl} alt={card.title} fallback={<TextPanel card={card} />} />
@@ -35,7 +35,7 @@ export function CardGrid({ cards, label }: { cards: GridCard[]; label: string })
               </div>
               <dl className="mt-auto grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 {card.metrics.map((metric) => (
-                  <div key={metric.label} className="flex flex-col">
+                  <div key={metric.label} className="flex min-w-0 flex-col">
                     <dt className="text-xs text-muted-foreground">{metric.label}</dt>
                     <dd className="font-medium tabular-nums">{metric.display}</dd>
                   </div>

@@ -1,8 +1,26 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { compactNumber } from "@/components/charts/compact-number";
 import { formatCount, formatDay, formatMeasure, formatPercent, formatWallTime } from "@/lib/format";
 
 describe("server formatting", () => {
+  afterEach(() => {
+    vi.doUnmock("@/app.config");
+    vi.resetModules();
+  });
+
+  it.each([
+    ["en-US", "USD", "$1,234.56"],
+    ["de-DE", "EUR", "1.234,56\u00a0€"],
+    ["en-US", "JPY", "¥1,235"],
+    ["en-US", "KWD", "KWD\u00a01,234.560"],
+  ])("uses the configured %s/%s money convention", async (locale, currency, expected) => {
+    vi.resetModules();
+    vi.doMock("@/app.config", () => ({ appConfig: { locale, currency } }));
+    const { formatMoney } = await import("@/lib/format");
+    expect(formatMoney("1234.56")).toBe(expected);
+    expect(formatMoney("-0.0001")).not.toContain("-");
+  });
+
   it("formats exact counts with every digit", () => {
     expect(formatCount(9_007_199_254_740_993n)).toBe("9,007,199,254,740,993");
     expect(formatCount(null)).toBe("—");

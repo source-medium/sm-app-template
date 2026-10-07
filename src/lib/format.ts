@@ -39,8 +39,8 @@ export const EMPTY_VALUE = "—";
 const money = new Intl.NumberFormat(
   appConfig.locale,
   appConfig.currency
-    ? { style: "currency", currency: appConfig.currency }
-    : { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+    ? { style: "currency", currency: appConfig.currency, signDisplay: "negative" }
+    : { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: "negative" },
 );
 
 /**
@@ -48,7 +48,7 @@ const money = new Intl.NumberFormat(
  * float rounding); ratios such as AOV arrive as numbers.
  */
 export function formatMoney(value: string | number | null): string {
-  if (value === null) return EMPTY_VALUE;
+  if (value === null || (typeof value === "number" && !Number.isFinite(value))) return EMPTY_VALUE;
   return typeof value === "string" ? money.format(value as `${number}`) : money.format(value);
 }
 

@@ -5,6 +5,7 @@ import { buildChartData } from "@/components/charts/chart-data";
 import { DataRegion } from "@/components/patterns/data-region";
 import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { KpiCard } from "@/components/patterns/kpi-card";
+import { cardGridStyles } from "@/components/ui/card";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { COMPARISON_OPTIONS, type Comparison } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
@@ -120,7 +121,7 @@ function OverviewView({
           detail={report.comparison.error.detail}
         />
       )}
-      <section aria-label="Period totals" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section aria-label="Period totals" className={cardGridStyles}>
         <KpiCard
           label="Net revenue"
           description="Gross order revenue minus discounts and refunds, summed across all channels for this store and period. Amounts use the warehouse's reporting currency."

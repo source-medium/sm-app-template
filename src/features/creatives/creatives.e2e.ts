@@ -1,4 +1,18 @@
 import { expect, test } from "@playwright/test";
+import { expectTextContained } from "../../../e2e/helpers";
+
+test("creatives: large metric values cannot overlap adjacent cells", async ({ page }) => {
+  await page.goto("/creatives");
+  const metrics = page.getByRole("list", { name: "Ad creatives" }).locator("dd");
+  await expect(metrics.first()).toBeVisible();
+  await metrics.first().evaluate((node) => {
+    node.textContent = "$12,345,678,901,234.56";
+  });
+  for (const width of [320, 640, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expectTextContained(metrics);
+  }
+});
 
 test("creatives: an unreachable image shows the card's text, never a broken image", async ({ page }) => {
   await page.goto("/creatives");
