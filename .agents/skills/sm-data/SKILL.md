@@ -9,7 +9,8 @@ Follow `docs/data.md` in this repository. In order:
    (`get_data_context`, `search_data_catalog`, `describe_table`) or
    `pnpm schema <relation>`. Never guess a name.
 2. Write parameterized SQL in the feature's `bigquery.ts`, starting with
-   `await requireViewer({ live: true })` (AGENTS.md, rule 1).
+   `await requireViewer({ live: true, storeId: filters.storeId })` (AGENTS.md, rule 1).
+   Keep `sm_store_id = @store_id` on every data source read; see `docs/data.md#store-scope`.
 3. Decode with a Zod row schema in `rows.ts` built from `bq.*` decoders.
 4. Validate the result against the MCP's `query_metrics`, or a number
    someone has reviewed, before building charts on it.

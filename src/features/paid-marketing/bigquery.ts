@@ -13,7 +13,7 @@ import { AD_RELATION, CampaignWireRow, ChannelDayRow, MAX_CAMPAIGNS, toCampaign,
 const MAX_SERIES_ROWS = 2000;
 
 export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise<PaidMarketingData> {
-  const { warehouse } = await requireViewer({ live: true });
+  const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const table = warehouse.table(AD_RELATION);
 
   const [series, campaigns] = await Promise.all([
@@ -47,7 +47,7 @@ export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise
 
 /** The same bounded campaign read serves the table and CSV, without rerunning the chart query. */
 export async function queryPaidCampaigns(filters: PaidMarketingFilters): Promise<CampaignData> {
-  const { warehouse } = await requireViewer({ live: true });
+  const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const table = warehouse.table(AD_RELATION);
   const campaigns = await warehouse.query({
     name: "paid_campaigns",

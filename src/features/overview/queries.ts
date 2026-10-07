@@ -34,7 +34,7 @@ export type OverviewData = {
 };
 
 export async function getOverview(filters: ReportFilters): Promise<OverviewData> {
-  const access = await requireViewer();
+  const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live" ? queryOverview(filters) : sampleOverview(filters);
 }
 
@@ -45,7 +45,7 @@ export type OverviewReport = {
 
 /** Two bounded, independently aggregated periods; Off makes only the current-period query. */
 export async function getOverviewReport(filters: ReportFilters, baseline: DateRange | null): Promise<OverviewReport> {
-  await requireViewer();
+  await requireViewer({ storeId: filters.storeId });
   const comparison = baseline
     ? getOverview({ ...filters, range: baseline }).then(
         (data) => ({ data, error: null }),

@@ -15,6 +15,7 @@ import {
   type QueryResult,
 } from "./bigquery-rest.server";
 import { createTokenProvider } from "./google-token.server";
+import { assertStoreAccess, StoreAccessError } from "../auth/store-access";
 
 const TABLE_ID = /^[A-Za-z0-9_]{1,1024}$/;
 const DATASET_ID = /^[A-Za-z0-9_]{1,1024}$/;
@@ -61,7 +62,7 @@ export function bigQueryClientFor(live: LiveConfig): BigQueryClient {
   return client;
 }
 
-export function warehouseFor(live: LiveConfig): Warehouse {
+export function warehouseFor(live: LiveConfig, fixedStoreId: string | null = null): Warehouse {
   const client = bigQueryClientFor(live);
   return {
     applicationId: live.applicationId,
@@ -86,6 +87,16 @@ export function warehouseFor(live: LiveConfig): Warehouse {
       }
       return `\`${live.dataProjectId}.${datasetId}.${qualifiedTable}\``;
     },
-    query: (request, options) => runQuery(client, request, options),
+    query: async (request, options) => {
+      if (fixedStoreId !== null) {
+        const parameters = request.params?.filter((param) => param.name === "store_id") ?? [];
+        const parameter = parameters[0];
+        if (parameters.length !== 1 || parameter?.type !== "STRING" || typeof parameter.value !== "string") {
+          throw new StoreAccessError();
+        }
+        assertStoreAccess(fixedStoreId, parameter.value);
+      }
+      return runQuery(client, request, options);
+    },
   };
 }

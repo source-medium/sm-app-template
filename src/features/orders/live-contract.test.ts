@@ -86,3 +86,43 @@ describe("orders, live", () => {
     expect(submit.query).toContain("order_processed_at_local_datetime = @processed_at");
   });
 });
+
+// Exercise direct calls as well as pages: middleware cannot be the store boundary.
+it("refuses another store in dispatch and live loaders before any warehouse call", async () => {
+  const fake = await goLive({ submit: () => rowsResponse([], []) });
+  vi.stubEnv("APP_STORE_ID", "allowed-store");
+  const { getOrders } = await import("./queries");
+  const { queryOrders } = await import("./bigquery");
+  await expect(getOrders(FILTERS)).rejects.toThrow("This store is not available");
+  await expect(queryOrders(FILTERS)).rejects.toThrow("This store is not available");
+  expect(fake.calls).toHaveLength(0);
+});
+
+it("denies direct order-detail lookups for another store", async () => {
+  const fake = await goLive({ submit: () => rowsResponse([], []) });
+  vi.stubEnv("APP_STORE_ID", "allowed-store");
+  const { getOrderDetail } = await import("./queries");
+  const { queryOrderDetail } = await import("./bigquery");
+  const ref = { processedLocal: "2026-10-01T12:00:00", key: "another-store-order" };
+  await expect(getOrderDetail("store-1", ref)).rejects.toThrow("This store is not available");
+  await expect(queryOrderDetail("store-1", ref)).rejects.toThrow("This store is not available");
+  expect(fake.calls).toHaveLength(0);
+});
+
+it("allows the fixed store and keeps every SQL read scoped to it", async () => {
+  const fake = await goLive({ submit: () => rowsResponse([], []) });
+  vi.stubEnv("APP_STORE_ID", FILTERS.storeId);
+  const { getOrders } = await import("./queries");
+  await getOrders(FILTERS);
+  const queries = fake.calls.filter((call) => call.kind === "submit");
+  expect(queries.length).toBeGreaterThan(0);
+  for (const call of queries) {
+    const body = call.body as { query: string; queryParameters: unknown[] };
+    expect(body.query).toContain("sm_store_id = @store_id");
+    expect(body.queryParameters).toContainEqual({
+      name: "store_id",
+      parameterType: { type: "STRING" },
+      parameterValue: { value: FILTERS.storeId },
+    });
+  }
+});

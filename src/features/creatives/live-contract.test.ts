@@ -82,3 +82,32 @@ describe("creatives, live", () => {
     expect(data.truncated).toBe(true);
   });
 });
+
+// Exercise direct calls as well as pages: middleware cannot be the store boundary.
+it("refuses another store in dispatch and live loaders before any warehouse call", async () => {
+  const fake = await goLive({ submit: () => rowsResponse([], []) });
+  vi.stubEnv("APP_STORE_ID", "allowed-store");
+  const { getCreatives } = await import("./queries");
+  const { queryCreatives } = await import("./bigquery");
+  await expect(getCreatives({ ...FILTERS, sort: "spend" })).rejects.toThrow("This store is not available");
+  await expect(queryCreatives({ ...FILTERS, sort: "spend" })).rejects.toThrow("This store is not available");
+  expect(fake.calls).toHaveLength(0);
+});
+
+it("allows the fixed store and keeps every SQL read scoped to it", async () => {
+  const fake = await goLive({ submit: () => rowsResponse([], []) });
+  vi.stubEnv("APP_STORE_ID", FILTERS.storeId);
+  const { getCreatives } = await import("./queries");
+  await getCreatives({ ...FILTERS, sort: "spend" });
+  const queries = fake.calls.filter((call) => call.kind === "submit");
+  expect(queries.length).toBeGreaterThan(0);
+  for (const call of queries) {
+    const body = call.body as { query: string; queryParameters: unknown[] };
+    expect(body.query).toContain("sm_store_id = @store_id");
+    expect(body.queryParameters).toContainEqual({
+      name: "store_id",
+      parameterType: { type: "STRING" },
+      parameterValue: { value: FILTERS.storeId },
+    });
+  }
+});

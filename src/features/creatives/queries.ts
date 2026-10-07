@@ -34,6 +34,6 @@ export type CreativesFilters = ReportFilters & { sort: CreativeSort };
 export type CreativesData = { creatives: Creative[]; truncated: boolean };
 
 export async function getCreatives(filters: CreativesFilters): Promise<CreativesData> {
-  const access = await requireViewer();
+  const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live" ? queryCreatives(filters) : sampleCreatives(filters);
 }

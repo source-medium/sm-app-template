@@ -15,7 +15,7 @@ import { OVERVIEW_RELATION, OverviewRow, toOverviewData } from "./rows";
 const MAX_ROWS = 100;
 
 export async function queryOverview(filters: ReportFilters): Promise<OverviewData> {
-  const { warehouse } = await requireViewer({ live: true });
+  const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "overview_daily",
     maxRows: MAX_ROWS,

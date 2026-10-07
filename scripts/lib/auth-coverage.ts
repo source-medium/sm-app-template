@@ -30,6 +30,17 @@ const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "
 
 export type SourceFile = { path: string; text: string };
 
+/** Store scope may read a loader parameter, but may not call a helper before authentication. */
+function isStoreArgument(expression: ts.Expression, fn: ts.FunctionLikeDeclaration): boolean {
+  const root =
+    ts.isPropertyAccessExpression(expression) && expression.name.text === "storeId"
+      ? expression.expression
+      : expression;
+  return (
+    ts.isIdentifier(root) && fn.parameters.some((param) => ts.isIdentifier(param.name) && param.name.text === root.text)
+  );
+}
+
 /** A guard must be the first executable statement, awaited directly and imported
  * from the canonical module. TypeScript resolves its binding, so a parameter or
  * local function with the same name cannot count as authentication. */
@@ -52,12 +63,13 @@ function startsWithGuard(fn: ts.FunctionLikeDeclaration, checker: ts.TypeChecker
   if (
     argument &&
     (!ts.isObjectLiteralExpression(argument) ||
-      argument.properties.some(
-        (property) =>
-          !ts.isPropertyAssignment(property) ||
-          property.name.getText() !== "live" ||
-          property.initializer.kind !== ts.SyntaxKind.TrueKeyword,
-      ))
+      argument.properties.some((property) => {
+        if (ts.isShorthandPropertyAssignment(property))
+          return property.name.text !== "storeId" || !isStoreArgument(property.name, fn);
+        if (!ts.isPropertyAssignment(property)) return true;
+        if (property.name.getText() === "live") return property.initializer.kind !== ts.SyntaxKind.TrueKeyword;
+        return property.name.getText() !== "storeId" || !isStoreArgument(property.initializer, fn);
+      }))
   )
     return false;
   const binding = checker.getSymbolAtLocation(call.expression)?.declarations?.[0];

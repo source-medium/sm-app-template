@@ -1,9 +1,42 @@
 # Who can see the app
 
-Every viewer sees everything the app can read. Both shipped options decide
-**who may open the app**; neither limits **which data** a viewer sees. A
-customer-facing portal, or anything where viewers must see different data,
-needs a separate authorization design that this starter does not provide.
+Every viewer of a deployment sees the same data. Both shipped viewer guards decide
+**who may open the app**. Set `APP_STORE_ID` to limit a deployment to one store;
+leave it empty or unset to allow all stores in the configured warehouse. A
+deployment where individual viewers must see different data needs a separate
+authorization design that this starter does not provide.
+
+## One deployment per store
+
+For a few stores with different audiences, deploy the same code separately
+for each store. Set the optional runtime variable `APP_STORE_ID` to its exact
+`sm_store_id`, and give that deployment its own viewer guard:
+
+- With Cloudflare Access, create a separate application and audience (AUD) for
+  each deployment, and allow only that store's viewers. Cover every hostname
+  as described below.
+- With a shared password, use a different password for each deployment.
+
+Set the restriction before sharing the URL. The store selector is locked to
+that store, and reports, period comparisons, order details, and CSV downloads
+use it. A request with a different `?store=` gets HTTP 403. Omitting the
+parameter uses the configured store. Invalid configuration gets HTTP 503;
+an unknown store never falls back to another store. `pnpm diagnose` checks
+that the configured store has rows in the roster.
+
+Your internal deployment can leave `APP_STORE_ID` unset and keep switching
+between stores. Anyone admitted there can see all its stores, so keep its
+viewer policy separate from the restricted deployments. Each deployment needs
+updates when the shared code changes; no per-viewer permission database is involved.
+
+This restriction is enforced by the app, and does not narrow the underlying
+service-account grants. Only trusted maintainers should hold the app key or
+change the code/configuration. New data queries must keep the store predicate
+described in [data.md](data.md#store-scope).
+
+To widen access deliberately, remove `APP_STORE_ID` and redeploy. Before
+sharing a restricted deployment, test an allowed request and an authenticated
+request with another store id, including a CSV URL. The latter must return 403.
 
 Live data always needs exactly one viewer guard, even on localhost. With no
 live values, a guard is optional: it protects the sample preview.

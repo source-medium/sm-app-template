@@ -53,8 +53,8 @@ export type GuardConfig =
 export type ConfigProblem = { variable: string; message: string };
 
 export type AppConfig =
-  | { status: "ok"; mode: "sample"; guard: GuardConfig | null }
-  | { status: "ok"; mode: "live"; guard: GuardConfig; live: LiveConfig }
+  | { status: "ok"; mode: "sample"; guard: GuardConfig | null; storeId: string | null }
+  | { status: "ok"; mode: "live"; guard: GuardConfig; live: LiveConfig; storeId: string | null }
   | { status: "error"; problems: ConfigProblem[] };
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -87,9 +87,10 @@ export function parseConfig(env: Env): AppConfig {
   const guardProblems = problems.length;
   const present = LIVE_VARIABLES.filter((name) => read(env, name) !== undefined);
   const maxBytesBilled = parseMaxBytesBilled(env, problems);
+  const storeId = parseStoreId(env, problems);
 
   if (present.length === 0) {
-    return problems.length > 0 ? { status: "error", problems } : { status: "ok", mode: "sample", guard };
+    return problems.length > 0 ? { status: "error", problems } : { status: "ok", mode: "sample", guard, storeId };
   }
 
   if (present.length < LIVE_VARIABLES.length) {
@@ -113,7 +114,21 @@ export function parseConfig(env: Env): AppConfig {
     });
   }
   if (problems.length > 0 || !live || !guard) return { status: "error", problems };
-  return { status: "ok", mode: "live", guard, live };
+  return { status: "ok", mode: "live", guard, live, storeId };
+}
+
+function parseStoreId(env: Env, problems: ConfigProblem[]): string | null {
+  const value = env.APP_STORE_ID;
+  if (value === undefined || value === "") return null;
+  if (value.length > 200 || value.trim() !== value || /\p{Cc}/u.test(value)) {
+    problems.push({
+      variable: "APP_STORE_ID",
+      message:
+        "APP_STORE_ID must be one exact store id, at most 200 characters, without surrounding whitespace or control characters; see docs/auth.md.",
+    });
+    return null;
+  }
+  return value;
 }
 
 function parseGuard(env: Env, problems: ConfigProblem[]): GuardConfig | null {
@@ -271,5 +286,5 @@ export function describeConfig(config: AppConfig): string {
     : config.guard.kind === "basic"
       ? "protected by shared password"
       : "protected by Cloudflare Access";
-  return `${data}, ${guard}`;
+  return `${data}, ${guard}${config.storeId !== null ? ", restricted to one store" : ""}`;
 }

@@ -2,7 +2,7 @@
 
 This is a customer-owned Next.js app that reads a SourceMedium BigQuery
 warehouse on the server and shows it to a small group of trusted viewers.
-Every viewer sees everything the app can read; there is no per-viewer data.
+Every viewer sees the same data; optional runtime `APP_STORE_ID` restricts a deployment to one store.
 Without configuration it runs on clearly labeled sample data.
 
 Make the first useful SourceMedium data app easy. Prefer the existing defaults
@@ -48,9 +48,9 @@ docs/                         Guides (index below)
 
 1. **Call `requireViewer()` in every data function.** Every exported async
    function in `bigquery.ts` and `queries.ts`, every route handler, and every
-   server action starts with `await requireViewer()`. The warehouse comes only
-   from `await requireViewer({ live: true })`; never import
-   `lib/data/warehouse.server.ts`. `pnpm check` enforces both.
+   server action starts with `await requireViewer()`. Store loaders pass
+   `{ storeId: filters.storeId }`; live loaders also pass `live: true`. Never import
+   `lib/data/warehouse.server.ts`. `pnpm check` enforces guard calls and warehouse imports.
 2. **Format dates and numbers on the server** with `src/lib/format.ts`, and pass
    strings to client components. Locale formatting anywhere else in `src`, or
    importing `format.ts` into a `"use client"` file, fails lint, because server
@@ -89,6 +89,7 @@ detail drawer). See `docs/removing-the-example.md` to delete any of them.
 
 - SQL is written by developers, never built from browser input. Browser input
   becomes typed named parameters (`@store_id`), or picks from a fixed map in code.
+- Keep `sm_store_id = @store_id` on every data source read; see `docs/data.md#store-scope`.
 - Fully qualified names come from `warehouse.table("<relation>")`; your own
   datasets in the warehouse project: `warehouse.table("customized_views.my_table")`.
 - Aggregate in SQL. Every query has `maxRows`; check `result.truncated`. Totals

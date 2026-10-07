@@ -20,7 +20,7 @@ function problemsOf(config: AppConfig): string[] {
 
 describe("configuration matrix", () => {
   it("no live values and no guard is a public sample", () => {
-    expect(parseConfig({})).toEqual({ status: "ok", mode: "sample", guard: null });
+    expect(parseConfig({})).toEqual({ status: "ok", mode: "sample", guard: null, storeId: null });
   });
 
   it("no live values and the Basic guard is a protected sample", () => {
@@ -63,7 +63,36 @@ describe("configuration matrix", () => {
 
   it("whitespace-only counts as missing", () => {
     expect(problemsOf(parseConfig(liveEnv(key, { SM_DATA_PROJECT_ID: "   " })))).toEqual(["SM_DATA_PROJECT_ID"]);
-    expect(parseConfig({ APP_BASIC_AUTH: " \t " })).toEqual({ status: "ok", mode: "sample", guard: null });
+    expect(parseConfig({ APP_BASIC_AUTH: " \t " })).toEqual({
+      status: "ok",
+      mode: "sample",
+      guard: null,
+      storeId: null,
+    });
+  });
+
+  it("supports one exact store in sample and live modes; an empty setting preserves all-store access", () => {
+    const storeId = "store #1 & 50% / Montréal";
+    expect(parseConfig({ APP_STORE_ID: storeId })).toMatchObject({ status: "ok", mode: "sample", storeId });
+    expect(parseConfig(liveEnv(key, { APP_STORE_ID: storeId }))).toMatchObject({ status: "ok", mode: "live", storeId });
+    expect(parseConfig({ APP_STORE_ID: "" })).toMatchObject({ status: "ok", storeId: null });
+  });
+
+  it.each([
+    " ",
+    " private-scope-canary",
+    "private-scope-canary ",
+    "private\nstore",
+    "private\u0000store",
+    "x".repeat(201),
+  ])("fails closed on malformed store scope without echoing it", (storeId) => {
+    for (const env of [{ APP_STORE_ID: storeId }, liveEnv(key, { APP_STORE_ID: storeId })]) {
+      const config = parseConfig(env);
+      expect(problemsOf(config)).toContain("APP_STORE_ID");
+      if (config.status !== "error") throw new Error("Expected configuration error");
+      if (storeId.trim().length > 1)
+        expect(config.problems.map((problem) => problem.message).join(" ")).not.toContain(storeId);
+    }
   });
 
   it("dropping only the deployed key fails closed instead of falling back to sample", () => {

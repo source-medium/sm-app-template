@@ -49,9 +49,9 @@ APP_BASIC_AUTH=…
 viewer password) are secrets. Treat the block like a password: keep it out of
 chat, email, tickets, and git.
 
-The credential can read everything the app's grants allow, and every viewer of
-the app sees whatever the app can read. Share the app only with people who may
-see all of it.
+The credential can read everything the app's grants allow. Every viewer of a
+deployment sees the same data. For separate store audiences, set `APP_STORE_ID`
+before sharing each deployment; see [one deployment per store](auth.md#one-deployment-per-store).
 
 ## 3. Go live locally
 
@@ -87,6 +87,9 @@ deployment and secret retention have been tested.
   on a deployed Worker (Cloudflare's per-request CPU time, with sample and
   live data, 2026-10-05), far above the Free plan's 10 ms per request.
 - Values are runtime secrets, never build variables. The build needs none.
+- Optional `APP_STORE_ID` restricts the deployment to one exact store id.
+  Set it alongside the runtime configuration before giving anyone the URL.
+  Leave it empty or unset for an internal app that can switch stores.
 - Later deploys keep the secrets you entered; nothing in `wrangler.jsonc`
   overwrites them.
 - `workers.dev` stays on so you have a URL; the password protects it. Preview

@@ -83,6 +83,32 @@ const modes: { name: string; env: string; checks: [string, RequestInit, number, 
   },
 ];
 
+const signedIn = { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` };
+const fixedStoreMode: (typeof modes)[number] = {
+  name: "fixed-store sample",
+  env: `APP_BASIC_AUTH=viewer:${PASSWORD}\nAPP_STORE_ID=sample-store-b\n`,
+  checks: [
+    [FIRST, {}, 401],
+    [FIRST, { headers: signedIn }, 200, "Sample data"],
+    [`${FIRST}?store=sample-store-b`, { headers: signedIn }, 200, "Sample data"],
+    [`${FIRST}?store=sample-store-a`, { headers: signedIn }, 403, "This store is not available"],
+    [`${FIRST}?store=sample-store-b&store=sample-store-a`, { headers: signedIn }, 403],
+    [`${FIRST}?store=sample-store-a`, { headers: { ...signedIn, RSC: "1", "Next-Router-Prefetch": "1" } }, 403],
+    [`${FIRST}?store=sample-store-a`, { method: "POST", headers: { ...signedIn, "Next-Action": "x" } }, 403],
+    [
+      `${FIRST}?store=sample-store-a`,
+      { headers: { ...signedIn, "x-middleware-subrequest": "middleware:middleware:middleware:middleware:middleware" } },
+      403,
+    ],
+    ["/paid-marketing/export?store=sample-store-a", { headers: signedIn }, 403],
+  ],
+};
+modes.push(fixedStoreMode, {
+  name: "invalid store restriction",
+  env: 'APP_STORE_ID=" invalid-store"\n',
+  checks: [[FIRST, {}, 503, "APP_STORE_ID"]],
+});
+
 // The export belongs to the removable Paid marketing example.
 if (appConfig.nav.some((item) => item.href === "/paid-marketing")) {
   const download = "/paid-marketing/export?store=sample-store-a&from=2026-09-01&to=2026-09-07&channel=Meta";
@@ -92,6 +118,12 @@ if (appConfig.nav.some((item) => item.href === "/paid-marketing")) {
     { headers: { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` } },
     200,
     '"sample","sample-store-a"',
+  ]);
+  fixedStoreMode.checks.push([
+    "/paid-marketing/export?from=2026-09-01&to=2026-09-07&channel=Meta",
+    { headers: signedIn },
+    200,
+    '"sample","sample-store-b"',
   ]);
 }
 

@@ -45,9 +45,25 @@ explicitly; do not present the ratio as valid-order AOV without reconciling the
 definitions, dates and store. The demo discrepancy remains a release check in
 [release readiness](release-readiness.md).
 
-Every query filters one store with `sm_store_id = @store_id`. There are no
+## Store scope
+
+Every data query filters one store with `sm_store_id = @store_id`. There are no
 cross-store totals. The store picker lists the distinct `sm_store_id` values of
 `rpt_executive_summary_daily` (at most 50); name them in `app.config.ts`.
+
+Set runtime `APP_STORE_ID` to restrict one deployment to that store. The roster
+query is filtered in SQL, so unrelated stores neither appear nor consume its
+50-store limit. Empty or unset preserves the multi-store app.
+
+Store data functions start with `await requireViewer({ storeId: filters.storeId })`;
+live functions use `{ live: true, storeId: filters.storeId }`. For a function
+receiving the id directly, use `{ storeId }`. This also protects sample reads.
+The scoped warehouse additionally refuses queries without exactly one matching
+STRING `store_id` parameter before making a network call. Keep the corresponding
+`sm_store_id = @store_id` SQL predicate on every source read; the guard checks
+the parameter, not arbitrary SQL semantics. Review joins and subqueries when
+extending the app. Store-free custom data needs a deliberate authorization
+design before exposing it from a restricted deployment.
 
 Orders are listed by `order_processed_at_local_datetime`, the column
 SourceMedium partitions `obt_orders` on, so a date range reads only the months
@@ -56,7 +72,7 @@ it covers. Filter large tables on their partition column whenever you can.
 ## Writing a query
 
 ```ts
-const { warehouse } = await requireViewer({ live: true });
+const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
 const result = await warehouse.query({
   name: "top_products", // becomes the sm_query job label
   maxRows: 200,

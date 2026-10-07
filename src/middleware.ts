@@ -11,6 +11,7 @@ import { authenticateRequest } from "@/lib/auth/authenticate";
 import { basicChallengeHeaders } from "@/lib/auth/basic";
 import { readConfig } from "@/lib/config/env.server";
 import { SECURITY_HEADERS } from "@/lib/security-headers";
+import { assertStoreAccess, StoreAccessError } from "@/lib/auth/store-access";
 
 export async function middleware(request: NextRequest) {
   const config = readConfig();
@@ -29,7 +30,22 @@ export async function middleware(request: NextRequest) {
   }
 
   const result = await authenticateRequest(config.guard, request.headers);
-  if (result.ok) return NextResponse.next();
+  if (result.ok) {
+    try {
+      for (const storeId of request.nextUrl.searchParams.getAll("store")) assertStoreAccess(config.storeId, storeId);
+    } catch (error) {
+      if (!(error instanceof StoreAccessError)) throw error;
+      return new NextResponse(`${error.message}\n`, {
+        status: 403,
+        headers: {
+          ...SECURITY_HEADERS,
+          "Cache-Control": "private, no-store",
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      });
+    }
+    return NextResponse.next();
+  }
 
   if (result.guard === "basic") {
     return new NextResponse("Sign in to view this app.\n", {

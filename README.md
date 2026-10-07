@@ -70,6 +70,8 @@ does not include. See [docs/auth.md](docs/auth.md).
   stay on the server and the shared password protects every view.
 - **Copy a view:** each feature owns its query, row schema, sample data and UI.
   The same store and date filters work across views and stay in the URL.
+- **Separate store audiences:** optional `APP_STORE_ID` locks a deployment to
+  one store. Give it its own URL and viewer guard; see [the setup](docs/auth.md#one-deployment-per-store).
 - **Keep data trustworthy:** typed SQL parameters, exact money values, bounded
   queries and clear errors are built in.
 - **Make it yours:** edit `app.config.ts` and `src/styles/tokens.css` to rebrand;

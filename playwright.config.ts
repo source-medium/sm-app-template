@@ -22,6 +22,7 @@ const APP_VARIABLES = [
   "SM_TRANSFORMED_DATASET_ID",
   "SM_METADATA_DATASET_ID",
   "APP_BASIC_AUTH",
+  "APP_STORE_ID",
   "CF_ACCESS_TEAM_DOMAIN",
   "CF_ACCESS_AUD",
   "BIGQUERY_MAX_BYTES_BILLED",
@@ -69,6 +70,15 @@ export default defineConfig({
           testMatch: /protected\.spec\.ts/,
           use: { ...devices["Desktop Chrome"], baseURL: "http://127.0.0.1:3106" },
         },
+        {
+          name: "fixed-store",
+          testMatch: /e2e\/fixed-store\.spec\.ts/,
+          use: {
+            ...devices["Desktop Chrome"],
+            baseURL: "http://127.0.0.1:3109",
+            httpCredentials: { username: "viewer", password: PASSWORD },
+          },
+        },
       ],
   webServer: live
     ? [
@@ -90,6 +100,12 @@ export default defineConfig({
           url: "http://127.0.0.1:3106/healthz",
           reuseExistingServer: false,
           env: { ...cleared, APP_BASIC_AUTH: `viewer:${PASSWORD}` },
+        },
+        {
+          command: "pnpm exec next start --hostname 127.0.0.1 --port 3109",
+          url: "http://127.0.0.1:3109/healthz",
+          reuseExistingServer: false,
+          env: { ...cleared, APP_BASIC_AUTH: `viewer:${PASSWORD}`, APP_STORE_ID: "sample-store-b" },
         },
       ],
 });

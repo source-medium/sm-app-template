@@ -17,7 +17,7 @@ const ORDER_BY: Record<CreativeSort, string> = {
 };
 
 export async function queryCreatives(filters: CreativesFilters): Promise<CreativesData> {
-  const { warehouse } = await requireViewer({ live: true });
+  const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "creatives",
     maxRows: MAX_CREATIVES,

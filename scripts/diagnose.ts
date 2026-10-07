@@ -46,7 +46,7 @@ function mib(bytes: bigint): string {
   return `${(Number(bytes) / 1024 / 1024).toFixed(1)} MiB`;
 }
 
-async function checkWarehouse(live: LiveConfig): Promise<boolean> {
+async function checkWarehouse(live: LiveConfig, storeId: string | null): Promise<boolean> {
   setLogEmitter(() => undefined);
   const client = bigQueryClientFor(live);
   const warehouse = warehouseFor(live);
@@ -99,7 +99,7 @@ async function checkWarehouse(live: LiveConfig): Promise<boolean> {
     return false;
   }
 
-  const example = storeRosterQuery(warehouse);
+  const example = storeRosterQuery(warehouse, storeId);
   const dry = await step(
     () => dryRunQuery(client, example),
     ({ bytesProcessed }) => `Example query would scan ${mib(bytesProcessed)} (ceiling ${mib(live.maxBytesBilled)})`,
@@ -113,13 +113,17 @@ async function checkWarehouse(live: LiveConfig): Promise<boolean> {
   }
 
   const stores = await step(
-    () => queryStoreRoster(warehouse),
+    () => queryStoreRoster(warehouse, storeId),
     (ids) => `Example query ran: ${ids.length} store${ids.length === 1 ? "" : "s"} with data`,
   );
   if (!stores) return false;
   const [firstStore] = stores;
   if (!firstStore) {
-    fail(`${ROSTER_RELATION} has no stores yet; the views will show "No data" until SourceMedium publishes rows.`);
+    fail(
+      storeId !== null
+        ? "APP_STORE_ID has no matching rows in the store roster; verify the exact store id and that SourceMedium has published data."
+        : `${ROSTER_RELATION} has no stores yet; the views will show "No data" until SourceMedium publishes rows.`,
+    );
     return false;
   }
 
@@ -163,7 +167,7 @@ async function main(): Promise<void> {
     );
     return;
   }
-  const healthy = await checkWarehouse(config.live);
+  const healthy = await checkWarehouse(config.live, config.storeId);
   console.log(healthy ? "All checks passed." : "Some checks failed; see docs/operations.md for remedies.");
   if (!healthy) process.exit(1);
 }

@@ -154,6 +154,38 @@ describe("auth-coverage", () => {
     ).toEqual([]);
   });
 
+  it("accepts store scope from loader parameters without allowing work before the guard", () => {
+    for (const [parameter, argument] of [
+      ["filters", "storeId: filters.storeId"],
+      ["storeId", "storeId"],
+    ]) {
+      expect(
+        findAuthGaps([
+          {
+            path: "src/features/x/bigquery.ts",
+            text: `import { requireViewer } from "@/lib/auth/require-viewer"; export async function load(${parameter}) { await requireViewer({ live: true, ${argument} }); }`,
+          },
+        ]),
+      ).toEqual([]);
+    }
+    for (const argument of [
+      "storeId: lookup()",
+      "storeId: await rows()",
+      "...options",
+      'storeId: "hard-coded"',
+      "storeId: globalScope.storeId",
+    ]) {
+      expect(
+        findAuthGaps([
+          {
+            path: "src/features/x/bigquery.ts",
+            text: `import { requireViewer } from "@/lib/auth/require-viewer"; export async function load(filters) { await requireViewer({ ${argument} }); }`,
+          },
+        ]),
+      ).toHaveLength(1);
+    }
+  });
+
   it.each([
     "const guard = () => requireViewer(); return 1;",
     "await requireViewer().catch(() => null); return 1;",

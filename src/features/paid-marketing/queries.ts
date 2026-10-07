@@ -57,11 +57,11 @@ export function campaignRatios(row: CampaignRow) {
 }
 
 export async function getPaidMarketing(filters: PaidMarketingFilters): Promise<PaidMarketingData> {
-  const access = await requireViewer();
+  const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live" ? queryPaidMarketing(filters) : samplePaidMarketing(filters);
 }
 
 export async function getPaidCampaigns(filters: PaidMarketingFilters): Promise<CampaignData> {
-  const access = await requireViewer();
+  const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live" ? queryPaidCampaigns(filters) : samplePaidMarketing(filters);
 }

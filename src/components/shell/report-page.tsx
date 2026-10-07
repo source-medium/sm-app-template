@@ -42,6 +42,7 @@ type FilterBarProps = {
   preserve: string[];
   dates: boolean;
   comparison?: Comparison;
+  fixedStore: boolean;
 };
 
 export async function ReportPage({
@@ -67,6 +68,9 @@ export async function ReportPage({
   children: (context: ReportContext) => React.ReactNode;
 }) {
   const access = await requireViewer();
+  const suppliedStore = single(params, "store");
+  if (suppliedStore !== undefined) await requireViewer({ storeId: suppliedStore });
+  const requested = (suppliedStore ?? access.storeId)?.slice(0, 200);
   const now = new Date();
   const range = parseDateRange(params, now);
   const comparison = comparisons && dates ? parseComparison(params, range) : undefined;
@@ -74,7 +78,16 @@ export async function ReportPage({
   const roster = loadStores();
   // Handled where it is awaited; this keeps an early failure from being reported as unhandled.
   roster.catch(() => undefined);
-  const barProps: FilterBarProps = { pathname, params, range, now, preserve, dates, comparison };
+  const barProps: FilterBarProps = {
+    pathname,
+    params,
+    range,
+    now,
+    preserve,
+    dates,
+    comparison,
+    fixedStore: access.storeId !== null,
+  };
 
   function header(storeId?: string) {
     const shareHref = storeId ? withParams(pathname, params, { store: storeId, ...(dates ? range : {}) }) : null;
@@ -102,7 +115,6 @@ export async function ReportPage({
     </footer>
   );
 
-  const requested = single(params, "store")?.slice(0, 200);
   if (requested) {
     return (
       <div className="flex flex-col gap-6">
@@ -167,7 +179,11 @@ async function RosterFilterBar({
     <div className="flex flex-col gap-3">
       <ErrorState
         title="That store is not in this warehouse"
-        remedy="The link names a store this app cannot find. Choose a store below."
+        remedy={
+          props.fixedStore
+            ? "The configured store is unavailable. Ask the app owner to check APP_STORE_ID and run pnpm diagnose."
+            : "The link names a store this app cannot find. Choose a store below."
+        }
       />
       {stores[0] && <StoreFilterBar stores={stores} storeId={storeId} {...props} />}
     </div>
@@ -184,6 +200,7 @@ function StoreFilterBar({
   preserve,
   dates,
   comparison,
+  fixedStore,
 }: FilterBarProps & { stores: StoreOption[]; storeId: string }) {
   const presets = datePresets(now).map(({ label, range: preset }) => {
     return {
@@ -210,6 +227,7 @@ function StoreFilterBar({
       preserved={preserved}
       dates={dates}
       comparison={comparison?.mode}
+      fixedStore={fixedStore}
     />
   );
 }

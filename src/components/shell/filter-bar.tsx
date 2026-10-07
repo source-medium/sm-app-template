@@ -28,6 +28,7 @@ export function FilterBar({
   preserved,
   dates = true,
   comparison,
+  fixedStore = false,
 }: {
   pathname: string;
   stores: { id: string; label: string }[];
@@ -42,6 +43,7 @@ export function FilterBar({
   dates?: boolean;
   /** Only reports that implement comparisons show this control. */
   comparison?: ComparisonMode;
+  fixedStore?: boolean;
 }) {
   const id = useId();
   return (
@@ -56,6 +58,7 @@ export function FilterBar({
           <input key={name} type="hidden" name={name} value={value} />
         ))}
       <div className="col-span-full flex min-w-0 flex-col gap-1.5 sm:w-48">
+        {fixedStore && <input type="hidden" name="store" value={storeId} />}
         <label htmlFor={`${id}-store`} className="text-xs font-medium text-muted-foreground">
           Store
         </label>
@@ -63,6 +66,7 @@ export function FilterBar({
           id={`${id}-store`}
           name="store"
           defaultValue={storeId}
+          disabled={fixedStore}
           onChange={(event) => event.currentTarget.form?.requestSubmit()}
         >
           {!stores.some((store) => store.id === storeId) && <option value={storeId}>Choose a store</option>}

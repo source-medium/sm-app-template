@@ -33,6 +33,7 @@ const cleared = Object.fromEntries(
     "SM_TRANSFORMED_DATASET_ID",
     "SM_METADATA_DATASET_ID",
     "APP_BASIC_AUTH",
+    "APP_STORE_ID",
     "CF_ACCESS_TEAM_DOMAIN",
     "CF_ACCESS_AUD",
     "BIGQUERY_MAX_BYTES_BILLED",

@@ -13,7 +13,10 @@ export type StoreOption = { id: string; label: string };
 
 export const loadStores = cache(async (): Promise<StoreOption[]> => {
   const access = await requireViewer();
-  if (access.mode === "sample") return SAMPLE_STORES.map((store) => ({ ...store }));
-  const ids = await queryStoreRoster(access.warehouse);
+  if (access.mode === "sample")
+    return SAMPLE_STORES.filter((store) => access.storeId === null || store.id === access.storeId).map((store) => ({
+      ...store,
+    }));
+  const ids = await queryStoreRoster(access.warehouse, access.storeId);
   return ids.map((id) => ({ id, label: appConfig.storeLabels[id] ?? id }));
 });

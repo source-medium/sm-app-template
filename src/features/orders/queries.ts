@@ -64,13 +64,13 @@ export type OrdersFilters = ReportFilters & { search: string | null; cursor: Ord
 export type OrdersPage = { orders: OrderSummary[]; nextCursor: OrderRef | null };
 
 export async function getOrders(filters: OrdersFilters): Promise<OrdersPage> {
-  const access = await requireViewer();
+  const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live" ? queryOrders(filters) : sampleOrders(filters);
 }
 
 /** One order by key and processed time; the time lets BigQuery prune to one partition. */
 export async function getOrderDetail(storeId: string, ref: OrderRef): Promise<OrderDetail | null> {
-  const access = await requireViewer();
+  const access = await requireViewer({ storeId });
   return access.mode === "live" ? queryOrderDetail(storeId, ref) : sampleOrderDetail(storeId, ref);
 }
 

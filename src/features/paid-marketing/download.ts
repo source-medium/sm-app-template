@@ -1,5 +1,6 @@
 import { appConfig } from "@/app.config";
 import { requireViewer } from "@/lib/auth/require-viewer";
+import { StoreAccessError } from "@/lib/auth/store-access";
 import { csvResponse } from "@/lib/csv.server";
 import { loadStores } from "@/lib/data/stores.server";
 import { WarehouseError } from "@/lib/data/warehouse-error";
@@ -13,7 +14,9 @@ export async function GET(request: Request): Promise<Response> {
   for (const [key, value] of new URL(request.url).searchParams) if (params[key] === undefined) params[key] = value;
   const range = parseDateRange(params, new Date());
   try {
-    const storeId = single(params, "store")?.slice(0, 200) || (await loadStores())[0]?.id;
+    const suppliedStore = single(params, "store");
+    if (suppliedStore !== undefined) await requireViewer({ storeId: suppliedStore });
+    const storeId = suppliedStore?.slice(0, 200) || access.storeId || (await loadStores())[0]?.id;
     if (!storeId)
       return Response.json(
         { title: "No store selected" },
@@ -45,6 +48,11 @@ export async function GET(request: Request): Promise<Response> {
       rows,
     );
   } catch (error) {
+    if (error instanceof StoreAccessError)
+      return Response.json(
+        { title: error.message },
+        { status: 403, headers: { "Cache-Control": "private, no-store" } },
+      );
     if (!(error instanceof WarehouseError)) throw error;
     return Response.json(
       { title: error.title, remedy: error.remedy },

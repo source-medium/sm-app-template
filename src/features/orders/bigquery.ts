@@ -19,7 +19,7 @@ import {
 } from "./rows";
 
 export async function queryOrders(filters: OrdersFilters): Promise<OrdersPage> {
-  const { warehouse } = await requireViewer({ live: true });
+  const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const params: QueryParameter[] = [
     { name: "store_id", type: "STRING", value: filters.storeId },
     { name: "start_date", type: "DATE", value: filters.range.from },
@@ -68,7 +68,7 @@ export async function queryOrders(filters: OrdersFilters): Promise<OrdersPage> {
 }
 
 export async function queryOrderDetail(storeId: string, ref: OrderRef): Promise<OrderDetail | null> {
-  const { warehouse } = await requireViewer({ live: true });
+  const { warehouse } = await requireViewer({ live: true, storeId });
   const result = await warehouse.query({
     name: "order_detail",
     maxRows: 1,

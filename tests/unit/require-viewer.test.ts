@@ -27,7 +27,25 @@ const basic = (password: string) => new Headers({ authorization: `Basic ${btoa(`
 describe("requireViewer", () => {
   it("serves public sample data when nothing is configured", async () => {
     const { requireViewer } = await import("@/lib/auth/require-viewer");
-    await expect(requireViewer()).resolves.toEqual({ mode: "sample", viewer: { kind: "public" } });
+    await expect(requireViewer()).resolves.toEqual({ mode: "sample", viewer: { kind: "public" }, storeId: null });
+  });
+
+  it("restricts sample loaders too, and re-reads store scope across requests", async () => {
+    const { requireViewer } = await import("@/lib/auth/require-viewer");
+    vi.stubEnv("APP_STORE_ID", "sample-store-b");
+    await expect(requireViewer({ storeId: "sample-store-a" })).rejects.toThrow("This store is not available");
+    await expect(requireViewer({ storeId: "sample-store-b" })).resolves.toMatchObject({ storeId: "sample-store-b" });
+    vi.stubEnv("APP_STORE_ID", "sample-store-a");
+    await expect(requireViewer({ storeId: "sample-store-b" })).rejects.toThrow("This store is not available");
+    await expect(requireViewer({ storeId: "sample-store-a" })).resolves.toMatchObject({ storeId: "sample-store-a" });
+  });
+
+  it("limits the sample roster and never falls back when the configured store is absent", async () => {
+    const { loadStores } = await import("@/lib/data/stores.server");
+    vi.stubEnv("APP_STORE_ID", "sample-store-b");
+    expect((await loadStores()).map((store) => store.id)).toEqual(["sample-store-b"]);
+    vi.stubEnv("APP_STORE_ID", "unknown-store");
+    await expect(loadStores()).resolves.toEqual([]);
   });
 
   it("returns a warehouse only for an authenticated live request", async () => {

@@ -16,11 +16,12 @@ import { readConfig, type ConfigProblem } from "@/lib/config/env.server";
 import { logEvent } from "@/lib/data/log";
 import { warehouseFor, type Warehouse } from "@/lib/data/warehouse.server";
 import { authenticateRequest, type Viewer } from "./authenticate";
+import { assertStoreAccess } from "./store-access";
 
 export type { Viewer } from "./authenticate";
 
-export type SampleAccess = { mode: "sample"; viewer: Viewer };
-export type LiveAccess = { mode: "live"; viewer: Viewer; warehouse: Warehouse };
+export type SampleAccess = { mode: "sample"; viewer: Viewer; storeId: string | null };
+export type LiveAccess = { mode: "live"; viewer: Viewer; storeId: string | null; warehouse: Warehouse };
 export type ViewerAccess = SampleAccess | LiveAccess;
 
 export class ConfigurationError extends Error {
@@ -50,14 +51,20 @@ const resolveViewer = cache(async (): Promise<ViewerAccess> => {
     throw new ViewerDeniedError();
   }
   return config.mode === "live"
-    ? { mode: "live", viewer: result.viewer, warehouse: warehouseFor(config.live) }
-    : { mode: "sample", viewer: result.viewer };
+    ? {
+        mode: "live",
+        viewer: result.viewer,
+        storeId: config.storeId,
+        warehouse: warehouseFor(config.live, config.storeId),
+      }
+    : { mode: "sample", viewer: result.viewer, storeId: config.storeId };
 });
 
-export async function requireViewer(): Promise<ViewerAccess>;
-export async function requireViewer(options: { live: true }): Promise<LiveAccess>;
-export async function requireViewer(options?: { live: true }): Promise<ViewerAccess> {
+export async function requireViewer(options: { live: true; storeId?: string }): Promise<LiveAccess>;
+export async function requireViewer(options?: { storeId?: string }): Promise<ViewerAccess>;
+export async function requireViewer(options?: { live?: true; storeId?: string }): Promise<ViewerAccess> {
   const access = await resolveViewer();
+  if (options && "storeId" in options) assertStoreAccess(access.storeId, options.storeId);
   if (options?.live && access.mode !== "live") {
     throw new Error(
       "A live loader ran without live configuration; call it from the feature's queries.ts, which picks sample or live.",

@@ -86,7 +86,7 @@ async function main(): Promise<void> {
       }
       // Descriptions come from SourceMedium's data dictionary, which documents its own relations per store.
       const warehouse = warehouseFor(live);
-      const documented = await queryStoreRoster(warehouse)
+      const documented = await queryStoreRoster(warehouse, config.storeId)
         .then(([store]) => (store ? readDictionary(warehouse, store, table) : []))
         .catch(() => []);
       const descriptions = new Map(
