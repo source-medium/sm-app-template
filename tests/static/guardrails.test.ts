@@ -3,6 +3,7 @@
  * and says in one sentence which file is wrong and how to fix it.
  */
 import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { ESLint, RuleTester } from "eslint";
@@ -352,6 +353,47 @@ describe("types", () => {
       .compilerOptions;
     expect(options.strict).toBe(true);
     expect(options.noUncheckedIndexedAccess).toBe(true);
+  });
+});
+
+describe("agent file permissions", () => {
+  it("denies environment variants at any depth while keeping the example readable", () => {
+    // Claude Read rules use gitignore semantics. Test names only, never real env files.
+    const settings = JSON.parse(readFileSync(".claude/settings.json", "utf8")) as {
+      permissions: { deny: string[] };
+    };
+    const patterns = settings.permissions.deny.flatMap((rule) => rule.match(/^Read\((.*)\)$/)?.slice(1) ?? []);
+    const blocked = [
+      ".env",
+      ".env.local",
+      ".env.preview",
+      ".env.local.bak",
+      ".envrc",
+      ".env-backup",
+      ".dev.vars",
+      ".dev.vars.production",
+      ".dev.vars-backup",
+    ];
+    const allowed = [".env.example", "README.md", "src/app.ts"];
+    const cases = ["", "nested/"].flatMap((prefix) => [
+      ...blocked.map((name) => ({ path: prefix + name, denied: true })),
+      ...allowed.map((name) => ({ path: prefix + name, denied: false })),
+    ]);
+    const dir = mkdtempSync(join(tmpdir(), "agent-permissions-"));
+    try {
+      execFileSync("git", ["init", "--quiet", dir]);
+      writeFileSync(join(dir, ".gitignore"), patterns.join("\n") + "\n");
+      const denied = new Set(
+        execFileSync("git", ["check-ignore", "--no-index", "--stdin", "-z"], {
+          cwd: dir,
+          input: cases.map(({ path }) => path).join("\0") + "\0",
+          encoding: "utf8",
+        }).split("\0"),
+      );
+      for (const item of cases) expect(denied.has(item.path), item.path).toBe(item.denied);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

@@ -10,6 +10,9 @@ or delete it. You own a normal Next.js app with editable code throughout.
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/source-medium/sm-app-template)
 
+This button creates a **fresh copy of SourceMedium's starter**. Already edited
+your own copy? [Deploy that copy](docs/connect.md#4-deploy-to-cloudflare).
+
 ## Try it in two commands
 
 Install Node.js 22.13 or newer (CI uses 24) and pnpm 10.34.5 first. Create your
@@ -48,10 +51,10 @@ pnpm check   # format, lint, types, guardrails, and tests; under a minute
 
 ## Who can see what
 
-Everyone who can open the app sees everything the app can read. That suits an
-internal tool for a trusted team. It is not a customer portal: showing
-different data to different people needs an authorization design this starter
-does not include. See [docs/auth.md](docs/auth.md).
+Every viewer of a deployment sees the same data. Use `APP_STORE_ID` and
+separate deployments for stores with different audiences. Different permissions
+for individual viewers within one deployment need an authorization design this
+starter does not include. See [docs/auth.md](docs/auth.md).
 
 ## Guides
 

@@ -71,32 +71,61 @@ pnpm diagnose   # checks the key, datasets, locations, and a bounded example que
 pnpm dev
 ```
 
-Your browser asks for the password from `APP_BASIC_AUTH` (the part after the
-colon), even on localhost. The top bar shows **Live data**.
+Your browser asks for the username and password from `APP_BASIC_AUTH`
+(`username:password`), even on localhost. The top bar shows **Live data**.
 
 ## 4. Deploy to Cloudflare
 
-Click **Deploy to Cloudflare** in the README. The button is configured to copy
-the repository into your GitHub or GitLab account and ask for each value from
-`.env.example` as an encrypted secret. Paste the values from your block, deploy,
-open the URL, enter the password, and confirm **Live data** and the right store.
-The fresh-account button walkthrough remains unverified; command-line Worker
-deployment and secret retention have been tested.
+Deploy from the repository you have been editing, so your branding, currency,
+and new views are included. The README button creates a new copy of the upstream
+starter; it does not deploy changes from your checkout.
 
-- **Plan: Workers Paid.** Rendering a page takes roughly 80 to 850 ms of CPU
-  on a deployed Worker (Cloudflare's per-request CPU time, with sample and
-  live data, 2026-10-05), far above the Free plan's 10 ms per request.
-- Values are runtime secrets, never build variables. The build needs none.
-- Optional `APP_STORE_ID` restricts the deployment to one exact store id.
-  Set it alongside the runtime configuration before giving anyone the URL.
-  Leave it empty or unset for an internal app that can switch stores.
-- Later deploys keep the secrets you entered; nothing in `wrangler.jsonc`
-  overwrites them.
-- `workers.dev` stays on so you have a URL; the password protects it. Preview
-  URLs are off. With Cloudflare Access, see `docs/auth.md` for every hostname.
-- To deploy from your own machine instead: `pnpm run deploy` (not
-  `pnpm deploy`, a pnpm built-in). It builds a Worker with no local secrets in
-  it; set the secrets in the Cloudflare dashboard or with `wrangler secret put`.
+1. Use a Cloudflare account on **Workers Paid**. Have your agent set `name` in
+   `wrangler.jsonc` to a unique Worker name for this app; keep that name for
+   subsequent deploys.
+2. In your repository's terminal, sign in and deploy:
+
+   ```sh
+   pnpm exec wrangler login
+   pnpm run deploy
+   ```
+
+   The first deployment of a new Worker serves sample data. `.env.local` is
+   not uploaded; your hosted app needs its own runtime settings.
+
+3. In the Cloudflare dashboard, open that Worker and **Settings > Variables
+   and Secrets**. For a single-store app, add `APP_STORE_ID` first, using its
+   exact `sm_store_id`; omit it to keep the multi-store picker. Add each of the
+   eight values from your issued block as a **Secret**, then save and deploy
+   the settings. Enter values privately yourself; do not paste the block into
+   your agent's chat.
+4. Open the Worker URL, sign in, and confirm **Live data** and the intended
+   store. For a restricted app, changing `?store=` to another store must give
+   HTTP 403. Then share the URL with its authorized viewers.
+
+For later code changes, run `pnpm run deploy` from this same checkout. Runtime
+variables and secrets are retained, including `APP_STORE_ID`; `keep_vars: true`
+in `wrangler.jsonc` preserves variables set through the dashboard. Delete a
+runtime setting from the Worker explicitly when you intend to remove it.
+
+For automatic deployments, commit and push your changes and connect **your
+repository** using [Cloudflare's Git integration](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/github-integration/).
+Use `pnpm build:cloudflare` as the build command and
+`pnpm exec opennextjs-cloudflare deploy` as the deploy command. Runtime secrets
+belong to the Worker, not the build environment.
+
+Use `pnpm run deploy`, not `pnpm deploy` (a pnpm built-in). The shared password
+protects the `workers.dev` URL; preview URLs are off. With Cloudflare Access,
+follow [auth.md](auth.md#cloudflare-access) to protect every hostname.
+
+### Starting with a new hosted copy
+
+If you have not customized a copy yet, the README's **Deploy to Cloudflare**
+button creates a fresh repository in your GitHub or GitLab account. It asks for
+the eight values in `.env.example` as encrypted secrets. Clone the repository
+it creates to make your changes, including setting the reporting currency,
+then deploy from that checkout. The fresh-account button walkthrough remains
+unverified; command-line deployment is the tested path.
 
 ## 5. Vercel (unverified)
 

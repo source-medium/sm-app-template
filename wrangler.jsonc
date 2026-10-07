@@ -13,6 +13,9 @@
     "run_worker_first": ["/*", "!/_next/static/*"],
   },
   "observability": { "logs": { "enabled": true } },
+  // Preserve runtime settings such as APP_STORE_ID across ordinary deploys.
+  // Removing one deliberately means deleting it from the Worker's settings.
+  "keep_vars": true,
   // Runtime configuration (SM_APP_KEY, APP_BASIC_AUTH, and the rest of the
   // block from SourceMedium) lives in your Worker's encrypted variables, never
   // here: declaring them here, even empty, would overwrite them on deploy.

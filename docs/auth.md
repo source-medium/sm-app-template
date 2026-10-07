@@ -34,7 +34,8 @@ service-account grants. Only trusted maintainers should hold the app key or
 change the code/configuration. New data queries must keep the store predicate
 described in [data.md](data.md#store-scope).
 
-To widen access deliberately, remove `APP_STORE_ID` and redeploy. Before
+To widen access deliberately, delete `APP_STORE_ID` from the Worker's runtime
+settings and apply the change. Ordinary code deploys preserve it. Before
 sharing a restricted deployment, test an allowed request and an authenticated
 request with another store id, including a CSV URL. The latter must return 403.
 

@@ -27,6 +27,13 @@ example and all examples after changes to shared shell or test infrastructure.
 Scan tracked files and history for credentials, customer identifiers and
 private URLs. Keep the MIT license and working support/security links.
 
+After deployment-config changes, redeploy a sample Worker with the documented
+`pnpm run deploy` command. Its existing password and plaintext `APP_STORE_ID`
+must survive without command-line `--keep-vars` or resupplying either value;
+verify allowed-store pages and exports and denied other-store requests.
+Existing template copies need `keep_vars: true` in `wrangler.jsonc` before
+their next deploy to preserve dashboard variables.
+
 The hydration backport covers Next's stable and experimental DOM bundles,
 including profiling. Its regression tests exercise the installed replay code.
 When replacing it, verify the exact upstream compiled code and retain the
@@ -54,6 +61,13 @@ review and the remaining development-only advisory.
 
 ## Host and onboarding checks beyond the tested path
 
+On 2026-10-07, Claude Code 2.1.280 passed a real-client Read-tool permission
+probe using a local scripted API, synthetic files, no login and no MCP servers.
+The old rules allowed `.envrc`; the corrected rules denied 20 root and nested
+`.env*` / `.dev.vars*` cases and allowed `.env.example` and ordinary files at
+both depths. This tests the installed client's permission handling, not model
+judgment or OS-level isolation. A synthetic filename regression runs in `pnpm check`.
+
 On 2026-10-07, a self-led fresh-copy rehearsal of **Add a page** added a
 Traffic view using the bundled schema, existing report patterns, a guarded
 live query and matching sample rows. `pnpm check` and all 51 browser tests
@@ -76,7 +90,7 @@ reporting-currency ISO code or reliability across other agents and tenants.
 | Vercel                          | Unverified and outside this preview's support claim. Before advertising support, deploy the same source with Basic auth and test configuration failures, public assets, RSC, headers and secret isolation. Remove the upstream spec's historical “Vercel smoke-tested” claim until evidence exists.                        |
 | Connect my data prompt          | On a fresh copy, a maintainer enters a demo app block privately and follows the prompt with their agent. Record diagnose output, Live data on each view, and pnpm check. Do not use customer data.                                                                                                                         |
 | Check a number prompt           | On a fresh copy, compare one demo-store period to an independently authorized metric result. Record exact store/date/filter definitions, exact decimals and count semantics, explanation of differences, and pnpm check separately.                                                                                        |
-| Agent secret rules              | With synthetic files only, verify the installed Claude Code refuses `.env`, `.env.staging`, `.env.preview`, `.env.local.bak`, nested variants and `.dev.vars.*`, while `.env.example` stays readable. File-tool permission rules are not an OS sandbox.                                                                    |
+| Agent secret rules              | Verified with Claude Code 2.1.280 and synthetic files as described above. Recheck when changing patterns or supported clients; file-tool rules are not an OS sandbox.                                                                                                                                                      |
 | Publication metadata            | Verify private vulnerability reporting is usable after publication; create the intended version tag and release only after the gates pass. Keep version headers aligned with the actual release.                                                                                                                           |
 
 Use only SourceMedium's demo tenant for live template checks. Never copy an
