@@ -59,6 +59,46 @@ all eight original commits were scanned; the only secret-scanner finding was
 a synthetic test password. See [SECURITY.md](../SECURITY.md) for the dependency
 review and the remaining development-only advisory.
 
+## Cloud agent onboarding (2026-10-08)
+
+Codex Cloud and Claude Code in the cloud share `scripts/setup-agent.mjs`,
+the `sm-cloud` skill, and [one browser guide](cloud.md). Local validation in a
+fresh checkout passed setup, all 84 browser tests, secret isolation, the
+Cloudflare build, and the Worker smoke suite. Cold setup passed on macOS and
+in a clean Debian 12 container with Node 24.7.0 and `NODE_ENV=production`,
+including Linux OS libraries, browser downloads, and an actual Chromium launch.
+Setup tests cover the local hook no-op, pinned installs, browser repair,
+failed package/browser installs, failed launches after repair, and old Node.
+The Linux rehearsal also caught a checkout-local `.pnpm-store` being treated
+as source. Git and the quality checks now exclude this generated cache.
+The final `pnpm check` passed on both macOS and Linux; all 84 browser tests
+passed again on macOS after review. Windows CI was not rerun locally.
+
+A temporary sample Worker in the existing Cloudflare account was deployed
+with `pnpm run deploy --env preview`, then `pnpm run deploy:preview`. All six
+views and the agent composer worked in a real browser with no page errors.
+A second preview deployment updated the stable branch URL, left the previous
+immutable URL unchanged, and did not promote the Worker's main deployment.
+Wrangler's Cloudflare Builds name/branch environment variables were exercised.
+The temporary Worker and its previews were deleted after validation.
+This verifies the CLI path, not the Git integration or either cloud agent's
+account screens.
+
+Before advertising either cloud onboarding journey as fully verified, use a
+fresh template copy in each provider and record this short walkthrough:
+
+1. Connect GitHub and start the repository's cloud environment. Confirm setup
+   finishes without local tools, warehouse credentials, or MCP login.
+2. Follow the two Worker connections in `docs/cloud.md`. Request a small UI
+   change, create its PR, and open the current commit's sample branch preview.
+3. Request another change in the same conversation and verify the preview
+   updates while production stays unchanged.
+4. Approve publication, merge after CI passes, verify the production build,
+   then revert the test change through another PR.
+
+The two real cloud-agent walkthroughs and fresh-account Cloudflare Git import
+remain **unverified**. Keep them separate from local and CLI deployment evidence.
+
 ## Host and onboarding checks beyond the tested path
 
 On 2026-10-07, Claude Code 2.1.280 passed a real-client Read-tool permission

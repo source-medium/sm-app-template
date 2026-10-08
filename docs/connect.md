@@ -1,5 +1,9 @@
 # Connect and deploy
 
+Using Codex Cloud or Claude Code in the cloud? Start with
+[the browser guide](cloud.md). For an already hosted app, jump to
+[Connect a hosted app](#connect-a-hosted-app); local setup is optional.
+
 This is a preview. SourceMedium's Apps page and its self-service credential
 flows are planned. The steps below describe that planned flow; live setup is
 currently possible only with an already provisioned app-specific block.
@@ -83,8 +87,8 @@ Your browser asks for the username and password from `APP_BASIC_AUTH`
 ## 4. Deploy to Cloudflare
 
 Deploy from the repository you have been editing, so your branding, currency,
-and new views are included. The README button creates a new copy of the upstream
-starter; it does not deploy changes from your checkout.
+and new views are included. The [cloud workflow](cloud.md#3-connect-cloudflare-once)
+uses Git integration. The steps below are the alternative for local agents.
 
 1. Use a Cloudflare account on **Workers Paid**. Have your agent set `name` in
    `wrangler.jsonc` to a unique Worker name for this app; keep that name for
@@ -99,35 +103,53 @@ starter; it does not deploy changes from your checkout.
    The first deployment of a new Worker serves sample data. `.env.local` is
    not uploaded; your hosted app needs its own runtime settings.
 
-3. In the Cloudflare dashboard, open that Worker and **Settings > Variables
-   and Secrets**. For a single-store app, add `APP_STORE_ID` first, using its
-   exact `sm_store_id`; omit it to keep the multi-store picker. Add each of the
-   eight values from your issued block as a **Secret**, then save and deploy
-   the settings. Enter values privately yourself; do not paste the block into
-   your agent's chat.
-4. Open the Worker URL, sign in, and confirm **Live data** and the intended
-   store. For a restricted app, changing `?store=` to another store must give
-   HTTP 403. Then share the URL with its authorized viewers.
+3. Follow [Connect a hosted app](#connect-a-hosted-app) below to use live data.
 
 For later code changes, run `pnpm run deploy` from this same checkout. Runtime
 variables and secrets are retained, including `APP_STORE_ID`; `keep_vars: true`
 in `wrangler.jsonc` preserves variables set through the dashboard. Delete a
 runtime setting from the Worker explicitly when you intend to remove it.
 
-For automatic deployments, commit and push your changes and connect **your
-repository** using [Cloudflare's Git integration](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/github-integration/).
-Use `pnpm build:cloudflare` as the build command and
-`pnpm exec opennextjs-cloudflare deploy` as the deploy command. Runtime secrets
-belong to the Worker, not the build environment.
+For automatic deployments, use [the shared Git workflow](cloud.md#3-connect-cloudflare-once).
+Runtime secrets belong to the Worker, not the build environment.
 
 Use `pnpm run deploy`, not `pnpm deploy` (a pnpm built-in). The shared password
-protects the `workers.dev` URL; preview URLs are off. With Cloudflare Access,
+protects the `workers.dev` URL; production Version URLs are off. Branch
+Previews use separate sample configuration. With Cloudflare Access,
 follow [auth.md](auth.md#cloudflare-access) to protect every hostname.
+
+### Connect a hosted app
+
+These steps work whether Codex, Claude, or a local agent prepared the app.
+You need an already issued [app-specific block](#2-get-your-configuration).
+
+1. Confirm the workspace reporting currency and [source alignment](data.md#money-and-currency).
+   Have your agent set `currency` in
+   `app.config.ts`, preview the change, and publish it with your approval.
+   Store names come from `dim_stores`; no store roster setup is needed.
+2. Open the production Worker, **not** the `<app>-preview` Worker. In
+   **Settings > Variables and Secrets**, select **Production** if an environment
+   selector is shown.
+   For a single-store app, add `APP_STORE_ID` using its exact `sm_store_id`;
+   omit it to keep the multi-store picker. Add all eight issued values as
+   **Secrets**, including `APP_BASIC_AUTH`, then save and deploy the settings.
+   Enter the values privately yourself. Do not put them in agent chat, the
+   agent's environment, build variables, or Preview Base settings.
+3. Open the production URL, sign in, and confirm **Live data** on each view
+   with no error state. Confirm the intended store. A restricted app must
+   return HTTP 403 when `?store=` names another store. An anonymous browser
+   must be challenged before seeing data. Share only with authorized viewers.
+
+No local `.env` file or `pnpm diagnose` is required for this hosted path.
+Your agent can inspect code and bundled schemas without the warehouse key.
+When troubleshooting, report only the error title and remedy, never values
+from the settings screen. Live rendering is a connection check, not an
+independent reconciliation of the metrics.
 
 ### Starting with a new hosted copy
 
-If you have not customized a copy yet, the README's **Deploy to Cloudflare**
-button creates a fresh repository in your GitHub or GitLab account. It asks for
+The [Deploy to Cloudflare button](https://deploy.workers.cloudflare.com/?url=https://github.com/source-medium/sm-app-template)
+is an alternative that creates a fresh repository in your GitHub or GitLab account. It asks for
 the eight values in `.env.example` as encrypted secrets. Clone the repository
 it creates to make your changes, including setting the reporting currency,
 then deploy from that checkout. The fresh-account button walkthrough remains

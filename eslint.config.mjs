@@ -13,6 +13,7 @@ export default tseslint.config(
       ".open-next/**",
       ".wrangler/**",
       "node_modules/**",
+      ".pnpm-store/**",
       "playwright-report/**",
       "test-results/**",
       "next-env.d.ts",

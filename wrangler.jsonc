@@ -22,7 +22,18 @@
   // See docs/connect.md.
   // The shared password protects every hostname, so workers.dev is safe with
   // Basic. With Cloudflare Access, cover workers.dev too or turn it off
-  // (docs/auth.md). Preview URLs stay off: each would be another hostname.
+  // (docs/auth.md). Version URLs stay off: they use production bindings.
   "workers_dev": true,
   "preview_urls": false,
+  // The preview environment gets its own Worker, named <name>-preview by
+  // Wrangler. Connect it separately to Git (docs/cloud.md). Its branch/version
+  // URLs contain sample data only. Keep the live
+  // Worker's extra URLs disabled above; both kinds use the same URL switch.
+  "env": {
+    "preview": {
+      "workers_dev": false,
+      "preview_urls": true,
+      "previews": {},
+    },
+  },
 }

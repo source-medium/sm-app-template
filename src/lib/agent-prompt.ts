@@ -141,6 +141,7 @@ export function composeAgentPrompt(
       ? [
           "- Run pnpm check when done, and pnpm test:e2e after UI changes.",
           "- Tell me separately what you verified on sample data and what still needs live data.",
+          "- If this repository uses the cloud preview workflow and I have already authorized a hosted preview in this conversation, follow the sm-cloud skill and return the actual preview URL; do not merge or publish without my approval. Otherwise finish with local verification and explain how to preview it.",
         ]
       : []),
   ].join("\n");

@@ -8,12 +8,27 @@ Six example views cover common starting points: Overview, Paid marketing,
 Creatives, Products, Retention, and Orders. Copy the closest one, change its query and presentation,
 or delete it. You own a normal Next.js app with editable code throughout.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/source-medium/sm-app-template)
+## Start in your browser
 
-This button creates a **fresh copy of SourceMedium's starter**. Already edited
-your own copy? [Deploy that copy](docs/connect.md#4-deploy-to-cloudflare).
+Use **Codex Cloud** or **Claude Code in the cloud**. No local installation needed.
 
-## Try it in two commands
+1. [Create your copy](https://github.com/source-medium/sm-app-template/generate).
+2. Choose your agent below and paste the [starter message](docs/cloud.md#your-first-message-in-either-agent).
+3. Connect your copy to Cloudflare once. Describe changes, open their previews,
+   and approve the ones you want to publish.
+
+| Coding agent                 | Start here                                              |
+| ---------------------------- | ------------------------------------------------------- |
+| **Codex Cloud**              | [Set up Codex](docs/cloud.md#codex-cloud)               |
+| **Claude Code in the cloud** | [Set up Claude](docs/cloud.md#claude-code-in-the-cloud) |
+
+Start on labeled **sample data**, with no warehouse credentials. Your agent
+runs setup and checks. Cloudflare Workers Paid hosts the app; GitHub and your
+chosen coding agent need access to your repository.
+
+**[Follow the browser setup and preview-to-live guide →](docs/cloud.md)**
+
+## Prefer local development?
 
 Install Node.js 22.13 or newer (CI uses 24) and pnpm 10.34.5 first. Create your
 own repository with GitHub's **Use this template**, then clone it and open a
@@ -38,9 +53,10 @@ Cloudflare Workers is the tested runtime; Vercel deployment is unverified.
 
 ## Build with your coding agent
 
-Open the repository in Claude Code, Codex, Cursor, or Copilot. Every agent
-reads [AGENTS.md](AGENTS.md); Claude Code also connects to the SourceMedium
-MCP with your own login, so it can inspect your warehouse before writing SQL.
+Codex and Claude Code share [AGENTS.md](AGENTS.md) and the same repository
+skills. Cursor and Copilot can follow those instructions too. Sample work
+uses bundled schemas without an MCP login. For live schema inspection,
+connect your own authorized SourceMedium account as described in [data.md](docs/data.md).
 Copyable starting points are in [docs/prompts.md](docs/prompts.md).
 
 Before calling a change done, run:
@@ -60,6 +76,7 @@ starter does not include. See [docs/auth.md](docs/auth.md).
 
 | Guide                                                   | For                                                  |
 | ------------------------------------------------------- | ---------------------------------------------------- |
+| [cloud.md](docs/cloud.md)                               | Codex or Claude in the browser, previews, publishing |
 | [connect.md](docs/connect.md)                           | Going live, deploying, replacing lost secrets        |
 | [data.md](docs/data.md)                                 | Schemas, SQL rules, exact decoding, money, freshness |
 | [auth.md](docs/auth.md)                                 | The shared password, Cloudflare Access, sign-in      |

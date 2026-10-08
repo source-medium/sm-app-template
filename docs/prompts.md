@@ -1,5 +1,9 @@
 # Starter prompts
 
+**Getting started in Codex Cloud or Claude Code in the cloud?** Use the
+[shared starter message](cloud.md#your-first-message-in-either-agent).
+Both agents follow the same [preview and publish loop](cloud.md#4-change-review-publish).
+
 For anything about a page you are looking at, use **Ask agent** in the app's
 top bar. Choose **This page** or a loaded KPI, chart, table, card grid, or
 cohort matrix; choose what you need; describe it; and copy the prompt into
@@ -45,15 +49,18 @@ independent, authorized source; a passing code check does not validate a metric.
 
 ## Connect my data
 
-**You provide:** an app-specific configuration block, entered privately into `.env.local`.
+**You provide:** an app-specific block, entered privately in Cloudflare runtime settings
+(or `.env.local` for local development).
 **Expected result:** a verified live connection, or a clear explanation of the missing prerequisite.
 
 ```text
 Help me connect this app to my SourceMedium warehouse. Follow docs/connect.md.
-I will paste the configuration block into .env.local myself; do not ask me to
-paste it into this chat and do not read .env.local. When I say it is done, ask
-me to run `pnpm diagnose` and tell you what it printed, then fix any problem it
-reports. If app provisioning is unavailable, explain that prerequisite and
+If the app is hosted, use "Connect a hosted app": I will enter the block in
+Cloudflare's production runtime settings myself. Do not ask me to create a
+local file, run a terminal command, or give you the key. Help verify sign-in,
+Live data, and the intended store on the hosted app. For local development,
+I will fill .env.local myself and run pnpm diagnose; do not read that file.
+Never ask for secrets in chat. If provisioning is unavailable, explain that prerequisite and
 keep sample mode; do not invent a configuration block. Confirm the workspace
 reporting currency and that every included store and money source reports in
 it, following docs/data.md. Set app.config.ts currency to that ISO code; do not

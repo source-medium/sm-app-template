@@ -72,6 +72,11 @@ describe("composeAgentPrompt", () => {
     for (const intent of AGENT_INTENTS) {
       const prompt = composeAgentPrompt(intent.id, "Why?", context);
       expect(prompt.includes("Run pnpm check")).toBe(intent.changesCode);
+      expect(prompt.includes("cloud preview workflow")).toBe(intent.changesCode);
+      expect(prompt.includes("I have already authorized a hosted preview in this conversation")).toBe(
+        intent.changesCode,
+      );
+      expect(prompt.includes("do not merge or publish without my approval")).toBe(intent.changesCode);
     }
     expect(composeAgentPrompt("ask", "Why?", context)).toContain("Do not change any files.");
   });

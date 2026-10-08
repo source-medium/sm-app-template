@@ -65,7 +65,7 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
         <SheetHeader>
           <SheetTitle>Ask a coding agent</SheetTitle>
           <SheetDescription>
-            Builds a prompt with this page&apos;s context. Paste it into Claude Code, Cursor, or any agent working in
+            Builds a prompt with this page&apos;s context. Paste it into Codex, Claude Code, or any agent working in
             this app&apos;s repository.
           </SheetDescription>
         </SheetHeader>

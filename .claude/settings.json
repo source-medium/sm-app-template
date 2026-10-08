@@ -1,4 +1,18 @@
 {
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/setup-agent.mjs\" --claude-hook",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "deny": ["Read(.env*)", "Read(!.env.example)", "Read(.dev.vars*)"]
   }

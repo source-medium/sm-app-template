@@ -20,9 +20,9 @@ Keep only UI components the app uses; add more when a view needs them.
 - `pnpm schema <relation>`: a relation's columns and types (never rows).
 - `pnpm skills:sync`: run after editing anything in `.agents/skills`.
 
-Also: `pnpm diagnose` (full configuration and warehouse check), `pnpm test:e2e`,
-`pnpm build`, `pnpm build:cloudflare`. Use `pnpm run deploy`, never `pnpm deploy`
-(a pnpm built-in).
+Cloud setup/previews/publishing: use `sm-cloud` and `docs/cloud.md` (Codex and Claude).
+Also: `pnpm diagnose`, `pnpm test:e2e`, `pnpm build`, `pnpm build:cloudflare`.
+Use `pnpm run deploy`, never `pnpm deploy` (a pnpm built-in).
 
 ## Repo map
 

@@ -10,6 +10,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "setup:agent": "node scripts/setup-agent.mjs",
     "dev": "tsx --conditions=react-server scripts/diagnose.ts --offline && next dev --hostname 127.0.0.1",
     "diagnose": "tsx --conditions=react-server scripts/diagnose.ts",
     "schema": "tsx --conditions=react-server scripts/schema.ts",
@@ -26,6 +27,7 @@
     "build:cloudflare": "tsx scripts/build-cloudflare.ts",
     "preview": "pnpm build:cloudflare && opennextjs-cloudflare preview",
     "deploy": "pnpm build:cloudflare && opennextjs-cloudflare deploy",
+    "deploy:preview": "pnpm build:cloudflare && wrangler preview --env preview --ignore-base-config",
     "deploy:cloudflare": "pnpm run deploy",
     "prepare": "simple-git-hooks",
     "smoke:worker": "tsx scripts/smoke-worker.ts",
