@@ -89,12 +89,14 @@ fresh template copy in each provider and record this short walkthrough:
 
 1. Connect GitHub and start the repository's cloud environment. Confirm setup
    finishes without local tools, warehouse credentials, or MCP login.
-2. Follow the preview Worker connection in `docs/cloud.md`. Request a small UI
-   change, create its PR, and open the current commit's sample branch preview.
-3. Request another change in the same conversation and verify the preview
-   updates while production stays unchanged.
-4. Connect the production Worker, approve publication, merge after CI passes, verify the production build,
-   then revert the test change through another PR.
+2. Follow the production Worker connection in `docs/cloud.md` and open the
+   hosted sample URL. Request a small UI change, create its PR, approve the
+   merge after CI passes, and verify the production build shows it.
+3. Connect the preview Worker. Request another change in the same conversation
+   and open the current commit's sample branch preview; verify it updates
+   while production stays unchanged.
+4. Approve publication, merge after CI passes, verify the production build,
+   then revert both test changes through another PR.
 
 The two real cloud-agent walkthroughs and fresh-account Cloudflare Git import
 remain **unverified**. Keep them separate from local and CLI deployment evidence.
@@ -144,6 +146,19 @@ These checks verify the environment-variable contract locally. They do not
 claim a fresh Codex/Claude cloud session or a newly issued Urchin key was tested.
 The opt-in Urchin rollout and real cloud-account walkthroughs remain separate
 release checks; no real key was copied to a cloud agent during this work.
+
+## Onboarding review (2026-10-08, unreleased follow-up)
+
+The onboarding guides now connect the production Worker before the preview
+Worker, state the Workers Paid price, document the viewer password rule, and
+describe the Apps page in the words urchin's page uses (checked against its
+`customer-apps` component and issuance contract: variable names, block order,
+password shape and button labels match). `pnpm preview` runs the doctor's
+`--dev-vars` mode first. The claim it rests on was verified here: with a live
+`.env.local` and no `.dev.vars`, the built Worker preview served public sample
+data, so the preview reads `.dev.vars` alone. The preflight was exercised with
+no file and with a broken file. `pnpm check` passed. The hosted account
+journeys remain unverified as above.
 
 ## Host and onboarding checks beyond the tested path
 

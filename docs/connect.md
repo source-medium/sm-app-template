@@ -5,9 +5,9 @@ Using Codex Cloud or Claude Code in the cloud? Start with
 [Connect a hosted app](#connect-a-hosted-app); local setup is optional. For
 agent-run warehouse debugging, use a separate [Development credential](cloud.md#debug-with-live-data).
 
-This is a preview. Live setup requires app provisioning to be enabled in your
-SourceMedium workspace. If Apps says it is not enabled, start with sample
-data and contact SourceMedium support.
+This is a preview. Live data needs an app configuration block from the **Apps**
+page of your SourceMedium workspace. If that page says credentials are still
+being enabled, stay on sample data and ask SourceMedium support.
 Start with the shared password and Cloudflare Workers Paid. Use the issued
 app credential; never substitute an admin credential.
 
@@ -34,6 +34,11 @@ SourceMedium is needed.
 
 ## 2. Get your configuration
 
+No block yet? Apps appears in the workspace menu once your data has been
+delivered, and only an organization admin can create an app. If the page says
+credentials are still being enabled, stay on sample data and ask
+[SourceMedium support](../SUPPORT.md).
+
 An accepted organization **admin** opens **Apps** in their SourceMedium
 workspace, names the app, and confirms its read access. No Google account
 or Google Cloud console setup is needed.
@@ -42,12 +47,12 @@ configuration block **once**:
 
 ```text
 SM_APPLICATION_ID=…
-SM_APP_KEY=…
 BIGQUERY_JOB_PROJECT_ID=…
 BIGQUERY_LOCATION=…
 SM_DATA_PROJECT_ID=…
 SM_TRANSFORMED_DATASET_ID=…
 SM_METADATA_DATASET_ID=…
+SM_APP_KEY=…
 APP_BASIC_AUTH=…
 ```
 
@@ -173,7 +178,10 @@ Cloudflare-only. Vercel's own deployment protection is optional and separate.
 
 `pnpm preview` builds the Worker and serves it in workerd. It reads runtime
 values from `.dev.vars` (also git-ignored), not `.env.local`, exactly as the
-deployed Worker reads only its runtime variables.
+deployed Worker reads only its runtime variables. It first prints the mode
+`.dev.vars` produces and stops on a broken block, so a live `.env.local` with
+no `.dev.vars` shows **Sample data** here on purpose. Paste the block into
+`.dev.vars` to preview live data.
 
 ## Lost a secret?
 

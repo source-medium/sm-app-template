@@ -6,7 +6,7 @@ chatting. Both follow the same loop:
 **Describe a change → open its preview → ask for adjustments → approve publication.**
 
 You need GitHub, access to either coding agent's cloud service, and a
-Cloudflare account on Workers Paid for hosted previews. You do not need to
+Cloudflare account on Workers Paid to host the app. You do not need to
 install anything on your computer. Start with sample data; connect your
 warehouse after the app looks useful.
 
@@ -56,8 +56,8 @@ Help me get this app running. Read AGENTS.md and use the sm-cloud skill.
 Keep sample data and the existing defaults. Run the setup and checks yourself.
 Walk me through connecting this repository to Cloudflare using docs/cloud.md.
 I authorize committing my requested changes, pushing a task branch, and
-opening or updating its pull request to get a hosted sample preview.
-Give me the preview link when it is ready. Do not merge or publish to the
+opening or updating its pull request to get a hosted sample app.
+Give me the hosted link when it is ready. Do not merge or publish to the
 production branch until I approve the reviewed change. Ask me only for
 account connections or choices you cannot complete yourself.
 ```
@@ -67,13 +67,16 @@ account connections or choices you cannot complete yourself.
 In [Cloudflare Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages),
 choose **Create application → Import a repository** and connect **your copy**.
 The agent can walk you through this screen; sign in and accept billing yourself.
+Workers Paid starts at US$5 a month; the Free plan's CPU limit is too low to
+render a page.
 
-Start with the **Sample preview Worker** column below. Connect the production
-Worker only when you are ready to publish. Both use the same repository; no
-second template copy is needed. Your agent supplies
-the app name from `wrangler.jsonc` (initially `sm-app`). If either name already
-belongs to another app, have the agent prepare a unique name in your copy
-before connecting it. Never overwrite a different app.
+Connect the **Production Worker** first: eight settings, and the unchanged
+starter is at a hosted URL on sample data when its first build finishes. Add
+the **Sample preview Worker** when you want to see a change before it
+publishes. Both use the same repository; no second template copy is needed.
+Your agent supplies the app name from `wrangler.jsonc` (initially `sm-app`).
+If either name already belongs to another app, have the agent prepare a unique
+name in your copy before connecting it. Never overwrite a different app.
 
 | Setting           | Production Worker            | Sample preview Worker               |
 | ----------------- | ---------------------------- | ----------------------------------- |
@@ -86,17 +89,17 @@ before connecting it. Never overwrite a different app.
 | Root directory    | Repository root              | Repository root                     |
 | Runtime secrets   | Leave empty for sample data  | Always empty                        |
 
-The preview import deploys the unchanged starter on sample data. The first actual
-edit starts the branch-preview loop; no empty pull request is needed. Task
-branches get their own Preview URL; merging into `main` updates the production
-URL. Both commands build the Worker and remove build-time environment values.
+Both deploy commands build the Worker and remove build-time environment values.
 Cloudflare handles its deployment credentials; neither agent needs a Cloudflare
 API token. See [Workers Builds settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/).
 
-The preview connection uses the `preview` environment and creates one **Worker
-Preview** per task branch. Cloudflare Builds targets its connected Worker;
-adding `--env preview` to the production Worker's preview command is not a
-substitute for a separate preview connection. See [Cloudflare's environment setup](https://developers.cloudflare.com/workers/ci-cd/builds/advanced-setups/#wrangler-environments).
+With only the production Worker, every merge into `main` publishes to the
+production URL, which is fine while it shows sample data. The preview
+connection uses the `preview` environment and creates one **Worker Preview**
+per task branch, so a pull request gets its own URL and `main` stays as it
+was; no empty pull request is needed. Cloudflare Builds targets its connected
+Worker; adding `--env preview` to the production Worker's preview command is
+not a substitute for a separate preview connection. See [Cloudflare's environment setup](https://developers.cloudflare.com/workers/ci-cd/builds/advanced-setups/#wrangler-environments).
 
 Keep the preview Worker and its Preview Base settings free of warehouse
 credentials. New branch previews ignore the Base configuration; existing
@@ -112,18 +115,19 @@ before setting the Preview command. Do not turn on `preview_urls` as a workaroun
 
 ## 4. Change, review, publish
 
-Ask either agent to make a change and prepare its preview. Open the Preview URL
-on the pull request (the proposed change in GitHub), or under the `<app>-preview` Worker's
-**Previews**. Keep feedback in the same agent conversation to update that preview.
-The app's **Ask agent** button can compose the next request from a page or component.
+Ask either agent to make a change. It opens a pull request (the proposed change
+in GitHub). With the preview Worker connected, open the Preview URL on that pull
+request, or under the `<app>-preview` Worker's **Previews**, before approving.
+With only the production Worker, approving the merge is how you see the change,
+on the production URL. Keep feedback in the same agent conversation to update
+that pull request. The app's **Ask agent** button can compose the next request
+from a page or component.
 
-When it looks right, have the agent guide the **Production Worker** connection
-using the table above. Leave its runtime secrets empty until the guarded live
-setup below. Then say:
+When it looks right, say:
 
 ```text
 Publish the change I just reviewed. Confirm the latest pull request commit
-is the one I previewed and all checks passed. Merge that pull request, or give
+is the one I reviewed and all checks passed. Merge that pull request, or give
 me its merge link if you cannot. Verify Cloudflare's production deployment
 and give me the live URL. Do not include unrelated changes.
 ```
@@ -158,9 +162,10 @@ runtime settings privately. Do not reuse public sample previews for this.
 
 An accepted organization admin gets the block from **Apps** in their
 SourceMedium workspace: name the app, confirm its read access, and copy the
-one-time configuration. If Apps says provisioning is not enabled yet, stay
-on sample data and contact SourceMedium support. An agent cannot generate
-a valid warehouse credential for you.
+one-time configuration. Apps appears in the workspace menu once data has been
+delivered. If the page says credentials are still being enabled, stay on sample
+data and ask SourceMedium support. An agent cannot generate a valid warehouse
+credential for you.
 
 After entering the runtime settings, click **Live data → Check connection**
 in your hosted app. The report is safe to paste into either coding agent; it
@@ -255,7 +260,7 @@ current URLs with `pnpm exec playwright install --dry-run chromium`.
 | Browser download blocked                 | Allow `cdn.playwright.dev` and its download redirect hosts reported by Playwright, then rerun setup. Keep TLS verification enabled.                                     |
 | Linux browser libraries missing          | Run `pnpm exec playwright install --with-deps chromium` in the cloud VM. No changes to your own computer.                                                               |
 | Cached environment is stale              | Rerun setup in the task. In Codex, update and republish the environment for future tasks too.                                                                           |
-| No hosted preview link                   | Confirm the task branch was pushed, preview builds are enabled, and its Cloudflare build passed. `localhost` is not a hosted link.                                      |
+| No hosted preview link                   | Confirm the preview Worker is connected, the task branch was pushed, preview builds are enabled, and its Cloudflare build passed. `localhost` is not a hosted link.     |
 | Agent cannot open the preview            | Allow that specific hostname in its network settings; you can still open the link yourself.                                                                             |
 | MCP asks for login                       | Skip it for sample work. Use bundled `pnpm schema` output. Live metadata access is optional and separately authorized.                                                  |
 | Agent still sees sample data after setup | Put all eight Development values in environment variables, start a new task/session, and run `pnpm diagnose`. A network-secret placeholder cannot sign Google requests. |

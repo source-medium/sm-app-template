@@ -14,8 +14,9 @@ Use **Codex Cloud** or **Claude Code in the cloud**. No local installation neede
 
 1. [Create your copy](https://github.com/source-medium/sm-app-template/generate).
 2. Choose your agent below and paste the [starter message](docs/cloud.md#your-first-message-in-either-agent).
-3. Connect your copy to Cloudflare once. Describe changes, open their previews,
-   and approve the ones you want to publish.
+3. Connect your copy to one Cloudflare Worker (Workers Paid, from US$5 a month)
+   for a hosted URL. Describe changes and approve the ones you want to publish;
+   add a preview Worker when you want to see a change before it goes live.
 
 | Coding agent                 | Start here                                              |
 | ---------------------------- | ------------------------------------------------------- |
@@ -44,9 +45,11 @@ account, credential, database, or AI service needed.
 
 ## Use your data
 
-Live mode requires an app-specific configuration block issued for your warehouse.
-If you do not already have one, use sample mode and contact your SourceMedium
-admin about availability. Do not substitute an admin credential.
+Live data needs an app configuration block from the **Apps** page of your
+SourceMedium workspace. Apps appears in the workspace menu once your data has
+been delivered, and an organization admin creates the app. If the page says
+credentials are still being enabled, stay on sample data and ask
+[SourceMedium support](SUPPORT.md). Do not substitute an admin credential.
 
 For an already provisioned app, follow [docs/connect.md](docs/connect.md).
 Cloudflare Workers is the tested runtime; Vercel deployment is unverified.

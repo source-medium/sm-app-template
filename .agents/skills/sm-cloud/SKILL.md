@@ -22,13 +22,14 @@ and environment; never create another template copy during iteration.
   service facility and check `/healthz` and a report. A VM's localhost URL is
   not a hosted preview link. Stop services when finished unless the person
   is using the preview.
-- Follow the Cloudflare setup table in `docs/cloud.md` for the production and
-  sample-preview Git connections. Start with the preview connection; defer
-  production until the first approved publication. Each targets its own Worker. The person
-  signs into accounts and accepts billing privately.
+- Follow the Cloudflare setup table in `docs/cloud.md`. Connect the production
+  Worker first for a hosted sample URL; add the sample-preview Worker when the
+  person wants to review a change before it publishes. Each targets its own
+  Worker. The person signs into accounts and accepts billing privately.
   If you cannot configure their dashboard, give the exact pending click and
-  link; keep doing independent work. Do not substitute a production deploy
-  for an unavailable branch preview.
+  link; keep doing independent work. Never run a production deploy from the
+  shell as a substitute for a missing preview; without a preview Worker, ask
+  for approval to merge instead.
 - For the unchanged starter, return the initial sample app URL from the
   Cloudflare import. Do not manufacture an empty PR. The first actual edit
   starts the branch-preview loop below.
@@ -45,11 +46,13 @@ and environment; never create another template copy during iteration.
    in the starter prompt), push only the requested changes to the task branch.
    Use the platform's GitHub tools or Create PR control; do not ask for a PAT
    just because the shell lacks GitHub authentication. Do not merge yet.
-4. Cloudflare Builds runs `deploy:preview`. Wait for the current commit's
-   successful build; get its actual Preview URL from the PR or `<app>-preview` Worker
-   dashboard. Open it when network access permits. Report the link, commit,
-   checks, and whether browser verification ran. Never invent a URL or return
-   an older preview as if it included the current change.
+4. With a preview Worker, Cloudflare Builds runs `deploy:preview`. Wait for the
+   current commit's successful build; get its actual Preview URL from the PR or
+   `<app>-preview` Worker dashboard. Open it when network access permits.
+   Report the link, commit, checks, and whether browser verification ran. Never
+   invent a URL or return an older preview as if it included the current
+   change. Without a preview Worker there is no preview URL: report the PR and
+   ask for approval to merge; the production URL then shows the change.
 5. Publishing needs explicit approval for the reviewed change. Check the
    PR's latest commit, passing CI, and preview before merging. If new commits
    arrived, review them before promotion. Give the GitHub merge link when the

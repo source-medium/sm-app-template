@@ -3,16 +3,19 @@
  * configuration,
  * the warehouse. Prints one status line naming the mode and guard, never a
  * credential. Sample mode makes no Google call. `--offline` (used by
- * `pnpm dev`) stops after the configuration check.
+ * `pnpm dev`) stops after the configuration check. `--dev-vars` (used by
+ * `pnpm preview`) checks `.dev.vars`, the only file the Worker preview reads,
+ * instead of the Next environment, and is always offline.
  */
 import { execFileSync } from "node:child_process";
 import { describeConfig, parseConfig } from "../src/lib/config/env.server";
 import { warehouseFor } from "../src/lib/data/warehouse.server";
 import { connectionReportText } from "../src/lib/data/connection-report";
 import { setLogEmitter } from "../src/lib/data/log";
-import { loadLocalEnvironment, root } from "./lib/environment";
+import { loadLocalEnvironment, readDevVars, root } from "./lib/environment";
 
-const offline = process.argv.includes("--offline");
+const devVars = process.argv.includes("--dev-vars");
+const offline = devVars || process.argv.includes("--offline");
 const ok = (message: string) => console.log(`  ✓ ${message}`);
 const fail = (message: string) => console.error(`  ✗ ${message}`);
 
@@ -29,9 +32,10 @@ function trackedEnvFiles(): string[] | null {
 }
 
 async function main(): Promise<void> {
-  loadLocalEnvironment();
-  const config = parseConfig(process.env);
-  console.log(`SourceMedium app: ${describeConfig(config)}`);
+  const vars = devVars ? readDevVars() : null;
+  if (!devVars) loadLocalEnvironment();
+  const config = parseConfig(devVars ? (vars ?? {}) : process.env);
+  console.log(`SourceMedium app${devVars ? " (Worker preview, from .dev.vars)" : ""}: ${describeConfig(config)}`);
 
   const tracked = trackedEnvFiles();
   if (tracked && tracked.length > 0) {
@@ -44,9 +48,16 @@ async function main(): Promise<void> {
   if (config.status === "error") {
     for (const problem of config.problems) fail(problem.message);
     console.error(
-      "Fix your environment settings (or .env.local for local development), then run `pnpm diagnose` again. See docs/cloud.md#debug-with-live-data.",
+      devVars
+        ? "Fix .dev.vars (the Worker preview reads it, not .env.local), then run `pnpm preview` again. See docs/connect.md#test-the-worker-locally."
+        : "Fix your environment settings (or .env.local for local development), then run `pnpm diagnose` again. See docs/cloud.md#debug-with-live-data.",
     );
     process.exit(1);
+  }
+  if (devVars && !vars) {
+    ok(
+      "No .dev.vars file, so the Worker preview serves sample data. Paste the configuration block into .dev.vars to preview live data.",
+    );
   }
   if (offline) return;
 

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { configuredSecretValues } from "../../scripts/lib/environment";
+import { configuredSecretValues, parseDotenv, readDevVars } from "../../scripts/lib/environment";
 
 let directory: string;
 beforeEach(() => {
@@ -38,5 +38,24 @@ describe("build scan credential sources", () => {
   it("ignores absent and short fragments that would match ordinary bundle text", () => {
     expect(configuredSecretValues(directory, {})).toEqual([]);
     expect(configuredSecretValues(directory, { SM_APP_KEY: "short", APP_BASIC_AUTH: "u:p" })).toEqual([]);
+  });
+});
+
+describe("Worker preview runtime values", () => {
+  it("parses dotenv lines with export prefixes, quotes, blanks and comments", () => {
+    expect(parseDotenv('# note\nexport A=1\nB="two words"\nC=\n\nnot a line\n D = spaced \n')).toEqual({
+      A: "1",
+      B: "two words",
+      C: "",
+      D: "spaced",
+    });
+  });
+
+  it("reads .dev.vars alone and reports its absence", () => {
+    expect(readDevVars(directory)).toBeNull();
+    writeFileSync(join(directory, ".env.local"), "APP_BASIC_AUTH=viewer:local-synthetic-password-0123456789\n");
+    expect(readDevVars(directory)).toBeNull();
+    writeFileSync(join(directory, ".dev.vars"), "APP_STORE_ID=store_1\n");
+    expect(readDevVars(directory)).toEqual({ APP_STORE_ID: "store_1" });
   });
 });

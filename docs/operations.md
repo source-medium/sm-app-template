@@ -1,8 +1,8 @@
 # Operating the app
 
 App credentials are managed in your SourceMedium workspace's **Apps** page,
-separately from this template. These controls require provisioning to be enabled
-in that workspace. Otherwise keep sample mode and contact SourceMedium support.
+separately from this template. If that page says credentials are still being
+enabled, keep sample data and ask SourceMedium support.
 
 ## Replacing secrets
 

@@ -63,18 +63,20 @@ scripts and styles under `/_next/static` are open; they carry no data.
 ## The shared password
 
 The browser asks for a user name and password; both are in `APP_BASIC_AUTH`
-(`user:password`). The app compares them in constant time and answers wrong
-or missing ones with `401` and nothing else.
+(`user:password`). The password is 24 to 128 letters, digits, `-` or `_`; the
+issued block already fits, and a shorter local password is a configuration
+error. The app compares them in constant time and answers wrong or missing
+ones with `401` and nothing else.
 
 Limits: everyone shares one identity, so there is no per-person record and no
 per-person removal; browsers have no "log out"; and it is not a design for
 writes, which would need real accounts and CSRF protection. Hosted apps are
 HTTPS; plain HTTP is only for the local dev server on 127.0.0.1.
 
-To remove someone, replace the password through your app provisioning process
-(the planned Apps page will provide this) and update
-every deployment (`docs/operations.md`). SourceMedium cannot change your host's
-secrets, so the old password works until you do.
+To remove someone, use **Replace viewer password** on the Apps page of your
+SourceMedium workspace and update every deployment (`docs/operations.md`).
+SourceMedium cannot change your host's secrets, so the old password works
+until you do.
 
 ## Cloudflare Access
 

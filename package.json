@@ -25,7 +25,7 @@
     "test:secrets": "tsx scripts/check-secret-isolation.ts",
     "build": "next build",
     "build:cloudflare": "tsx scripts/build-cloudflare.ts",
-    "preview": "pnpm build:cloudflare && opennextjs-cloudflare preview",
+    "preview": "tsx --conditions=react-server scripts/diagnose.ts --dev-vars && pnpm build:cloudflare && opennextjs-cloudflare preview",
     "deploy": "pnpm build:cloudflare && opennextjs-cloudflare deploy",
     "deploy:preview": "pnpm build:cloudflare && wrangler preview --env preview --ignore-base-config",
     "deploy:cloudflare": "pnpm run deploy",
