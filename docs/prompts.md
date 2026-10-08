@@ -44,13 +44,13 @@ The prompts below cover work that starts outside a page.
 
 Copy one into your coding agent. These are starting instructions, not proven
 end-to-end onboarding flows. "Connect my data" needs an already provisioned
-app block while the Apps page is unavailable. "Check a number" needs an
+app block issued by an organization admin from SourceMedium's Apps page. "Check a number" needs an
 independent, authorized source; a passing code check does not validate a metric.
 
 ## Connect my data
 
 **You provide:** an app-specific block, entered privately in Cloudflare runtime settings
-(or `.env.local` for local development).
+(or a separate Development block in cloud environment settings; `.env.local` for local development).
 **Expected result:** a verified live connection, or a clear explanation of the missing prerequisite.
 
 ```text
@@ -58,8 +58,14 @@ Help me connect this app to my SourceMedium warehouse. Follow docs/connect.md.
 If the app is hosted, use "Connect a hosted app": I will enter the block in
 Cloudflare's production runtime settings myself. Do not ask me to create a
 local file, run a terminal command, or give you the key. Help verify sign-in,
-Live data, and the intended store on the hosted app. For local development,
-I will fill .env.local myself and run pnpm diagnose; do not read that file.
+Live data, and the intended store on the hosted app. Guide me through
+Live data → Check connection; I can share its safe report here. If I need a
+block, direct an organization admin to Apps in SourceMedium, not Google Cloud.
+For cloud-agent debugging, follow docs/cloud.md#debug-with-live-data. I will
+enter a separate Development app block in environment settings and authorize
+read-only warehouse checks. Then run pnpm diagnose and the relevant schema and
+live tests yourself. For local development, I will fill .env.local privately;
+run pnpm diagnose without reading that file. Never print environment values.
 Never ask for secrets in chat. If provisioning is unavailable, explain that prerequisite and
 keep sample mode; do not invent a configuration block. Confirm the workspace
 reporting currency and that every included store and money source reports in

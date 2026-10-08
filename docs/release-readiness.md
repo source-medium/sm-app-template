@@ -89,15 +89,61 @@ fresh template copy in each provider and record this short walkthrough:
 
 1. Connect GitHub and start the repository's cloud environment. Confirm setup
    finishes without local tools, warehouse credentials, or MCP login.
-2. Follow the two Worker connections in `docs/cloud.md`. Request a small UI
+2. Follow the preview Worker connection in `docs/cloud.md`. Request a small UI
    change, create its PR, and open the current commit's sample branch preview.
 3. Request another change in the same conversation and verify the preview
    updates while production stays unchanged.
-4. Approve publication, merge after CI passes, verify the production build,
+4. Connect the production Worker, approve publication, merge after CI passes, verify the production build,
    then revert the test change through another PR.
 
 The two real cloud-agent walkthroughs and fresh-account Cloudflare Git import
 remain **unverified**. Keep them separate from local and CLI deployment evidence.
+
+## Hosted connection checks (2026-10-08, unreleased follow-up)
+
+The updated working tree passed `pnpm check`, a production build and all 88
+browser tests, 32 repeated Connection browser checks, secret isolation (78
+rendered responses), the Cloudflare build and the Worker smoke suite. Builds
+ran in a separate checkout without the maintainer's environment files. The
+new diagnostic endpoint passed same-origin and anonymous-guard checks in
+both Node and workerd. Its safe report shares the CLI's warehouse checks.
+
+The authorized demo checkout passed `pnpm diagnose` with its existing app
+credential. It reported the expected store-ID fallback because `dim_stores`
+is not yet published there. No credential or warehouse row was printed.
+This checks connectivity, not metric accuracy or freshness.
+
+Urchin's customer-admin Apps handoff is implemented separately and needs its
+own migration, infrastructure and demo-only issuance rollout before it is
+enabled. These starter checks do not prove newly issued Google credentials,
+effective provider quotas, or the two fresh cloud-agent account journeys.
+
+## Cloud-agent live debugging (2026-10-08, unreleased follow-up)
+
+The optional Development credential path uses the existing app configuration
+and commands, with current Codex and Claude environment instructions in
+`docs/cloud.md#debug-with-live-data`. It does not issue a production credential
+to an agent or put live data in public sample branch previews.
+
+- Reproduced four sample-auth test failures with synthetic live values injected
+  into the environment. After isolating the test environments, `pnpm check`
+  passed with those values present, and all 88 sample/browser tests passed.
+- The actual `diagnose` and `schema` CLI entry points consumed injected values
+  against fake Google responses, without a dotenv file or credential output.
+- Secret isolation scanned 38 build files and 78 responses; the Cloudflare
+  build also passed with synthetic credentials injected in its environment.
+  A deliberate `NEXT_PUBLIC_` copy of the injected key was rejected without
+  printing it. The experiment ran only in the disposable clone and was removed.
+- `pnpm test:live --grep 'renders live data'` passed all six views on the
+  authorized demo checkout using its existing credential. Browser sign-in was
+  automatic, with one worker and no traces, screenshots, videos or HTML report.
+- Urchin's updated handoff passed its component tests, typecheck, lint and
+  modularity checks. Production and Development use the same issuance code.
+
+These checks verify the environment-variable contract locally. They do not
+claim a fresh Codex/Claude cloud session or a newly issued Urchin key was tested.
+The opt-in Urchin rollout and real cloud-account walkthroughs remain separate
+release checks; no real key was copied to a cloud agent during this work.
 
 ## Host and onboarding checks beyond the tested path
 

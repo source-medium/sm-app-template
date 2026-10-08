@@ -2,7 +2,7 @@
 
 ## See the warehouse before writing SQL
 
-**SourceMedium MCP (recommended, development only).** The app never uses it at
+**SourceMedium MCP (optional, development only).** The app never uses it at
 runtime. Your agent signs in with your own SourceMedium login, so it sees what
 you can see, and no app secret is involved.
 
@@ -20,6 +20,9 @@ https://sourcemedium.com/docs/ai-analyst/connect-an-ai-assistant
 **`pnpm schema <relation>`** prints a relation's columns and types through the
 app's own key (never rows). Without live configuration it prints a bundled
 snapshot of SourceMedium's published schema, which may differ from yours.
+Codex Cloud and Claude Code Cloud can use a separate [Development app
+credential](cloud.md#debug-with-live-data) in environment settings to run this
+command against your warehouse. MCP is not required for that path.
 
 ## The example's relations
 

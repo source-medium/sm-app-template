@@ -33,6 +33,9 @@ const modes: { name: string; env: string; checks: [string, RequestInit, number, 
     env: "",
     checks: [
       ["/healthz", {}, 200],
+      ["/connection", {}, 200, "Check connection"],
+      ["/connection/check", { method: "POST", headers: { origin: BASE } }, 200, "sample"],
+      ["/connection/check", { method: "POST", headers: { origin: "https://other.example" } }, 403],
       [FIRST, {}, 200, "Sample data"],
       [LAST, {}, 200, "Sample data"],
       // An encoded # and & in one value must not cut or add parameters (the @opennextjs/aws patch).
@@ -44,6 +47,8 @@ const modes: { name: string; env: string; checks: [string, RequestInit, number, 
     env: `APP_BASIC_AUTH=viewer:${PASSWORD}\n`,
     checks: [
       [FIRST, {}, 401],
+      ["/connection", {}, 401],
+      ["/connection/check", { method: "POST", headers: { origin: BASE } }, 401],
       [FIRST, { headers: { RSC: "1" } }, 401],
       [FIRST, { headers: { RSC: "1", "Next-Router-Prefetch": "1" } }, 401],
       [FIRST, { method: "POST", headers: { "Next-Action": "x" } }, 401],

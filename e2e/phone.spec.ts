@@ -110,3 +110,13 @@ test("the report can be refreshed on a phone", async ({ page }) => {
     0,
   );
 });
+
+test("connection report fits a small phone", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto("/connection");
+  await page.getByRole("button", { name: "Check connection", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Sample mode is ready.");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(
+    0,
+  );
+});

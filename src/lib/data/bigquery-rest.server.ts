@@ -195,8 +195,12 @@ export async function runQuery(
 }
 
 /** Doctor only: what a query would scan, without running it. */
-export async function dryRunQuery(client: BigQueryClient, request: QueryRequest): Promise<{ bytesProcessed: bigint }> {
-  const call = new Call(client, {});
+export async function dryRunQuery(
+  client: BigQueryClient,
+  request: QueryRequest,
+  options: QueryOptions = {},
+): Promise<{ bytesProcessed: bigint }> {
+  const call = new Call(client, options);
   try {
     const token = await call.token();
     const response = await call.submit(token, {
@@ -224,8 +228,9 @@ export async function getDatasetMetadata(
   client: BigQueryClient,
   projectId: string,
   datasetId: string,
+  options: QueryOptions = {},
 ): Promise<DatasetMetadata> {
-  const body = (await metadataGet(client, `/projects/${enc(projectId)}/datasets/${enc(datasetId)}`)) as {
+  const body = (await metadataGet(client, `/projects/${enc(projectId)}/datasets/${enc(datasetId)}`, options)) as {
     location?: string;
   };
   if (typeof body.location !== "string") throw new WarehouseError("response_invalid", { reason: "dataset_location" });
@@ -238,16 +243,18 @@ export async function getTableMetadata(
   projectId: string,
   datasetId: string,
   tableId: string,
+  options: QueryOptions = {},
 ): Promise<TableMetadata> {
   const body = (await metadataGet(
     client,
     `/projects/${enc(projectId)}/datasets/${enc(datasetId)}/tables/${enc(tableId)}?view=BASIC`,
+    options,
   )) as { type?: string; location?: string; schema?: { fields?: BigQueryField[] } };
   return { type: body.type ?? "TABLE", location: body.location ?? "", fields: body.schema?.fields ?? [] };
 }
 
-async function metadataGet(client: BigQueryClient, path: string): Promise<unknown> {
-  const call = new Call(client, {});
+async function metadataGet(client: BigQueryClient, path: string, options: QueryOptions): Promise<unknown> {
+  const call = new Call(client, options);
   try {
     return await call.getJson(`${API_ROOT}${path}`, await call.token());
   } catch (error) {

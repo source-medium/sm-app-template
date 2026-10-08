@@ -15,6 +15,8 @@ test.describe("protected sample (shared password)", () => {
       [`${home}?_rsc=1`, { RSC: "1" }],
       [home, { RSC: "1", "Next-Router-Prefetch": "1" }],
       ["/robots.txt", {}],
+      ["/connection", {}],
+      ["/connection/check", {}],
       ["/paid-marketing/export", {}],
       ["/overview/export", {}],
       ["/.well-known/anything", {}],
@@ -34,6 +36,7 @@ test.describe("protected sample (shared password)", () => {
       expect(await response.text()).not.toContain("Sample Store");
     }
     expect((await anonymous.post(home, { headers: { "Next-Action": "x" } })).status()).toBe(401);
+    expect((await anonymous.post("/connection/check")).status()).toBe(401);
     expect((await anonymous.get("/healthz")).status()).toBe(200);
     await anonymous.dispose();
   });

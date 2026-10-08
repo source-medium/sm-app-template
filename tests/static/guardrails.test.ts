@@ -86,6 +86,18 @@ describe("auth-coverage", () => {
     ]);
   });
 
+  it("keeps connection diagnostics behind the warehouse guard", () => {
+    const gaps = findAuthGaps([
+      { path: "src/lib/data/connection.server.ts", text: "export function checkWarehouseConnection() {}" },
+      {
+        path: "src/app/unsafe/route.ts",
+        text: 'import { checkWarehouseConnection } from "@/lib/data/connection.server"; export async function POST() { return checkWarehouseConnection(); }',
+      },
+    ]);
+    expect(gaps.some((gap) => gap.includes("imports `src/lib/data/connection.server.ts`"))).toBe(true);
+    expect(gaps.some((gap) => gap.includes("without calling `requireViewer()`"))).toBe(true);
+  });
+
   it("follows a guarded handler in the same file exported under a method name", () => {
     const handler =
       'import { requireViewer } from "@/lib/auth/require-viewer"; async function handler() { await requireViewer(); return new Response(""); }\n';

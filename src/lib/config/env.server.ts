@@ -73,7 +73,7 @@ const SERVICE_ACCOUNT_EMAIL =
 const PRIVATE_KEY_ID = /^[a-f0-9]{40}$/;
 const MAX_KEY_LENGTH = 16_384;
 
-const RECOPY = "recopy it from the Apps page in SourceMedium";
+const RECOPY = "check the issued configuration block with your SourceMedium admin (docs/connect.md)";
 
 /** Whitespace-only counts as missing. */
 function read(env: Env, name: string): string | undefined {

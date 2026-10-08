@@ -1,37 +1,27 @@
 import { defineConfig, devices } from "@playwright/test";
 import nextEnv from "@next/env";
+import { sampleEnvironment as cleared } from "./scripts/lib/sample-env";
 
 /**
  * End-to-end tests against a production build (`pnpm test:e2e` builds first).
  *
  * - sample / phone: a public sample server.
  * - protected: a sample server behind a test password.
- * - live (opt-in, `pnpm test:live`): your .env.local configuration against
+ * - live (opt-in, `pnpm test:live`): environment settings or .env.local against
  *   your real warehouse. It runs real queries, so it never runs by default.
  *
  * The sample servers clear every app variable, so a developer's .env.local
  * (which `next start` would load) cannot leak live settings into them.
  */
 const PASSWORD = "e2eOnlyPassword0123456789abcd";
-const APP_VARIABLES = [
-  "SM_APPLICATION_ID",
-  "SM_APP_KEY",
-  "BIGQUERY_JOB_PROJECT_ID",
-  "BIGQUERY_LOCATION",
-  "SM_DATA_PROJECT_ID",
-  "SM_TRANSFORMED_DATASET_ID",
-  "SM_METADATA_DATASET_ID",
-  "APP_BASIC_AUTH",
-  "APP_STORE_ID",
-  "CF_ACCESS_TEAM_DOMAIN",
-  "CF_ACCESS_AUD",
-  "BIGQUERY_MAX_BYTES_BILLED",
-];
-const cleared = Object.fromEntries(APP_VARIABLES.map((name) => [name, ""]));
-
 const live = process.env.SM_LIVE_E2E === "1";
 if (live) nextEnv.loadEnvConfig(process.cwd(), false, { info: () => undefined, error: console.error });
 const [liveUser = "", ...livePassword] = (process.env.APP_BASIC_AUTH ?? "").split(":");
+if (live && (!process.env.SM_APP_KEY || !liveUser || !livePassword.join(":"))) {
+  throw new Error(
+    "Live browser checks need a complete Development app block with APP_BASIC_AUTH in environment settings or .env.local. Run pnpm diagnose first; see docs/cloud.md#debug-with-live-data.",
+  );
+}
 
 export default defineConfig({
   // Shared checks in e2e/; each view's own tests sit in its feature folder, so deleting a view deletes them.
@@ -40,8 +30,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
-  use: { trace: "retain-on-failure" },
+  // Live traces/HTML reports can retain warehouse rows and Authorization headers.
+  reporter: live ? "list" : process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  use: { trace: live ? "off" : "retain-on-failure", screenshot: "off", video: "off" },
+  ...(live ? { workers: 1, retries: 0 } : {}),
   projects: live
     ? [
         {

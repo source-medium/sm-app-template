@@ -1,8 +1,7 @@
 # AGENTS.md
 
 This customer-owned Next.js app reads a SourceMedium BigQuery warehouse on the server for trusted viewers.
-Every viewer sees the same data; optional runtime `APP_STORE_ID` restricts a deployment to one store.
-Without configuration it runs on clearly labeled sample data.
+Every viewer sees the same data; optional runtime `APP_STORE_ID` restricts a deployment to one store. Without configuration it runs on clearly labeled sample data.
 
 Make the first useful SourceMedium data app easy. Prefer the existing defaults
 and copy the closest view before introducing a new pattern. Add configuration
@@ -21,8 +20,7 @@ Keep only UI components the app uses; add more when a view needs them.
 - `pnpm skills:sync`: run after editing anything in `.agents/skills`.
 
 Cloud setup/previews/publishing: use `sm-cloud` and `docs/cloud.md` (Codex and Claude).
-Also: `pnpm diagnose`, `pnpm test:e2e`, `pnpm build`, `pnpm build:cloudflare`.
-Use `pnpm run deploy`, never `pnpm deploy` (a pnpm built-in).
+Also: `pnpm diagnose`, `pnpm test:e2e`, `pnpm build`, `pnpm build:cloudflare`. Use `pnpm run deploy`, never `pnpm deploy` (a pnpm built-in).
 
 ## Repo map
 
@@ -59,9 +57,11 @@ docs/                         Guides (index below)
    Pass parsed, shareable view filters as `ReportPage agentFilters` (docs/prompts.md).
 4. **Inspect the schema before writing SQL**: the SourceMedium MCP
    (`describe_table`) or `pnpm schema <relation>`. Never guess a column.
-5. **Never paste a secret** into a chat, a file, a commit, or a log. Do not read
-   any `.env*` (except `.env.example`) or `.dev.vars*`; ask the person to run
-   `pnpm diagnose` and share its output instead.
+5. **Never paste a secret** into chat, code, a commit, or a log. Do not inspect
+   `.env*` (except `.env.example`), `.dev.vars*`, or dump environment values.
+   Run `pnpm diagnose` yourself; it consumes configuration without printing it.
+   For authorized cloud debugging, use a separate Development app credential
+   entered privately by the person (docs/cloud.md#debug-with-live-data).
 
 ## Add a page
 
@@ -144,7 +144,6 @@ acts for a person needs a real per-person authorization design first.
 - `docs/data.md`: schemas/SQL/money; `docs/operations.md`: quotas/errors/secrets.
 - `docs/removing-the-example.md`: deleting views; `docs/prompts.md`: composer context and starter prompts.
 
-Publishing live data, production deploys, and destructive actions need the
-person's explicit go-ahead. Never ask for a SourceMedium admin credential.
+Publishing live data, production deploys, and destructive actions need the person's explicit go-ahead. Never ask for a SourceMedium admin credential.
 
 Run `pnpm check` before declaring done.

@@ -7,8 +7,8 @@
  *   2. `next start` in live mode (sentinel key) and in protected sample mode;
  *      fetch every view's HTML and RSC payload, and the challenge, and scan.
  *
- * The scan also looks for the real key and password in this checkout's local
- * env files, which `next build` reads (a NEXT_PUBLIC_ copy would be inlined).
+ * The scan also checks injected environment credentials and local env files,
+ * which `next build` reads (a NEXT_PUBLIC_ copy would be inlined).
  *
  * Builds into .next, so stop `pnpm dev` first. CI runs this on every change.
  */
@@ -16,29 +16,12 @@ import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { appConfig } from "../app.config";
-import { localSecretValues, root } from "./lib/environment";
+import { configuredSecretValues, root } from "./lib/environment";
+import { sampleEnvironment as cleared } from "./lib/sample-env";
 
 const PORT = 3107;
 const PASSWORD = "SentinelPasswordDoNotShip0123456789";
 const APP_ID = "5e1e4e1e-0000-4000-8000-5e1e4e1e0000";
-
-/** `next start` loads .env.local; clearing every app variable keeps a developer's real configuration out. */
-const cleared = Object.fromEntries(
-  [
-    "SM_APPLICATION_ID",
-    "SM_APP_KEY",
-    "BIGQUERY_JOB_PROJECT_ID",
-    "BIGQUERY_LOCATION",
-    "SM_DATA_PROJECT_ID",
-    "SM_TRANSFORMED_DATASET_ID",
-    "SM_METADATA_DATASET_ID",
-    "APP_BASIC_AUTH",
-    "APP_STORE_ID",
-    "CF_ACCESS_TEAM_DOMAIN",
-    "CF_ACCESS_AUD",
-    "BIGQUERY_MAX_BYTES_BILLED",
-  ].map((name) => [name, ""]),
-);
 
 async function sentinelKey(): Promise<{ base64: string; pemFragment: string }> {
   const pair = (await crypto.subtle.generateKey(
@@ -66,7 +49,7 @@ function files(dir: string, pattern: RegExp): string[] {
 }
 
 const key = await sentinelKey();
-const sentinels = [PASSWORD, key.base64.slice(40, 120), key.pemFragment, ...localSecretValues()];
+const sentinels = [PASSWORD, key.base64.slice(40, 120), key.pemFragment, ...configuredSecretValues()];
 const liveEnv = {
   SM_APPLICATION_ID: APP_ID,
   SM_APP_KEY: key.base64,
@@ -157,7 +140,7 @@ console.log(`Scanned ${pages} rendered responses.`);
 
 if (leaks.length > 0) {
   console.error(
-    `A sentinel or local credential reached browser-facing output: ${[...new Set(leaks)].join(", ")}. Find where the value is read and keep it in a *.server.ts module.`,
+    `A sentinel or configured credential reached browser-facing output: ${[...new Set(leaks)].join(", ")}. Find where the value is read and keep it in a *.server.ts module.`,
   );
   process.exit(1);
 }

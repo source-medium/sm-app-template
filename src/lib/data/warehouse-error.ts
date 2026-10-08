@@ -68,7 +68,8 @@ const COPY: Record<WarehouseErrorKind, { title: string; remedy: string }> = {
   },
   response_invalid: {
     title: "Unexpected warehouse response",
-    remedy: "Google returned a response the app could not read. Reload; if it persists, run `pnpm diagnose`.",
+    remedy:
+      "Google returned a response the app could not read. Reload; if it persists, open Connection from the data badge and share the safe report. Locally, run `pnpm diagnose`.",
   },
   incompatible_schema: {
     title: "The data no longer matches this view",
@@ -80,7 +81,11 @@ const COPY: Record<WarehouseErrorKind, { title: string; remedy: string }> = {
     remedy:
       "The query exceeded its row bound or the 10 MiB response limit. Narrow the filters, select fewer columns, or aggregate more in SQL.",
   },
-  unknown: { title: "Something went wrong", remedy: "Reload the page; if it persists, run `pnpm diagnose`." },
+  unknown: {
+    title: "Something went wrong",
+    remedy:
+      "Reload; if it persists, open Connection from the data badge and share the safe report. Locally, run `pnpm diagnose`.",
+  },
 };
 
 type Details = {

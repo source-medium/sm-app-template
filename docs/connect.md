@@ -2,11 +2,12 @@
 
 Using Codex Cloud or Claude Code in the cloud? Start with
 [the browser guide](cloud.md). For an already hosted app, jump to
-[Connect a hosted app](#connect-a-hosted-app); local setup is optional.
+[Connect a hosted app](#connect-a-hosted-app); local setup is optional. For
+agent-run warehouse debugging, use a separate [Development credential](cloud.md#debug-with-live-data).
 
-This is a preview. SourceMedium's Apps page and its self-service credential
-flows are planned. The steps below describe that planned flow; live setup is
-currently possible only with an already provisioned app-specific block.
+This is a preview. Live setup requires app provisioning to be enabled in your
+SourceMedium workspace. If Apps says it is not enabled, start with sample
+data and contact SourceMedium support.
 Start with the shared password and Cloudflare Workers Paid. Use the issued
 app credential; never substitute an admin credential.
 
@@ -33,8 +34,9 @@ SourceMedium is needed.
 
 ## 2. Get your configuration
 
-When the Apps page is available, an organization **admin** opens **Apps** in
-SourceMedium and creates an app.
+An accepted organization **admin** opens **Apps** in their SourceMedium
+workspace, names the app, and confirms its read access. No Google account
+or Google Cloud console setup is needed.
 The page states what the app will be able to read, then shows one
 configuration block **once**:
 
@@ -134,16 +136,19 @@ You need an already issued [app-specific block](#2-get-your-configuration).
    omit it to keep the multi-store picker. Add all eight issued values as
    **Secrets**, including `APP_BASIC_AUTH`, then save and deploy the settings.
    Enter the values privately yourself. Do not put them in agent chat, the
-   agent's environment, build variables, or Preview Base settings.
-3. Open the production URL, sign in, and confirm **Live data** on each view
-   with no error state. Confirm the intended store. A restricted app must
+   agent's environment, build variables, or Preview Base settings. A separate
+   Development app credential may be used in [cloud agent settings](cloud.md#debug-with-live-data).
+3. Open the production URL and sign in. Click **Live data** in the top bar,
+   then **Check connection**. Fix any failed check using its remedy. The mode
+   label alone means configuration is present, not that queries succeeded.
+   Confirm **Live data** on each view with no error state. Confirm the intended store. A restricted app must
    return HTTP 403 when `?store=` names another store. An anonymous browser
    must be challenged before seeing data. Share only with authorized viewers.
 
 No local `.env` file or `pnpm diagnose` is required for this hosted path.
 Your agent can inspect code and bundled schemas without the warehouse key.
-When troubleshooting, report only the error title and remedy, never values
-from the settings screen. Live rendering is a connection check, not an
+When troubleshooting, use **Copy safe report** on Connection. Never share
+values from the settings screen. Live rendering is a connection check, not an
 independent reconciliation of the metrics.
 
 ### Starting with a new hosted copy
@@ -172,15 +177,17 @@ deployed Worker reads only its runtime variables.
 
 ## Lost a secret?
 
-Treat the configuration block as shown once. If it is lost before self-service
-replacement is available, contact your SourceMedium admin through your existing
-support channel; do not send them the old key or password.
-The planned Apps page will provide:
+Treat the configuration block as shown once. An organization admin can return
+to **Apps** to recover access without sending anyone the old key or password:
 
-- **Issue replacement key** returns a new `SM_APP_KEY`. The old key stops
+- **Replace key** returns a new `SM_APP_KEY`. The old key stops
   working; update every host and `.env.local`.
-- **Replace password** returns a new `APP_BASIC_AUTH`. It takes effect when you
+- **Replace viewer password** returns a new `APP_BASIC_AUTH`. It takes effect when you
   update your hosts.
 - The non-secret values can be copied again at any time.
 
-See `docs/operations.md` for what each replacement interrupts.
+**Revoke access** disables the app's warehouse identity and removes its keys
+and grants. It does not delete your hosted code or change its viewer password.
+Removing a person from SourceMedium does not revoke keys or app passwords
+they already hold; replace those separately or remove their Cloudflare Access
+access. See `docs/operations.md` for what each replacement interrupts.

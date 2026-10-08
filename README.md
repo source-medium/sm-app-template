@@ -55,8 +55,10 @@ Cloudflare Workers is the tested runtime; Vercel deployment is unverified.
 
 Codex and Claude Code share [AGENTS.md](AGENTS.md) and the same repository
 skills. Cursor and Copilot can follow those instructions too. Sample work
-uses bundled schemas without an MCP login. For live schema inspection,
-connect your own authorized SourceMedium account as described in [data.md](docs/data.md).
+uses bundled schemas without an MCP login. To let the agent debug real queries,
+add a separate [Development credential](docs/cloud.md#debug-with-live-data) in
+its environment settings. It can run connection, schema and live checks itself.
+An authorized SourceMedium MCP connection is another option for data inspection.
 Copyable starting points are in [docs/prompts.md](docs/prompts.md).
 
 Before calling a change done, run:

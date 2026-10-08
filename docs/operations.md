@@ -1,17 +1,16 @@
 # Operating the app
 
-Apps-page actions, revocation, resumption and provider query allowances below
-describe the planned SourceMedium provisioning service. They are not implemented
-by this template. For an already provisioned preview app, use your existing
-admin/support process until self-service is available.
+App credentials are managed in your SourceMedium workspace's **Apps** page,
+separately from this template. These controls require provisioning to be enabled
+in that workspace. Otherwise keep sample mode and contact SourceMedium support.
 
 ## Replacing secrets
 
-| Action (Apps page)        | What changes                                | What it interrupts                                                                 |
-| ------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------- |
-| **Issue replacement key** | A new `SM_APP_KEY`; the old key is deleted  | Every deployment stops reading data until you update its `SM_APP_KEY` and redeploy |
-| **Replace password**      | A new `APP_BASIC_AUTH`                      | Nothing until you update your hosts; then viewers need the new password            |
-| **Copy configuration**    | Non-secret values, after a warehouse change | Nothing; update the values and redeploy                                            |
+| Action (Apps page)             | What changes                               | What it interrupts                                                                 |
+| ------------------------------ | ------------------------------------------ | ---------------------------------------------------------------------------------- |
+| **Replace key**                | A new `SM_APP_KEY`; the old key is deleted | Every deployment stops reading data until you update its `SM_APP_KEY` and redeploy |
+| **Replace viewer password**    | A new `APP_BASIC_AUTH`                     | Nothing until you update your hosts; then viewers need the new password            |
+| **Copy settings (no secrets)** | The app's recorded non-secret values       | Nothing; update the values and redeploy                                            |
 
 There is no overlap window in this version: plan a key replacement for a quiet
 moment and update every host right away. Google may honor access tokens issued
@@ -39,13 +38,17 @@ Each query also has a byte ceiling (default 1 GiB). A query over it fails with
 
 ## When something is wrong
 
-Run `pnpm diagnose` with the same values as the failing deployment (put them in
-`.env.local`). It names the failing step:
+In the hosted app, click **Live data → Check connection**. Use **Copy safe
+report** to share the failing step with your agent or SourceMedium support.
+For local or authorized cloud development, the agent runs `pnpm diagnose` with
+the configured Development credential; it need not read or print the values.
+Follow [live debugging](cloud.md#debug-with-live-data) to configure either cloud
+agent. Hosted onboarding does not require a local file.
 
 | Message                                  | Meaning                                             | Remedy                                                            |
 | ---------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------- |
 | Configuration needs attention (503)      | Missing or malformed values, or no viewer guard     | Fix the named variables; see `docs/connect.md`                    |
-| The app key was rejected                 | Google refused `SM_APP_KEY`                         | Copy the current key from Apps, or ask your SourceMedium admin    |
+| The app key was rejected                 | Google refused `SM_APP_KEY`                         | Replace the key in Apps; an issued key cannot be retrieved        |
 | The app cannot read this data            | A permission is missing                             | Retry provisioning from Apps; contact SourceMedium if it persists |
 | Table or dataset not found               | Wrong coordinates or location                       | Recopy the configuration from Apps; check `BIGQUERY_LOCATION`     |
 | Query allowance used up                  | A daily allowance was reached                       | Wait for the reset or contact SourceMedium; do not rotate the key |
@@ -67,7 +70,7 @@ by `"event":"bq_query"` and `"error_kind"`. To forward them to an error
 tracker, replace `emit` in `log.ts`.
 
 `/healthz` answers with the build id. It shows the Worker is up, not that the
-warehouse is reachable; `pnpm diagnose` checks that.
+warehouse is reachable; Connection or `pnpm diagnose` checks that.
 
 ## Rolling back
 

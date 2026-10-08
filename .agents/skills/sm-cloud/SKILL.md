@@ -23,7 +23,8 @@ and environment; never create another template copy during iteration.
   not a hosted preview link. Stop services when finished unless the person
   is using the preview.
 - Follow the Cloudflare setup table in `docs/cloud.md` for the production and
-  sample-preview Git connections. Each targets its own Worker. The person
+  sample-preview Git connections. Start with the preview connection; defer
+  production until the first approved publication. Each targets its own Worker. The person
   signs into accounts and accepts billing privately.
   If you cannot configure their dashboard, give the exact pending click and
   link; keep doing independent work. Do not substitute a production deploy
@@ -61,8 +62,20 @@ and environment; never create another template copy during iteration.
 The `preview` environment is a separate Worker with public **sample data**.
 Keep the production Worker's `preview_urls: false` and never add warehouse
 credentials to the sample preview Worker. Live setup follows
-`docs/cloud.md#connect-your-data`: credentials stay in Cloudflare runtime
-settings, and the viewer guard must protect every hostname.
+`docs/cloud.md#connect-your-data`: production credentials stay in Cloudflare
+runtime settings, and the viewer guard must protect every hostname. An accepted
+organization admin obtains the one-time block from SourceMedium's Apps page;
+if provisioning is not enabled, keep sample mode and name that blocker.
+Use the hosted Connection check and its safe report for deployed-app diagnosis.
+For authorized live debugging, follow `docs/cloud.md#debug-with-live-data`: the
+person privately enters a separate Development app block in the cloud
+environment's direct variables. Never request the production key or use network
+secret substitution for a signing key. Run `pnpm diagnose`, `pnpm schema` and
+the relevant live checks yourself; never inspect secret files or print variables.
+Do not publish a live localhost preview or remove its viewer guard to automate
+sign-in. Sample tests and branch previews remain sample-only. If no Development
+credential is configured, use bundled schemas or separately authorized MCP and
+state what could not be verified against the warehouse.
 
 Keep the handoff short: preview or live link, what changed, what was verified,
 and the one remaining action, if any. For code questions or read-only checks,

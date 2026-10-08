@@ -23,8 +23,13 @@ const WAREHOUSE_MODULES = new Set([
   "src/lib/data/warehouse.server.ts",
   "src/lib/data/bigquery-rest.server.ts",
   "src/lib/data/google-token.server.ts",
+  "src/lib/data/connection.server.ts",
 ]);
-const WAREHOUSE_IMPORTERS = new Set(["src/lib/auth/require-viewer.ts", "src/lib/data/warehouse.server.ts"]);
+const WAREHOUSE_IMPORTERS = new Set([
+  "src/lib/auth/require-viewer.ts",
+  "src/lib/data/warehouse.server.ts",
+  "src/lib/data/connection.server.ts",
+]);
 
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 

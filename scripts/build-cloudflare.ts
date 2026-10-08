@@ -11,7 +11,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { localSecretValues, root } from "./lib/environment";
+import { configuredSecretValues, root } from "./lib/environment";
 
 const ENV_MODULE = join(root, ".open-next/cloudflare/next-env.mjs");
 
@@ -35,8 +35,8 @@ for (const fn of readdirSync(FUNCTIONS)) {
   for (const name of readdirSync(join(FUNCTIONS, fn))) if (name.startsWith(".env")) rmSync(join(FUNCTIONS, fn, name));
 }
 
-// Verify: no secret value from any local env file appears anywhere in the Worker output.
-const secrets = localSecretValues();
+// Verify local files AND injected agent environment secrets against the Worker output.
+const secrets = configuredSecretValues();
 function scan(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
@@ -48,7 +48,7 @@ function scan(dir: string): string[] {
 const leaks = secrets.length > 0 ? scan(join(root, ".open-next")) : [];
 if (leaks.length > 0) {
   console.error(
-    `A local secret appears in the Worker build (${leaks.map((path) => path.slice(root.length + 1)).join(", ")}); do not deploy this build. Report it as a template bug.`,
+    `A configured secret appears in the Worker build (${leaks.map((path) => path.slice(root.length + 1)).join(", ")}); do not deploy this build. Report it as a template bug.`,
   );
   process.exit(1);
 }

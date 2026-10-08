@@ -16,6 +16,8 @@ import {
 } from "./bigquery-rest.server";
 import { createTokenProvider } from "./google-token.server";
 import { assertStoreAccess, StoreAccessError } from "../auth/store-access";
+import { checkWarehouseConnection } from "./connection.server";
+import type { ConnectionReport } from "./connection-report";
 
 const TABLE_ID = /^[A-Za-z0-9_]{1,1024}$/;
 const DATASET_ID = /^[A-Za-z0-9_]{1,1024}$/;
@@ -34,6 +36,7 @@ export type Warehouse = {
    */
   table(name: string, dataset?: DatasetName): string;
   query(request: QueryRequest, options?: QueryOptions): Promise<QueryResult>;
+  checkConnection(signal?: AbortSignal): Promise<ConnectionReport>;
 };
 
 const clients = new Map<string, BigQueryClient>();
@@ -64,7 +67,7 @@ export function bigQueryClientFor(live: LiveConfig): BigQueryClient {
 
 export function warehouseFor(live: LiveConfig, fixedStoreId: string | null = null): Warehouse {
   const client = bigQueryClientFor(live);
-  return {
+  const warehouse: Warehouse = {
     applicationId: live.applicationId,
     table(name, dataset = "transformed") {
       const [qualifiedDataset, qualifiedTable] = name.includes(".") ? name.split(".", 2) : [null, name];
@@ -98,5 +101,17 @@ export function warehouseFor(live: LiveConfig, fixedStoreId: string | null = nul
       }
       return runQuery(client, request, options);
     },
+    checkConnection: (callerSignal) => {
+      const timeout = AbortSignal.timeout(30_000);
+      const signal = callerSignal ? AbortSignal.any([timeout, callerSignal]) : timeout;
+      // Diagnostics read fixed metadata queries, including the store-free catalog.
+      // The roster and dictionary explicitly receive the deployment's store scope.
+      const diagnosticsWarehouse = {
+        ...warehouse,
+        query: (request: QueryRequest, options?: QueryOptions) => runQuery(client, request, { ...options, signal }),
+      };
+      return checkWarehouseConnection(live, client, diagnosticsWarehouse, fixedStoreId, signal);
+    },
   };
+  return warehouse;
 }

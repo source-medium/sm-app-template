@@ -2,6 +2,7 @@ import { cloudflareTest } from "@cloudflare/vitest-pool-workers";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+import { sampleEnvironment } from "./scripts/lib/sample-env";
 
 /** Absolute path with forward slashes: Vite's alias matching needs them on Windows too. */
 const path = (relative: string) => fileURLToPath(new URL(relative, import.meta.url)).replace(/\\/g, "/");
@@ -25,6 +26,7 @@ export default defineConfig({
         resolve,
         test: {
           name: "node",
+          env: sampleEnvironment,
           testTimeout: 30_000,
           environment: "node",
           include: [...INVARIANTS, "tests/unit/**/*.test.ts", "tests/static/**/*.test.ts", "src/**/*.test.ts"],
@@ -35,6 +37,7 @@ export default defineConfig({
         plugins: [react()],
         test: {
           name: "dom",
+          env: sampleEnvironment,
           testTimeout: 30_000,
           environment: "jsdom",
           include: ["tests/components/**/*.test.tsx"],
@@ -48,7 +51,7 @@ export default defineConfig({
             miniflare: { compatibilityDate: "2026-06-30", compatibilityFlags: ["nodejs_compat"] },
           }),
         ],
-        test: { name: "workerd", include: INVARIANTS, testTimeout: 30_000 },
+        test: { name: "workerd", env: sampleEnvironment, include: INVARIANTS, testTimeout: 30_000 },
       },
     ],
   },

@@ -1,6 +1,6 @@
 /**
  * Live checks against your own warehouse (`pnpm test:live`, with your
- * configuration in .env.local). Every page must render live data with no
+ * configuration in environment settings or .env.local). Every page must render live data with no
  * error state. These run real BigQuery queries, so they are opt-in.
  */
 import { expect, test } from "@playwright/test";

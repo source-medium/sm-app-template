@@ -208,16 +208,21 @@ test("the agent prompt carries the page, its filters, and the request", async ({
   await expect(page.getByRole("button", { name: "Ask a coding agent" })).toBeFocused();
 });
 
-test("agent context captures resolved defaults and ignores unapplied edits", async ({ page }) => {
+test("agent context follows an applied store and ignores pending date edits", async ({ page }) => {
   await page.goto(home);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   test.skip((await page.locator("main [data-agent-page]").count()) === 0, "the home page has no report context");
   const store = page.getByRole("combobox", { name: "Store", exact: true });
   await expect(store).toBeVisible();
-  const appliedStore = await store.inputValue();
+  const appliedStore = (await store.inputValue()) === "sample-store-a" ? "sample-store-b" : "sample-store-a";
+  await store.selectOption(appliedStore);
+  await expect(page).toHaveURL(new RegExp(`store=${appliedStore}`));
+  await expect(page.locator("main [data-agent-page]")).toHaveAttribute(
+    "data-agent-page",
+    new RegExp(`"store":"${appliedStore}"`),
+  );
   const from = page.getByLabel("From", { exact: true });
   const appliedFrom = (await from.count()) ? await from.inputValue() : null;
-  await store.selectOption(appliedStore === "sample-store-a" ? "sample-store-b" : "sample-store-a");
   if (appliedFrom) await from.fill("2020-01-01");
   await page.getByRole("button", { name: "Ask a coding agent" }).click();
   const dialog = page.getByRole("dialog", { name: "Ask a coding agent" });
@@ -305,4 +310,41 @@ test("refresh re-reads the report, shows progress, and keeps applied filters", a
   if (await from.count()) await expect(from).toHaveValue("2020-01-01");
   expect(refreshRequests).toBe(1);
   expect(problems).toEqual([]);
+});
+
+test("connection checks run on demand and produce a safe, accessible sample report", async ({ page, context }) => {
+  const problems = watchConsole(page);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  let checks = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/connection/check")) checks++;
+  });
+  await page.goto(home);
+  await page.getByTestId("mode-chip").click();
+  await expect(page.getByRole("heading", { name: "Connection", exact: true })).toBeVisible();
+  await expect(page).toHaveTitle(/^Connection · /);
+  expect(checks).toBe(0);
+  await page.getByRole("button", { name: "Check connection", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Sample mode is ready.");
+  expect(checks).toBe(1);
+  await page.getByRole("button", { name: "Copy safe report" }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("No Google requests were made.");
+  await expectNoSeriousA11yViolations(page);
+  expect(problems).toEqual([]);
+});
+
+test("connection checks reject cross-origin requests", async ({ request }) => {
+  const response = await request.post("/connection/check", { headers: { Origin: "https://untrusted.example" } });
+  expect(response.status()).toBe(403);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+});
+
+test("connection failures can be retried without leaving stale success on screen", async ({ page }) => {
+  await page.goto("/connection");
+  await page.route("**/connection/check", (route) => route.fulfill({ status: 503, body: "Unavailable" }), { times: 1 });
+  await page.getByRole("button", { name: "Check connection", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("The check could not finish.");
+  await page.getByRole("button", { name: "Check connection", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Sample mode is ready.");
+  await expect(page.getByRole("status")).not.toContainText("The check could not finish.");
 });
