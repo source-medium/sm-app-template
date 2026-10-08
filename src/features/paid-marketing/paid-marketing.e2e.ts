@@ -9,7 +9,6 @@ test("paid marketing: ranked spend shares, dimension changes, and comparisons ho
   await channelTable.getByRole("link", { name: "Meta", exact: true }).click();
   await expect(page).toHaveURL(/channel=Meta/);
   await page.getByLabel("Break down spend by", { exact: true }).selectOption("campaign");
-  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/breakdown=campaign/);
   const params = new URL(page.url()).searchParams;
   expect(params.get("channel")).toBe("Meta");
@@ -17,7 +16,6 @@ test("paid marketing: ranked spend shares, dimension changes, and comparisons ho
   const campaignTable = region.getByRole("table", { name: "Spend by campaign details", exact: true });
   await expect(campaignTable.locator("tbody tr")).toHaveCount(3);
   await page.getByLabel("Compare spend breakdown with").selectOption("off");
-  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/compare=off/);
   await expect(campaignTable.getByRole("columnheader", { name: "Change vs comparison" })).toHaveCount(0);
   expect(new URL(page.url()).searchParams.get("breakdown")).toBe("campaign");
@@ -70,10 +68,8 @@ test("paid marketing: calendar presets preserve the store and channel", async ({
 test("paid marketing: each picker replaces its own value and preserves the other filters", async ({ page }) => {
   await page.goto("/paid-marketing?store=sample-store-b&from=2026-09-01&to=2026-09-07&metric=spend&channel=Google");
   await page.getByLabel("Measure", { exact: true }).selectOption("clicks");
-  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/metric=clicks/);
   await page.getByLabel("Channel", { exact: true }).selectOption("Meta");
-  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/channel=Meta/);
   const params = new URL(page.url()).searchParams;
   expect(params.getAll("metric")).toEqual(["clicks"]);
@@ -87,7 +83,6 @@ test("paid marketing: each picker replaces its own value and preserves the other
 test("paid marketing: a channel filter narrows the campaigns", async ({ page }) => {
   await page.goto("/paid-marketing");
   await page.getByLabel("Channel", { exact: true }).selectOption("Google");
-  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/channel=Google/);
   await expect(page.getByRole("heading", { name: "Campaigns in Google" })).toBeVisible();
   const channels = await page
@@ -101,7 +96,7 @@ test("paid marketing: an unmatched channel has a clear empty result and recovery
   await page.goto("/paid-marketing?store=sample-store-a&channel=Unknown");
   await expect(page.getByLabel("Channel", { exact: true })).toHaveValue("Unknown");
   await expect(page.getByText("No ad delivery matches this channel and date range.")).toBeVisible();
-  await expect(page.getByRole("img", { name: "Spend by channel chart", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("img", { name: "Spend by channel over time chart", exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Show all channels", exact: true }).click();
   await expect(page.getByLabel("Channel", { exact: true })).toHaveValue("");
   await expect(page.getByRole("table", { name: "Campaigns by spend", exact: true })).toBeVisible();

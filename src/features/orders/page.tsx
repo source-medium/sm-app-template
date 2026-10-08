@@ -8,7 +8,7 @@ import { DataTable } from "@/components/patterns/data-table";
 import { buttonVariants } from "@/components/ui/button";
 import { ReportPage } from "@/components/shell/report-page";
 import { parseSalesChannel, single, withParams, type SearchParams } from "@/lib/filters";
-import { EMPTY_VALUE, formatCount, formatInstant, formatMoney, formatWallTime } from "@/lib/format";
+import { EMPTY_VALUE, formatCount, formatInstant, formatLabel, formatMoney, formatWallTime } from "@/lib/format";
 import { OrderDrawer } from "./order-drawer";
 import { OrderSearchForm } from "./search-form";
 import {
@@ -122,7 +122,7 @@ function OrdersList({ data, params, paged }: { data: OrdersPage; params: SearchP
         caption="Orders, newest first"
         paginate={false}
         columns={[
-          { key: "order", header: "Order", sortable: false },
+          { key: "order", header: "Order", sortable: false, nowrap: true },
           { key: "processed", header: "Processed (store time)", sortable: false },
           { key: "channel", header: "Channel", sortable: false },
           { key: "type", header: "Type", sortable: false },
@@ -139,31 +139,35 @@ function OrdersList({ data, params, paged }: { data: OrdersPage; params: SearchP
             },
             processed: { display: formatWallTime(order.processedLocal) },
             channel: { display: [order.channel, order.subChannel].filter(Boolean).join(" · ") || EMPTY_VALUE },
-            type: { display: order.orderType ?? EMPTY_VALUE },
-            status: { display: order.paymentStatus ?? EMPTY_VALUE },
+            type: { display: formatLabel(order.orderType) },
+            status: { display: formatLabel(order.paymentStatus) },
             items: { display: order.items ?? EMPTY_VALUE },
             revenue: { display: formatMoney(order.netRevenue) },
           },
         }))}
+        actions={
+          (paged || data.nextCursor) && (
+            <nav aria-label="Order pages" className="flex gap-2">
+              {paged && (
+                <Link
+                  href={withParams(PATHNAME, params, { cursor: null, order: null })}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  Newest orders
+                </Link>
+              )}
+              {data.nextCursor && (
+                <Link
+                  href={withParams(PATHNAME, params, { cursor: encodeRef(data.nextCursor), order: null })}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  Older orders
+                </Link>
+              )}
+            </nav>
+          )
+        }
       />
-      <nav aria-label="Order pages" className="flex gap-2">
-        {paged && (
-          <Link
-            href={withParams(PATHNAME, params, { cursor: null, order: null })}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            Newest orders
-          </Link>
-        )}
-        {data.nextCursor && (
-          <Link
-            href={withParams(PATHNAME, params, { cursor: encodeRef(data.nextCursor), order: null })}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            Older orders
-          </Link>
-        )}
-      </nav>
     </div>
   );
 }
@@ -176,10 +180,10 @@ function OrderDetailList({ order }: { order: OrderDetail }) {
     ["Created", order.createdAt ? formatInstant(order.createdAt.iso) : EMPTY_VALUE],
     ["Channel", [order.channel, order.subChannel].filter(Boolean).join(" · ") || EMPTY_VALUE],
     ["Sales channel", order.salesChannel ?? EMPTY_VALUE],
-    ["Source system", order.sourceSystem ?? EMPTY_VALUE],
-    ["Order type", order.orderType ?? EMPTY_VALUE],
+    ["Source system", formatLabel(order.sourceSystem)],
+    ["Order type", formatLabel(order.orderType)],
     ["Customer order number", formatCount(order.customerOrderIndex)],
-    ["Payment status", order.paymentStatus ?? EMPTY_VALUE],
+    ["Payment status", formatLabel(order.paymentStatus)],
     ["Items", order.items ?? EMPTY_VALUE],
     ["Items refunded", order.refundedItems ?? EMPTY_VALUE],
     ["Products", order.productTitles ?? EMPTY_VALUE],

@@ -263,18 +263,22 @@ calendar expressions in fixed maps. Do not build a general query builder.
 
 ## Applying report filters
 
-Store, dates, comparison, channel, and view controls are drafts until **Apply**
-(or **Search**) submits them together. Date preset links use the already applied
-filters. **More dates** holds the less frequent presets. Invalid or overlong date
-URLs show a correction message and no report until a valid range is applied.
+Every control belongs to one GET form. A choice (store, comparison, and every
+`SelectFilter`) submits the form as soon as it changes, so drafts in the other
+fields travel with it and an invalid date range still blocks with its message.
+Typed inputs (dates, search) are drafts until **Apply** (or **Search**) submits
+them; without JavaScript, `SelectFilter` shows its own Apply. Date preset links
+use the already applied filters. **More dates** holds the less frequent presets.
+Invalid or overlong date URLs show a correction message and no report until a
+valid range is applied.
 
 `FilterBar` owns the `report-filters` GET form. `SelectFilter` and the other
 feature inputs associate with it using `REPORT_FILTER_FORM_ID`, including when
-rendered outside it or streamed later. Do not add a separate filter form, hidden
-copies of those fields, or an automatic submission on selection change. Each
-control contributes its current value; navigation and downloads use applied URL
-values. Filter-option loaders use `DataRegion timestamp={false}` because their
-load time is not the report's query time.
+rendered outside it or streamed later. Do not add a separate filter form or
+hidden copies of those fields. Each control contributes its current value;
+navigation and downloads use applied URL values. Filter-option loaders use
+`DataRegion timestamp={false}` because their load time is not the report's
+query time.
 
 ## Channel filters
 

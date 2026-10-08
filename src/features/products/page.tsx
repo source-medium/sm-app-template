@@ -4,12 +4,13 @@ import { ReportPage } from "@/components/shell/report-page";
 import { DataRegion } from "@/components/patterns/data-region";
 import { LoadingState } from "@/components/patterns/data-states";
 import { KpiCard } from "@/components/patterns/kpi-card";
+import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
-import { formatDate, formatMeasure, formatMoney, formatPercent } from "@/lib/format";
+import { formatMeasure, formatMoney, formatPercent } from "@/lib/format";
 import { parseSalesChannel, type SearchParams } from "@/lib/filters";
 import { getProductChannels, getProducts, productOptions, PRODUCT_DIMENSIONS, PRODUCT_METRICS } from "./queries";
 
@@ -63,11 +64,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 overstate profit.
               </p>
             </details>
-            {baseline && (
-              <p className="text-sm text-muted-foreground">
-                Compared with {formatDate(baseline.from)} – {formatDate(baseline.to)}.
-              </p>
-            )}
+            {comparison && <ComparisonCaption comparison={comparison} />}
             <Suspense
               key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${options.dimension}|${options.metric}|${comparison?.mode}|${channel}`}
               fallback={<LoadingState variant="chart" label="Loading products" />}
@@ -96,6 +93,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                                       first?.[`total_${item.value}`] ?? null,
                                       first?.[`total_previous_${item.value}`] ?? null,
                                       formatValue,
+                                      "higher",
                                     )
                                   : undefined
                               }

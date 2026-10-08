@@ -11,8 +11,9 @@ Follow "Add a page" in `AGENTS.md`, and `docs/removing-the-example.md` when dele
    card grid, cohort matrix), each region inside `<Suspense>` and `<DataRegion>` for its four
    states.
 4. Data work per the `sm-data` skill.
-5. Reuse `SelectFilter` for choices. Other report inputs use `form={REPORT_FILTER_FORM_ID}`
-   from `lib/filters`; Apply submits all drafts together. See `docs/data.md#applying-report-filters`.
+5. Reuse `SelectFilter` for choices; it applies on change. Other report inputs use
+   `form={REPORT_FILTER_FORM_ID}` from `lib/filters` and wait for Apply. See
+   `docs/data.md#applying-report-filters`.
 
 6. Pass the feature's parsed, shareable filters as `ReportPage agentFilters`; never raw
    `searchParams`, searches, or row IDs. Shared patterns expose prompt targets automatically.

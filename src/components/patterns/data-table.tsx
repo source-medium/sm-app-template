@@ -24,7 +24,14 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-export type DataTableColumn = { key: string; header: string; align?: "left" | "right"; sortable?: boolean };
+export type DataTableColumn = {
+  key: string;
+  header: string;
+  align?: "left" | "right";
+  sortable?: boolean;
+  /** Keep identifiers on one line on narrow screens. */
+  nowrap?: boolean;
+};
 export type DataTableCell = { display: string; sort?: string | number | null; href?: string };
 export type DataTableRow = { id: string; cells: Record<string, DataTableCell> };
 
@@ -49,6 +56,7 @@ export function DataTable({
   paginate = true,
   truncated = false,
   totals,
+  actions,
 }: {
   caption: string;
   columns: DataTableColumn[];
@@ -58,6 +66,8 @@ export function DataTable({
   truncated?: boolean;
   /** Full-query totals supplied by the server, never the visible page's sum. */
   totals?: DataTableRow;
+  /** Footer controls beside the row count whenever page buttons are not shown, such as cursor links. */
+  actions?: React.ReactNode;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const columnDefs: ColumnDef<DataTableRow>[] = columns.map((column) => ({
@@ -126,7 +136,13 @@ export function DataTable({
               {row.getVisibleCells().map((cell) => {
                 const column = columns.find((item) => item.key === cell.column.id);
                 return (
-                  <TableCell key={cell.id} className={cn(column?.align === "right" && "text-right tabular-nums")}>
+                  <TableCell
+                    key={cell.id}
+                    className={cn(
+                      column?.align === "right" && "text-right tabular-nums",
+                      column?.nowrap && "whitespace-nowrap",
+                    )}
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 );
@@ -158,7 +174,7 @@ export function DataTable({
             ? `Showing the first ${rows.length} rows; more rows matched than this view loads.`
             : `${rows.length} ${rows.length === 1 ? "row" : "rows"}`}
         </span>
-        {paginate && table.getPageCount() > 1 && (
+        {paginate && table.getPageCount() > 1 ? (
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -175,6 +191,8 @@ export function DataTable({
               Next
             </Button>
           </div>
+        ) : (
+          actions
         )}
       </div>
     </div>

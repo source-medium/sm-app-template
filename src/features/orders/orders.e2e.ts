@@ -56,7 +56,6 @@ test("orders: channel selection survives paging and search, and changing it rese
   await expect(page).toHaveURL(/cursor=/);
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("Amazon");
   await page.getByLabel("Sales channel", { exact: true }).selectOption("Online DTC");
-  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).not.toHaveURL(/cursor=/);
   await expect(table.locator("tbody tr").first()).toContainText("Online DTC");
   const name = await table.getByRole("link").first().innerText();
@@ -66,7 +65,6 @@ test("orders: channel selection survives paging and search, and changing it rese
   await expect(table.getByRole("link", { name, exact: true })).toBeVisible();
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("Online DTC");
   await page.getByLabel("Sales channel", { exact: true }).selectOption("Amazon");
-  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(
     (url) => url.searchParams.get("q") === name && url.searchParams.get("sales_channel") === "Amazon",
   );
@@ -74,7 +72,6 @@ test("orders: channel selection survives paging and search, and changing it rese
   await page.goto("/orders?store=sample-store-a&sales_channel=unknown");
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("unknown");
   await page.getByLabel("Sales channel", { exact: true }).selectOption("");
-  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(table).toBeVisible();
 });
 

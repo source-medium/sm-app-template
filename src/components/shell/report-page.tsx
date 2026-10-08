@@ -131,9 +131,9 @@ export async function ReportPage({
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="max-w-prose text-sm text-muted-foreground">{description}</p>
-          <p className="text-xs text-muted-foreground">
-            {appConfig.currency ? `Reporting currency: ${appConfig.currency}` : "Amounts in reporting currency"}
-          </p>
+          {appConfig.currency && (
+            <p className="text-xs text-muted-foreground">Reporting currency: {appConfig.currency}</p>
+          )}
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <RefreshReport />

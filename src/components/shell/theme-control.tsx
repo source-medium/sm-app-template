@@ -1,7 +1,6 @@
 "use client";
 
 import { useId, useState } from "react";
-import { SunMoon } from "lucide-react";
 import { NativeSelect } from "@/components/ui/native-select";
 import { parseTheme, THEME_COOKIE, type Theme } from "@/lib/theme";
 
@@ -18,7 +17,6 @@ export function ThemeControl({ initialTheme }: { initialTheme: Theme }) {
 
   return (
     <label htmlFor={id} className="flex items-center gap-2 text-muted-foreground">
-      <SunMoon className="hidden size-4 sm:block" aria-hidden />
       <span className="sr-only">Appearance</span>
       <NativeSelect
         id={id}

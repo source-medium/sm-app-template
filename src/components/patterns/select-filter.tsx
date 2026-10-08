@@ -5,7 +5,11 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
 
-/** Native form association keeps all draft filters together without a client data store. */
+/**
+ * A choice applies as soon as it changes: the whole report form submits, so
+ * drafts in the other fields travel with it and an invalid date range still
+ * blocks with its message. Without JavaScript, Apply does the same job.
+ */
 export function SelectFilter({
   name,
   label,
@@ -30,6 +34,7 @@ export function SelectFilter({
           form={REPORT_FILTER_FORM_ID}
           name={name}
           defaultValue={value}
+          onChange={(event) => event.currentTarget.form?.requestSubmit()}
           className="min-w-0 sm:min-w-40"
         >
           {options.map((option) => (
@@ -39,15 +44,17 @@ export function SelectFilter({
           ))}
         </NativeSelect>
       </div>
-      <Button
-        type="submit"
-        form={REPORT_FILTER_FORM_ID}
-        variant="secondary"
-        size="sm"
-        aria-label={`Apply ${label.toLowerCase()} and all filters`}
-      >
-        Apply
-      </Button>
+      <noscript>
+        <Button
+          type="submit"
+          form={REPORT_FILTER_FORM_ID}
+          variant="secondary"
+          size="sm"
+          aria-label={`Apply ${label.toLowerCase()} and all filters`}
+        >
+          Apply
+        </Button>
+      </noscript>
     </div>
   );
 }

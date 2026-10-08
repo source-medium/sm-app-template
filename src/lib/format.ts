@@ -37,6 +37,12 @@ const preciseClock = new Intl.DateTimeFormat(appConfig.locale, { ...clockOptions
 
 export const EMPTY_VALUE = "—";
 
+/** A warehouse code such as "repeat", "paid", or "online_dtc" as a readable label. */
+export function formatLabel(value: string | null): string {
+  const text = value?.trim().replace(/_/g, " ") ?? "";
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : EMPTY_VALUE;
+}
+
 const money = new Intl.NumberFormat(
   appConfig.locale,
   appConfig.currency

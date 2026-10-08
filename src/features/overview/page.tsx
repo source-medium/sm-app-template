@@ -5,9 +5,10 @@ import { buildChartData } from "@/components/charts/chart-data";
 import { DataRegion } from "@/components/patterns/data-region";
 import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { KpiCard } from "@/components/patterns/kpi-card";
+import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { cardGridStyles } from "@/components/ui/card";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
-import { COMPARISON_OPTIONS, comparisonDates, type Comparison } from "@/lib/comparison";
+import { comparisonDates, type Comparison } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
 import { parseSalesChannel, datesInRange, rangeLength, type SearchParams } from "@/lib/filters";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
@@ -124,12 +125,8 @@ function OverviewView({
 
   return (
     <div className="flex flex-col gap-6">
-      {baseline && (
-        <details aria-label="Comparison period" className="text-sm text-muted-foreground">
-          <summary className="cursor-pointer font-medium text-foreground">
-            {COMPARISON_OPTIONS.find((option) => option.value === comparison?.mode)?.label}: {formatDate(baseline.from)}{" "}
-            – {formatDate(baseline.to)}
-          </summary>
+      {baseline && comparison && (
+        <ComparisonCaption comparison={comparison}>
           <p>
             {rangeLength(filters.range)} selected days vs {rangeLength(baseline)} comparison days.
           </p>
@@ -146,7 +143,7 @@ function OverviewView({
               gaps in comparison lines.
             </p>
           )}
-        </details>
+        </ComparisonCaption>
       )}
       {report.comparison?.data &&
         (data.days.length < rangeLength(filters.range) ||
@@ -181,7 +178,9 @@ function OverviewView({
           label="Summary orders"
           description="Published order counts summed across the selected sales channels, including excluded, draft, and exchanged orders. This can differ from the number of valid orders."
           value={formatMeasure(totals?.orders ?? null)}
-          delta={showDelta ? kpiDelta(totals?.orders ?? null, previous?.orders ?? null, formatMeasure) : undefined}
+          delta={
+            showDelta ? kpiDelta(totals?.orders ?? null, previous?.orders ?? null, formatMeasure, "higher") : undefined
+          }
           period={period}
         />
         <KpiCard
@@ -221,7 +220,11 @@ function OverviewView({
           label="Website sessions"
           description="Published website session counts summed across the selected sales channels for this store and period. Sessions are visits, not unique people."
           value={formatCount(totals?.sessions ?? null)}
-          delta={showDelta ? kpiDelta(totals?.sessions ?? null, previous?.sessions ?? null, formatCount) : undefined}
+          delta={
+            showDelta
+              ? kpiDelta(totals?.sessions ?? null, previous?.sessions ?? null, formatCount, "higher")
+              : undefined
+          }
           period={period}
         />
       </section>

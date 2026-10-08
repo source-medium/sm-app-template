@@ -1,8 +1,9 @@
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { SelectFilter } from "@/components/patterns/select-filter";
+import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
-import { formatDate, formatMoney, formatPercent } from "@/lib/format";
+import { formatMoney, formatPercent } from "@/lib/format";
 import { withParams, type SearchParams } from "@/lib/filters";
 import type { Comparison } from "@/lib/comparison";
 import {
@@ -30,22 +31,19 @@ export function SpendBreakdownView({
   const baseline = comparison?.range;
   return (
     <section aria-label="Spend breakdown" className="flex flex-col gap-3">
-      <SelectFilter
-        name="breakdown"
-        label="Break down spend by"
-        value={dimension}
-        options={[...BREAKDOWN_DIMENSIONS]}
-      />
-      <p className="text-sm text-muted-foreground">
-        Selected-period spend: {formatMoney(total)}.{" "}
-        {baseline
-          ? `Compared with ${formatDate(baseline.from)} – ${formatDate(baseline.to)}.`
-          : "Comparison off or unavailable."}
-      </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <SelectFilter
+          name="breakdown"
+          label="Break down spend by"
+          value={dimension}
+          options={[...BREAKDOWN_DIMENSIONS]}
+        />
+        {comparison && <ComparisonCaption comparison={comparison} />}
+      </div>
       <RankedBreakdown
         title={`Spend by ${dimension}`}
         valueLabel="Spend"
-        description={`${data.hasMore ? "Top 10 by selected-period spend. " : ""}Shares use all matching rows for this store, date range, and channel. Zero totals and negative spend have no share.`}
+        description={`Spend in the selected period: ${formatMoney(total)}. ${data.hasMore ? "Top 10 by spend. " : ""}Shares use all matching rows for this store, date range, and channel. Zero totals and negative spend have no share.`}
         comparisonLabel={baseline ? "Change vs comparison" : undefined}
         hasMore={data.hasMore}
         rows={data.rows.map((row) => ({

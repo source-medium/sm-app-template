@@ -22,7 +22,7 @@ export function OrderSearchForm({ search }: { search: string }) {
           form={REPORT_FILTER_FORM_ID}
           defaultValue={search}
           maxLength={64}
-          placeholder="Order name, number, or id"
+          placeholder="Name, number, or id"
           className="sm:w-64"
         />
       </div>

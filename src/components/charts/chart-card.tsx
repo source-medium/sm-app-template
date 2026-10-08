@@ -22,7 +22,11 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { cn } from "@/lib/utils";
 import { compactNumber } from "./compact-number";
+
+/** Room for a two-line label beside each horizontal bar. */
+const HORIZONTAL_ROW_PX = 40;
 
 export type ChartSeries = { key: string; label: string; color: string; dashed?: boolean };
 export type ChartDatum = { label: string } & Record<string, string | number | null>;
@@ -93,7 +97,14 @@ export function ChartCard({
         {showTable ? (
           <ChartTable title={title} categoryHeader={categoryHeader} series={series} data={data} />
         ) : (
-          <ChartContainer config={config} className="aspect-auto h-64 w-full" role="img" aria-label={`${title} chart`}>
+          <ChartContainer
+            config={config}
+            className={cn("aspect-auto w-full", !horizontal && "h-64")}
+            // A ranking labels every bar, so its height follows the row count.
+            style={horizontal ? { height: Math.max(256, data.length * HORIZONTAL_ROW_PX) } : undefined}
+            role="img"
+            aria-label={`${title} chart`}
+          >
             <Plot data={data} layout={horizontal ? "vertical" : "horizontal"} margin={{ left: 4, right: 12, top: 8 }}>
               <CartesianGrid vertical={horizontal} horizontal={!horizontal} stroke="var(--chart-grid)" />
               {horizontal ? (
@@ -102,10 +113,12 @@ export function ChartCard({
                   <YAxis
                     type="category"
                     dataKey="label"
-                    width={100}
+                    width={128}
+                    interval={0}
+                    tick={{ width: 116 }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(label: string) => (label.length > 16 ? `${label.slice(0, 15)}…` : label)}
+                    tickFormatter={(label: string) => (label.length > 22 ? `${label.slice(0, 21)}…` : label)}
                   />
                 </>
               ) : (
@@ -115,7 +128,7 @@ export function ChartCard({
                 </>
               )}
               <ChartTooltip cursor content={<ChartTooltipContent indicator={kind === "line" ? "line" : "dot"} />} />
-              {series.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
+              {series.length > 1 && <ChartLegend itemSorter={null} content={<ChartLegendContent />} />}
               {series.map((item) =>
                 kind === "line" ? (
                   <Line

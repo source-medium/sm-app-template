@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { compactNumber } from "@/components/charts/compact-number";
-import { formatCount, formatDay, formatMeasure, formatPercent, formatWallTime } from "@/lib/format";
+import {
+  EMPTY_VALUE,
+  formatCount,
+  formatDay,
+  formatLabel,
+  formatMeasure,
+  formatPercent,
+  formatWallTime,
+} from "@/lib/format";
 
 describe("server formatting", () => {
   afterEach(() => {
@@ -45,4 +53,12 @@ describe("server formatting", () => {
   it("compacts axis ticks without locale APIs", () => {
     expect([950, 1200, 45_000, 3_400_000, -2500].map(compactNumber)).toEqual(["950", "1.2K", "45K", "3.4M", "-2.5K"]);
   });
+});
+
+it("formatLabel turns warehouse codes into readable labels", () => {
+  expect(formatLabel("repeat")).toBe("Repeat");
+  expect(formatLabel("online_dtc")).toBe("Online dtc");
+  expect(formatLabel(" paid ")).toBe("Paid");
+  expect(formatLabel("")).toBe(EMPTY_VALUE);
+  expect(formatLabel(null)).toBe(EMPTY_VALUE);
 });

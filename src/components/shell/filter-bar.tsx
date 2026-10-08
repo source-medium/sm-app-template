@@ -3,6 +3,7 @@
 import Form from "next/form";
 import Link from "next/link";
 import { useId, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -56,6 +57,8 @@ export function FilterBar({
       {(labelCounts.get(store.label) ?? 0) > 1 ? `${store.label} (${store.id})` : store.label}
     </option>
   );
+  /** Choices apply on change; typed dates wait for Apply. The form's own submit handler still validates dates. */
+  const applyOnChange = (event: React.ChangeEvent<HTMLSelectElement>) => event.currentTarget.form?.requestSubmit();
   const frequent = new Set(["Last 7 days", "Last 28 days"]);
   const presetLink = (preset: FilterPreset) => (
     <Link
@@ -98,7 +101,13 @@ export function FilterBar({
         <label htmlFor={`${id}-store`} className="text-xs font-medium text-muted-foreground">
           Store
         </label>
-        <NativeSelect id={`${id}-store`} name="store" defaultValue={storeId} disabled={fixedStore}>
+        <NativeSelect
+          id={`${id}-store`}
+          name="store"
+          defaultValue={storeId}
+          disabled={fixedStore}
+          onChange={applyOnChange}
+        >
           {!stores.some((store) => store.id === storeId) && <option value={storeId}>Choose a store</option>}
           {Array.from(brands, ([brand, members]) =>
             brand ? (
@@ -116,7 +125,7 @@ export function FilterBar({
           <label htmlFor={`${id}-compare`} className="text-xs font-medium text-muted-foreground">
             {comparisonLabel}
           </label>
-          <NativeSelect id={`${id}-compare`} name="compare" defaultValue={comparison}>
+          <NativeSelect id={`${id}-compare`} name="compare" defaultValue={comparison} onChange={applyOnChange}>
             {COMPARISON_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -178,8 +187,9 @@ export function FilterBar({
         <nav aria-label="Date presets" className="col-span-full flex basis-full flex-wrap items-start gap-1 sm:order-5">
           {presets.filter((preset) => frequent.has(preset.label)).map(presetLink)}
           <details className="group">
-            <summary className="flex min-h-9 cursor-pointer items-center rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11">
+            <summary className="flex min-h-9 w-fit cursor-pointer list-none items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden">
               More dates
+              <ChevronDown className="size-3.5 transition-transform group-open:rotate-180" aria-hidden />
             </summary>
             <div className="flex flex-wrap gap-1">
               {presets.filter((preset) => !frequent.has(preset.label)).map(presetLink)}

@@ -74,6 +74,11 @@
   body {
     @apply bg-background font-sans text-foreground antialiased;
   }
+  /* Tailwind v4 removed the pointer from buttons; links and disclosures keep it, so buttons must too. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
   h1,
   h2,
   h3 {

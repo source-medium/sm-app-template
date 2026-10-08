@@ -162,7 +162,7 @@ function PaidMarketingView({
       ) : (
         <>
           <ChartCard
-            title={`${METRIC_LABELS[metric]} by channel`}
+            title={`${METRIC_LABELS[metric]} by channel over time`}
             description={
               folded && !filters.channel
                 ? `The ${MAX_NAMED_CHANNELS} largest channels by impressions are named; the rest are combined as Other.`
