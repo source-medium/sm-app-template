@@ -139,6 +139,7 @@ acts for a person needs a real per-person authorization design first.
 
 ## Guides
 
+- `docs/cloud.md`: Codex or Claude in the browser, previews, publishing.
 - `docs/connect.md`: configuration/deploying; `docs/auth.md`: sign-in and store access.
 - `docs/data.md`: schemas/SQL/money; `docs/operations.md`: quotas/errors/secrets.
 - `docs/removing-the-example.md`: deleting views; `docs/prompts.md`: composer context and starter prompts.

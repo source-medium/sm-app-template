@@ -102,7 +102,8 @@ database to build in this app.
 7. Cover every hostname that reaches the Worker, including its exact
    `your-worker.your-account.workers.dev` hostname. If you use only a custom
    domain, set `workers_dev` to `false` in `wrangler.jsonc` and redeploy instead.
-   Keep `preview_urls` set to `false` too. Disabling workers.dev only in the
+   Keep `preview_urls` set to `false` too; only the separate sample-data
+   preview Worker in [cloud.md](cloud.md#3-connect-cloudflare-once) turns it on. Disabling workers.dev only in the
    dashboard can be undone by your next deploy; see
    [Cloudflare's hostname guide](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/).
 8. Open the app in a private browser window. Sign in with an allowed email and

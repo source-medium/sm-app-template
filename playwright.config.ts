@@ -36,7 +36,7 @@ const [liveUser = "", ...livePassword] = (process.env.APP_BASIC_AUTH ?? "").spli
 export default defineConfig({
   // Shared checks in e2e/; each view's own tests sit in its feature folder, so deleting a view deletes them.
   testDir: ".",
-  testIgnore: ["**/node_modules/**", ".next/**", ".open-next/**"],
+  testIgnore: ["**/node_modules/**", ".pnpm-store/**", ".next/**", ".open-next/**"],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
