@@ -115,7 +115,9 @@ async function checkWarehouse(live: LiveConfig, storeId: string | null): Promise
   if (!firstStore) {
     fail(
       storeId !== null
-        ? "APP_STORE_ID has no matching rows in the store roster; verify the exact store id and that SourceMedium has published data."
+        ? stores.relation === ROSTER_RELATION
+          ? "APP_STORE_ID is not an active store in dim_stores; verify the exact store id with your SourceMedium admin."
+          : "APP_STORE_ID has no matching rows in the store roster; verify the exact store id and that SourceMedium has published data."
         : `${stores.relation} has no stores yet; the views will show "No data" until SourceMedium publishes rows.`,
     );
     return false;

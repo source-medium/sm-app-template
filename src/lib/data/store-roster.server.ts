@@ -49,7 +49,7 @@ export async function queryStoreRoster(warehouse: Warehouse, storeId: string | n
   let relation: RosterRelation = ROSTER_RELATION;
   let result;
   try {
-    result = await warehouse.query(storeRosterQuery(warehouse, storeId));
+    result = await warehouse.query(storeRosterQuery(warehouse, storeId), { missingRelationOk: true });
   } catch (error) {
     if (!(error instanceof WarehouseError) || error.kind !== "not_found" || error.job) throw error;
     relation = LEGACY_ROSTER_RELATION;
@@ -57,7 +57,10 @@ export async function queryStoreRoster(warehouse: Warehouse, storeId: string | n
   }
   const rows = decodeRows(StoreRow, result.rows, relation);
   if (rows.length > MAX_STORES || result.truncated) {
-    throw new WarehouseError("result_too_large", { reason: "store_roster" });
+    throw new WarehouseError("result_too_large", {
+      reason: "store_roster",
+      remedy: `More than ${MAX_STORES} stores are available to this app. Give each audience its own deployment with APP_STORE_ID, or raise MAX_STORES in store-roster.server.ts deliberately.`,
+    });
   }
   if (new Set(rows.map((row) => row.sm_store_id)).size !== rows.length)
     throw WarehouseError.incompatible(relation, "sm_store_id");

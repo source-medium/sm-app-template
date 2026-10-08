@@ -22,8 +22,9 @@ guides name the example folders as models to copy ("Add a page" in
 `.agents/skills/sm-add-page`); point them at your own pages, then run
 `pnpm skills:sync`.
 
-The store picker reads `rpt_executive_summary_daily`
-(`src/lib/data/store-roster.server.ts`), so it keeps working without Overview.
+The store picker reads `dim_stores` (`src/lib/data/store-roster.server.ts`)
+and falls back to `rpt_executive_summary_daily` only while that dimension is
+missing, so it keeps working without Overview once the dimension exists.
 If your app has no store filter, remove the `FilterBar` from your pages, or
 replace `ReportPage` with your own frame.
 

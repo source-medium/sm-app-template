@@ -3481,13 +3481,13 @@
      "name": "store_currency_code",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "ISO 4217 currency configured for the store. This is not a reporting-currency guarantee; order money columns carry their own currency fields."
+     "description": "Currency configured for the store (ISO 4217), not a reporting-currency guarantee; order money columns carry their own currency."
     },
     {
      "name": "store_timezone",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "IANA timezone configured for the store. Order local-time columns use it, except Amazon orders, which use America/Los_Angeles."
+     "description": "Timezone configured for the store (IANA); order local times use it, except Amazon orders, which use America/Los_Angeles."
     }
    ]
   }

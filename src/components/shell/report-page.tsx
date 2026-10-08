@@ -190,11 +190,11 @@ async function RosterFilterBar({
   return (
     <div className="flex flex-col gap-3">
       <ErrorState
-        title="That store is not in this warehouse"
+        title="This store is not in the store list"
         remedy={
           props.fixedStore
-            ? "The configured store is unavailable. Ask the app owner to check APP_STORE_ID and run pnpm diagnose."
-            : "The link names a store this app cannot find. Choose a store below."
+            ? "The configured store is not one this app lists. Any data it has still shows below; ask the app owner to check APP_STORE_ID and run pnpm diagnose."
+            : "The link names a store this app does not list. Any data it has still shows below; choose a listed store to continue."
         }
       />
       {stores[0] && <StoreFilterBar stores={stores} storeId={storeId} {...props} />}

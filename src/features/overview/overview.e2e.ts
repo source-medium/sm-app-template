@@ -155,17 +155,17 @@ test("overview: chart labels and lines remain readable in both themes", async ({
 
 test("unknown stores remain unselected until the viewer chooses a valid store", async ({ page }) => {
   await page.goto("/overview?store=unknown-store");
-  await expect(page.getByText("That store is not in this warehouse")).toBeVisible();
+  await expect(page.getByText("This store is not in the store list")).toBeVisible();
   await expect(page.getByLabel("Store")).toHaveValue("unknown-store");
   await expect(page.locator('[data-slot="kpi-value"]')).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("href", /store=unknown-store/);
   await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/store=unknown-store/);
-  await expect(page.getByText("That store is not in this warehouse")).toBeVisible();
+  await expect(page.getByText("This store is not in the store list")).toBeVisible();
   await page.getByLabel("Store").selectOption("sample-store-a");
   await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/store=sample-store-a/);
-  await expect(page.getByText("That store is not in this warehouse")).toHaveCount(0);
+  await expect(page.getByText("This store is not in the store list")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("href", /store=sample-store-a/);
 });
 

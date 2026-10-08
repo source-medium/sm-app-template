@@ -91,6 +91,8 @@ type Details = {
   job?: { projectId: string; jobId: string; location: string } | null;
   relation?: string;
   column?: string;
+  /** Replaces the kind's generic remedy when the caller knows the specific one. */
+  remedy?: string;
 };
 
 export class WarehouseError extends Error {
@@ -106,11 +108,12 @@ export class WarehouseError extends Error {
 
   constructor(kind: WarehouseErrorKind, details: Details = {}) {
     const copy = COPY[kind];
-    super(`${copy.title}. ${copy.remedy}`);
+    const remedy = details.remedy ?? copy.remedy;
+    super(`${copy.title}. ${remedy}`);
     this.name = "WarehouseError";
     this.kind = kind;
     this.title = copy.title;
-    this.remedy = copy.remedy;
+    this.remedy = remedy;
     this.status = details.status ?? null;
     this.reason = details.reason ?? null;
     this.detail = details.detail ?? null;

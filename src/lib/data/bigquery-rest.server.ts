@@ -58,7 +58,12 @@ export type QueryRequest = {
   maxRows?: number;
 };
 
-export type QueryOptions = { deadlineMs?: number; signal?: AbortSignal };
+export type QueryOptions = {
+  deadlineMs?: number;
+  signal?: AbortSignal;
+  /** The caller handles a missing relation, so its 404 logs at info rather than warn. */
+  missingRelationOk?: boolean;
+};
 
 export type JobReference = { projectId: string; jobId: string; location: string };
 export type BigQueryField = { name: string; type: string; mode?: string; fields?: BigQueryField[] };
@@ -169,7 +174,7 @@ export async function runQuery(
     call.dispose();
     logEvent({
       event: "bq_query",
-      level: failure ? "warn" : "info",
+      level: failure && !(options.missingRelationOk && failure.kind === "not_found") ? "warn" : "info",
       build: client.buildId,
       app: client.applicationId,
       query: request.name,

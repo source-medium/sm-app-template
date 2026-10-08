@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { appConfig } from "@/app.config";
 import { loadStores } from "@/lib/data/stores.server";
 import { MAX_STORES } from "@/lib/data/store-roster.server";
+import { setLogEmitter } from "@/lib/data/log";
 import { googleError } from "../fake-bigquery/fake-bigquery";
 import { goLive, requestHeaders, rowsResponse } from "../helpers/live";
 
@@ -14,6 +15,7 @@ const firstStore = { sm_store_id: "store-us", store_name: " US store ", brand_na
 const metadata = [firstStore, { sm_store_id: "store-uk", store_name: "UK store", brand_name: "Second brand" }];
 
 afterEach(() => {
+  setLogEmitter(() => undefined);
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -50,7 +52,9 @@ it("keeps display overrides and missing names safe, including object-prototype I
   ]);
 });
 
-it("only a missing dimension uses the scoped ID-only roster", async () => {
+it("only a missing dimension uses the scoped ID-only roster, and the handled probe does not warn", async () => {
+  const logs: { line: string; level: string }[] = [];
+  setLogEmitter((line, level) => logs.push({ line, level }));
   const fake = await goLive({
     submit: ({ body }) =>
       (body as { query: string }).query.includes(".dim_stores`")
@@ -59,6 +63,9 @@ it("only a missing dimension uses the scoped ID-only roster", async () => {
   });
   vi.stubEnv("APP_STORE_ID", "store-us");
   expect(await loadStores()).toEqual([{ id: "store-us", label: "store-us", brand: null }]);
+  const queries = logs.filter(({ line }) => line.includes('"event":"bq_query"'));
+  expect(queries.map(({ level }) => level)).toEqual(["info", "info"]);
+  expect(queries[0]?.line).toContain('"error_kind":"not_found"');
   const submissions = fake.calls.filter((call) => call.kind === "submit");
   expect(submissions).toHaveLength(2);
   for (const { body } of submissions) {
@@ -122,8 +129,11 @@ it.each(["duplicate", "missing-column", "overflow", "truncated"])("refuses a %s 
         { pageToken: "still-more" },
       ),
   });
-  await expect(loadStores()).rejects.toMatchObject({
-    kind: failure === "duplicate" || failure === "missing-column" ? "incompatible_schema" : "result_too_large",
-  });
+  const remedy = expect.stringContaining(`More than ${MAX_STORES} stores`);
+  await expect(loadStores()).rejects.toMatchObject(
+    failure === "duplicate" || failure === "missing-column"
+      ? { kind: "incompatible_schema" }
+      : { kind: "result_too_large", remedy, message: remedy },
+  );
   expect(fake.count("submit")).toBe(1);
 });
