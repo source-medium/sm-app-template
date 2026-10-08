@@ -1,12 +1,42 @@
 # Starter prompts
 
 For anything about a page you are looking at, use **Ask agent** in the app's
-top bar: pick what you need (something looks wrong, change this page, add
-something new, check a number, ask how it works), describe it in a sentence,
-and copy the prompt. It already names the page, its code folder, the applied
-filters, the sections on screen, the data mode, and the build, and it tells
-the agent to read AGENTS.md and run the checks. The prompts below cover work
-that starts outside a page.
+top bar. Choose **This page** or a loaded KPI, chart, table, card grid, or
+cohort matrix; choose what you need; describe it; and copy the prompt into
+your coding agent. The panel prepares text locally and makes no agent API call.
+
+The prompt includes the page, selected component, resolved store/dates and
+view filters, configured reporting currency, data mode, and build. It follows
+the report's applied values, including defaults, rather than unsaved filter
+edits or arbitrary URL parameters. Search text, order details, pagination
+cursors, and row values are excluded. Active omissions are named so the agent
+knows to ask for relevant details. Text you enter in the request is copied as
+written. Sample-number checks trace fixtures and calculations; live-number
+checks require an independent authorized source. Both are read-only.
+
+Context and available targets are captured when the panel opens. Reopen after
+navigation or a report finishes loading to capture its current context. Close
+returns keyboard focus to **Ask agent**. If copying fails, select the generated
+prompt and copy it manually.
+
+### Keeping new views agent-friendly
+
+`ReportPage` owns the page title, route, resolved store/date/comparison filters,
+and currency. A feature passes its other **parsed, shareable values** through
+`agentFilters`, for example `agentFilters={{ sales_channel: channel, grain }}`.
+Never pass raw `searchParams`, free-text searches, credentials, or row IDs.
+Name active exclusions through `agentOmissions`, without their values.
+
+The shared `KpiCard`, `ChartCard`, `DataTable`, `CardGrid`, and `CohortMatrix`
+patterns expose their labels and component names automatically. For a custom
+report section, add `data-agent-target="Section label"` and
+`data-agent-component="YourComponent"` to its wrapper. Use a section label,
+not customer row contents. No central page/feature registry needs updating.
+The prompt directs the agent to follow the route's imports rather than guess
+a feature-folder name from the URL. A page without `ReportPage` reports that
+its filter context is unavailable.
+
+The prompts below cover work that starts outside a page.
 
 Copy one into your coding agent. These are starting instructions, not proven
 end-to-end onboarding flows. "Connect my data" needs an already provisioned

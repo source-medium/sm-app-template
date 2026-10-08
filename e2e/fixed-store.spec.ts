@@ -11,6 +11,11 @@ for (const item of appConfig.nav) {
       await expect(picker).toBeDisabled();
       await expect(picker).toHaveValue("sample-store-b");
       await expect(picker.locator("option")).toHaveCount(1);
+      await page.getByRole("button", { name: "Ask a coding agent" }).click();
+      expect(await page.getByRole("dialog").getByLabel("Prompt", { exact: true }).inputValue()).toContain(
+        'store="sample-store-b"',
+      );
+      await page.keyboard.press("Escape");
       const preset = page.getByRole("link", { name: "Last 7 days", exact: true });
       if (await preset.count()) {
         await preset.click();

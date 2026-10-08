@@ -11,6 +11,7 @@
  * first visit with no store chosen waits for the list to pick one.
  */
 import { Suspense } from "react";
+import type { AgentReportContext } from "@/lib/agent-prompt";
 import { appConfig } from "@/app.config";
 import { EmptyState, ErrorState } from "@/components/patterns/data-states";
 import { FilterBar } from "@/components/shell/filter-bar";
@@ -54,6 +55,8 @@ export async function ReportPage({
   comparisonLabel,
   dates = true,
   comparisons = false,
+  agentFilters = {},
+  agentOmissions = [],
   children,
 }: {
   title: string;
@@ -66,6 +69,10 @@ export async function ReportPage({
   dates?: boolean;
   /** Opt in only after the feature queries and presents a comparison period. */
   comparisons?: boolean;
+  /** Only explicitly selected, parsed feature filters. Never raw searchParams or free-text/row identifiers. */
+  agentFilters?: Record<string, string | null>;
+  /** Names of active private context omitted from the agent prompt, without its values. */
+  agentOmissions?: string[];
   children: (context: ReportContext) => React.ReactNode;
 }) {
   const access = await requireViewer();
@@ -99,8 +106,28 @@ export async function ReportPage({
 
   function header(storeId?: string) {
     const shareHref = storeId ? withParams(pathname, params, { store: storeId, ...(dates ? range : {}) }) : null;
+    const agentContext: AgentReportContext = {
+      pathname,
+      title,
+      filters: {
+        ...agentFilters,
+        ...(storeId ? { store: storeId } : {}),
+        ...(dates && !issue ? range : {}),
+        ...(comparison && !issue ? { compare: comparison.mode } : {}),
+      },
+      currency: appConfig.currency,
+      status: issue
+        ? `Report not loaded: ${issue}`
+        : storeId
+          ? undefined
+          : "Store context is unavailable; report not loaded.",
+      omitted: agentOmissions,
+    };
     return (
-      <header className="flex flex-wrap items-start justify-between gap-3">
+      <header
+        data-agent-page={JSON.stringify(agentContext)}
+        className="flex flex-wrap items-start justify-between gap-3"
+      >
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="max-w-prose text-sm text-muted-foreground">{description}</p>

@@ -40,6 +40,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       description="Every order for one store by when it was processed, newest first. Open an order to see its details."
       pathname={PATHNAME}
       params={params}
+      agentFilters={{ sales_channel: channel }}
+      agentOmissions={[
+        ...(search ? ["Search text"] : []),
+        ...(cursor ? ["Page cursor"] : []),
+        ...(selected ? ["Order details"] : []),
+      ]}
     >
       {({ filters, params: linkParams }) => {
         const orderFilters: OrdersFilters = { ...filters, search, cursor, channel };

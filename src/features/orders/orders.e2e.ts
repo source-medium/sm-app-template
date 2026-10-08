@@ -92,3 +92,11 @@ test("orders: closing a deep-linked drawer falls back to the list heading", asyn
   await expect(page).not.toHaveURL(/order=/);
   await expect(page.getByRole("heading", { name: "Orders, newest first", exact: true })).toBeFocused();
 });
+
+test("orders: agent prompts identify omitted search text without copying it", async ({ page }) => {
+  await page.goto("/orders?q=PRIVATE_SEARCH_SENTINEL");
+  await page.getByRole("button", { name: "Ask a coding agent" }).click();
+  const prompt = await page.getByRole("dialog").getByLabel("Prompt", { exact: true }).inputValue();
+  expect(prompt).toContain("Not included: Search text");
+  expect(prompt).not.toContain("PRIVATE_SEARCH_SENTINEL");
+});

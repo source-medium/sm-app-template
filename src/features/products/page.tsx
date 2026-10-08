@@ -24,6 +24,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       description="Product and variant performance from valid-order lines, in reporting currency."
       pathname="/products"
       params={params}
+      agentFilters={{ sales_channel: channel, dimension: options.dimension, metric: options.metric }}
       comparisons
     >
       {({ filters, comparison }) => {

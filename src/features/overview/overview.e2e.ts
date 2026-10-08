@@ -256,3 +256,19 @@ test("overview: the first KPI and full-width chart notes are readable on a phone
   const header = await card.locator('[data-slot="card-header"]:visible').boundingBox();
   expect(description?.width).toBeGreaterThan((header?.width ?? 0) * 0.7);
 });
+
+test("overview: the agent prompt identifies a KPI and an invalid date state", async ({ page }) => {
+  await page.goto("/overview");
+  await page.locator('[data-agent-target="Net revenue"]').waitFor();
+  await page.getByRole("button", { name: "Ask a coding agent" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Target", { exact: true }).selectOption({ label: "Net revenue (KPI)" });
+  await expect(dialog.getByLabel("Prompt", { exact: true })).toHaveValue(/Component: "KpiCard"/);
+  await page.keyboard.press("Escape");
+  await page.goto("/overview?from=invalid&to=invalid");
+  await page.getByRole("button", { name: "Ask a coding agent" }).click();
+  const prompt = await page.getByRole("dialog").getByLabel("Prompt", { exact: true }).inputValue();
+  expect(prompt).toContain("Report not loaded: Choose a valid start and end date.");
+  expect(prompt).not.toContain("from=");
+  expect(prompt).not.toContain("to=");
+});

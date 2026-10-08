@@ -59,6 +59,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
       description="Spend and delivery by channel and campaign for one store."
       pathname={PATHNAME}
       params={params}
+      agentFilters={{ channel, metric, breakdown: breakdownDimension(params) }}
       comparisons
       comparisonLabel="Compare spend breakdown with"
     >

@@ -17,6 +17,24 @@ for (const item of appConfig.nav) {
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("status")).toHaveCount(0);
     await expectNoSeriousA11yViolations(page);
+    const report = page.locator("main [data-agent-page]");
+    if (await report.count()) {
+      const context = JSON.parse((await report.getAttribute("data-agent-page")) ?? "{}");
+      expect(context.pathname).toBe(item.href);
+      expect(context.filters.store).toBe(await page.getByRole("combobox", { name: "Store", exact: true }).inputValue());
+      const targets = await page.locator("main [data-agent-target][data-agent-component]").count();
+      await page.getByRole("button", { name: "Ask a coding agent" }).click();
+      const dialog = page.getByRole("dialog", { name: "Ask a coding agent" });
+      await expect(dialog.getByLabel("Target", { exact: true }).locator("option")).toHaveCount(targets + 1);
+      if (targets) {
+        const targetOption = dialog.getByLabel("Target", { exact: true }).locator("option").nth(1);
+        await dialog
+          .getByLabel("Target", { exact: true })
+          .selectOption((await targetOption.getAttribute("value")) ?? "");
+        expect(await dialog.getByLabel("Prompt", { exact: true }).inputValue()).toContain("- Component:");
+      }
+      await page.keyboard.press("Escape");
+    }
     expect(problems).toEqual([]);
   });
 }
@@ -154,7 +172,7 @@ test("copy link freezes applied defaults and ignores unapplied filter edits", as
   const copied = new URL(await page.evaluate(() => navigator.clipboard.readText()));
   expect(copied.origin).toBe(new URL(page.url()).origin);
   expect(copied.pathname).toBe(home);
-  const compare = page.getByLabel("Compare with");
+  const compare = page.locator('select[name="compare"]');
   expect(Object.fromEntries(copied.searchParams)).toEqual({
     store,
     from,
@@ -180,13 +198,47 @@ test("the agent prompt carries the page, its filters, and the request", async ({
   await expect(dialog.getByText("Prompt copied.", { exact: true })).toHaveCount(1);
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied).toBe(await dialog.getByLabel("Prompt").inputValue());
-  expect(copied).toContain(`- Page: ${title} (${home})`);
-  expect(copied).toContain("from=2026-09-01, to=2026-09-07");
+  expect(copied).toContain(`- Page: ${JSON.stringify(title)} (${home})`);
+  if (await page.getByLabel("From", { exact: true }).count())
+    expect(copied).toContain('from="2026-09-01", to="2026-09-07"');
   expect(copied).toContain("The first number looks too high.");
   expect(copied).toContain("- Data mode: sample data");
   expect(copied).toContain("Read AGENTS.md first");
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: "Ask a coding agent" })).toBeFocused();
+});
+
+test("agent context captures resolved defaults and ignores unapplied edits", async ({ page }) => {
+  await page.goto(home);
+  const store = page.getByRole("combobox", { name: "Store", exact: true });
+  test.skip((await store.count()) === 0, "the home page has no report filters");
+  const appliedStore = await store.inputValue();
+  const from = page.getByLabel("From", { exact: true });
+  const appliedFrom = (await from.count()) ? await from.inputValue() : null;
+  await store.selectOption(appliedStore === "sample-store-a" ? "sample-store-b" : "sample-store-a");
+  if (appliedFrom) await from.fill("2020-01-01");
+  await page.getByRole("button", { name: "Ask a coding agent" }).click();
+  const dialog = page.getByRole("dialog", { name: "Ask a coding agent" });
+  const prompt = await dialog.getByLabel("Prompt", { exact: true }).inputValue();
+  expect(prompt).toContain(`store=${JSON.stringify(appliedStore)}`);
+  if (appliedFrom) expect(prompt).toContain(`from=${JSON.stringify(appliedFrom)}`);
+  expect(prompt).not.toContain("2020-01-01");
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Ask a coding agent" })).toBeFocused();
+});
+
+test("agent context matches first-value URL parsing and excludes unrelated query values", async ({ page }) => {
+  await page.goto(`${home}?store=sample-store-a&store=sample-store-b&access_token=TOKEN_SENTINEL`);
+  const store = page.getByRole("combobox", { name: "Store", exact: true });
+  test.skip((await store.count()) === 0, "the home page has no report filters");
+  await expect(store).toHaveValue("sample-store-a");
+  await page.getByRole("button", { name: "Ask a coding agent" }).click();
+  const prompt = await page.getByRole("dialog").getByLabel("Prompt", { exact: true }).inputValue();
+  expect(prompt).toContain('store="sample-store-a"');
+  expect(prompt).not.toContain("sample-store-b");
+  expect(prompt).not.toContain("TOKEN_SENTINEL");
+  expect(prompt).not.toContain("access_token");
 });
 
 test("copy failure offers the complete applied link for manual copying", async ({ page }) => {

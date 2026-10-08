@@ -66,7 +66,7 @@ export function ChartCard({
   );
 
   return (
-    <Card>
+    <Card data-agent-target={title} data-agent-component="ChartCard">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}

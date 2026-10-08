@@ -32,6 +32,12 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
       description="Compare monthly purchase cohorts at the same age, one sales channel at a time."
       pathname="/retention"
       params={applied}
+      agentFilters={{
+        as_of: options.asOf,
+        channel: options.channel,
+        measure: options.metric,
+        cohorts: options.curveWindow,
+      }}
       dates={false}
     >
       {({ filters }) => {

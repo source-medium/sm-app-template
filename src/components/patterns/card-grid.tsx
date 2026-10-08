@@ -17,7 +17,7 @@ export type GridCard = {
 
 export function CardGrid({ cards, label }: { cards: GridCard[]; label: string }) {
   return (
-    <ul aria-label={label} className={cardGridStyles}>
+    <ul data-agent-target={label} data-agent-component="CardGrid" aria-label={label} className={cardGridStyles}>
       {cards.map((card) => (
         <li key={card.id} className="min-w-0">
           <Card className="h-full gap-0 overflow-hidden py-0">

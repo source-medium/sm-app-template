@@ -31,6 +31,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
       description="Every ad creative that ran in the selected dates, with its delivery."
       pathname={PATHNAME}
       params={params}
+      agentFilters={{ channel, sort }}
     >
       {({ filters }) => (
         <div className="flex flex-col gap-4">

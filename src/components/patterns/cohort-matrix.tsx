@@ -21,6 +21,8 @@ export function CohortMatrix({
 }) {
   return (
     <Table
+      data-agent-target={caption}
+      data-agent-component="CohortMatrix"
       containerClassName="max-h-[40rem] rounded-xl border bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       containerProps={{ tabIndex: 0, role: "region", "aria-label": caption }}
     >

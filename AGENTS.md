@@ -56,6 +56,7 @@ docs/                         Guides (index below)
    and browser can disagree.
 3. **Keep filters in the URL** (`?store=&from=&to=` plus the view's own). Read
    them in the page's `searchParams`; there is no client data store.
+   Pass parsed, shareable view filters as `ReportPage agentFilters` (docs/prompts.md).
 4. **Inspect the schema before writing SQL**: the SourceMedium MCP
    (`describe_table`) or `pnpm schema <relation>`. Never guess a column.
 5. **Never paste a secret** into a chat, a file, a commit, or a log. Do not read
@@ -138,12 +139,9 @@ acts for a person needs a real per-person authorization design first.
 
 ## Guides
 
-- `docs/connect.md`: going live, configuration, deploying, lost secrets.
-- `docs/data.md`: MCP setup, schemas, SQL rules, decoding, money, freshness.
-- `docs/auth.md`: the shared password, Cloudflare Access, sign-in options.
-- `docs/operations.md`: rotating secrets, quotas, errors and their remedies.
-- `docs/removing-the-example.md`: deleting one view or all six.
-- `docs/prompts.md`: starter prompts.
+- `docs/connect.md`: configuration/deploying; `docs/auth.md`: sign-in and store access.
+- `docs/data.md`: schemas/SQL/money; `docs/operations.md`: quotas/errors/secrets.
+- `docs/removing-the-example.md`: deleting views; `docs/prompts.md`: composer context and starter prompts.
 
 Publishing live data, production deploys, and destructive actions need the
 person's explicit go-ahead. Never ask for a SourceMedium admin credential.

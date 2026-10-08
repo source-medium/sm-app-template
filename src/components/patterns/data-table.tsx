@@ -80,7 +80,7 @@ export function DataTable({
   });
 
   return (
-    <div className="flex flex-col gap-3">
+    <div data-agent-target={caption} data-agent-component="DataTable" className="flex flex-col gap-3">
       <Table
         containerClassName="max-h-[32rem] rounded-xl border bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         containerProps={{ tabIndex: 0, role: "region", "aria-label": caption }}

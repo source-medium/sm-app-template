@@ -29,7 +29,7 @@ export function KpiCard({
 }) {
   const Arrow = delta?.direction === "flat" ? Minus : delta?.direction === "down" ? ArrowDownRight : ArrowUpRight;
   return (
-    <Card className="gap-2 py-5">
+    <Card data-agent-target={label} data-agent-component="KpiCard" className="gap-2 py-5">
       <CardContent className="flex flex-col gap-1 px-5">
         {description ? (
           <details className="text-sm text-muted-foreground">

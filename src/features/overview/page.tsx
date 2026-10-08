@@ -29,6 +29,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       description="Executive Summary metrics for one store, with an explicit sales-channel scope."
       pathname="/overview"
       params={params}
+      agentFilters={{ sales_channel: channel, grain }}
       comparisons
     >
       {({ filters, comparison }) => {
