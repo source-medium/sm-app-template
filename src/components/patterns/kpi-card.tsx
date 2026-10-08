@@ -34,14 +34,16 @@ export function KpiCard({
         {description ? (
           <details className="text-sm text-muted-foreground">
             <summary className="flex min-h-6 cursor-pointer list-none items-center gap-1.5 rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden">
-              <span>{label}</span>
+              <span data-slot="kpi-label">{label}</span>
               <Info className="size-3.5 shrink-0" aria-hidden />
               <span className="sr-only">definition</span>
             </summary>
             <p className="pt-1 pb-2 text-xs leading-relaxed">{description}</p>
           </details>
         ) : (
-          <span className="text-sm text-muted-foreground">{label}</span>
+          <span data-slot="kpi-label" className="text-sm text-muted-foreground">
+            {label}
+          </span>
         )}
         <span data-slot="kpi-value" className="text-3xl font-semibold tracking-tight tabular-nums">
           {value}

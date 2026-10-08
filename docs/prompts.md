@@ -1,5 +1,13 @@
 # Starter prompts
 
+For anything about a page you are looking at, use **Ask agent** in the app's
+top bar: pick what you need (something looks wrong, change this page, add
+something new, check a number, ask how it works), describe it in a sentence,
+and copy the prompt. It already names the page, its code folder, the applied
+filters, the sections on screen, the data mode, and the build, and it tells
+the agent to read AGENTS.md and run the checks. The prompts below cover work
+that starts outside a page.
+
 Copy one into your coding agent. These are starting instructions, not proven
 end-to-end onboarding flows. "Connect my data" needs an already provisioned
 app block while the Apps page is unavailable. "Check a number" needs an

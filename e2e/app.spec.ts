@@ -167,6 +167,28 @@ test("copy link freezes applied defaults and ignores unapplied filter edits", as
   await expect(page.getByLabel("To", { exact: true })).toHaveValue(to);
 });
 
+test("the agent prompt carries the page, its filters, and the request", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto(`${home}?from=2026-09-01&to=2026-09-07`);
+  const title = await page.getByRole("heading", { level: 1 }).innerText();
+  await page.getByRole("button", { name: "Ask a coding agent" }).click();
+  const dialog = page.getByRole("dialog", { name: "Ask a coding agent" });
+  await dialog.getByLabel("What do you need?").selectOption("check");
+  await dialog.getByLabel("Describe it").fill("The first number looks too high.");
+  await expectNoSeriousA11yViolations(page);
+  await dialog.getByRole("button", { name: "Copy prompt" }).click();
+  await expect(dialog.getByText("Prompt copied.", { exact: true })).toHaveCount(1);
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toBe(await dialog.getByLabel("Prompt").inputValue());
+  expect(copied).toContain(`- Page: ${title} (${home})`);
+  expect(copied).toContain("from=2026-09-01, to=2026-09-07");
+  expect(copied).toContain("The first number looks too high.");
+  expect(copied).toContain("- Data mode: sample data");
+  expect(copied).toContain("Read AGENTS.md first");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+});
+
 test("copy failure offers the complete applied link for manual copying", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "clipboard", {

@@ -55,6 +55,18 @@ test("the navigation respects reduced motion", async ({ page }) => {
   await expect(sheet).toBeHidden();
 });
 
+test("the agent prompt composer fits a phone", async ({ page }) => {
+  await page.goto(appConfig.nav[0]?.href ?? "/");
+  await page.getByRole("button", { name: "Ask a coding agent" }).click();
+  const dialog = page.getByRole("dialog", { name: "Ask a coding agent" });
+  await expect(dialog.getByLabel("Prompt")).toHaveValue(/Context from the running app/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(
+    0,
+  );
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+});
+
 test("appearance can be changed on a phone", async ({ page }) => {
   await page.goto(appConfig.nav[0]?.href ?? "/");
   await page.getByRole("combobox", { name: "Appearance" }).selectOption("dark");

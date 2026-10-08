@@ -31,7 +31,7 @@ app.config.ts                 Name, logo, navigation, store labels, date default
 src/app/(app)/<route>/page.tsx  One line re-exporting a feature's page
 src/features/<view>/          One view: queries.ts (contract), rows.ts (row schema),
                               bigquery.ts (live SQL), sample.ts (fixtures), page.tsx
-src/components/shell/         Sidebar, top bar, mode chip, filter bar, report page frame
+src/components/shell/         Sidebar, top bar, mode chip, agent prompt composer, filter bar, report page frame
 src/components/patterns/      KPI card, data table, card grid, data states, DataRegion
 src/components/charts/        Recharts chart card with a table view
 src/components/ui/            shadcn/ui primitives, copied and editable

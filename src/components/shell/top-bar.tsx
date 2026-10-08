@@ -1,7 +1,9 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
 import type { Viewer } from "@/lib/auth/require-viewer";
+import { buildId } from "@/lib/config/env.server";
 import { parseTheme, THEME_COOKIE } from "@/lib/theme";
+import { AgentPrompt } from "./agent-prompt";
 import { ModeChip } from "./mode-chip";
 import { ThemeControl } from "./theme-control";
 
@@ -16,6 +18,7 @@ export async function TopBar({ mode, viewer }: { mode: "sample" | "live"; viewer
             {viewer.email}
           </span>
         )}
+        <AgentPrompt mode={mode} build={buildId()} />
         <ModeChip mode={mode} />
         <ThemeControl initialTheme={theme} />
       </div>

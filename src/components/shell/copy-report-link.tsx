@@ -1,30 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useCopy } from "@/lib/use-copy";
 
 /** href already contains the applied store and dates, including defaults. */
 export function CopyReportLink({ href }: { href: string }) {
-  const [state, setState] = useState<"idle" | "copying" | "copied" | "failed">("idle");
+  const { state, copy } = useCopy();
   const [manualLink, setManualLink] = useState("");
-
-  useEffect(() => {
-    if (state !== "copied") return;
-    const timer = window.setTimeout(() => setState("idle"), 2000);
-    return () => window.clearTimeout(timer);
-  }, [state]);
 
   async function copyLink() {
     const link = new URL(href, window.location.origin).href;
-    setState("copying");
-    try {
-      await navigator.clipboard.writeText(link);
-      setState("copied");
-    } catch {
-      setManualLink(link);
-      setState("failed");
-    }
+    setManualLink(link);
+    await copy(link);
   }
 
   return (
