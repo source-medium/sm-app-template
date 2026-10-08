@@ -211,8 +211,10 @@ test("the agent prompt carries the page, its filters, and the request", async ({
 
 test("agent context captures resolved defaults and ignores unapplied edits", async ({ page }) => {
   await page.goto(home);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  test.skip((await page.locator("main [data-agent-page]").count()) === 0, "the home page has no report context");
   const store = page.getByRole("combobox", { name: "Store", exact: true });
-  test.skip((await store.count()) === 0, "the home page has no report filters");
+  await expect(store).toBeVisible();
   const appliedStore = await store.inputValue();
   const from = page.getByLabel("From", { exact: true });
   const appliedFrom = (await from.count()) ? await from.inputValue() : null;
@@ -230,8 +232,9 @@ test("agent context captures resolved defaults and ignores unapplied edits", asy
 
 test("agent context matches first-value URL parsing and excludes unrelated query values", async ({ page }) => {
   await page.goto(`${home}?store=sample-store-a&store=sample-store-b&access_token=TOKEN_SENTINEL`);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  test.skip((await page.locator("main [data-agent-page]").count()) === 0, "the home page has no report context");
   const store = page.getByRole("combobox", { name: "Store", exact: true });
-  test.skip((await store.count()) === 0, "the home page has no report filters");
   await expect(store).toHaveValue("sample-store-a");
   await page.getByRole("button", { name: "Ask a coding agent" }).click();
   const prompt = await page.getByRole("dialog").getByLabel("Prompt", { exact: true }).inputValue();

@@ -22,6 +22,28 @@ for (const item of appConfig.nav) {
   });
 }
 
+test("the top bar fits a small touch screen when the brand font is unavailable", async ({ page }) => {
+  await page.route(/fontshare\.com/, (route) => route.abort());
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto(appConfig.nav[0]?.href ?? "/");
+  await expect(page.getByRole("status")).toHaveCount(0);
+  const controls = [
+    page.getByRole("button", { name: "Toggle navigation" }),
+    page.getByRole("button", { name: "Ask a coding agent" }),
+    page.getByTestId("mode-chip"),
+    page.getByRole("combobox", { name: "Appearance" }),
+  ];
+  for (const control of controls) {
+    const box = await control.boundingBox();
+    if (!box) throw new Error("A top-bar control is not visible");
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(320);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(
+    0,
+  );
+});
+
 test("the navigation opens as a sheet", async ({ page }) => {
   const target = appConfig.nav.at(-1);
   await page.goto(appConfig.nav[0]?.href ?? "/");
