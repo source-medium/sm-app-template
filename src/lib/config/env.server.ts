@@ -61,7 +61,8 @@ type Env = Readonly<Record<string, string | undefined>>;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const PROJECT_ID = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
-const DATASET_ID = /^[A-Za-z0-9_]{1,1024}$/;
+/** A BigQuery dataset or table id: letters, digits and underscores. */
+export const BIGQUERY_IDENTIFIER = /^[A-Za-z0-9_]{1,1024}$/;
 // Multi-regions (US, EU) and regions (us-central1, northamerica-northeast1).
 const LOCATION = /^(?:[A-Za-z]{2}|[a-z]+(?:-[a-z]+)+[0-9]+)$/;
 const BASIC_VALUE = /^([A-Za-z0-9._-]{1,64}):([A-Za-z0-9_-]{24,128})$/;
@@ -205,8 +206,8 @@ function parseLive(env: Env, maxBytesBilled: bigint, problems: ConfigProblem[]):
   check("BIGQUERY_JOB_PROJECT_ID", PROJECT_ID, "a Google Cloud project id");
   check("SM_DATA_PROJECT_ID", PROJECT_ID, "a Google Cloud project id");
   check("BIGQUERY_LOCATION", LOCATION, "a BigQuery location such as US or us-central1");
-  check("SM_TRANSFORMED_DATASET_ID", DATASET_ID, "a BigQuery dataset id");
-  check("SM_METADATA_DATASET_ID", DATASET_ID, "a BigQuery dataset id");
+  check("SM_TRANSFORMED_DATASET_ID", BIGQUERY_IDENTIFIER, "a BigQuery dataset id");
+  check("SM_METADATA_DATASET_ID", BIGQUERY_IDENTIFIER, "a BigQuery dataset id");
 
   const key = parseServiceAccountKey(value("SM_APP_KEY"));
   if (typeof key === "string") {

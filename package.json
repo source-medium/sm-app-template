@@ -28,7 +28,6 @@
     "preview": "tsx --conditions=react-server scripts/diagnose.ts --dev-vars && pnpm build:cloudflare && opennextjs-cloudflare preview",
     "deploy": "pnpm build:cloudflare && opennextjs-cloudflare deploy",
     "deploy:preview": "pnpm build:cloudflare && wrangler preview --env preview --ignore-base-config",
-    "deploy:cloudflare": "pnpm run deploy",
     "prepare": "simple-git-hooks",
     "smoke:worker": "tsx scripts/smoke-worker.ts",
     "test:live": "next build && SM_LIVE_E2E=1 playwright test"

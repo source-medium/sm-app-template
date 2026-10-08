@@ -3,39 +3,30 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { connectionReportText, type ConnectionReport } from "@/lib/data/connection-report";
+import { useCopy } from "@/lib/use-copy";
 
 export function ConnectionCheck({ mode }: { mode: "sample" | "live" }) {
   const [report, setReport] = useState<ConnectionReport | null>(null);
+  const [run, setRun] = useState(0);
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState("");
-  const [copied, setCopied] = useState(false);
 
   async function check() {
     setRunning(true);
     setReport(null);
     setMessage("");
-    setCopied(false);
     try {
       const response = await fetch("/connection/check", { method: "POST" });
       if (!response.ok) throw new Error("Connection check unavailable");
       const result: ConnectionReport = await response.json();
       setReport(result);
+      setRun((count) => count + 1);
     } catch {
       setMessage(
         "The check could not finish. Reload this page to check your sign-in and configuration, then try again.",
       );
     } finally {
       setRunning(false);
-    }
-  }
-
-  async function copy() {
-    if (!report) return;
-    try {
-      await navigator.clipboard.writeText(connectionReportText(report));
-      setCopied(true);
-    } catch {
-      setMessage("Copy is unavailable in this browser. Select and copy the report below.");
     }
   }
 
@@ -50,11 +41,7 @@ export function ConnectionCheck({ mode }: { mode: "sample" | "live" }) {
         <Button onClick={check} disabled={running}>
           {running ? "Checking…" : "Check connection"}
         </Button>
-        {report && (
-          <Button variant="outline" onClick={copy}>
-            {copied ? "Copied" : "Copy safe report"}
-          </Button>
-        )}
+        {report && <CopyReport key={run} text={connectionReportText(report)} />}
       </div>
       <div role="status" aria-live="polite">
         {running && <p className="text-sm">Checking the connection…</p>}
@@ -77,5 +64,22 @@ export function ConnectionCheck({ mode }: { mode: "sample" | "live" }) {
         )}
       </div>
     </section>
+  );
+}
+
+/** Remounted per check, so a fresh report never shows the previous copy confirmation. */
+function CopyReport({ text }: { text: string }) {
+  const { state, copy } = useCopy();
+  return (
+    <>
+      <Button variant="outline" onClick={() => void copy(text)} disabled={state === "copying"}>
+        {state === "copied" ? "Copied" : "Copy safe report"}
+      </Button>
+      {state === "failed" && (
+        <p className="basis-full text-sm text-destructive">
+          Copy is unavailable in this browser. Select and copy the report below.
+        </p>
+      )}
+    </>
   );
 }

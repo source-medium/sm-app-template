@@ -5,7 +5,7 @@
  * decoders exactly as a deployed app does.
  */
 import { vi } from "vitest";
-import { createFakeBigQuery, FIELDS, JOB, type FakeBigQueryScript } from "../fake-bigquery/fake-bigquery";
+import { createFakeBigQuery, JOB, type FakeBigQueryScript } from "../fake-bigquery/fake-bigquery";
 import { liveEnv, makeServiceAccountKey, TEST_PASSWORD } from "./service-account";
 
 export const requestHeaders = { current: new Headers() };
@@ -34,5 +34,3 @@ export function rowsResponse(
     ...extra,
   });
 }
-
-export { FIELDS };

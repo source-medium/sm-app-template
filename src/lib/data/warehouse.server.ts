@@ -6,7 +6,7 @@
  * request to the warehouse.
  */
 import "server-only";
-import { buildId, type LiveConfig } from "@/lib/config/env.server";
+import { BIGQUERY_IDENTIFIER, buildId, type LiveConfig } from "@/lib/config/env.server";
 import {
   runQuery,
   type BigQueryClient,
@@ -18,9 +18,6 @@ import { createTokenProvider } from "./google-token.server";
 import { assertStoreAccess, StoreAccessError } from "../auth/store-access";
 import { checkWarehouseConnection } from "./connection.server";
 import type { ConnectionReport } from "./connection-report";
-
-const TABLE_ID = /^[A-Za-z0-9_]{1,1024}$/;
-const DATASET_ID = /^[A-Za-z0-9_]{1,1024}$/;
 
 /** SourceMedium's two datasets by role, or any other dataset id in your warehouse project. */
 export type DatasetName = "transformed" | "metadata" | (string & {});
@@ -80,8 +77,8 @@ export function warehouseFor(live: LiveConfig, fixedStoreId: string | null = nul
             : datasetName;
       if (
         !qualifiedTable ||
-        !TABLE_ID.test(qualifiedTable) ||
-        !DATASET_ID.test(datasetId) ||
+        !BIGQUERY_IDENTIFIER.test(qualifiedTable) ||
+        !BIGQUERY_IDENTIFIER.test(datasetId) ||
         name.split(".").length > 2
       ) {
         throw new Error(
