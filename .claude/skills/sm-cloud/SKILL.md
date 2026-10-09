@@ -51,11 +51,10 @@ and environment; never create another template copy during iteration.
 4. Cloudflare Builds runs `deploy:preview` against the preview Worker. Wait for the
    current commit's successful build; get its actual Preview URL from the PR or
    `<app>-preview` Worker dashboard. Open it when network access permits.
-   With privately configured viewer access, run
-   `pnpm test:hosted <https-origin> <full-git-commit>` from the matching checkout.
-   It checks build, guard, Connection and the existing live report suite without
-   a warehouse key or local server. Confirm the intended store and changed query
-   too. For Access, follow `docs/cloud.md#verify-a-hosted-build`. If authenticated
+   Follow `docs/cloud.md#verify-a-hosted-build` from the matching checkout.
+   Always verify build, guard and Connection; use the documented `--grep` option
+   for report-only changes, and the full suite for first connection or shared
+   changes. Confirm the intended store and changed behavior too. If authenticated
    browser access is unavailable, ask the person to finish that specific check
    privately; never request the password in chat or weaken the guard.
    Report the link, commit, data mode, checks, and whether browser verification ran. Never
@@ -69,8 +68,8 @@ and environment; never create another template copy during iteration.
    before promotion. Give the GitHub merge link when the platform cannot merge.
    After merge, obtain the resulting `main` commit (squash/merge can change the
    hash), wait for its successful Cloudflare deployment, and match `/healthz`
-   to that commit. Rerun hosted verification against production, then check the
-   changed page. If the person must complete authenticated verification, report
+   to that commit. Repeat the same verification scope against production.
+   If the person must complete authenticated verification, report
    **Deployed, awaiting verification** and the exact check. Only call it done
    after verification; a merge or successful build is not proof it works.
 6. To undo a publication, propose reverting its code change through a new PR.
@@ -78,39 +77,25 @@ and environment; never create another template copy during iteration.
    rollback, follow `docs/operations.md#rolling-back`: it can restore old
    passwords and store restrictions. Follow the person's authorization.
 
-Use only **Production** and **Development** app credentials for this workflow.
-The `preview` environment and optional live agent debugging share Development;
-do not ask for a third Preview credential. Reuse the person's existing
-Development block, regardless of its app label. Follow
-`docs/cloud.md#connect-preview-data`: the person privately
-adds its complete block and matching store restriction to the preview Worker's
-**Previews Base**, once, before creating branch previews. Do not use
-`--ignore-base-config`. Existing previews retain their secrets; changing Base
-does not update them. Update their own settings or propose recreating those
-specific previews with approval. Never remove `APP_REQUIRE_LIVE` to hide a
-configuration error. Only trusted branches may receive preview credentials.
+Follow `docs/cloud.md#connect-your-data` and `#connect-preview-data` for private
+credential placement. Reuse **Production** for the production Worker only and
+**Development** for previews and optional agent debugging. No third credential
+is needed. Only trusted branches may receive preview credentials. Never use
+`--ignore-base-config`. Keep
+`APP_REQUIRE_LIVE`, production's `preview_urls: false`, and the viewer guard on
+every hostname. If issuance is unavailable, sample setup can continue, but
+live iteration is not ready.
+
 For credential rotation or tighter viewer/store access, follow
-`docs/operations.md#replacing-secrets`: old immutable deployments keep their
-settings even after branch deletion in our hosted rehearsal. Prepare the
-preview-Worker reset, obtain approval to delete it, and verify old URLs are
-retired before and after recreating it. Do not delete the production Worker.
-Keep production's `preview_urls: false`. Production warehouse credentials stay in its
-runtime settings, and the viewer guard must protect every hostname. An accepted
-organization admin obtains the one-time block from SourceMedium's Apps page;
-if provisioning is not enabled, name the blocker; initial sample setup can
-continue, but live iteration is not ready.
-Use the hosted Connection check and its safe report for deployed-app diagnosis.
-For authorized live debugging, follow `docs/cloud.md#debug-with-live-data`: the
-person privately enters the same Development block in the cloud environment's
-direct variables. Replacing or revoking it affects previews and debugging;
-update all its uses, not just Base. Never request the production key or use network
-secret substitution for a signing key. Run `pnpm diagnose`, `pnpm schema` and
-the relevant live checks yourself; never inspect secret files or print variables.
-Do not publish a live localhost preview or remove its viewer guard to automate
-sign-in. Automated tests keep synthetic fixtures; hosted previews use actual
-data. If no Development
-credential is configured, use bundled schemas or separately authorized MCP and
-state what could not be verified against the warehouse.
+`docs/operations.md#replacing-secrets`. Base updates and branch deletion do not
+retire old immutable previews; follow its approved preview-Worker reset and
+verify old URLs are retired. Do not delete the production Worker.
+
+Use hosted Connection for deployed-app diagnosis. For authorized live debugging,
+follow `docs/cloud.md#debug-with-live-data`; never request the production key,
+inspect secret files, or print variables. Run the diagnostics yourself. Do not
+remove the viewer guard to automate sign-in. Without Development credentials,
+use bundled schemas or separately authorized MCP and state the validation gap.
 
 Keep the handoff short: preview or live link, what changed, what was verified,
 and the one remaining action, if any. For code questions or read-only checks,

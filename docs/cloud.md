@@ -185,7 +185,7 @@ in its network settings.
 
 The command starts no server and makes no deployment. It first checks the build,
 anonymous page/asset/RSC/Connection protection, then runs the hosted Connection
-check and the existing live browser suite, one worker with no retries. It fails
+check and the selected live browser tests, one worker with no retries. It fails
 on the wrong commit, missing guard, sample mode, or a failed Connection check.
 Explicit empty reports are valid; interactions needing rows are skipped when
 none are available. This checks app behavior, not the completeness or accuracy
@@ -193,6 +193,19 @@ of your warehouse data.
 Warnings are counted; review their safe report on Connection. Browser traces,
 screenshots, videos, and retained test artifacts are disabled. Run it only with
 permission to view the data; these tests issue real warehouse queries.
+
+Use the full suite above for first connection and changes to shared auth,
+configuration, data handling, filters, runtime, or dependencies. For a change
+confined to one report, select its relevant test titles from `e2e/live.spec.ts`:
+
+```sh
+pnpm test:hosted <https-origin> <full-git-commit> --grep '/overview|Overview'
+```
+
+`--grep` is Playwright's test-title regular expression. It only narrows report
+tests; build, guard, and Connection checks always run. A filter matching no tests
+fails. For a new interaction, add or update its test rather than relying on a
+render check. Use the same scope on the preview and resulting production commit.
 
 Still confirm the intended store and requested change. For a restricted app,
 verify that another `?store=` returns 403. With Cloudflare Access, or if you

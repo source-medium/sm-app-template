@@ -6,11 +6,11 @@ enabled, keep sample data and ask SourceMedium support.
 
 ## Replacing secrets
 
-| Action (Apps page)             | What changes                               | What it interrupts                                                                 |
-| ------------------------------ | ------------------------------------------ | ---------------------------------------------------------------------------------- |
-| **Replace key**                | A new `SM_APP_KEY`; the old key is deleted | Every deployment stops reading data until you update its `SM_APP_KEY` and redeploy |
-| **Replace viewer password**    | A new `APP_BASIC_AUTH`                     | Nothing until you update your hosts; then viewers need the new password            |
-| **Copy settings (no secrets)** | The app's recorded non-secret values       | Nothing; update the values and redeploy                                            |
+| Action (Apps page)               | What changes                               | What it interrupts                                                                 |
+| -------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------- |
+| **Replace key**                  | A new `SM_APP_KEY`; the old key is deleted | Every deployment stops reading data until you update its `SM_APP_KEY` and redeploy |
+| **Generate new viewer password** | A new `APP_BASIC_AUTH`                     | Nothing until you update your hosts; then viewers need the new password            |
+| **Copy settings (no secrets)**   | The app's recorded non-secret values       | Nothing; update the values and redeploy                                            |
 
 There is no overlap window in this version: plan a key replacement for a quiet
 moment and update every host right away. Google may honor access tokens issued
@@ -53,13 +53,18 @@ create a new app and deploy its block.
 
 ## Query allowance
 
-SourceMedium runs and pays for the app's queries, within daily allowances per
-app and for all apps together. When an allowance is used up, pages show
-**Query allowance used up** until it resets. Rotating the key does not reset
-it. Contact SourceMedium if your normal use does not fit.
+App queries run in your existing warehouse project: your dedicated project or
+SourceMedium's shared `sourcemedium-bi` project. The issued configuration selects
+it automatically. Its billing, reservations and query limits apply; app queries
+share that project's capacity. No new Google project is needed.
 
-Each query also has a byte ceiling (default 1 GiB). A query over it fails with
-**Query too large** before it runs.
+If BigQuery rejects a query for exceeding a quota, pages show **Query allowance
+used up**. Ask your SourceMedium admin to check the project's limits or contact
+SourceMedium support. Replacing the key does not reset usage.
+
+Each starter query also has a byte ceiling (default 1 GiB). A query over it fails
+with **Query too large** before it runs. This is a safeguard in the starter, not
+a spending cap on the credential: custom code can omit it.
 
 ## When something is wrong
 
@@ -70,17 +75,17 @@ the configured Development credential; it need not read or print the values.
 Follow [live debugging](cloud.md#debug-with-live-data) to configure either cloud
 agent. Hosted onboarding does not require a local file.
 
-| Message                                  | Meaning                                             | Remedy                                                            |
-| ---------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------- |
-| Configuration needs attention (503)      | Missing or malformed values, or no viewer guard     | Fix the named variables; see `docs/connect.md`                    |
-| The app key was rejected                 | Google refused `SM_APP_KEY`                         | Replace the key in Apps; an issued key cannot be retrieved        |
-| The app cannot read this data            | A permission is missing                             | Retry provisioning from Apps; contact SourceMedium if it persists |
-| Table or dataset not found               | Wrong coordinates or location                       | Recopy the configuration from Apps; check `BIGQUERY_LOCATION`     |
-| Query allowance used up                  | A daily allowance was reached                       | Wait for the reset or contact SourceMedium; do not rotate the key |
-| Query too large                          | The scan would exceed the byte ceiling              | Narrow the date range or columns                                  |
-| The data no longer matches this view     | A column changed type or disappeared                | `pnpm schema <relation>`, then update the view's row schema       |
-| The query may not have started           | The connection dropped before BigQuery confirmed it | Reload once; the app never resubmits automatically                |
-| The warehouse is temporarily unavailable | A temporary error or a short-term rate limit        | Reload in a minute                                                |
+| Message                                  | Meaning                                             | Remedy                                                              |
+| ---------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------- |
+| Configuration needs attention (503)      | Missing or malformed values, or no viewer guard     | Fix the named variables; see `docs/connect.md`                      |
+| The app key was rejected                 | Google refused `SM_APP_KEY`                         | Replace the key in Apps; an issued key cannot be retrieved          |
+| The app cannot read this data            | A permission is missing                             | Retry provisioning from Apps; contact SourceMedium if it persists   |
+| Table or dataset not found               | Wrong coordinates or location                       | Recopy the configuration from Apps; check `BIGQUERY_LOCATION`       |
+| Query allowance used up                  | A BigQuery quota was reached                        | Check the project's limits with SourceMedium; do not rotate the key |
+| Query too large                          | The scan would exceed the byte ceiling              | Narrow the date range or columns                                    |
+| The data no longer matches this view     | A column changed type or disappeared                | `pnpm schema <relation>`, then update the view's row schema         |
+| The query may not have started           | The connection dropped before BigQuery confirmed it | Reload once; the app never resubmits automatically                  |
+| The warehouse is temporarily unavailable | A temporary error or a short-term rate limit        | Reload in a minute                                                  |
 
 A deployment never falls back to sample data when live data fails.
 

@@ -36,7 +36,7 @@ const COPY: Record<WarehouseErrorKind, { title: string; remedy: string }> = {
   quota_exceeded: {
     title: "Query allowance used up",
     remedy:
-      "The app has reached its BigQuery query allowance. Wait for the daily allowance to reset or contact SourceMedium; rotating the key will not help.",
+      "BigQuery rejected the query because a quota was reached. Ask your SourceMedium admin to check the warehouse project's limits or contact SourceMedium support; rotating the key will not help.",
   },
   bytes_limit_exceeded: {
     title: "Query too large",

@@ -1,10 +1,83 @@
 import { createServer, type IncomingMessage } from "node:http";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { verifyHostedApp } from "../../e2e/hosted.setup";
 
 const commit = "a".repeat(40);
 const credentials = { username: "viewer", password: "synthetic-password" };
 const authorization = `Basic ${Buffer.from(`${credentials.username}:${credentials.password}`).toString("base64")}`;
+
+describe("hosted command selection", () => {
+  const script = resolve("scripts/test-hosted.mjs");
+  const run = (extra: string[], cwd = process.cwd()) =>
+    spawnSync(process.execPath, [script, "https://127.0.0.1:1", commit, ...extra], {
+      cwd,
+      encoding: "utf8",
+      timeout: 15_000,
+      env: { ...process.env, APP_BASIC_AUTH: "viewer:synthetic-password", FORCE_COLOR: "0" },
+    });
+
+  it.each([[], ["--grep", "renders live data"]].map((extra) => ({ extra })))(
+    "keeps the deployment gate before selected reports: $extra",
+    ({ extra }) => {
+      const result = run(extra);
+      expect(result.status).toBe(1);
+      expect(result.stdout + result.stderr).toContain("Hosted verification failed: build identity");
+    },
+  );
+
+  describe("selection through the real Playwright CLI", () => {
+    let directory: string;
+    beforeAll(() => {
+      directory = mkdtempSync(join(tmpdir(), "sm-hosted-selection-"));
+      // Synthetic reports isolate CLI selection; the real deployment gate is tested above.
+      writeFileSync(
+        join(directory, "playwright.config.cjs"),
+        'module.exports = { testMatch: "*.spec.cjs", workers: 1, retries: 0, reporter: "line" };',
+      );
+      writeFileSync(
+        join(directory, "reports.spec.cjs"),
+        `
+        const { test } = require(${JSON.stringify(createRequire(import.meta.url).resolve("@playwright/test"))});
+        test("Selected report", () => {});
+        test("Unrelated report", () => { throw new Error("Unrelated report ran"); });
+      `,
+      );
+    });
+    afterAll(() => rmSync(directory, { recursive: true, force: true }));
+
+    it("runs only the matching report", () => {
+      const result = run(["--grep", "Selected report"], directory);
+      expect(result.error).toBeUndefined();
+      expect(result.status, result.stdout + result.stderr).toBe(0);
+      expect(result.stdout).toContain("1 passed");
+    });
+    it("defaults to the full suite", () => {
+      const result = run([], directory);
+      expect(result.status).toBe(1);
+      expect(result.stdout + result.stderr).toContain("Unrelated report ran");
+    });
+    it("fails when no report matches", () => {
+      const result = run(["--grep", "no-such-report-synthetic"], directory);
+      expect(result.status).toBe(1);
+      expect(result.stdout + result.stderr).toContain("No tests found");
+    });
+  });
+
+  it.each(
+    [["--grep"], ["--grep", ""], ["--list"], ["--grep", "overview", "--pass-with-no-tests"]].map((extra) => ({
+      extra,
+    })),
+  )("rejects incomplete filters and options that bypass verification: $extra", ({ extra }) => {
+    const result = run(extra);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Usage:");
+  });
+});
 
 describe("deployed build gate over HTTP", () => {
   let baseURL: string;

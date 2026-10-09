@@ -202,7 +202,7 @@ to **Apps** to recover access without sending anyone the old key or password:
 
 - **Replace key** returns a new `SM_APP_KEY`. The old key stops
   working; update every host and `.env.local`.
-- **Replace viewer password** returns a new `APP_BASIC_AUTH`. It takes effect when you
+- **Generate new viewer password** returns a new `APP_BASIC_AUTH`. It takes effect when you
   update your hosts.
 - The non-secret values can be copied again at any time.
 

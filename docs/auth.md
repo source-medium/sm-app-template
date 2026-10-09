@@ -74,7 +74,7 @@ per-person removal; browsers have no "log out"; and it is not a design for
 writes, which would need real accounts and CSRF protection. Hosted apps are
 HTTPS; plain HTTP is only for the local dev server on 127.0.0.1.
 
-To remove someone, use **Replace viewer password** on the Apps page of your
+To remove someone, use **Generate new viewer password** on the Apps page of your
 SourceMedium workspace and update every deployment (`docs/operations.md`).
 SourceMedium cannot change your host's secrets, so the old password works
 until you do.
