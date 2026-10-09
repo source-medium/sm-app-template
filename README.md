@@ -15,23 +15,25 @@ Use **Codex Cloud** or **Claude Code in the cloud**. No local installation neede
 1. [Create your copy](https://github.com/source-medium/sm-app-template/generate).
 2. Choose your agent below and paste the [starter message](docs/cloud.md#your-first-message-in-either-agent).
 3. Connect your copy to one Cloudflare Worker (Workers Paid, from US$5 a month)
-   for a hosted URL. Describe changes and approve the ones you want to publish;
-   add a preview Worker when you want to see a change before it goes live.
+   for the first hosted URL. Then connect your warehouse and a protected preview
+   Worker once. Describe a change → review it on your data → approve publication.
 
 | Coding agent                 | Start here                                              |
 | ---------------------------- | ------------------------------------------------------- |
 | **Codex Cloud**              | [Set up Codex](docs/cloud.md#codex-cloud)               |
 | **Claude Code in the cloud** | [Set up Claude](docs/cloud.md#claude-code-in-the-cloud) |
 
-Start on labeled **sample data**, with no warehouse credentials. Your agent
-runs setup and checks. Cloudflare Workers Paid hosts the app; GitHub and your
+The first look uses labeled **sample data**, with no warehouse credentials.
+After connection, previews use your actual data; missing preview settings
+show a setup error instead of sample numbers. Your agent runs setup and checks.
+Cloudflare Workers Paid hosts the app; GitHub and your
 chosen coding agent need access to your repository.
 
 **[Follow the browser setup and preview-to-live guide →](docs/cloud.md)**
 
 ## Prefer local development?
 
-Install Node.js 22.13 or newer (CI uses 24) and pnpm 10.34.5 first. Create your
+Install Node.js 22.22.1 or newer (CI uses 24) and pnpm 10.34.5 first. Create your
 own repository with GitHub's **Use this template**, then clone it and open a
 terminal in that folder.
 
@@ -59,8 +61,9 @@ Cloudflare Workers is the tested runtime; Vercel deployment is unverified.
 Codex and Claude Code share [AGENTS.md](AGENTS.md) and the same repository
 skills. Cursor and Copilot can follow those instructions too. Sample work
 uses bundled schemas without an MCP login. To let the agent debug real queries,
-add a separate [Development credential](docs/cloud.md#debug-with-live-data) in
-its environment settings. It can run connection, schema and live checks itself.
+reuse the [Development credential](docs/cloud.md#debug-with-live-data) from your
+hosted previews in its private environment settings. It can run connection,
+schema and live checks itself. Production keeps its own credential.
 An authorized SourceMedium MCP connection is another option for data inspection.
 Copyable starting points are in [docs/prompts.md](docs/prompts.md).
 

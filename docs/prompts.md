@@ -57,7 +57,7 @@ independent, authorized source; a passing code check does not validate a metric.
 ## Connect my data
 
 **You provide:** an app-specific block, entered privately in Cloudflare runtime settings
-(or a separate Development block in cloud environment settings; `.env.local` for local development).
+(or the previews' Development block in cloud environment settings; `.env.local` for local development).
 **Expected result:** a verified live connection, or a clear explanation of the missing prerequisite.
 
 ```text
@@ -68,8 +68,10 @@ local file, run a terminal command, or give you the key. Help verify sign-in,
 Live data, and the intended store on the hosted app. Guide me through
 Live data → Check connection; I can share its safe report here. If I need a
 block, direct an organization admin to Apps in SourceMedium, not Google Cloud.
+Connect protected previews too, following docs/cloud.md#connect-preview-data;
+use Production for the live site and Development for previews and debugging.
 For cloud-agent debugging, follow docs/cloud.md#debug-with-live-data. I will
-enter a separate Development app block in environment settings and authorize
+enter the same Development app block in environment settings and authorize
 read-only warehouse checks. Then run pnpm diagnose and the relevant schema and
 live tests yourself. For local development, I will fill .env.local privately;
 run pnpm diagnose without reading that file. Never print environment values.

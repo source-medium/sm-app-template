@@ -27,7 +27,8 @@ const live =
     .map(([name, value]) => `${name}=${value}`)
     .join("\n") + "\n";
 
-const modes: { name: string; env: string; checks: [string, RequestInit, number, string?][] }[] = [
+type Mode = { name: string; env: string; workerEnv?: "preview"; checks: [string, RequestInit, number, string?][] };
+const modes: Mode[] = [
   {
     name: "public sample",
     env: "",
@@ -75,6 +76,30 @@ const modes: { name: string; env: string; checks: [string, RequestInit, number, 
   { name: "live Basic", env: live + `APP_BASIC_AUTH=viewer:${PASSWORD}\n`, checks: [[FIRST, {}, 401]] },
   { name: "live Access", env: live + access, checks: [[FIRST, {}, 403]] },
   { name: "live without guard", env: live, checks: [[FIRST, {}, 503, "APP_BASIC_AUTH"]] },
+  {
+    name: "preview missing configuration",
+    workerEnv: "preview",
+    env: "",
+    checks: [
+      ["/healthz", {}, 200],
+      [FIRST, {}, 503, "requires live data"],
+      [FIRST, { headers: { RSC: "1", "Next-Router-Prefetch": "1" } }, 503],
+      ["/data-dictionary?store=sample-store-a&relation=obt_orders", {}, 503],
+      ["/sample-creatives/creative-01.svg", {}, 503],
+    ],
+  },
+  {
+    name: "preview live Basic",
+    workerEnv: "preview",
+    env: live + `APP_BASIC_AUTH=viewer:${PASSWORD}\n`,
+    checks: [[FIRST, {}, 401]],
+  },
+  {
+    name: "preview live without guard",
+    workerEnv: "preview",
+    env: live,
+    checks: [[FIRST, {}, 503, "APP_BASIC_AUTH"]],
+  },
   { name: "both guards", env: access + `APP_BASIC_AUTH=viewer:${PASSWORD}\n`, checks: [[FIRST, {}, 503]] },
   {
     name: "partial Access domain",
@@ -168,7 +193,18 @@ try {
     const wrangler = join(root, "node_modules/.bin/wrangler");
     const worker = spawn(
       wrangler,
-      ["dev", "--port", String(PORT), "--ip", "127.0.0.1", "--inspector-port", "0", "--env-file", envFile],
+      [
+        "dev",
+        "--port",
+        String(PORT),
+        "--ip",
+        "127.0.0.1",
+        "--inspector-port",
+        "0",
+        "--env-file",
+        envFile,
+        ...(mode.workerEnv ? ["--env", mode.workerEnv] : []),
+      ],
       {
         cwd: root,
         stdio: "ignore",

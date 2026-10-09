@@ -9,6 +9,7 @@
  * Modes (docs/connect.md):
  *   no live values,  no guard          -> public sample
  *   no live values,  one valid guard   -> protected sample
+ *   APP_REQUIRE_LIVE=true, no live values -> error (hosted previews)
  *   all seven live,  one valid guard   -> live, protected
  *   some live values, or a bad value   -> error (no query, no sample fallback)
  *   all seven live,  no guard          -> error, including on localhost
@@ -89,8 +90,19 @@ export function parseConfig(env: Env): AppConfig {
   const present = LIVE_VARIABLES.filter((name) => read(env, name) !== undefined);
   const maxBytesBilled = parseMaxBytesBilled(env, problems);
   const storeId = parseStoreId(env, problems);
+  const requireLive = read(env, "APP_REQUIRE_LIVE");
+  if (requireLive !== undefined && requireLive !== "true" && requireLive !== "false") {
+    problems.push({ variable: "APP_REQUIRE_LIVE", message: "APP_REQUIRE_LIVE must be true or false." });
+  }
 
   if (present.length === 0) {
+    if (requireLive === "true") {
+      problems.push({
+        variable: "APP_REQUIRE_LIVE",
+        message:
+          "This deployment requires live data. Add the complete SourceMedium configuration block and viewer guard to its runtime settings. For a branch preview, configure Previews Base before creating it; existing previews need their own settings updated. See docs/cloud.md#connect-preview-data.",
+      });
+    }
     return problems.length > 0 ? { status: "error", problems } : { status: "ok", mode: "sample", guard, storeId };
   }
 
@@ -99,7 +111,7 @@ export function parseConfig(env: Env): AppConfig {
       if (!present.includes(name)) {
         problems.push({
           variable: name,
-          message: `${name} is missing while other live values are set; paste the complete configuration block, or remove every live value to use sample data.`,
+          message: `${name} is missing while other live values are set; paste the complete configuration block${requireLive === "true" ? "." : ", or remove every live value to use sample data."}`,
         });
       }
     }

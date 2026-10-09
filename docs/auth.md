@@ -40,7 +40,8 @@ sharing a restricted deployment, test an allowed request and an authenticated
 request with another store id, including a CSV URL. The latter must return 403.
 
 Live data always needs exactly one viewer guard, even on localhost. With no
-live values, a guard is optional: it protects the sample preview.
+live values, a guard is optional for the initial sample app. Hosted previews
+require live data and a guard.
 
 The guard covers every page, data request, and file in `public/`, on every
 host. Only `/healthz` (the build id), `/favicon.ico`, and the build's hashed
@@ -104,8 +105,9 @@ database to build in this app.
 7. Cover every hostname that reaches the Worker, including its exact
    `your-worker.your-account.workers.dev` hostname. If you use only a custom
    domain, set `workers_dev` to `false` in `wrangler.jsonc` and redeploy instead.
-   Keep `preview_urls` set to `false` too; only the separate sample-data
-   preview Worker in [cloud.md](cloud.md#3-connect-cloudflare-once) turns it on. Disabling workers.dev only in the
+   Keep production's `preview_urls` set to `false` too; the separate protected
+   preview Worker in [cloud.md](cloud.md#3-connect-cloudflare-once) turns it on.
+   See [preview sign-in](#preview-sign-in) for its hostnames. Disabling workers.dev only in the
    dashboard can be undone by your next deploy; see
    [Cloudflare's hostname guide](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/).
 8. Open the app in a private browser window. Sign in with an allowed email and
@@ -128,6 +130,26 @@ to be added individually. Every allowed viewer sees the same data.
 **Removing someone:** remove them from the policy **and** revoke their
 sessions in Zero Trust. Removing a policy entry alone does not end sessions
 already issued; the one-hour session duration bounds how long one lasts.
+
+## Preview sign-in
+
+Hosted previews read actual data and need the same level of protection as
+production. The simplest setup is the shared password issued with the
+Development app block. It protects every branch and immutable preview URL without
+configuring each hostname individually. Keep its audience limited to reviewers.
+
+For Cloudflare Access, create an Access application covering **all** of the
+preview Worker's branch and immutable hostnames (and any preview custom domains).
+Use that application's team domain and AUD in Previews Base and remove
+`APP_BASIC_AUTH`; do not assume production's AUD covers previews. Follow
+[Cloudflare's preview access guidance](https://developers.cloudflare.com/workers/previews/custom-domains/#protect-preview-content).
+Verify an allowed reviewer can open both URL forms and an anonymous request
+cannot. Existing previews need their own settings updated when Base changes.
+
+Preview credentials and `APP_STORE_ID` are separate from production. Match the
+intended store restriction in Previews Base before creating previews. Anyone
+able to deploy preview code is a trusted warehouse reader; app guards cannot
+make untrusted pull-request code safe to run with credentials.
 
 ## Leaving SourceMedium's organization is separate
 

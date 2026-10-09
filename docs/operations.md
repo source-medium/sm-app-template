@@ -19,6 +19,31 @@ before the replacement for a short while.
 Share the key only with people who maintain the app. When one of them leaves,
 issue a replacement key.
 
+For the **Development** app, update **Previews Base** and any coding-agent
+environment using its key or password. Start a new agent task/session after
+updating its settings. Revoking Development affects both preview queries and
+agent debugging, while Production keeps its own credential.
+
+Base changes apply only to newly created previews; rebuilding an existing
+branch does not refresh its secrets. Updating a preview's own secrets changes
+its branch URL, but earlier immutable deployment URLs keep their old secrets.
+Our hosted rehearsal also found that deleting a branch preview left an old
+immutable URL accessible. Do not treat branch deletion as access revocation.
+
+When replacing Development credentials or tightening viewer/store access, have
+the agent prepare a reset of the **preview Worker only**. Keep the replacement
+block privately before approving deletion. Delete that Worker, verify its old
+branch and immutable URLs no longer serve the app, then recreate it, reconnect
+its Builds settings, and enter the current block and store restriction in Base.
+Recreate active previews and verify the new settings and retired URLs again.
+Cloudflare can report deletion before old URLs stop responding. Wait for both
+URL forms to stop serving the app; a successful API response is not proof of
+revocation. If they remain reachable, keep the incident open with Cloudflare.
+This retires every preview; Production is a different Worker and stays running.
+Use [Cloudflare setup](cloud.md#3-connect-cloudflare-once) and
+[preview setup](cloud.md#connect-preview-data) to reconnect. Never disable
+`APP_REQUIRE_LIVE` as a recovery step.
+
 ## Paused or revoked apps
 
 When SourceMedium pauses your organization or revokes the app, its data

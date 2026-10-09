@@ -3,7 +3,7 @@
 Using Codex Cloud or Claude Code in the cloud? Start with
 [the browser guide](cloud.md). For an already hosted app, jump to
 [Connect a hosted app](#connect-a-hosted-app); local setup is optional. For
-agent-run warehouse debugging, use a separate [Development credential](cloud.md#debug-with-live-data).
+agent-run warehouse debugging, reuse the previews' [Development credential](cloud.md#debug-with-live-data).
 
 This is a preview. Live data needs an app configuration block from the **Apps**
 page of your SourceMedium workspace. If that page says credentials are still
@@ -21,6 +21,9 @@ The app has three states, always shown in the top bar:
 
 There is no partial mode and no fallback: a broken live configuration never
 quietly shows sample numbers.
+Hosted previews set `APP_REQUIRE_LIVE=true`: even a completely missing live
+block is an error. Set it in production runtime settings when connecting your
+warehouse too, so accidentally removing the whole block cannot restore sample mode.
 
 ## 1. Run it locally on sample data
 
@@ -122,7 +125,8 @@ Runtime secrets belong to the Worker, not the build environment.
 
 Use `pnpm run deploy`, not `pnpm deploy` (a pnpm built-in). The shared password
 protects the `workers.dev` URL; production Version URLs are off. Branch
-Previews use separate sample configuration. With Cloudflare Access,
+Previews use the Development credential for the same warehouse and require live
+data; follow [preview setup](cloud.md#connect-preview-data). With Cloudflare Access,
 follow [auth.md](auth.md#cloudflare-access) to protect every hostname.
 
 ### Connect a hosted app
@@ -132,18 +136,26 @@ You need an already issued [app-specific block](#2-get-your-configuration).
 
 1. Confirm the workspace reporting currency and [source alignment](data.md#money-and-currency).
    Have your agent set `currency` in
-   `app.config.ts`, preview the change, and publish it with your approval.
+   `app.config.ts` on a task branch. Prepare the change now; review and publish
+   it after the runtime settings below are ready.
    Store names come from `dim_stores`; no store roster setup is needed.
 2. Open the production Worker, **not** the `<app>-preview` Worker. In
    **Settings > Variables and Secrets**, select **Production** if an environment
    selector is shown.
    For a single-store app, add `APP_STORE_ID` using its exact `sm_store_id`;
    omit it to keep the multi-store picker. Add all eight issued values as
-   **Secrets**, including `APP_BASIC_AUTH`, then save and deploy the settings.
-   Enter the values privately yourself. Do not put them in agent chat, the
-   agent's environment, build variables, or Preview Base settings. A separate
+   **Secrets**, including `APP_BASIC_AUTH`. Set `APP_REQUIRE_LIVE=true` as a
+   runtime variable, then save and deploy the settings.
+   Enter the values privately yourself. Do not put the block in agent chat, the
+   agent's environment, build variables, or Previews Base settings. Viewer-only
+   `APP_BASIC_AUTH` may be entered privately for [hosted verification](cloud.md#verify-a-hosted-build); the production warehouse key stays in the Worker. A separate
    Development app credential may be used in [cloud agent settings](cloud.md#debug-with-live-data).
-3. Open the production URL and sign in. Click **Live data** in the top bar,
+3. [Connect preview data](cloud.md#connect-preview-data) with the Development
+   app credential for this warehouse and the same store scope. Reuse that
+   credential for optional agent debugging. Review the currency change on its
+   protected live preview, check Connection and the intended store, then approve
+   publication. See [hosted verification](cloud.md#verify-a-hosted-build).
+4. Open the production URL and sign in. Click **Live data** in the top bar,
    then **Check connection**. Fix any failed check using its remedy. The mode
    label alone means configuration is present, not that queries succeeded.
    Confirm **Live data** on each view with no error state. Confirm the intended store. A restricted app must

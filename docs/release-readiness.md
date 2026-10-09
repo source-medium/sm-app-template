@@ -90,16 +90,130 @@ fresh template copy in each provider and record this short walkthrough:
 1. Connect GitHub and start the repository's cloud environment. Confirm setup
    finishes without local tools, warehouse credentials, or MCP login.
 2. Follow the production Worker connection in `docs/cloud.md` and open the
-   hosted sample URL. Request a small UI change, create its PR, approve the
-   merge after CI passes, and verify the production build shows it.
-3. Connect the preview Worker. Request another change in the same conversation
-   and open the current commit's sample branch preview; verify it updates
-   while production stays unchanged.
-4. Approve publication, merge after CI passes, verify the production build,
-   then revert both test changes through another PR.
+   initial hosted sample URL without creating an empty PR.
+3. Connect production data, the preview Worker and a demo-only Development credential in
+   Previews Base. Request a small UI change in the same conversation and open the
+   current commit's protected live-data branch preview. Verify its build id,
+   actual data, Connection check and viewer/store guards while production stays
+   unchanged. Also verify missing preview secrets give 503, never sample data.
+4. Enter that same Development block privately in the agent's environment;
+   confirm `pnpm diagnose` and a relevant live check work without issuing a
+   third credential. Verify changing Base alone does not update an existing
+   preview. Rehearse the preview-Worker reset in `docs/operations.md` when
+   rotating Development; old immutable URLs must stop serving the app.
+5. Approve publication, merge after CI passes, verify the production build
+   against the resulting `main` commit, sign-in, Connection and the changed
+   page, then revert the test change through another PR.
 
-The two real cloud-agent walkthroughs and fresh-account Cloudflare Git import
-remain **unverified**. Keep them separate from local and CLI deployment evidence.
+The full PR-to-production cloud-agent walkthroughs and fresh-account Cloudflare Git import
+remain **unverified**. The initial cloud sessions below are partial evidence;
+keep them separate from local and CLI deployment evidence.
+
+The live-preview follow-up (2026-10-09) removes `--ignore-base-config` and
+requires live configuration in both the preview Worker and its branch previews.
+The configuration matrix passes in Node and workerd, including absent and
+malformed settings and a missing viewer guard. `pnpm check`, all 94 browser
+tests, the Cloudflare build and its preview-environment dry run passed. Demo
+`pnpm diagnose` also passed with `APP_REQUIRE_LIVE=true`, with the existing
+missing-`dim_stores` warning. Existing sample previews need their own live
+settings or recreation; changing Base alone does not migrate them.
+
+A temporary Worker in the existing demo account exercised this configuration
+with generated, unregistered credentials. Missing preview settings returned 503. New previews inherited Base secrets; existing previews retained their
+secrets after both a Base change and a code deployment. Anonymous requests,
+RSC, protected assets, wrong passwords, and other-store requests were denied
+on both branch and immutable URLs. Preview deployments left the parent
+deployment unchanged. Updating a preview's own password changed its branch
+URL while its old immutable URL still accepted the old password.
+
+The retirement test found a Cloudflare limitation: branch deletion removed
+the branch URL, but the old immutable URL continued serving the app; a deploy
+with `preview_urls: false` did not immediately close it either. Deleting the
+entire temporary Worker returned 404 on both URL forms. Recreating that Worker
+under the same name did not restore the old immutable URL. The recovery steps
+in `docs/operations.md` therefore reset the preview Worker when removing access.
+During cleanup, Cloudflare again confirmed the Worker was absent while its
+newest immutable URL still responded. That URL eventually returned 404 several
+minutes later. Retirement is not verified until the serving URLs close; the
+API's deletion response alone is insufficient.
+
+With explicit permission to upload the existing demo block directly from
+memory, a temporary password-protected Worker also passed the hosted live
+Connection check and all six report pages in Chromium. No page rendered a
+data error or browser exception. After a code redeploy without resupplying
+secrets, the live dictionary opened on Orders and Overview. An initial
+dictionary probe using `domcontentloaded` timed out; waiting for full page
+load passed without an application change. Connection
+reported the known missing-`dim_stores` warning. Version URLs were disabled
+for this real-data check and verified to return 404; the branch-inheritance
+exercise above used synthetic credentials. No real secret was printed or
+copied into a temporary file. These tests do not verify Cloudflare's Git
+integration, a fresh cloud-agent session, or issuance of a new Urchin key.
+Cleanup removed the temporary key binding first and verified reports failed
+closed with 503. The temporary Worker was then deleted; its live URL and the
+tested immutable URLs returned 404. The public demo was not changed.
+
+The Production/Development guidance is also aligned with Urchin's Apps page.
+Its six handoff component tests and targeted lint passed. No app identity,
+warehouse grant, or customer credential was created or changed in this rehearsal.
+
+### Actual cloud sessions and hosted verifier (2026-10-09)
+
+Both providers could select the existing GitHub repository without a new
+connector grant. Sample-only sessions checked out `b954c857a7f0` and reported
+passing `pnpm check` and local sample-page browser checks, clean tracked files,
+and stopped servers. Neither ran the full PR, live preview, merge and production
+loop, and neither received a warehouse credential.
+
+- Claude's default Node 22.22.0 failed the locked `lint-staged` engine requirement.
+  Node 24.21.0 resolved installation; browser downloads were then blocked by its
+  network policy. The session used preinstalled Chromium only for a limited
+  Overview/Orders smoke check. The repository now declares the correct minimum
+  and its cloud hook selects Node 24 when needed, preserving it through
+  `CLAUDE_ENV_FILE`. A fresh local checkout starting under actual Node 22.22.0
+  passed this recovery, frozen installation and browser launch; a subsequent
+  shell sourced the hook file and reported Node 24.21.0.
+- Codex used Node 24.19.0 but needed writable workspace cache paths. Its bootstrap
+  hit root-login failure while trying to install Linux libraries, plus HTTP 403
+  on browser downloads. Its limited browser check used installed Chromium and
+  fallback fonts. The setup draft remains unpublished. The bootstrap now
+  downloads the locked browser first and requests OS libraries only if it
+  still cannot launch. All 10 bootstrap tests passed in a Linux container,
+  including the OS-library fallback. The guide makes cache paths and download
+  hosts explicit. `pnpm dev` now pins port 3000; an occupied-port check visibly
+  refused to start instead of selecting 3001. Next itself returned exit 0 on
+  that failure, so readiness still requires the documented HTTP/browser check.
+
+`pnpm test:hosted <origin> <commit>` reuses the existing live suite without a
+local server or warehouse key. HTTP boundary tests cover a successful gate,
+wrong build, missing guard, incorrect password, failed/malformed Connection
+reports and sample mode. Config tests reject unsafe URLs and verify that no
+dotenv file is loaded and credentials are confined to the target origin.
+The actual command rejected a deliberately wrong commit on the public demo,
+then rejected that demo's intentionally public sample mode at the guard check.
+Those negative checks sent no warehouse credentials and changed no deployment.
+Using the previously authorized temporary demo Worker and credential, the new
+command passed build identity, guard, live Connection (one known store-metadata
+warning), and all 12 live browser tests. The Worker ran application sources from
+`b954c857a7f0`; the verifier ran from the updated working tree with no warehouse
+key in its test process. The first live run caught an ambiguous Orders link
+selector; an exact accessible name fixed it. One subsequent fresh deployment
+failed the Connection gate before running any reports; its cause was not captured,
+so it is not counted as a successful run. The final complete run passed in 44.4s.
+Cleanup removed the key binding and deleted the temporary Worker; the serving
+URL returned 404. Setting removal briefly still served HTTP 200, reinforcing
+the need to verify effective retirement rather than trust API completion alone.
+The public demo was unchanged. All 94 production browser tests and the final
+`pnpm check` passed after the Playwright configuration changes.
+
+The pre-commit review caught demo-data assumptions in the reused live suite:
+empty channel rosters, empty campaign/product/cohort reports, and a date-less
+first page caused false failures. The checks now accept each report's explicit
+empty state, preserve errors as failures, and start date navigation from Orders.
+A disposable browser fixture reproduced five failures before the fix; afterward
+it passed with empty data and Retention first, and with only Retention remaining.
+Injected query errors and missing report UI still failed. All 12 live tests
+then passed against the demo warehouse (31.1s). No deployment was made for this review.
 
 ## Hosted connection checks (2026-10-08, unreleased follow-up)
 
@@ -125,7 +239,8 @@ effective provider quotas, or the two fresh cloud-agent account journeys.
 The optional Development credential path uses the existing app configuration
 and commands, with current Codex and Claude environment instructions in
 `docs/cloud.md#debug-with-live-data`. It does not issue a production credential
-to an agent or put live data in public sample branch previews.
+to an agent. Hosted previews now use their own protected live-data configuration;
+the sample-only preview rehearsal above predates that change.
 
 - Reproduced four sample-auth test failures with synthetic live values injected
   into the environment. After isolating the test environments, `pnpm check`

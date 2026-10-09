@@ -31,7 +31,8 @@ export default async function ConnectionPage() {
       </div>
       <p className="text-sm text-muted-foreground">
         Follow docs/connect.md in your repository to connect or replace the app credential. Enter credentials privately
-        in the production Worker’s runtime settings, never in an agent conversation.
+        in Cloudflare’s runtime settings for this deployment, never in an agent conversation. Hosted preview setup is in
+        docs/cloud.md#connect-preview-data.
       </p>
     </div>
   );

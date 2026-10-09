@@ -10,6 +10,7 @@ export const sampleEnvironment = Object.fromEntries(
     "SM_METADATA_DATASET_ID",
     "APP_BASIC_AUTH",
     "APP_STORE_ID",
+    "APP_REQUIRE_LIVE",
     "CF_ACCESS_TEAM_DOMAIN",
     "CF_ACCESS_AUD",
     "BIGQUERY_MAX_BYTES_BILLED",

@@ -25,15 +25,19 @@
   // (docs/auth.md). Version URLs stay off: they use production bindings.
   "workers_dev": true,
   "preview_urls": false,
-  // The preview environment gets its own Worker, named <name>-preview by
-  // Wrangler. Connect it separately to Git (docs/cloud.md). Its branch/version
-  // URLs contain sample data only. Keep the live
-  // Worker's extra URLs disabled above; both kinds use the same URL switch.
+  // Previews and optional agent debugging share the Development app credential.
+  // Set its complete block in <name>-preview > Settings > Previews Base once.
+  // Branch previews receive those secrets when created, not on every update.
+  // Missing configuration fails closed instead of displaying sample numbers.
+  // Keep production Version URLs disabled; its credential stays separate.
   "env": {
     "preview": {
       "workers_dev": false,
       "preview_urls": true,
-      "previews": {},
+      "vars": { "APP_REQUIRE_LIVE": "true" },
+      "previews": {
+        "vars": { "APP_REQUIRE_LIVE": "true" },
+      },
     },
   },
 }

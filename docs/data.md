@@ -20,7 +20,7 @@ https://sourcemedium.com/docs/ai-analyst/connect-an-ai-assistant
 **`pnpm schema <relation>`** prints a relation's columns and types through the
 app's own key (never rows). Without live configuration it prints a bundled
 snapshot of SourceMedium's published schema, which may differ from yours.
-Codex Cloud and Claude Code Cloud can use a separate [Development app
+Codex Cloud and Claude Code Cloud can reuse the previews' [Development app
 credential](cloud.md#debug-with-live-data) in environment settings to run this
 command against your warehouse. MCP is not required for that path.
 

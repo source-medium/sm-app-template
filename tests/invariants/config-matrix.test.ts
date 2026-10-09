@@ -33,6 +33,38 @@ describe("configuration matrix", () => {
     expect(config).toMatchObject({ status: "ok", mode: "sample", guard: { kind: "access" } });
   });
 
+  it("a live-only deployment cannot silently serve sample data, even with a guard", () => {
+    for (const guard of [{}, { APP_BASIC_AUTH: `viewer:${TEST_PASSWORD}` }, ACCESS]) {
+      const config = parseConfig({ ...guard, APP_REQUIRE_LIVE: "true" });
+      expect(problemsOf(config)).toContain("APP_REQUIRE_LIVE");
+    }
+  });
+
+  it("live-only uses the same live validation and viewer guard", () => {
+    expect(parseConfig(liveEnv(key, { APP_REQUIRE_LIVE: "true" }))).toMatchObject({ status: "ok", mode: "live" });
+    expect(problemsOf(parseConfig(liveEnv(key, { APP_REQUIRE_LIVE: "true", APP_BASIC_AUTH: undefined })))).toContain(
+      "APP_BASIC_AUTH",
+    );
+    const partial = parseConfig(liveEnv(key, { APP_REQUIRE_LIVE: "true", SM_APP_KEY: undefined }));
+    expect(problemsOf(partial)).toContain("SM_APP_KEY");
+    expect(JSON.stringify(partial)).not.toContain("remove every live value");
+  });
+
+  it.each(["yes", "1", "TRUE", "private-mode-canary"])(
+    "rejects a malformed live-only setting without echoing it",
+    (value) => {
+      for (const env of [{}, liveEnv(key)]) {
+        const config = parseConfig({ ...env, APP_REQUIRE_LIVE: value });
+        expect(problemsOf(config)).toContain("APP_REQUIRE_LIVE");
+        expect(JSON.stringify(config)).not.toContain(value);
+      }
+    },
+  );
+
+  it.each([undefined, "", "false"])("preserves first-run sample mode when live-only is %s", (value) => {
+    expect(parseConfig({ APP_REQUIRE_LIVE: value })).toMatchObject({ status: "ok", mode: "sample" });
+  });
+
   it("a complete live set with Basic is live and protected", () => {
     const config = parseConfig(liveEnv(key));
     expect(config.status).toBe("ok");

@@ -19,7 +19,7 @@ Keep only UI components the app uses; add more when a view needs them.
 - `pnpm schema <relation>`: a relation's columns and types (never rows).
 - `pnpm skills:sync`: run after editing anything in `.agents/skills`.
 
-Cloud setup/previews/publishing: use `sm-cloud` and `docs/cloud.md` (Codex and Claude).
+Cloud setup/previews/publishing: use `sm-cloud` and `docs/cloud.md` (Codex and Claude). Hosted previews use guarded live data; samples are for first setup and tests.
 Also: `pnpm diagnose`, `pnpm test:e2e`, `pnpm build`, `pnpm build:cloudflare`. Use `pnpm run deploy`, never `pnpm deploy` (a pnpm built-in).
 
 ## Repo map
@@ -60,7 +60,7 @@ docs/                         Guides (index below)
 5. **Never paste a secret** into chat, code, a commit, or a log. Do not inspect
    `.env*` (except `.env.example`), `.dev.vars*`, or dump environment values.
    Run `pnpm diagnose` yourself; it consumes configuration without printing it.
-   For authorized cloud debugging, use a separate Development app credential
+   For authorized cloud debugging, reuse the previews' Development app credential
    entered privately by the person (docs/cloud.md#debug-with-live-data).
 
 ## Add a page
