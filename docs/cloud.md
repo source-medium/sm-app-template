@@ -23,7 +23,9 @@ in your agent and Cloudflare; making another copy loses your changes.
 ### Codex Cloud
 
 Open [Codex](https://chatgpt.com/codex), connect GitHub, and select **your copy**.
-Create a cloud environment for it. During environment setup, ask Codex:
+Create a cloud environment for it. **Before running setup**, enable
+package-manager network access and allow the [browser and font download hosts](#setup-help).
+Then ask Codex:
 
 ```text
 Prepare this repository using Node 24 and node scripts/setup-agent.mjs.
@@ -35,7 +37,6 @@ and save those paths in the environment for subsequent tasks too.
 
 Review the setup result, **Publish** the environment, and start a task in it.
 Publishing the Codex environment saves its tools; it does not publish the app.
-Use package-manager network access and allow the [browser download hosts](#setup-help).
 Allow the preview's hostname later if
 Codex needs to open it. See [OpenAI's environment guide](https://learn.chatgpt.com/docs/environments/cloud-environments).
 
@@ -43,11 +44,11 @@ Codex needs to open it. See [OpenAI's environment guide](https://learn.chatgpt.c
 
 Open [Claude Code](https://claude.ai/code), connect GitHub, and grant access
 to **your copy**. Select that repository and its default branch. Use the
-Default environment with **Trusted** network access, the [browser download hosts](#setup-help), and an editing mode.
+Default environment with **Trusted** network access, the [browser and font download hosts](#setup-help), and an editing mode.
 The repository's startup hook runs the shared setup automatically in cloud
 sessions. If Claude's default Node is too old, it selects Node 24 for setup and
 subsequent commands without a global install. No setup script needs to be
-pasted into Claude's settings. Allow the browser download hosts before starting
+pasted into Claude's settings. Allow those download hosts before starting
 the first session; **Trusted** alone may block them.
 
 Use one repository per session so its hooks load. Organization accounts may
@@ -159,10 +160,11 @@ your GitHub plan supports it. Cloudflare does not wait for GitHub CI by itself;
 its build runs `pnpm check`, while the PR's CI also tests browsers and the Worker.
 Never merge a failing PR or push directly to `main` in this workflow.
 
-To undo a change, ask the agent to revert that publication through a new PR.
-For urgent recovery, use the Worker's deployment rollback, then also revert
-the Git change so the next build does not restore it. Runtime secrets and
-warehouse data are separate from code rollback.
+To undo a change, ask the agent to revert that publication through a new PR
+and deploy with the current runtime settings. For urgent Worker version
+rollbacks, first follow [Rolling back](operations.md#rolling-back): they can
+restore old passwords and store restrictions. Also revert the Git change so
+the next build does not restore the broken code.
 
 ### Verify a hosted build
 

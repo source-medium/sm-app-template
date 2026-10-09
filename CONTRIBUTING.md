@@ -11,8 +11,11 @@ The release checks below are maintainer work, not customer onboarding steps.
 
 ## Development
 
+Follow [local setup](README.md#prefer-local-development) for Node.js and pnpm prerequisites.
+
 ```sh
 pnpm install --frozen-lockfile
+pnpm exec playwright install --with-deps chromium # browser and Linux system libraries for tests
 pnpm dev          # sample data, http://127.0.0.1:3000
 pnpm check        # must pass; under a minute
 pnpm test:e2e     # Playwright + axe against a production build

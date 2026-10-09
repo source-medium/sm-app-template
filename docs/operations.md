@@ -99,6 +99,19 @@ warehouse is reachable; Connection or `pnpm diagnose` checks that.
 
 ## Rolling back
 
-Your host's rollback restores code. It does not restore a replaced key or
-password, and it does not undo changes SourceMedium made to the app's access.
-After rolling back, check that the deployment's variables are still current.
+Prefer reverting the code through a new PR and deploying with the **current
+runtime settings**, especially after replacing a password or tightening store
+access. Review any reverted `wrangler.jsonc` settings before publishing.
+
+A [Cloudflare version rollback](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/)
+restores that version's code, variables, and secret bindings. It can restore an
+old `APP_BASIC_AUTH` or `APP_STORE_ID`, letting a former viewer back in or
+widening store access. Use it for urgent recovery only after confirming the
+target version's settings still meet the current access requirements. Also
+revert the Git change so the next build does not restore the broken code.
+
+After either recovery, verify the current sign-in works, replaced passwords
+are rejected, and a restricted deployment denies another `?store=` with 403.
+Run **Live data → Check connection**. A rollback cannot undo key deletion or
+access revocation in SourceMedium/Google; restoring an old `SM_APP_KEY` can
+instead break warehouse reads.

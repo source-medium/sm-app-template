@@ -108,6 +108,8 @@ it covers. Filter large tables on their partition column whenever you can.
 
 ## Writing a query
 
+Inside your guarded loader:
+
 ```ts
 const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
 const result = await warehouse.query({
@@ -127,7 +129,10 @@ const result = await warehouse.query({
     { name: "limit", type: "INT64", value: 201 },
   ],
 });
-const rows = decodeRows(TopProductRow, result.rows, "your_relation");
+return {
+  rows: decodeRows(TopProductRow, result.rows, "your_relation"),
+  truncated: result.truncated,
+};
 ```
 
 - Browser input only ever becomes a parameter value, or picks a key from a
@@ -138,8 +143,9 @@ const rows = decodeRows(TopProductRow, result.rows, "your_relation");
   `table("customized_views.my_table")` for any other dataset in your warehouse
   project that the app can read.
 - Aggregate in SQL. `maxRows` bounds the rows returned across pages, and
-  `result.truncated` says when more matched. Show truncation (the data table
-  does), and never compute a total from a truncated list: throw
+  `result.truncated` says when more matched. Pass the returned flag to
+  `<DataTable truncated={data.truncated}>` or show the view's truncation warning.
+  Never compute a total from a truncated list: throw
   `new WarehouseError("result_too_large")` instead. Independently, the client
   stops when cumulative response bodies exceed 10 MiB across submission, polls
   and retries, counting UTF-8 bytes as chunks arrive. Exceeding that limit

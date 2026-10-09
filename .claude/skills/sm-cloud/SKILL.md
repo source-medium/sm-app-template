@@ -74,8 +74,9 @@ and environment; never create another template copy during iteration.
    **Deployed, awaiting verification** and the exact check. Only call it done
    after verification; a merge or successful build is not proof it works.
 6. To undo a publication, propose reverting its code change through a new PR.
-   Cloudflare's deployment rollback is for urgent recovery; explain that it
-   does not revert Git or warehouse data. Follow the person's authorization.
+   Deploy with current runtime settings. Before an urgent Cloudflare version
+   rollback, follow `docs/operations.md#rolling-back`: it can restore old
+   passwords and store restrictions. Follow the person's authorization.
 
 Use only **Production** and **Development** app credentials for this workflow.
 The `preview` environment and optional live agent debugging share Development;
