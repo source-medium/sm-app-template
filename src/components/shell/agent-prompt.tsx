@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Check, Copy, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -17,6 +17,7 @@ import {
   type AgentTarget,
 } from "@/lib/agent-prompt";
 import { useCopy } from "@/lib/use-copy";
+import { USE_AGENT_FIELD, type AgentField } from "@/lib/report-data";
 
 const EMPTY_PAGE: AgentPageSnapshot = { pathname: "/", title: "Page", filters: {}, currency: null, targets: [] };
 const targetKey = (target: AgentTarget) => JSON.stringify(target);
@@ -35,16 +36,31 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
   const [request, setRequest] = useState("");
   const [targetId, setTargetId] = useState("");
   const [lastCopied, setLastCopied] = useState("");
+  const [field, setField] = useState<AgentField>();
   const { state, copy } = useCopy();
   const target = page.targets.find((item) => targetKey(item) === targetId);
-  const prompt = composeAgentPrompt(intentId, request, { ...page, mode, build }, target);
+  const prompt = composeAgentPrompt(intentId, request, { ...page, mode, build }, target, field);
+  useEffect(() => {
+    function onUseField(event: Event) {
+      setPage(readPage());
+      setField((event as CustomEvent<AgentField>).detail);
+      setIntentId("add");
+      setTargetId("");
+      setRequest("");
+      setOpen(true);
+    }
+    window.addEventListener(USE_AGENT_FIELD, onUseField);
+    return () => window.removeEventListener(USE_AGENT_FIELD, onUseField);
+  }, []);
   const copyState = state === "copied" && lastCopied !== prompt ? "idle" : state;
   function show(next: boolean) {
     if (next) {
       const snapshot = readPage();
+      if (snapshot.filters.store !== page.filters.store) setField(undefined);
       if (snapshot.pathname !== page.pathname) {
         setRequest("");
         setTargetId("");
+        setField(undefined);
       } else if (!snapshot.targets.some((item) => targetKey(item) === targetId)) {
         setTargetId("");
       }
@@ -70,6 +86,17 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
           </SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-4 px-4 pb-4">
+          {field && (
+            <div className="rounded-md border p-3 text-sm break-words">
+              <p>
+                Selected field: <strong>{field.name}</strong>
+              </p>
+              <p className="text-xs text-muted-foreground">{field.relation}</p>
+              <Button variant="ghost" size="sm" onClick={() => setField(undefined)}>
+                Remove field
+              </Button>
+            </div>
+          )}
           <div className="flex flex-col gap-1.5">
             <label htmlFor={`${id}-target`} className="text-xs font-medium text-muted-foreground">
               Target

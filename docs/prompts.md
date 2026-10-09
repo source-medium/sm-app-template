@@ -23,6 +23,13 @@ navigation or a report finishes loading to capture its current context. Close
 returns keyboard focus to **Ask agent**. If copying fails, select the generated
 prompt and copy it manually.
 
+To extend a report with an available warehouse field, open **About this data**,
+search its source fields, and choose **Use this field**. This starts an
+**Add something new** prompt with the field's table, name, type and published
+description. Add what you want to build before copying. The agent must verify
+the schema before writing SQL. You can remove the field; switching stores or
+pages clears it so another store's documentation is not reused.
+
 ### Keeping new views agent-friendly
 
 `ReportPage` owns the page title, route, resolved store/date/comparison filters,

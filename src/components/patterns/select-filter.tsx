@@ -1,14 +1,13 @@
 "use client";
 
 import { useId } from "react";
-import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
 
 /**
  * A choice applies as soon as it changes: the whole report form submits, so
  * drafts in the other fields travel with it and an invalid date range still
- * blocks with its message. Without JavaScript, Apply does the same job.
+ * blocks with its message. Like reports themselves, auto-applying filters require JavaScript.
  */
 export function SelectFilter({
   name,
@@ -44,17 +43,6 @@ export function SelectFilter({
           ))}
         </NativeSelect>
       </div>
-      <noscript>
-        <Button
-          type="submit"
-          form={REPORT_FILTER_FORM_ID}
-          variant="secondary"
-          size="sm"
-          aria-label={`Apply ${label.toLowerCase()} and all filters`}
-        >
-          Apply
-        </Button>
-      </noscript>
     </div>
   );
 }

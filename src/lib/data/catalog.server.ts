@@ -11,6 +11,7 @@ import "server-only";
 import { z } from "zod";
 import { bq, decodeRows } from "./decode";
 import type { Warehouse } from "./warehouse.server";
+import { WarehouseError } from "./warehouse-error";
 
 const DICTIONARY = "dim_data_dictionary";
 const METRIC_CATALOG = "dim_semantic_metric_catalog";
@@ -38,22 +39,27 @@ export async function readDictionary(
   storeId: string,
   relation: string,
   limit = 500,
+  signal?: AbortSignal,
 ): Promise<DictionaryEntry[]> {
-  const result = await warehouse.query({
-    name: "data_dictionary",
-    maxRows: limit,
-    sql: `
+  const result = await warehouse.query(
+    {
+      name: "data_dictionary",
+      maxRows: limit,
+      sql: `
       SELECT column_name, data_type, column_description, table_description
       FROM ${warehouse.table(DICTIONARY, "metadata")}
       WHERE sm_store_id = @store_id AND table_name = @relation
       ORDER BY column_name
       LIMIT @limit`,
-    params: [
-      { name: "store_id", type: "STRING", value: storeId },
-      { name: "relation", type: "STRING", value: relation },
-      { name: "limit", type: "INT64", value: limit },
-    ],
-  });
+      params: [
+        { name: "store_id", type: "STRING", value: storeId },
+        { name: "relation", type: "STRING", value: relation },
+        { name: "limit", type: "INT64", value: limit },
+      ],
+    },
+    { signal },
+  );
+  if (result.truncated) throw new WarehouseError("result_too_large");
   return decodeRows(DictionaryRow, result.rows, DICTIONARY);
 }
 

@@ -1,6 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { appConfig } from "../app.config";
 
+test("the dictionary keeps the fixed store boundary", async ({ request }) => {
+  const path = "/data-dictionary?relation=obt_orders";
+  expect((await request.get(`${path}&store=sample-store-b`)).status()).toBe(200);
+  expect((await request.get(`${path}&store=sample-store-a`)).status()).toBe(403);
+  expect((await request.get(`${path}&store=sample-store-b&store=sample-store-a`)).status()).toBe(403);
+});
+
 for (const item of appConfig.nav) {
   test(`${item.href} defaults to the fixed store and rejects URL tampering`, async ({ page, request }) => {
     await page.goto(item.href);

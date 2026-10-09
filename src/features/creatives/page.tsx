@@ -1,3 +1,4 @@
+import { CREATIVE_RELATION } from "./rows";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CardGrid } from "@/components/patterns/card-grid";
@@ -27,6 +28,13 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
   const sort = parseChoice(params, "sort", CREATIVE_SORTS, "spend");
   return (
     <ReportPage
+      sources={[
+        {
+          relation: CREATIVE_RELATION,
+          scope:
+            "Daily ad delivery grouped by creative and ad channel over the selected dates. CTR is clicks divided by impressions.",
+        },
+      ]}
       title="Creatives"
       description="Every ad creative that ran in the selected dates, with its delivery."
       pathname={PATHNAME}

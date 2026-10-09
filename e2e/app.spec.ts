@@ -9,6 +9,91 @@ import { expectNoSeriousA11yViolations, watchConsole } from "./helpers";
 
 const home = appConfig.nav[0]?.href ?? "/";
 
+test("report documentation loads on demand and hands a field to the existing agent composer", async ({ page }) => {
+  const problems = watchConsole(page);
+  const requests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/data-dictionary?")) requests.push(request.url());
+  });
+  await page.goto(home);
+  const about = page.getByRole("button", { name: "About this data", exact: true });
+  test.skip((await about.count()) === 0, "No report sources remain");
+  await expect(page.getByRole("status")).toHaveCount(0);
+  expect(requests).toHaveLength(0);
+  const definitions = await page.locator("main [data-metric-definition]").allTextContents();
+  await about.click();
+  const panel = page.getByRole("dialog", { name: "About this data", exact: true });
+  await expect(panel.getByLabel("Search fields")).toBeVisible();
+  expect(requests).toHaveLength(1);
+  const relation = new URL(requests[0] ?? "").searchParams.get("relation");
+  await expect(panel).toContainText("bundled schema snapshot");
+  if (definitions.length) {
+    await panel.getByText("Report metric definitions", { exact: true }).click();
+    for (const definition of definitions) await expect(panel).toContainText(definition);
+  }
+  await expect(page).toHaveTitle(/.+/);
+  await expectNoSeriousA11yViolations(page);
+  const first = panel.getByRole("button", { name: /^Use field / }).first();
+  const name = ((await first.getAttribute("aria-label")) ?? "").replace("Use field ", "");
+  await panel.getByLabel("Search fields").fill("no_such_field_sentinel");
+  await expect(panel.getByText("No fields match your search.")).toBeVisible();
+  await panel.getByLabel("Search fields").fill(name);
+  await panel.getByRole("button", { name: `Use field ${name}`, exact: true }).click();
+  const composer = page.getByRole("dialog", { name: "Ask a coding agent" });
+  await expect(panel).toBeHidden();
+  await expect(composer).toBeVisible();
+  await expect(composer.getByLabel("What do you need?", { exact: true })).toHaveValue("add");
+  await composer.getByLabel("Describe it", { exact: true }).fill("Chart this field");
+  const prompt = await composer.getByLabel("Prompt", { exact: true }).inputValue();
+  expect(prompt).toContain(`"relation":"${relation}"`);
+  expect(prompt).toContain(`"name":"${name}"`);
+  expect(prompt).toContain("Chart this field");
+  await expectNoSeriousA11yViolations(page);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Ask a coding agent" })).toBeFocused();
+  await about.click();
+  await expect(panel.getByLabel("Search fields")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(about).toBeFocused();
+  await page.getByRole("combobox", { name: "Store", exact: true }).selectOption("sample-store-b");
+  await expect(page).toHaveURL(/store=sample-store-b/);
+  await page.getByRole("button", { name: "Ask a coding agent" }).click();
+  await expect(composer.getByRole("button", { name: "Remove field" })).toHaveCount(0);
+  expect(await composer.getByLabel("Prompt", { exact: true }).inputValue()).not.toContain("Selected warehouse field");
+  expect(problems).toEqual([]);
+});
+
+test("dictionary failure and missing documentation leave the report usable", async ({ page }) => {
+  let response: "failed" | "real" | "empty" = "failed";
+  await page.route("**/data-dictionary?*", async (route) => {
+    if (response === "real") return route.continue();
+    return route.fulfill({
+      status: response === "failed" ? 503 : 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        response === "failed" ? { error: "Unavailable" } : { mode: "sample", fields: [], truncated: false },
+      ),
+    });
+  });
+  await page.goto(home);
+  const about = page.getByRole("button", { name: "About this data", exact: true });
+  test.skip((await about.count()) === 0, "No report sources remain");
+  await expect(page.getByRole("status")).toHaveCount(0);
+  await about.click();
+  const panel = page.getByRole("dialog", { name: "About this data", exact: true });
+  await expect(panel.getByRole("status")).toContainText("Your report is still available");
+  response = "real";
+  await panel.getByRole("button", { name: "Try again" }).click();
+  await expect(panel.getByLabel("Search fields")).toBeVisible();
+  await page.keyboard.press("Escape");
+  response = "empty";
+  await about.click();
+  await expect(panel).toContainText("No field documentation is published");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
+});
+
 for (const item of appConfig.nav) {
   test(`${item.href} renders sample data accessibly`, async ({ page }) => {
     const problems = watchConsole(page);
@@ -67,13 +152,40 @@ test("keyboard users can reach the navigation", async ({ page }) => {
   const target = appConfig.nav.at(-1);
   test.skip(!target || appConfig.nav.length < 2, "needs two pages");
   await page.goto(home);
-  const link = page.getByRole("link", { name: target?.label ?? "" });
+  const link = page.getByRole("link", { name: target?.label ?? "", exact: true });
   for (let index = 0; index < 12 && !(await link.evaluate((node) => node === document.activeElement)); index += 1) {
     await page.keyboard.press("Tab");
   }
   await expect(link).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(new RegExp(target?.href ?? ""));
+});
+
+test("selects wait for their change handlers when page scripts load slowly", async ({ page }) => {
+  let release: () => void = () => undefined;
+  const scripts = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/_next/static/**/*.js", async (route) => {
+    await scripts;
+    await route.continue();
+  });
+  try {
+    await page.goto(`${home}?store=sample-store-b`, { waitUntil: "commit" });
+    await expect(page.getByLabel("Appearance")).toHaveAttribute("inert", "");
+    const form = page.getByRole("form", { name: "Report filters" });
+    if (await form.count()) {
+      const navigation = page.waitForURL((url) => url.searchParams.has("from"), { waitUntil: "commit" });
+      await form.getByRole("button", { name: "Apply", exact: true }).click({ noWaitAfter: true });
+      await navigation;
+      expect(new URL(page.url()).searchParams.get("store")).toBe("sample-store-b");
+    }
+  } finally {
+    release();
+  }
+  await expect(page.getByLabel("Appearance")).not.toHaveAttribute("inert");
+  await page.getByLabel("Appearance").selectOption("dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 
 test("collapsed navigation keeps its labels available through tooltips", async ({ page }) => {

@@ -28,7 +28,11 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
           SUM(order_count) AS order_count,
           SUM(website_sessions) AS website_sessions,
           SUM(ad_clicks) AS ad_clicks,
-          SUM(ad_spend) AS ad_spend
+          SUM(ad_spend) AS ad_spend,
+          SUM(new_customer_order_net_revenue) AS first_revenue,
+          SUM(new_customer_order_count) AS first_orders,
+          SUM(repeat_customer_order_net_revenue) AS repeat_revenue,
+          SUM(repeat_customer_order_count) AS repeat_orders
         FROM ${warehouse.table(OVERVIEW_RELATION)}
         WHERE sm_store_id = @store_id
           AND date BETWEEN @start_date AND @end_date
@@ -52,7 +56,11 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
         SUM(order_count) OVER () AS total_order_count,
         SUM(website_sessions) OVER () AS total_website_sessions,
         SUM(ad_clicks) OVER () AS total_ad_clicks,
-        SUM(ad_spend) OVER () AS total_ad_spend
+        SUM(ad_spend) OVER () AS total_ad_spend,
+        SUM(first_revenue) OVER () AS total_first_revenue,
+        SUM(first_orders) OVER () AS total_first_orders,
+        SUM(repeat_revenue) OVER () AS total_repeat_revenue,
+        SUM(repeat_orders) OVER () AS total_repeat_orders
       FROM daily
       WINDOW period AS (PARTITION BY DATE_TRUNC(date, ${GRAIN_SQL[filters.grain ?? "day"]}))
       ORDER BY date`,

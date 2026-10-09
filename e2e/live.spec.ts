@@ -7,6 +7,23 @@ import { expect, test } from "@playwright/test";
 import { appConfig } from "../app.config";
 import { watchConsole } from "./helpers";
 
+test("the live dictionary opens for the selected store without a sample fallback", async ({ page }) => {
+  await page.goto(appConfig.nav[0]?.href ?? "/");
+  const about = page.getByRole("button", { name: "About this data", exact: true });
+  test.skip((await about.count()) === 0, "No report sources remain");
+  const response = page.waitForResponse((response) => response.url().includes("/data-dictionary?"));
+  await about.click();
+  const result = await response;
+  expect(result.status()).toBe(200);
+  const report = (await result.json()) as { mode: string; fields: unknown[] };
+  expect(report.mode).toBe("live");
+  expect(report.fields.length).toBeGreaterThan(0);
+  const panel = page.getByRole("dialog", { name: "About this data", exact: true });
+  await expect(panel.getByLabel("Search fields")).toBeVisible();
+  await expect(panel).toContainText("Data freshness unknown");
+  await expect(panel).not.toContainText("bundled schema snapshot");
+});
+
 for (const item of appConfig.nav) {
   test(`${item.href} renders live data without errors`, async ({ page }) => {
     const problems = watchConsole(page);

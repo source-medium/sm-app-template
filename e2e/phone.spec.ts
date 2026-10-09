@@ -2,6 +2,25 @@ import { expect, test } from "@playwright/test";
 import { appConfig } from "../app.config";
 import { watchConsole } from "./helpers";
 
+test("the data dictionary and field handoff fit a small phone", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto(appConfig.nav[0]?.href ?? "/");
+  const about = page.getByRole("button", { name: "About this data", exact: true });
+  test.skip((await about.count()) === 0, "No report sources remain");
+  await about.click();
+  const panel = page.getByRole("dialog", { name: "About this data", exact: true });
+  await expect(panel.getByLabel("Search fields")).toBeVisible();
+  await panel.getByText("Report context", { exact: true }).click();
+  expect(await panel.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+  await panel
+    .getByRole("button", { name: /^Use field / })
+    .first()
+    .click();
+  const composer = page.getByRole("dialog", { name: "Ask a coding agent" });
+  await expect(composer).toBeVisible();
+  expect(await composer.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+});
+
 for (const item of appConfig.nav) {
   test(`${item.href} fits phones and tablets without horizontal scrolling`, async ({ page }) => {
     const problems = watchConsole(page);

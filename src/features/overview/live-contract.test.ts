@@ -27,6 +27,10 @@ const FIELDS = [
   { name: "total_website_sessions", type: "INTEGER" },
   { name: "total_ad_clicks", type: "INTEGER" },
   { name: "total_ad_spend", type: "NUMERIC" },
+  { name: "total_first_revenue", type: "NUMERIC" },
+  { name: "total_first_orders", type: "FLOAT" },
+  { name: "total_repeat_revenue", type: "NUMERIC" },
+  { name: "total_repeat_orders", type: "FLOAT" },
 ];
 // NUMERIC money stays exact text, even past float precision.
 const MONEY = {
@@ -40,6 +44,10 @@ const MONEY = {
   ad_spend: "0.2",
   total_net_revenue: "0.3",
   total_ad_spend: "123456789012345678.123456789",
+  total_first_revenue: "123456789012345678.123456789",
+  total_first_orders: "1.5",
+  total_repeat_revenue: "-0.01",
+  total_repeat_orders: null,
 };
 const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-09-02" } };
 
@@ -124,7 +132,10 @@ describe("overview, live", () => {
     await goLive({ submit: () => rowsResponse(FIELDS, []) });
     const { getOverviewReport } = await import("./queries");
     const report = await getOverviewReport(FILTERS, { from: "2025-09-01", to: "2025-09-02" });
-    expect(report.comparison).toEqual({ data: { days: [], summaries: [], totals: null }, error: null });
+    expect(report.comparison).toEqual({
+      data: { days: [], summaries: [], totals: null, purchases: null },
+      error: null,
+    });
   });
 
   it("queries one store and range, and decodes exact totals", async () => {
@@ -163,6 +174,10 @@ describe("overview, live", () => {
       adSpend: "123456789012345678.123456789",
     });
     expect(data.summaries[0]?.netRevenue).toBe("0.3");
+    expect(data.purchases).toEqual({
+      first: { netRevenue: "123456789012345678.123456789", orders: 1.5 },
+      repeat: { netRevenue: "-0.01", orders: null },
+    });
     expect(data.summaries[0]?.sessions).toBe(9_007_199_254_741_000n);
     expect(data.days[0]?.sessions).toBe(9_007_199_254_740_993n);
 
@@ -173,6 +188,15 @@ describe("overview, live", () => {
     };
     expect(submit.query).toContain("`sm-demotenant.sm_transformed_v2.rpt_executive_summary_daily`");
     expect(submit.query).toContain("sm_store_id = @store_id");
+    for (const [column, alias] of [
+      ["new_customer_order_net_revenue", "first_revenue"],
+      ["new_customer_order_count", "first_orders"],
+      ["repeat_customer_order_net_revenue", "repeat_revenue"],
+      ["repeat_customer_order_count", "repeat_orders"],
+    ]) {
+      expect(submit.query).toContain(`SUM(${column}) AS ${alias}`);
+      expect(submit.query).toContain(`SUM(${alias}) OVER () AS total_${alias}`);
+    }
     expect(submit.queryParameters).toEqual([
       { name: "store_id", parameterType: { type: "STRING" }, parameterValue: { value: "store-1" } },
       { name: "start_date", parameterType: { type: "DATE" }, parameterValue: { value: "2026-09-01" } },

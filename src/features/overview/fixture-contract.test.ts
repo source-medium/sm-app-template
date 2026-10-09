@@ -34,6 +34,10 @@ function source(
     website_sessions: sessions,
     ad_clicks: clicks,
     ad_spend_cents: spendCents,
+    new_customer_order_net_revenue_cents: null,
+    new_customer_order_count: null,
+    repeat_customer_order_net_revenue_cents: null,
+    repeat_customer_order_count: null,
   };
 }
 
@@ -46,6 +50,7 @@ describe("overview fixture contract", () => {
         days: [],
         summaries: [],
         totals: null,
+        purchases: null,
       });
     },
   );
@@ -133,7 +138,7 @@ describe("overview fixture contract", () => {
 
   it("returns no days and no totals for an empty range", () => {
     const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire([], "s1", RANGE), OVERVIEW_RELATION));
-    expect(data).toEqual({ days: [], summaries: [], totals: null });
+    expect(data).toEqual({ days: [], summaries: [], totals: null, purchases: null });
   });
 
   it("models forward-dated target rows with zero actuals, as the relation does", () => {
@@ -155,6 +160,41 @@ describe("overview fixture contract", () => {
     const first = await sampleOverview(filters, NOW);
     const later = await sampleOverview(filters, new Date("2027-01-01T00:00:00Z"));
     expect(later).toEqual(first);
+  });
+
+  it("sums published purchase measures exactly within store, dates and channel, without inventing a remainder", () => {
+    const first = {
+      ...source("2026-09-01", 100, 1n, 1n),
+      new_customer_order_net_revenue_cents: 10n,
+      new_customer_order_count: 1.5,
+      repeat_customer_order_net_revenue_cents: -20n,
+      repeat_customer_order_count: 0,
+    };
+    const rows = [
+      first,
+      { ...first, date: "2026-09-02", new_customer_order_net_revenue_cents: 20n },
+      { ...first, sm_store_id: "other" },
+      { ...first, sm_channel: "Amazon" },
+      { ...first, date: "2026-08-31" },
+      source("2026-09-03", 20, 1n, 1n), // Missing classification, not a zero or inferred repeat order.
+    ];
+    for (const grain of ["day", "week", "month"] as const) {
+      const data = toOverviewData(
+        decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", RANGE, grain, "Online DTC"), OVERVIEW_RELATION),
+      );
+      expect(data.purchases).toEqual({
+        first: { netRevenue: "0.3", orders: 3 },
+        repeat: { netRevenue: "-0.4", orders: 0 },
+      });
+      expect(data.totals?.orders).toBe(220);
+    }
+    const missing = toOverviewData(
+      decodeRows(OverviewRow, aggregateOverviewWire([source("2026-09-01", 1, 1n, 1n)], "s1", RANGE), OVERVIEW_RELATION),
+    );
+    expect(missing.purchases).toEqual({
+      first: { netRevenue: null, orders: null },
+      repeat: { netRevenue: null, orders: null },
+    });
   });
 
   it("names the relation and column when a row does not match", () => {

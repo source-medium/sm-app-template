@@ -36,7 +36,7 @@ import {
   type PaidMetric,
 } from "./queries";
 import { SpendBreakdownView } from "./breakdown";
-import { MAX_CAMPAIGNS } from "./rows";
+import { AD_RELATION, MAX_CAMPAIGNS } from "./rows";
 
 export const metadata: Metadata = { title: "Paid marketing" };
 
@@ -55,6 +55,13 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
 
   return (
     <ReportPage
+      sources={[
+        {
+          relation: AD_RELATION,
+          scope:
+            "Daily ad delivery aggregated by channel, campaign, or the selected spend dimension. Conversions and revenue use ad-platform attribution.",
+        },
+      ]}
       title="Paid marketing"
       description="Spend and delivery by channel and campaign for one store."
       pathname={PATHNAME}

@@ -29,6 +29,10 @@ export type OverviewSourceRow = {
   website_sessions: bigint;
   ad_clicks: bigint;
   ad_spend_cents: bigint;
+  new_customer_order_net_revenue_cents: bigint | null;
+  new_customer_order_count: number | null;
+  repeat_customer_order_net_revenue_cents: bigint | null;
+  repeat_customer_order_count: number | null;
 };
 
 const SOURCES = [
@@ -91,6 +95,10 @@ export function sampleOverviewSource(storeId: string, range: DateRange, today: s
           website_sessions: 0n,
           ad_clicks: 0n,
           ad_spend_cents: 0n,
+          new_customer_order_net_revenue_cents: 0n,
+          new_customer_order_count: 0,
+          repeat_customer_order_net_revenue_cents: 0n,
+          repeat_customer_order_count: 0,
         });
         continue;
       }
@@ -102,13 +110,23 @@ export function sampleOverviewSource(storeId: string, range: DateRange, today: s
           : Math.round(dailyOrders * source.share);
       const clicks =
         source.clicksPerOrder === 0 ? 0 : randomInt(random, 0, 9) + Math.round(orders * source.clicksPerOrder);
-      rows.push({
+      const row = {
         ...base,
         order_net_revenue_cents: BigInt(Math.round(orders * ORDER_VALUE_CENTS * (0.85 + random() * 0.3))),
         order_count: orders,
         website_sessions: BigInt(Math.round(orders * source.sessionsPerOrder * (0.9 + random() * 0.2))),
         ad_clicks: BigInt(clicks),
         ad_spend_cents: BigInt(Math.round(clicks * source.centsPerClick * (0.8 + random() * 0.4))),
+      };
+      const acquisition = seededRandom(`purchases|${storeId}|${date}|${source.subChannel}`);
+      const firstOrders = Math.floor(orders * (0.35 + acquisition() * 0.25));
+      const firstRevenue = (row.order_net_revenue_cents * BigInt(Math.round((0.4 + acquisition() * 0.2) * 100))) / 100n;
+      rows.push({
+        ...row,
+        new_customer_order_net_revenue_cents: firstRevenue,
+        new_customer_order_count: firstOrders,
+        repeat_customer_order_net_revenue_cents: row.order_net_revenue_cents - firstRevenue,
+        repeat_customer_order_count: orders - firstOrders,
       });
     }
   }
@@ -136,6 +154,10 @@ export function aggregateOverviewWire(
   channel: string | null = null,
 ) {
   const byDate = new Map<string, Sums>();
+  let firstRevenue: bigint | null = null;
+  let firstOrders: number | null = null;
+  let repeatRevenue: bigint | null = null;
+  let repeatOrders: number | null = null;
   for (const row of source) {
     if (
       row.sm_store_id !== storeId ||
@@ -144,6 +166,13 @@ export function aggregateOverviewWire(
       (channel && row.sm_channel !== channel)
     )
       continue;
+    // Match SQL SUM: ignore nulls, but preserve an entirely missing measure.
+    if (row.new_customer_order_net_revenue_cents !== null)
+      firstRevenue = (firstRevenue ?? 0n) + row.new_customer_order_net_revenue_cents;
+    if (row.new_customer_order_count !== null) firstOrders = (firstOrders ?? 0) + row.new_customer_order_count;
+    if (row.repeat_customer_order_net_revenue_cents !== null)
+      repeatRevenue = (repeatRevenue ?? 0n) + row.repeat_customer_order_net_revenue_cents;
+    if (row.repeat_customer_order_count !== null) repeatOrders = (repeatOrders ?? 0) + row.repeat_customer_order_count;
     const sums = byDate.get(row.date) ?? zero();
     add(sums, {
       revenue: row.order_net_revenue_cents,
@@ -186,6 +215,10 @@ export function aggregateOverviewWire(
       total_website_sessions: String(totals.sessions),
       total_ad_clicks: String(totals.clicks),
       total_ad_spend: money(totals.spend),
+      total_first_revenue: firstRevenue === null ? null : money(firstRevenue),
+      total_first_orders: firstOrders === null ? null : String(firstOrders),
+      total_repeat_revenue: repeatRevenue === null ? null : money(repeatRevenue),
+      total_repeat_orders: repeatOrders === null ? null : String(repeatOrders),
     };
   });
 }

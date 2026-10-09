@@ -5,6 +5,7 @@
 import { ArrowDownRight, ArrowUpRight, Info, Minus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { KpiTrend, type KpiTrendData } from "@/components/charts/kpi-trend";
 
 export type KpiDelta = {
   display: string;
@@ -19,6 +20,7 @@ export function KpiCard({
   period,
   delta,
   description,
+  trend,
 }: {
   label: string;
   value: string;
@@ -26,6 +28,8 @@ export function KpiCard({
   delta?: KpiDelta;
   /** A short, query-specific definition. Native details works with touch, keyboard, and no JavaScript. */
   description?: string;
+  /** Optional selected-period daily values, with calendar gaps preserved by the caller. */
+  trend?: KpiTrendData;
 }) {
   const Arrow = delta?.direction === "flat" ? Minus : delta?.direction === "down" ? ArrowDownRight : ArrowUpRight;
   return (
@@ -38,7 +42,9 @@ export function KpiCard({
               <Info className="size-3.5 shrink-0" aria-hidden />
               <span className="sr-only">definition</span>
             </summary>
-            <p className="pt-1 pb-2 text-xs leading-relaxed">{description}</p>
+            <p data-metric-definition={label} className="pt-1 pb-2 text-xs leading-relaxed">
+              {description}
+            </p>
           </details>
         ) : (
           <span data-slot="kpi-label" className="text-sm text-muted-foreground">
@@ -63,6 +69,7 @@ export function KpiCard({
             <span className="text-muted-foreground">vs {delta.comparedTo}</span>
           </div>
         )}
+        {trend && <KpiTrend label={label} {...trend} />}
       </CardContent>
     </Card>
   );

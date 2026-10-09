@@ -29,12 +29,17 @@ export type OverviewFilters = ReportFilters & { channel?: string | null; grain?:
 
 export type OverviewDay = OverviewMeasures & { date: string };
 
+export type PurchaseMeasures = { netRevenue: string | null; orders: number | null };
+export type PurchaseMix = { first: PurchaseMeasures; repeat: PurchaseMeasures };
+
 export type OverviewData = {
   /** One entry per date that has rows; missing dates stay missing (gaps). */
   days: OverviewDay[];
   /** Period totals computed in the same query; null when the range is empty. */
   totals: OverviewMeasures | null;
   summaries: OverviewDay[];
+  /** Published new/repeat order measures, not distinct customer counts. */
+  purchases: PurchaseMix | null;
 };
 
 export async function getOverview(filters: OverviewFilters): Promise<OverviewData> {

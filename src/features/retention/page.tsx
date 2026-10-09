@@ -1,3 +1,4 @@
+import { RETENTION_RELATION } from "./rows";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ReportPage } from "@/components/shell/report-page";
@@ -28,6 +29,13 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
   const metricLabel = RETENTION_METRICS.find((item) => item.value === options.metric)?.label ?? "Monthly retention";
   return (
     <ReportPage
+      sources={[
+        {
+          relation: RETENTION_RELATION,
+          scope:
+            "Monthly acquisition cohorts at each month of age, using the unsegmented slice and one acquisition sales channel. Incomplete months are hidden.",
+        },
+      ]}
       title="Retention"
       description="Compare monthly purchase cohorts at the same age, one sales channel at a time."
       pathname="/retention"
@@ -120,7 +128,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                           options={[...RETENTION_METRICS]}
                         />
                       </div>
-                      <p className="max-w-prose text-sm text-muted-foreground">
+                      <p data-metric-definition={metricLabel} className="max-w-prose text-sm text-muted-foreground">
                         {options.metric === "retention"
                           ? "Monthly retention is customers who purchased in that month divided by the original cohort size. Month 0 includes the acquisition purchase. A customer may return after skipping a month."
                           : options.metric === "revenue"

@@ -52,6 +52,23 @@ explicitly; do not present the ratio as valid-order AOV without reconciling the
 definitions, dates and store. The demo discrepancy remains a release check in
 [release readiness](release-readiness.md).
 
+Overview's **New vs repeat purchases** reads the same summary relation and
+filters. It sums `new_customer_order_net_revenue`, `new_customer_order_count`,
+`repeat_customer_order_net_revenue`, and `repeat_customer_order_count` in the
+existing query. Counts are published order measures (FLOAT64), not distinct
+customers. Net revenue per order divides each group's period revenue by its
+own order measure; a missing or zero denominator has no ratio. Classification
+coverage varies by source, so the two groups are not forced to add up to the
+headline totals. Missing measures stay missing, and comparison uses the same
+published fields and filters. These are summary measures, not valid-order AOV.
+
+Overview's KPI trends reuse its daily rows with no additional queries. Each
+trend links to the existing **Business summary** in Daily mode, with the same
+store, dates, channel and comparison. This table includes revenue per summary
+order alongside the other KPI measures. Missing dates remain gaps; unsafe
+INT64 values use the table only. Daily ratios are computed
+per day, while headline ratios continue to use full-period totals.
+
 ## Store scope
 
 Every data query filters one store with `sm_store_id = @store_id`. There are no
@@ -270,7 +287,9 @@ Every control belongs to one GET form. A choice (store, comparison, and every
 `SelectFilter`) submits the form as soon as it changes, so drafts in the other
 fields travel with it and an invalid date range still blocks with its message.
 Typed inputs (dates, search) are drafts until **Apply** (or **Search**) submits
-them; without JavaScript, `SelectFilter` shows its own Apply. Date preset links
+them. JS-driven selects stay non-interactive until their handlers are attached,
+while retaining their values in form submissions. Early changes cannot be lost during loading. Reports and their filters require
+JavaScript. Date preset links
 use the already applied filters. **More dates** holds the less frequent presets.
 Invalid or overlong date URLs show a correction message and no report until a
 valid range is applied.
@@ -428,6 +447,26 @@ example removes its download too.
 `dim_semantic_metric_catalog` (SourceMedium's metric definitions, which have no
 store column). A metric's `calculation` is documentation, not runnable SQL.
 Both are optional: a page can read any relation the app can reach.
+
+Each example's **About this data** panel declares its sources with `ReportPage
+sources={[{ relation, scope }]}`. Reuse the relation constant from `rows.ts` and
+explain the query's scope, including aggregation and exclusions. The shared
+shell does not import features. Removing a feature removes its source declaration.
+
+The panel fetches only field documentation for the selected source and store,
+when opened. Sample mode uses the bundled schema snapshot; live mode reads the
+warehouse dictionary and never substitutes sample documentation on failure.
+The read is guarded, bounded to 500 displayed fields, private, and cancelled
+when the panel closes or the source changes. Missing metadata does not affect
+the report. No warehouse rows, refresh claims, or schema explorer are added.
+
+Metric definitions reuse the loaded report's `KpiCard description` text.
+For other existing explanations, add `data-metric-definition="Metric label"`
+to their text element. Streamed definitions appear as their regions load.
+These explain this app's calculations; published field descriptions can differ.
+**Use this field** passes its source, name, type, and documentation to the
+existing Ask agent composer. The prompt tells the agent to verify the schema;
+metadata is documentation, never executable SQL.
 
 ## Check your numbers
 

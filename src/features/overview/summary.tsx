@@ -18,6 +18,7 @@ function cells(label: string, measures: OverviewMeasures): DataTableRow["cells"]
     period: { display: label },
     revenue: { display: formatMoney(measures.netRevenue), sort: revenue },
     orders: { display: formatMeasure(measures.orders), sort: measures.orders },
+    average: { display: formatMoney(ratio(revenue, measures.orders)), sort: ratio(revenue, measures.orders) },
     spend: { display: formatMoney(measures.adSpend), sort: spend },
     mer: { display: formatMultiple(ratio(revenue, spend)), sort: ratio(revenue, spend) },
     sessions: {
@@ -72,6 +73,7 @@ export function OverviewSummary({ data, filters }: { data: OverviewData; filters
           { key: "period", header: "Period", sortable: false },
           { key: "revenue", header: "Net revenue", align: "right" },
           { key: "orders", header: "Summary orders", align: "right" },
+          { key: "average", header: "Revenue / summary order", align: "right" },
           { key: "spend", header: "Ad spend", align: "right" },
           { key: "mer", header: "MER", align: "right" },
           { key: "sessions", header: "Sessions", align: "right" },

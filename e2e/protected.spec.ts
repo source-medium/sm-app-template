@@ -17,6 +17,7 @@ test.describe("protected sample (shared password)", () => {
       ["/robots.txt", {}],
       ["/connection", {}],
       ["/connection/check", {}],
+      ["/data-dictionary?store=sample-store-a&relation=obt_orders", {}],
       ["/paid-marketing/export", {}],
       ["/overview/export", {}],
       ["/.well-known/anything", {}],

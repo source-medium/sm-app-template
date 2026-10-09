@@ -12,6 +12,8 @@
  */
 import { Suspense } from "react";
 import type { AgentReportContext } from "@/lib/agent-prompt";
+import type { ReportSource } from "@/lib/report-data";
+import { AboutData } from "./about-data";
 import { appConfig } from "@/app.config";
 import { EmptyState, ErrorState } from "@/components/patterns/data-states";
 import { FilterBar } from "@/components/shell/filter-bar";
@@ -57,6 +59,7 @@ export async function ReportPage({
   comparisons = false,
   agentFilters = {},
   agentOmissions = [],
+  sources = [],
   children,
 }: {
   title: string;
@@ -73,6 +76,8 @@ export async function ReportPage({
   agentFilters?: Record<string, string | null>;
   /** Names of active private context omitted from the agent prompt, without its values. */
   agentOmissions?: string[];
+  /** Tables and query scope owned by this feature. Dictionary reads happen only on demand. */
+  sources?: readonly ReportSource[];
   children: (context: ReportContext) => React.ReactNode;
 }) {
   const access = await requireViewer();
@@ -136,6 +141,9 @@ export async function ReportPage({
           )}
         </div>
         <div className="flex flex-wrap items-start gap-2">
+          {sources.length > 0 && (
+            <AboutData key={JSON.stringify(agentContext)} context={agentContext} sources={sources} mode={access.mode} />
+          )}
           <RefreshReport />
           {shareHref && <CopyReportLink key={shareHref} href={shareHref} />}
         </div>

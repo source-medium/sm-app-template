@@ -1,3 +1,4 @@
+import { ORDERS_RELATION } from "./rows";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -36,6 +37,13 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
   return (
     <ReportPage
+      sources={[
+        {
+          relation: ORDERS_RELATION,
+          scope:
+            "One order per row, filtered by local processed date and sales channel. Includes orders regardless of valid-order status.",
+        },
+      ]}
       title="Orders"
       description="Every order for one store by when it was processed, newest first. Open an order to see its details."
       pathname={PATHNAME}

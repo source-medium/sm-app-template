@@ -95,7 +95,9 @@ test("overview: calendar YoY explains different day counts across leap years", a
 
 test("overview: metric definitions open and close by keyboard", async ({ page }) => {
   await page.goto("/overview");
-  const definition = page.locator("details", { hasText: "Marketing efficiency (MER)" });
+  const definition = page
+    .locator("details")
+    .filter({ has: page.locator("summary", { hasText: "Marketing efficiency (MER)" }) });
   await expect(definition.locator("summary")).toBeVisible();
   await definition.locator("summary").focus();
   await page.keyboard.press("Enter");
@@ -112,6 +114,35 @@ test("overview: a chart opens as an accessible table", async ({ page }) => {
   await card.getByRole("button", { name: "View as table" }).click();
   await expect(card.getByRole("table", { name: "Summary orders by day" })).toBeVisible();
   await expect(card.getByRole("columnheader", { name: "Summary orders" })).toBeVisible();
+});
+
+test("overview: KPI trends expose daily values and purchase measures follow filters and comparisons", async ({
+  page,
+}) => {
+  await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=previous&grain=week");
+  const totals = page.getByRole("region", { name: "Period totals", exact: true });
+  await expect(totals.getByRole("img")).toHaveCount(6);
+  await totals.getByRole("link", { name: "View daily values for Net revenue", exact: true }).click();
+  await expect(page).toHaveURL(/grain=day#summary-heading$/);
+  const daily = page.getByRole("table", { name: "Business summary", exact: true });
+  await expect(daily).toBeVisible();
+  await expect(daily.getByRole("row")).toHaveCount(9);
+  await expect(daily.getByRole("cell", { name: "Sep 1, 2026", exact: true })).toBeVisible();
+  await expect(daily.getByRole("columnheader", { name: "Revenue / summary order", exact: true })).toBeVisible();
+  const purchases = page.getByRole("table", { name: "New vs repeat purchases", exact: true });
+  await expect(purchases.getByRole("columnheader", { name: "Revenue change", exact: true })).toBeVisible();
+  const first = purchases.getByRole("row").filter({ hasText: "New-customer orders" });
+  const revenueText = await first.getByRole("cell").nth(1).innerText();
+  // selectOption sets the value programmatically, even while inert blocks real pointer/keyboard input.
+  await expect(page.getByLabel("Sales channel", { exact: true })).not.toHaveAttribute("inert");
+  await page.getByLabel("Sales channel", { exact: true }).selectOption("Amazon");
+  await expect(page).toHaveURL(/sales_channel=Amazon/);
+  await expect(first.getByRole("cell").nth(1)).not.toHaveText(revenueText);
+  await page.getByLabel("Compare with").selectOption("off");
+  await expect(purchases.getByRole("columnheader", { name: "Revenue change", exact: true })).toHaveCount(0);
+  await expect(totals.getByRole("img")).toHaveCount(6);
+  await expect(page).toHaveTitle(/Overview/);
+  await expectNoSeriousA11yViolations(page);
 });
 
 test("overview: chart labels and lines remain readable in both themes", async ({ page }) => {

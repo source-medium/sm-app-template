@@ -40,7 +40,7 @@ export default defineConfig({
           env: sampleEnvironment,
           testTimeout: 30_000,
           environment: "jsdom",
-          include: ["tests/components/**/*.test.tsx"],
+          include: ["tests/components/**/*.test.tsx", "src/features/**/*.test.tsx"],
           setupFiles: ["tests/helpers/setup-dom.ts"],
         },
       },

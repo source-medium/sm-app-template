@@ -1,3 +1,4 @@
+import { PRODUCTS_RELATION } from "./rows";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ReportPage } from "@/components/shell/report-page";
@@ -21,6 +22,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   const channel = parseSalesChannel(params);
   return (
     <ReportPage
+      sources={[
+        {
+          relation: PRODUCTS_RELATION,
+          scope:
+            "Valid-order lines aggregated by product or variant, filtered by local processed date and sales channel.",
+        },
+      ]}
       title="Products"
       description="Product and variant performance from valid-order lines, in reporting currency."
       pathname="/products"
@@ -58,7 +66,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             </div>
             <details className="text-sm text-muted-foreground">
               <summary className="cursor-pointer font-medium">About product metrics</summary>
-              <p className="mt-2 max-w-prose">
+              <p data-metric-definition="Product metrics" className="mt-2 max-w-prose">
                 Valid orders only. Net units subtract refunded quantities. Product gross profit subtracts product cost
                 from net revenue; it excludes shipping, fulfillment and payment costs. Missing product costs can
                 overstate profit.

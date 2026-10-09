@@ -9,18 +9,8 @@
  * hydration. An image's load or failure can then never race React's
  * hydration, and onError is always attached before the request starts.
  */
-import { useState, useSyncExternalStore } from "react";
-
-const subscribe = () => () => undefined;
-
-/** False on the server and during hydration, true afterwards. */
-function useHydrated(): boolean {
-  return useSyncExternalStore(
-    subscribe,
-    () => true,
-    () => false,
-  );
-}
+import { useState } from "react";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 export function CardImage({ src, alt, fallback }: { src: string; alt: string; fallback: React.ReactNode }) {
   const hydrated = useHydrated();
