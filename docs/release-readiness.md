@@ -6,6 +6,21 @@ Cloudflare account, real Access offboarding and self-service Apps provisioning
 remain separate checks; do not advertise those journeys as verified. Publication, tags, deployments, IAM and account changes
 require the maintainer's explicit authorization.
 
+## Permanent hosted demo (2026-10-09)
+
+The [hosted demo](https://sm-app-starter-demo.source-medium.workers.dev) runs
+application commit `1298eace39bd9c3e0d585d24778e23651d3ab1c6` against the
+`sm-democo` warehouse, behind the existing demo viewer password. Its runtime
+configuration is encrypted, `APP_REQUIRE_LIVE=true` prevents sample fallback,
+and production Version URLs remain disabled.
+
+The Cloudflare build and workerd smoke suite passed. The hosted verifier matched
+the build, checked anonymous protection, passed live Connection, and passed all
+12 live browser tests across the six reports. Connection has the existing
+missing-`dim_stores` warning; store IDs remain usable. This verifies the running
+demo, not fresh-account onboarding or Urchin credential issuance. README
+screenshots use synthetic fixtures and contain no warehouse data.
+
 ## Local release gates
 
 Run these sequentially in a clean checkout with Node 24 and pnpm 10.34.5:

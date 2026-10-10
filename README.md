@@ -1,12 +1,24 @@
 # SourceMedium App Starter
 
-Start an internal data app on your SourceMedium warehouse, then make it yours
-with your coding agent. The starter handles the warehouse connection, shared
-password, store and date filters, charts, tables, and loading and error states.
+**Your SourceMedium data. An app you own. Built with your coding agent.**
 
-Six example views cover common starting points: Overview, Paid marketing,
-Creatives, Products, Retention, and Orders. Copy the closest one, change its query and presentation,
-or delete it. You own a normal Next.js app with editable code throughout.
+Start with six working reports, connect your warehouse, then tell Codex or
+Claude Code what to change. The starter handles the connection, sign-in,
+store and date filters, charts, tables, and loading and error states.
+You get a normal Next.js app with editable code throughout.
+
+**[Try the demo](https://sm-app-starter-demo.source-medium.workers.dev)** ·
+[Use this template](https://github.com/source-medium/sm-app-template/generate) ·
+[Start with Codex](docs/cloud.md#codex-cloud) ·
+[Start with Claude](docs/cloud.md#claude-code-in-the-cloud)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/overview-light.png">
+  <img alt="Overview dashboard with store and date filters, period comparisons, revenue and order KPIs, and trend charts." src="docs/images/overview-light.png" width="1440">
+</picture>
+
+_The hosted demo uses SourceMedium's demo warehouse and requires sign-in ([request access](mailto:support@sourcemedium.com)). These screenshots use synthetic sample data. Light and dark modes are built in._
 
 ## Start in your browser
 
@@ -30,6 +42,30 @@ Cloudflare Workers Paid hosts the app; GitHub and your
 chosen coding agent need access to your repository.
 
 **[Follow the browser setup and preview-to-live guide →](docs/cloud.md)**
+
+## Six reports to make your own
+
+| Report             | Start with                                                      |
+| ------------------ | --------------------------------------------------------------- |
+| **Overview**       | Revenue, orders, ad spend, trends, and period comparisons       |
+| **Paid marketing** | Channel and campaign performance, spend, and return on ad spend |
+| **Creatives**      | Creative images and performance cards                           |
+| **Products**       | Product and variant rankings                                    |
+| **Retention**      | Retention and lifetime value by acquisition cohort              |
+| **Orders**         | Searchable orders with detail drawers and pagination            |
+
+Copy the closest view, change its query and presentation, or
+[remove the examples](docs/removing-the-example.md). Each view owns its code.
+
+<details>
+<summary><strong>See the retention report</strong></summary>
+
+![Retention report showing monthly acquisition cohorts and lifetime value, using synthetic sample data.](docs/images/retention.png)
+
+Completed-month windows, acquisition-channel filters, and explicit missing-data
+states keep cohort comparisons readable.
+
+</details>
 
 ## Prefer local development?
 
@@ -65,7 +101,15 @@ reuse the [Development credential](docs/cloud.md#debug-with-live-data) from your
 hosted previews in its private environment settings. It can run connection,
 schema and live checks itself. Production keeps its own credential.
 An authorized SourceMedium MCP connection is another option for data inspection.
-Copyable starting points are in [docs/prompts.md](docs/prompts.md).
+
+**Point to a page or component. Describe the change. Copy the prompt.**
+The built-in **Ask agent** panel includes the current page, applied filters,
+and selected component so your agent starts with useful context. Paste the
+prompt into Codex, Claude Code, or another agent working in your repository.
+
+![Ask agent panel composing a change request for an Overview chart, with the page and filters included automatically.](docs/images/ask-agent.png)
+
+More copyable starting points are in [docs/prompts.md](docs/prompts.md).
 
 Before calling a change done, run:
 
@@ -100,9 +144,6 @@ starter does not include. See [docs/auth.md](docs/auth.md).
   Store and date filters stay in the URL; Retention uses a completed-month window.
 - **Multiple stores:** names and brand groups load from `dim_stores`; each store
   keeps a shareable `?store=<sm_store_id>` URL. No manual store list required.
-- **Ask a coding agent:** the top bar composes a prompt from the current page,
-  its filters, and the sections on screen. Paste it into any agent working in
-  this repository; see [docs/prompts.md](docs/prompts.md).
 - **Separate store audiences:** optional `APP_STORE_ID` locks a deployment to
   one store. Give it its own URL and viewer guard; see [the setup](docs/auth.md#one-deployment-per-store).
 - **Keep data trustworthy:** typed SQL parameters, exact money values, bounded
