@@ -8,6 +8,7 @@ import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { TimeGrain } from "@/lib/time-grain";
 import type { DateRange, ReportFilters } from "@/lib/filters";
+import type { PeriodCoverage } from "@/lib/comparison";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { queryOverview, queryOverviewChannels } from "./bigquery";
 import { sampleOverview, sampleOverviewSource } from "./sample";
@@ -40,6 +41,8 @@ export type OverviewData = {
   summaries: OverviewDay[];
   /** Published new/repeat order measures, not distinct customer counts. */
   purchases: PurchaseMix | null;
+  /** Latest date with rows in this query, from MAX(date). Null when the range is empty. */
+  latestDate: string | null;
 };
 
 export async function getOverview(filters: OverviewFilters): Promise<OverviewData> {
@@ -58,6 +61,11 @@ export async function getOverviewChannels(filters: ReportFilters): Promise<strin
 export type OverviewReport = {
   current: OverviewData;
   comparison: { data: OverviewData; error: null } | { data: null; error: WarehouseError } | null;
+  /**
+   * Each period's latest date with rows, for periodChanges(). Null when
+   * comparison is off or that query failed; the current report still stands.
+   */
+  coverage: PeriodCoverage | null;
 };
 
 /** Two bounded, independently aggregated periods; Off makes only the current-period query. */
@@ -73,5 +81,11 @@ export async function getOverviewReport(filters: OverviewFilters, baseline: Date
       )
     : null;
   const [current, compared] = await Promise.all([getOverview(filters), comparison]);
-  return { current, comparison: compared };
+  return {
+    current,
+    comparison: compared,
+    coverage: compared?.data
+      ? { latest_date: current.latestDate, previous_latest_date: compared.data.latestDate }
+      : null,
+  };
 }

@@ -30,4 +30,15 @@ describe("period SQL", () => {
     expect(PERIOD_COVERAGE).toMatch(/EXCEPT \(group_latest_date, group_previous_latest_date\)/);
     expect(PERIOD_COVERAGE).toMatch(/AS latest_date,[\s\S]*AS previous_latest_date$/);
   });
+
+  it("uses one half-open datetime window for a partition filter and the date sums", () => {
+    const period = periodSql("DATE(order_processed_at_local_datetime)");
+    expect(period.dateTimeRows("order_processed_at_local_datetime")).toBe(
+      "((order_processed_at_local_datetime >= DATETIME(@start_date) AND order_processed_at_local_datetime < DATETIME(DATE_ADD(@end_date, INTERVAL 1 DAY))) OR (@compare AND order_processed_at_local_datetime >= DATETIME(@baseline_from) AND order_processed_at_local_datetime < DATETIME(DATE_ADD(@baseline_to, INTERVAL 1 DAY))))",
+    );
+    expect(period.sum("order_line_net_revenue", "revenue")).toContain(
+      "DATE(order_processed_at_local_datetime) BETWEEN @start_date AND @end_date",
+    );
+    expect(period.rows).toContain("DATE(order_processed_at_local_datetime) BETWEEN @start_date AND @end_date");
+  });
 });

@@ -46,10 +46,7 @@ export async function queryProducts(filters: ProductFilters, baseline: DateRange
       FROM ${warehouse.table(PRODUCTS_RELATION)}
       WHERE sm_store_id = @store_id AND is_order_sm_valid = TRUE
         AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
-        AND ((order_processed_at_local_datetime >= DATETIME(@start_date)
-          AND order_processed_at_local_datetime < DATETIME(DATE_ADD(@end_date, INTERVAL 1 DAY)))
-          OR (@compare AND order_processed_at_local_datetime >= DATETIME(@baseline_from)
-          AND order_processed_at_local_datetime < DATETIME(DATE_ADD(@baseline_to, INTERVAL 1 DAY))))
+        AND ${period.dateTimeRows("order_processed_at_local_datetime")}
       GROUP BY product_key
     )
     SELECT ${PERIOD_COVERAGE},

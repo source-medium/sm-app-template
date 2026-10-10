@@ -51,6 +51,7 @@ describe("overview fixture contract", () => {
         summaries: [],
         totals: null,
         purchases: null,
+        latestDate: null,
       });
     },
   );
@@ -109,6 +110,7 @@ describe("overview fixture contract", () => {
       { date: "2026-09-02", netRevenue: "30.03", orders: 4, sessions: 7n, adClicks: 1n, adSpend: "1.1" },
     ]);
     expect(data.totals).toEqual({ netRevenue: "60.06", orders: 8, sessions: 22n, adClicks: 4n, adSpend: "4.43" });
+    expect(data.latestDate).toBe("2026-09-02");
   });
 
   it("keeps stores apart: there is no combined total", () => {
@@ -138,7 +140,7 @@ describe("overview fixture contract", () => {
 
   it("returns no days and no totals for an empty range", () => {
     const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire([], "s1", RANGE), OVERVIEW_RELATION));
-    expect(data).toEqual({ days: [], summaries: [], totals: null, purchases: null });
+    expect(data).toEqual({ days: [], summaries: [], totals: null, purchases: null, latestDate: null });
   });
 
   it("models forward-dated target rows with zero actuals, as the relation does", () => {

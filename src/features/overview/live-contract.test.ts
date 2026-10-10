@@ -26,6 +26,7 @@ const FIELDS = [
   { name: "total_first_orders", type: "FLOAT" },
   { name: "total_repeat_revenue", type: "NUMERIC" },
   { name: "total_repeat_orders", type: "FLOAT" },
+  { name: "latest_date", type: "DATE" },
 ];
 // NUMERIC money stays exact text, even past float precision.
 const MONEY = {
@@ -56,6 +57,7 @@ describe("overview, live", () => {
       const body = call.body as { query: string; queryParameters: unknown[] };
       expect(body.query).toContain("DATE_TRUNC(date, WEEK(MONDAY))");
       expect(body.query).toContain("SUM(net_revenue) OVER period");
+      expect(body.query).toContain("MAX(date) OVER () AS latest_date");
       expect(body.query).not.toContain(channel);
       expect(body.queryParameters).toContainEqual({
         name: "channel",
@@ -71,13 +73,14 @@ describe("overview, live", () => {
         const from = body.queryParameters.find((param) => param.name === "start_date")?.parameterValue.value;
         if (!from) throw new Error("Missing start_date parameter");
         const revenue = from === "2026-09-01" ? "100.01" : "80.01";
-        return rowsResponse(FIELDS, [{ date: from, ...MONEY, total_net_revenue: revenue }]);
+        return rowsResponse(FIELDS, [{ date: from, latest_date: from, ...MONEY, total_net_revenue: revenue }]);
       },
     });
     const { getOverviewReport } = await import("./queries");
     const report = await getOverviewReport(FILTERS, { from: "2025-09-01", to: "2025-09-02" });
     expect(report.current.totals?.netRevenue).toBe("100.01");
     expect(report.comparison?.data?.totals?.netRevenue).toBe("80.01");
+    expect(report.coverage).toEqual({ latest_date: "2026-09-01", previous_latest_date: "2025-09-01" });
     const submits = fake.calls.filter((call) => call.kind === "submit");
     expect(submits).toHaveLength(2);
     const bodies = submits.map(
@@ -98,7 +101,9 @@ describe("overview, live", () => {
   it("makes only one query when comparison is off", async () => {
     const fake = await goLive({ submit: () => rowsResponse(FIELDS, []) });
     const { getOverviewReport } = await import("./queries");
-    expect((await getOverviewReport(FILTERS, null)).comparison).toBeNull();
+    const report = await getOverviewReport(FILTERS, null);
+    expect(report.comparison).toBeNull();
+    expect(report.coverage).toBeNull();
     expect(fake.count("submit")).toBe(1);
   });
 
@@ -144,6 +149,7 @@ describe("overview, live", () => {
     expect(report.current.totals?.netRevenue).toBe("0.3");
     expect(report.comparison?.data).toBeNull();
     expect(report.comparison?.error).toMatchObject({ kind: "result_too_large" });
+    expect(report.coverage).toBeNull();
   });
 
   it("does not turn an empty baseline into zero totals", async () => {
@@ -151,9 +157,10 @@ describe("overview, live", () => {
     const { getOverviewReport } = await import("./queries");
     const report = await getOverviewReport(FILTERS, { from: "2025-09-01", to: "2025-09-02" });
     expect(report.comparison).toEqual({
-      data: { days: [], summaries: [], totals: null, purchases: null },
+      data: { days: [], summaries: [], totals: null, purchases: null, latestDate: null },
       error: null,
     });
+    expect(report.coverage).toEqual({ latest_date: null, previous_latest_date: null });
   });
 
   it("queries one store and range, and decodes exact totals", async () => {

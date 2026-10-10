@@ -11,10 +11,11 @@ import { cardGridStyles } from "@/components/ui/card";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { comparisonDates, periodChanges, type Comparison } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
-import { parseSalesChannel, withParams, datesInRange, latestDate, rangeLength, type SearchParams } from "@/lib/filters";
-import { decimalToNumber, ratio } from "@/lib/data/decimal";
-import { formatCount, formatDate, formatDay, formatMeasure, formatMoney, formatMultiple } from "@/lib/format";
-import { getOverviewReport, type OverviewDay, type OverviewFilters, type OverviewReport } from "./queries";
+import { parseSalesChannel, withParams, datesInRange, rangeLength, type SearchParams } from "@/lib/filters";
+import { decimalToNumber } from "@/lib/data/decimal";
+import { formatDate, formatDay, formatMeasure, formatMoney } from "@/lib/format";
+import { presentOverviewMeasures, type OverviewMeasureKey } from "./measures";
+import { getOverviewReport, type OverviewFilters, type OverviewReport } from "./queries";
 import { parseTimeGrain } from "@/lib/time-grain";
 import { OverviewControls } from "./controls";
 import { OverviewSummary } from "./summary";
@@ -82,33 +83,27 @@ function OverviewView({
 }) {
   const data = report.current;
   const compared = report.comparison?.data ?? null;
-  const previous = compared?.totals ?? null;
   const baseline = comparison?.range;
-  const latest = (days: { date: string }[]) => latestDate(days.map((day) => day.date));
-  const { show: showDelta, issue } = periodChanges(
-    filters.range,
-    baseline,
-    compared && { latest_date: latest(data.days), previous_latest_date: latest(compared.days) },
-  );
+  const { show: showDelta, issue } = periodChanges(filters.range, baseline, report.coverage);
   // Daily lines align date by date, so they still show; period totals change only when coverage allows.
   const showLines = Boolean(baseline && compared);
-  const previousRevenue = decimalToNumber(previous?.netRevenue ?? null);
-  const previousSpend = decimalToNumber(previous?.adSpend ?? null);
   const period = `${formatDate(filters.range.from)} – ${formatDate(filters.range.to)}`;
   const byDate = new Map(data.days.map((day) => [day.date, day]));
+  const presentedDays = new Map(data.days.map((day) => [day.date, presentOverviewMeasures(day)]));
+  const currentMeasures = presentOverviewMeasures(data.totals);
+  const previousMeasures = presentOverviewMeasures(compared?.totals ?? null);
   // Every date in the range, so a date with no rows is a gap in the line, not a zero.
   const dates = datesInRange(filters.range);
   const dailyTableHref =
     filters.grain === "day"
       ? "#summary-heading"
       : `${withParams("/overview", {}, { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? null, compare: comparison?.mode ?? null, grain: "day" })}#summary-heading`;
-  function trend(read: (day: OverviewDay) => string | number | bigint | null) {
+  function trend(key: OverviewMeasureKey) {
     return {
       tableHref: dailyTableHref,
       values: dates.map((date) => {
-        const day = byDate.get(date);
-        const value = day ? read(day) : null;
-        return typeof value === "string" ? decimalToNumber(value) : value;
+        const amount = presentedDays.get(date)?.[key].amount ?? null;
+        return typeof amount === "string" ? decimalToNumber(amount) : amount;
       }),
     };
   }
@@ -150,9 +145,44 @@ function OverviewView({
       };
     }),
   );
-  const totals = data.totals;
-  const netRevenue = decimalToNumber(totals?.netRevenue ?? null);
-  const adSpend = decimalToNumber(totals?.adSpend ?? null);
+  const cards: { key: OverviewMeasureKey; label: string; description: string }[] = [
+    {
+      key: "revenue",
+      label: "Net revenue",
+      description:
+        "Gross order revenue minus discounts and refunds, summed across the selected sales channels for this store and period. Amounts use the warehouse's reporting currency.",
+    },
+    {
+      key: "orders",
+      label: "Summary orders",
+      description:
+        "Published order counts summed across the selected sales channels, including excluded, draft, and exchanged orders. This can differ from the number of valid orders.",
+    },
+    {
+      key: "average",
+      label: "Revenue per summary order",
+      description:
+        "Net revenue divided by Summary orders for the same store and period. It uses the published summary count, so it can differ from average revenue per valid order.",
+    },
+    {
+      key: "spend",
+      label: "Ad spend",
+      description:
+        "Published advertising spend summed across the selected sales channels for this store and period, in the warehouse's reporting currency. It comes from the daily summary, so it can differ by cents from Paid marketing, which sums ad-level rows.",
+    },
+    {
+      key: "mer",
+      label: "Marketing efficiency (MER)",
+      description:
+        "Net revenue divided by ad spend for the same store and period. This is a blended revenue-to-spend ratio, not ad-platform attributed ROAS.",
+    },
+    {
+      key: "sessions",
+      label: "Website sessions",
+      description:
+        "Published website session counts summed across the selected sales channels for this store and period. Sessions are visits, not unique people.",
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -195,76 +225,21 @@ function OverviewView({
         />
       )}
       <section aria-label="Period totals" className={cardGridStyles}>
-        <KpiCard
-          label="Net revenue"
-          description="Gross order revenue minus discounts and refunds, summed across the selected sales channels for this store and period. Amounts use the warehouse's reporting currency."
-          value={formatMoney(totals?.netRevenue ?? null)}
-          trend={trend((day) => day.netRevenue)}
-          delta={
-            showDelta
-              ? kpiDelta(totals?.netRevenue ?? null, previous?.netRevenue ?? null, formatMoney, "higher")
-              : undefined
-          }
-          period={period}
-        />
-        <KpiCard
-          label="Summary orders"
-          description="Published order counts summed across the selected sales channels, including excluded, draft, and exchanged orders. This can differ from the number of valid orders."
-          value={formatMeasure(totals?.orders ?? null)}
-          trend={trend((day) => day.orders)}
-          delta={
-            showDelta ? kpiDelta(totals?.orders ?? null, previous?.orders ?? null, formatMeasure, "higher") : undefined
-          }
-          period={period}
-        />
-        <KpiCard
-          label="Revenue per summary order"
-          description="Net revenue divided by Summary orders for the same store and period. It uses the published summary count, so it can differ from average revenue per valid order."
-          value={formatMoney(ratio(netRevenue, totals?.orders ?? null))}
-          trend={trend((day) => ratio(decimalToNumber(day.netRevenue), day.orders))}
-          delta={
-            showDelta
-              ? kpiDelta(
-                  ratio(netRevenue, totals?.orders ?? null),
-                  ratio(previousRevenue, previous?.orders ?? null),
-                  formatMoney,
-                )
-              : undefined
-          }
-          period={period}
-        />
-        <KpiCard
-          label="Ad spend"
-          description="Published advertising spend summed across the selected sales channels for this store and period, in the warehouse's reporting currency. It comes from the daily summary, so it can differ by cents from Paid marketing, which sums ad-level rows."
-          value={formatMoney(totals?.adSpend ?? null)}
-          trend={trend((day) => day.adSpend)}
-          delta={showDelta ? kpiDelta(totals?.adSpend ?? null, previous?.adSpend ?? null, formatMoney) : undefined}
-          period={period}
-        />
-        <KpiCard
-          label="Marketing efficiency (MER)"
-          description="Net revenue divided by ad spend for the same store and period. This is a blended revenue-to-spend ratio, not ad-platform attributed ROAS."
-          value={formatMultiple(ratio(netRevenue, adSpend))}
-          trend={trend((day) => ratio(decimalToNumber(day.netRevenue), decimalToNumber(day.adSpend)))}
-          delta={
-            showDelta
-              ? kpiDelta(ratio(netRevenue, adSpend), ratio(previousRevenue, previousSpend), formatMultiple, "higher")
-              : undefined
-          }
-          period={period}
-        />
-        <KpiCard
-          label="Website sessions"
-          description="Published website session counts summed across the selected sales channels for this store and period. Sessions are visits, not unique people."
-          value={formatCount(totals?.sessions ?? null)}
-          trend={trend((day) => day.sessions)}
-          delta={
-            showDelta
-              ? kpiDelta(totals?.sessions ?? null, previous?.sessions ?? null, formatCount, "higher")
-              : undefined
-          }
-          period={period}
-        />
+        {cards.map((card) => {
+          const current = currentMeasures[card.key];
+          const previous = previousMeasures[card.key];
+          return (
+            <KpiCard
+              key={card.key}
+              label={card.label}
+              description={card.description}
+              value={current.display}
+              trend={trend(card.key)}
+              delta={showDelta ? kpiDelta(current.amount, previous.amount, current.format, current.better) : undefined}
+              period={period}
+            />
+          );
+        })}
       </section>
       <OverviewPurchases
         current={data.purchases}

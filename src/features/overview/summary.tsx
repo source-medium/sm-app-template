@@ -3,28 +3,23 @@ import { Download } from "lucide-react";
 import { DataTable, type DataTableRow } from "@/components/patterns/data-table";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { buttonVariants } from "@/components/ui/button";
-import { decimalToNumber, ratio } from "@/lib/data/decimal";
-import { toChartNumber } from "@/lib/data/decode";
 import { withParams } from "@/lib/filters";
-import { formatCount, formatDate, formatMeasure, formatMoney, formatMultiple } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { TIME_GRAINS } from "@/lib/time-grain";
+import { presentOverviewMeasures } from "./measures";
 import { overviewSummaryRows } from "./summary-rows";
 import type { OverviewData, OverviewFilters, OverviewMeasures } from "./queries";
 
 function cells(label: string, measures: OverviewMeasures): DataTableRow["cells"] {
-  const revenue = decimalToNumber(measures.netRevenue);
-  const spend = decimalToNumber(measures.adSpend);
+  const presented = presentOverviewMeasures(measures);
   return {
     period: { display: label },
-    revenue: { display: formatMoney(measures.netRevenue), sort: revenue },
-    orders: { display: formatMeasure(measures.orders), sort: measures.orders },
-    average: { display: formatMoney(ratio(revenue, measures.orders)), sort: ratio(revenue, measures.orders) },
-    spend: { display: formatMoney(measures.adSpend), sort: spend },
-    mer: { display: formatMultiple(ratio(revenue, spend)), sort: ratio(revenue, spend) },
-    sessions: {
-      display: formatCount(measures.sessions),
-      sort: measures.sessions === null ? null : toChartNumber(measures.sessions),
-    },
+    revenue: { display: presented.revenue.display, sort: presented.revenue.sort },
+    orders: { display: presented.orders.display, sort: presented.orders.sort },
+    average: { display: presented.average.display, sort: presented.average.sort },
+    spend: { display: presented.spend.display, sort: presented.spend.sort },
+    mer: { display: presented.mer.display, sort: presented.mer.sort },
+    sessions: { display: presented.sessions.display, sort: presented.sessions.sort },
   };
 }
 

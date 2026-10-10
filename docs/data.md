@@ -283,9 +283,13 @@ query for each period in parallel, checks truncation, and keeps current data
 visible if the comparison query fails. This adds one query when enabled.
 To compare in one query instead, as Products and Paid marketing do, group with
 `periodSql()` and select `PERIOD_COVERAGE`, pass `periodParams()`, and decode
-with `periodCoverageFields`, all in `src/lib/data/period-sql.ts`. Either way,
-pass each period's latest date with rows to `periodChanges()` in
-`src/lib/comparison.ts`: show its `issue`, and show changes only when `show`.
+with `periodCoverageFields`, all in `src/lib/data/period-sql.ts`. A DATETIME
+partition column uses `dateTimeRows(column)` in the WHERE clause. That is the
+same window as `DATE(column) BETWEEN` the period dates, and the column stays
+bare so the partition can prune. Either way, pass each period's latest date
+with rows to `periodChanges()` in `src/lib/comparison.ts`: show its `issue`,
+and show changes only when `show`. Overview takes that date from `MAX(date)`
+on each period query (`latestDate` and `coverage`), not from the day list.
 Ratios are recomputed from each period's totals, not averaged from daily ratios.
 
 `lib/comparison.ts` owns date rules and arithmetic; `patterns/kpi-delta.ts`

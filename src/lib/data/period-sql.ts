@@ -20,6 +20,15 @@ export function periodParams(range: DateRange, baseline: DateRange | null): Quer
   ];
 }
 
+/**
+ * Half-open bounds on a DATETIME column. The same instants as
+ * `DATE(column) BETWEEN` the period dates, with the column left bare so a
+ * partition filter can prune. `column` is a fixed identifier written in the view.
+ */
+function dateTimeWindow(column: string, from: string, to: string) {
+  return `${column} >= DATETIME(${from}) AND ${column} < DATETIME(DATE_ADD(${to}, INTERVAL 1 DAY))`;
+}
+
 /** Grouping fragments for `day`, the SQL for each row's calendar date, such as `date`. */
 export function periodSql(day: string) {
   const selected = `${day} BETWEEN @start_date AND @end_date`;
@@ -27,6 +36,12 @@ export function periodSql(day: string) {
   return {
     /** Rows in either period, for a WHERE clause; filter a partition column directly where you can. */
     rows: `((${selected}) OR (${compared}))`,
+    /**
+     * Either period on a DATETIME partition column. Use this in WHERE and keep
+     * `DATE(column)` in `sum` and `latest`, so both sides name one window.
+     */
+    dateTimeRows: (column: string) =>
+      `((${dateTimeWindow(column, "@start_date", "@end_date")}) OR (@compare AND ${dateTimeWindow(column, "@baseline_from", "@baseline_to")}))`,
     /** `column` summed in each period, as `name` and `previous_name`. */
     sum: (column: string, name: string) =>
       `SUM(IF(${selected}, ${column}, NULL)) AS ${name},\n        SUM(IF(${compared}, ${column}, NULL)) AS previous_${name}`,

@@ -32,6 +32,8 @@ export const OverviewRow = z.object({
   total_first_orders: bq.float64().nullable(),
   total_repeat_revenue: bq.numeric().nullable(),
   total_repeat_orders: bq.float64().nullable(),
+  /** Latest date with rows in this period. The same value on every row. */
+  latest_date: bq.date().nullable(),
 });
 
 export type OverviewRowData = z.output<typeof OverviewRow>;
@@ -77,5 +79,6 @@ export function toOverviewData(rows: OverviewRowData[]): OverviewData {
           adSpend: first.total_ad_spend,
         }
       : null,
+    latestDate: first?.latest_date ?? null,
   };
 }

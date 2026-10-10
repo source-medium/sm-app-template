@@ -1,4 +1,5 @@
 import { expect, it, vi } from "vitest";
+import { periodSql } from "@/lib/data/period-sql";
 import { goLive, rowsResponse } from "../../../tests/helpers/live";
 import type { ProductFilters } from "./queries";
 
@@ -54,6 +55,9 @@ it("guards, parameterizes and aggregates valid product lines before the limit, r
   expect(data.rows[0]?.revenue).toBe(row.revenue);
   const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string; queryParameters: unknown[] };
   expect(body.query).toContain("sm_store_id = @store_id AND is_order_sm_valid = TRUE");
+  expect(body.query).toContain(
+    periodSql("DATE(order_processed_at_local_datetime)").dateTimeRows("order_processed_at_local_datetime"),
+  );
   expect(body.query).toContain("sm_product_variant_key");
   expect(body.query).toContain("SUM(revenue) OVER () AS total_revenue");
   expect(body.query).toContain("ORDER BY units DESC NULLS LAST");

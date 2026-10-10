@@ -63,7 +63,8 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
         SUM(first_revenue) OVER () AS total_first_revenue,
         SUM(first_orders) OVER () AS total_first_orders,
         SUM(repeat_revenue) OVER () AS total_repeat_revenue,
-        SUM(repeat_orders) OVER () AS total_repeat_orders
+        SUM(repeat_orders) OVER () AS total_repeat_orders,
+        MAX(date) OVER () AS latest_date
       FROM daily
       WINDOW period AS (PARTITION BY DATE_TRUNC(date, ${GRAIN_SQL[filters.grain ?? "day"]}))
       ORDER BY date`,

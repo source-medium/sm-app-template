@@ -191,6 +191,7 @@ export function aggregateOverviewWire(
     byDate.set(row.date, sums);
   }
   const days = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const latestDate = days.at(-1)?.[0] ?? null;
   const totals = zero();
   for (const [, sums] of days) add(totals, sums);
   const periods = new Map<string, Sums>();
@@ -226,6 +227,7 @@ export function aggregateOverviewWire(
       total_first_orders: firstOrders === null ? null : String(firstOrders),
       total_repeat_revenue: repeatRevenue === null ? null : money(repeatRevenue),
       total_repeat_orders: repeatOrders === null ? null : String(repeatOrders),
+      latest_date: latestDate,
     };
   });
 }
