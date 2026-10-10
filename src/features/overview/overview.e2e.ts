@@ -317,3 +317,12 @@ test("overview: hides period changes only when the selected period's last days h
   await expect(page.getByText("Some dates have no rows.", { exact: false })).toBeVisible();
   await expect(totals.locator('[data-slot="kpi-comparison"]')).toHaveCount(6);
 });
+
+test("overview: the report form stays in place when the first filter applies", async ({ page }) => {
+  // The first visit names no store; the filter adds one. Replacing the form then would drop a choice made meanwhile.
+  await page.goto("/overview");
+  const form = await page.locator("#report-filters").elementHandle();
+  await page.getByLabel("Summary rows", { exact: true }).selectOption("week");
+  await expect(page).toHaveURL(/store=sample-store-a.*grain=week|grain=week.*store=sample-store-a/);
+  expect(await form?.evaluate((node) => node.isConnected)).toBe(true);
+});

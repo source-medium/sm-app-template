@@ -5,13 +5,13 @@ import { loadStores, resolveReportStore, storeTimeZone } from "@/lib/data/stores
 import { MAX_STORES } from "@/lib/data/store-roster.server";
 import { setLogEmitter } from "@/lib/data/log";
 import { googleError } from "../fake-bigquery/fake-bigquery";
-import { goLive, requestHeaders, rowsResponse } from "../helpers/live";
+import { goLive, requestHeaders, ROSTER_FIELDS, rowsResponse, storeRow } from "../helpers/live";
 
 vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
 vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
 
 const originalLabels = appConfig.storeLabels;
-const fields = ["sm_store_id", "store_name", "brand_name", "store_timezone"].map((name) => ({ name, type: "STRING" }));
+const offset = [{ name: "offset_minutes", type: "INTEGER" }];
 const firstStore = {
   sm_store_id: "store-us",
   store_name: " US store ",
@@ -33,7 +33,7 @@ afterEach(() => {
 });
 
 it("loads named stores and brands from the dimension without scanning a fact table", async () => {
-  const fake = await goLive({ submit: () => rowsResponse(fields, metadata) });
+  const fake = await goLive({ submit: () => rowsResponse(ROSTER_FIELDS, metadata) });
   expect(await loadStores()).toEqual([
     { id: "store-us", label: "US store", brand: "First brand", timeZone: "America/New_York" },
     { id: "store-uk", label: "UK store", brand: "Second brand", timeZone: "Europe/London" },
@@ -48,7 +48,7 @@ it("keeps display overrides and missing names safe, including object-prototype I
   appConfig.storeLabels = { "store-us": "Custom label" };
   await goLive({
     submit: () =>
-      rowsResponse(fields, [
+      rowsResponse(ROSTER_FIELDS, [
         firstStore,
         { sm_store_id: "constructor", store_name: " ", brand_name: null, store_timezone: null },
         { sm_store_id: "__proto__", store_name: null, brand_name: " ", store_timezone: "masked-1f3a" },
@@ -68,7 +68,7 @@ it("only a missing dimension uses the scoped ID-only roster, and the handled pro
     submit: ({ body }) =>
       (body as { query: string }).query.includes(".dim_stores`")
         ? googleError(404, "notFound")
-        : rowsResponse(fields, [{ sm_store_id: "store-us", store_name: null, brand_name: null, store_timezone: null }]),
+        : rowsResponse(ROSTER_FIELDS, [storeRow("store-us", null)]),
   });
   vi.stubEnv("APP_STORE_ID", "store-us");
   expect(await loadStores()).toEqual([{ id: "store-us", label: "store-us", brand: null, timeZone: null }]);
@@ -97,14 +97,14 @@ it.each([
 });
 
 it("an empty active-store dimension stays empty instead of reviving historical stores", async () => {
-  const fake = await goLive({ submit: () => rowsResponse(fields, []) });
+  const fake = await goLive({ submit: () => rowsResponse(ROSTER_FIELDS, []) });
   await expect(loadStores()).resolves.toEqual([]);
   expect(fake.count("submit")).toBe(1);
 });
 
 it("does not treat a missing job during polling as a missing dimension", async () => {
   const fake = await goLive({
-    submit: () => rowsResponse(fields, [], { jobComplete: false }),
+    submit: () => rowsResponse(ROSTER_FIELDS, [], { jobComplete: false }),
     poll: () => googleError(404, "notFound"),
   });
   await expect(loadStores()).rejects.toMatchObject({ kind: "not_found" });
@@ -115,28 +115,18 @@ it.each(["duplicate", "missing-column", "overflow", "truncated"])("refuses a %s 
   const fake = await goLive({
     submit: () =>
       rowsResponse(
-        failure === "missing-column" ? fields.slice(0, 1) : fields,
+        failure === "missing-column" ? ROSTER_FIELDS.slice(0, 1) : ROSTER_FIELDS,
         failure === "duplicate"
           ? [firstStore, firstStore]
           : failure === "overflow"
-            ? Array.from({ length: MAX_STORES + 1 }, (_, i) => ({
-                sm_store_id: `store-${i}`,
-                store_name: null,
-                brand_name: null,
-                store_timezone: null,
-              }))
+            ? Array.from({ length: MAX_STORES + 1 }, (_, i) => storeRow(`store-${i}`, null))
             : metadata,
         failure === "truncated" ? { pageToken: "more-stores" } : {},
       ),
     poll: () =>
       rowsResponse(
-        fields,
-        Array.from({ length: MAX_STORES + 1 }, (_, i) => ({
-          sm_store_id: `more-${i}`,
-          store_name: null,
-          brand_name: null,
-          store_timezone: null,
-        })),
+        ROSTER_FIELDS,
+        Array.from({ length: MAX_STORES + 1 }, (_, i) => storeRow(`more-${i}`, null)),
         { pageToken: "still-more" },
       ),
   });
@@ -150,14 +140,11 @@ it.each(["duplicate", "missing-column", "overflow", "truncated"])("refuses a %s 
 });
 
 describe("store time zones", () => {
-  const offset = [{ name: "offset_minutes", type: "INTEGER" }];
-  const roster = (storeId: string, zone: string | null) => [
-    { sm_store_id: storeId, store_name: null, brand_name: null, store_timezone: zone },
-  ];
+  const roster = (storeId: string, zone: string | null) => [storeRow(storeId, zone)];
   const query = (call: { body: unknown }) => (call.body as { query?: string } | null)?.query;
 
   it("uses the store's dim_stores time zone, and remembers it", async () => {
-    const fake = await goLive({ submit: () => rowsResponse(fields, roster("zone-ny", "America/New_York")) });
+    const fake = await goLive({ submit: () => rowsResponse(ROSTER_FIELDS, roster("zone-ny", "America/New_York")) });
     expect(await storeTimeZone("zone-ny")).toBe("America/New_York");
     expect(await storeTimeZone("zone-ny")).toBe("America/New_York");
     expect(fake.count("submit")).toBe(1);
@@ -168,7 +155,7 @@ describe("store time zones", () => {
       submit: ({ body }) =>
         (body as { query: string }).query.includes("offset_minutes")
           ? rowsResponse(offset, [{ offset_minutes: "-420" }])
-          : rowsResponse(fields, roster("zone-masked", "2d4bbedff8")),
+          : rowsResponse(ROSTER_FIELDS, roster("zone-masked", "2d4bbedff8")),
     });
     expect(await storeTimeZone("zone-masked")).toBe("-07:00");
     const sql = fake.calls.map(query).find((text) => text?.includes("offset_minutes"));
@@ -182,7 +169,7 @@ describe("store time zones", () => {
         const sql = (body as { query: string }).query;
         if (sql.includes(".dim_stores`")) return googleError(404, "notFound");
         if (sql.includes("offset_minutes")) return rowsResponse(offset, [{ offset_minutes: "330" }]);
-        return rowsResponse(fields, roster("zone-legacy", null));
+        return rowsResponse(ROSTER_FIELDS, roster("zone-legacy", null));
       },
     });
     expect(await storeTimeZone("zone-legacy")).toBe("+05:30");
@@ -197,7 +184,7 @@ describe("store time zones", () => {
           ? rowsResponse(offset, orders)
           : listFails
             ? googleError(403, "accessDenied")
-            : rowsResponse(fields, roster("zone-listed", "Europe/Paris")),
+            : rowsResponse(ROSTER_FIELDS, roster("zone-listed", "Europe/Paris")),
     });
     expect(await storeTimeZone("zone-omitted")).toBe("-05:00");
     listFails = true;
@@ -211,7 +198,7 @@ describe("store time zones", () => {
   it("remembers a zone for an hour", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     try {
-      const fake = await goLive({ submit: () => rowsResponse(fields, roster("zone-hour", "Asia/Tokyo")) });
+      const fake = await goLive({ submit: () => rowsResponse(ROSTER_FIELDS, roster("zone-hour", "Asia/Tokyo")) });
       expect(await storeTimeZone("zone-hour")).toBe("Asia/Tokyo");
       vi.advanceTimersByTime(59 * 60 * 1000);
       expect(await storeTimeZone("zone-hour")).toBe("Asia/Tokyo");
@@ -229,7 +216,7 @@ describe("store time zones", () => {
       submit: ({ body }) =>
         (body as { query: string }).query.includes("offset_minutes")
           ? rowsResponse(offset, [])
-          : rowsResponse(fields, roster("zone-none", null)),
+          : rowsResponse(ROSTER_FIELDS, roster("zone-none", null)),
     });
     await expect(storeTimeZone("zone-none")).rejects.toMatchObject({ kind: "time_zone_unknown" });
     await expect(storeTimeZone("zone-unlisted")).resolves.toBeNull();
@@ -237,42 +224,33 @@ describe("store time zones", () => {
 });
 
 describe("the store a report shows", () => {
-  const offset = [{ name: "offset_minutes", type: "INTEGER" }];
-  const store = (id: string, zone: string | null) => ({
-    sm_store_id: id,
-    store_name: null,
-    brand_name: null,
-    store_timezone: zone,
-  });
   /** A store list, and recent orders for any store, or a failure for either. */
-  function warehouse(list: ReturnType<typeof store>[] | "fails", orders: { offset_minutes: string }[] = []) {
+  function warehouse(list: ReturnType<typeof storeRow>[] | "fails", orders: { offset_minutes: string }[] = []) {
     return goLive({
       submit: ({ body }) =>
         (body as { query: string }).query.includes("offset_minutes")
           ? rowsResponse(offset, orders)
           : list === "fails"
             ? googleError(403, "accessDenied")
-            : rowsResponse(fields, list),
+            : rowsResponse(ROSTER_FIELDS, list),
     });
   }
 
-  it("is the first listed store when the URL names none, with the list for the picker", async () => {
-    await warehouse([store("first-ny", "America/New_York"), store("second-la", "America/Los_Angeles")]);
+  it("is the first listed store when the URL names none", async () => {
+    await warehouse([storeRow("first-ny", "America/New_York"), storeRow("second-la", "America/Los_Angeles")]);
     expect(await resolveReportStore(undefined)).toMatchObject({
       status: "ready",
       storeId: "first-ny",
       timeZone: "America/New_York",
-      stores: [{ id: "first-ny" }, { id: "second-la" }],
     });
   });
 
   it("is the URL's store, reading the store list once", async () => {
-    const fake = await warehouse([store("url-ny", "America/New_York"), store("url-la", "America/Los_Angeles")]);
+    const fake = await warehouse([storeRow("url-ny", "America/New_York"), storeRow("url-la", "America/Los_Angeles")]);
     expect(await resolveReportStore("url-la")).toEqual({
       status: "ready",
       storeId: "url-la",
       timeZone: "America/Los_Angeles",
-      stores: null,
     });
     expect(fake.count("submit")).toBe(1);
   });
@@ -288,7 +266,7 @@ describe("the store a report shows", () => {
   });
 
   it("says when the store's dates are unknown, and why", async () => {
-    await warehouse([store("dateless", null)]);
+    await warehouse([storeRow("dateless", null)]);
     expect(await resolveReportStore("not-listed")).toEqual({ status: "no_date", storeId: "not-listed", error: null });
     expect(await resolveReportStore("dateless")).toMatchObject({
       status: "no_date",
@@ -303,12 +281,11 @@ describe("the store a report shows", () => {
       status: "ready",
       storeId: "listless",
       timeZone: "-04:00",
-      stores: null,
     });
   });
 
   it("refuses a store the deployment does not serve before any query", async () => {
-    const fake = await warehouse([store("allowed", "UTC")]);
+    const fake = await warehouse([storeRow("allowed", "UTC")]);
     vi.stubEnv("APP_STORE_ID", "allowed");
     await expect(resolveReportStore("other")).rejects.toBeInstanceOf(StoreAccessError);
     expect(fake.count("submit")).toBe(0);

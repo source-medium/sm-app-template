@@ -193,7 +193,7 @@ export async function ReportPage({
     );
   }
   // Links built from params name the store, so the next page can run its queries in parallel.
-  const { storeId, stores, timeZone } = store;
+  const { storeId, timeZone } = store;
   const today = calendarDate(new Date(), timeZone);
   const derived = defaults?.(today) ?? {};
   params = { ...params, ...derived };
@@ -215,13 +215,11 @@ export async function ReportPage({
   return (
     <div className="flex flex-col gap-4">
       {header(storeId, { range, issue, comparison, derived })}
-      {stores ? (
-        <StoreFilterBar stores={stores} storeId={storeId} {...barProps} />
-      ) : (
-        <Suspense fallback={<Skeleton className="h-[4.75rem] rounded-lg" />}>
-          <RosterFilterBar roster={roster} storeId={storeId} {...barProps} />
-        </Suspense>
-      )}
+      {/* One shape whether or not the URL named the store, so a navigation that adds the
+          store keeps the report form mounted; a choice made meanwhile still submits. */}
+      <Suspense fallback={<Skeleton className="h-[4.75rem] rounded-lg" />}>
+        <RosterFilterBar roster={roster} storeId={storeId} {...barProps} />
+      </Suspense>
       {issue ? (
         <ErrorState
           title="Check the date range"

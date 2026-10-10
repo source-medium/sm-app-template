@@ -14,7 +14,7 @@
 import ts from "typescript";
 import type { SourceFile } from "./auth-coverage";
 
-export const STORE_SCOPE_EXEMPT: Record<string, string> = {};
+const STORE_SCOPE_EXEMPT: Record<string, string> = {};
 
 const PREDICATE = /\bsm_store_id\s*=\s*@store_id\b/g;
 

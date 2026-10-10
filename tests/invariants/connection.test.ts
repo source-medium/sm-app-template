@@ -5,6 +5,7 @@ import { connectionReportText } from "@/lib/data/connection-report";
 import { liveEnv, makeServiceAccountKey } from "../helpers/service-account";
 import { createFakeBigQuery, googleError, hang, queryResponse } from "../fake-bigquery/fake-bigquery";
 import { emit, setLogEmitter } from "@/lib/data/log";
+import { ROSTER_FIELDS } from "../helpers/live";
 
 const originalEmit = emit;
 const row = (values: unknown[]) => ({ f: values.map((v) => ({ v })) });
@@ -29,12 +30,7 @@ function fakeWarehouse(
       if (query.query.includes("store_name"))
         return Response.json(
           queryResponse({
-            schema: {
-              fields: ["sm_store_id", "store_name", "brand_name", "store_timezone"].map((name) => ({
-                name,
-                type: "STRING",
-              })),
-            },
+            schema: { fields: ROSTER_FIELDS },
             rows: options.empty ? [] : [row(["private-store", "Private Brand", "Private Brand", "America/Chicago"])],
           }),
         );

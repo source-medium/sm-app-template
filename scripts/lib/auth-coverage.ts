@@ -15,7 +15,7 @@
 import { posix } from "node:path";
 import ts from "typescript";
 
-export const PUBLIC_ROUTES: Record<string, string> = {
+const PUBLIC_ROUTES: Record<string, string> = {
   "src/app/healthz/route.ts": "liveness only; returns the build id and reads no data",
 };
 

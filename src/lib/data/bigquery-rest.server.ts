@@ -19,8 +19,8 @@ import type { TokenProvider } from "./google-token.server";
 import { WarehouseError, classifyBigQueryError } from "./warehouse-error";
 
 const API_ROOT = "https://bigquery.googleapis.com/bigquery/v2";
-export const DEFAULT_DEADLINE_MS = 30_000;
-export const DEFAULT_MAX_ROWS = 1000;
+const DEFAULT_DEADLINE_MS = 30_000;
+const DEFAULT_MAX_ROWS = 1000;
 const MAX_ROWS_LIMIT = 10_000;
 const PAGE_ROWS = 1000;
 const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;

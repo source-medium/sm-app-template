@@ -4,7 +4,7 @@ import { parseConfig } from "@/lib/config/env.server";
 import { warehouseFor } from "@/lib/data/warehouse.server";
 import { queryStoreRoster } from "@/lib/data/store-roster.server";
 import { createFakeBigQuery } from "../fake-bigquery/fake-bigquery";
-import { rowsResponse } from "../helpers/live";
+import { ROSTER_FIELDS, rowsResponse } from "../helpers/live";
 import { liveEnv, makeServiceAccountKey } from "../helpers/service-account";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -22,15 +22,9 @@ it("the scoped warehouse rejects missing, mismatched and duplicate store paramet
   if (config.status !== "ok" || config.mode !== "live") throw new Error("Expected live configuration");
   const fake = createFakeBigQuery({
     submit: () =>
-      rowsResponse(
-        [
-          { name: "sm_store_id", type: "STRING" },
-          { name: "store_name", type: "STRING" },
-          { name: "brand_name", type: "STRING" },
-          { name: "store_timezone", type: "STRING" },
-        ],
-        [{ sm_store_id: "store-a", store_name: "Store A", brand_name: "Brand", store_timezone: "Europe/Paris" }],
-      ),
+      rowsResponse(ROSTER_FIELDS, [
+        { sm_store_id: "store-a", store_name: "Store A", brand_name: "Brand", store_timezone: "Europe/Paris" },
+      ]),
   });
   vi.stubGlobal("fetch", fake.fetch);
   const warehouse = warehouseFor(config.live, "store-a");

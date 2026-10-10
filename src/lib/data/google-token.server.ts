@@ -13,7 +13,7 @@ import "server-only";
 import type { ServiceAccountKey } from "@/lib/config/env.server";
 import { WarehouseError } from "./warehouse-error";
 
-export const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
+const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const SCOPE = "https://www.googleapis.com/auth/bigquery";
 const TOKEN_LIFETIME_SECONDS = 3600;
 /** Refresh this long before expiry so an in-flight query never holds a dying token. */

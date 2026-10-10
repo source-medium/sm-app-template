@@ -4,6 +4,7 @@
  * GETs. Each test scripts the responses it needs; every call is recorded.
  * Pure fetch, so it runs in Node and workerd alike.
  */
+import { TEST_JOB_PROJECT } from "../helpers/service-account";
 
 export type FakeCall = { kind: "token" | "submit" | "poll" | "cancel" | "metadata"; url: URL; body: unknown };
 type Handler = (call: FakeCall, signal: AbortSignal | undefined) => Response | Promise<Response>;
@@ -16,8 +17,8 @@ export type FakeBigQueryScript = {
   metadata?: Handler;
 };
 
-export const JOB = { projectId: "sm-customer-apps-test", jobId: "job_abc123", location: "US" };
-export const FIELDS = [
+export const JOB = { projectId: TEST_JOB_PROJECT, jobId: "job_abc123", location: "US" };
+const FIELDS = [
   { name: "date", type: "DATE", mode: "NULLABLE" },
   { name: "sessions", type: "INTEGER", mode: "NULLABLE" },
 ];

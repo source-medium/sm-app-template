@@ -6,12 +6,12 @@
  */
 import { vi } from "vitest";
 import { createFakeBigQuery, JOB, type FakeBigQueryScript, type FakeCall } from "../fake-bigquery/fake-bigquery";
-import { liveEnv, makeServiceAccountKey, TEST_PASSWORD } from "./service-account";
+import { liveEnv, makeServiceAccountKey, TEST_JOB_PROJECT, TEST_PASSWORD } from "./service-account";
 
 export const requestHeaders = { current: new Headers() };
 
 export async function goLive(script: FakeBigQueryScript) {
-  const key = await makeServiceAccountKey("sm-customer-apps-test", Math.random().toString(16).slice(2, 10));
+  const key = await makeServiceAccountKey(TEST_JOB_PROJECT, Math.random().toString(16).slice(2, 10));
   for (const [name, value] of Object.entries(liveEnv(key))) vi.stubEnv(name, value ?? "");
   requestHeaders.current = new Headers({ authorization: `Basic ${btoa(`viewer:${TEST_PASSWORD}`)}` });
   const fake = createFakeBigQuery(script);
@@ -35,10 +35,17 @@ export function rowsResponse(
   });
 }
 
-const ROSTER_FIELDS = ["sm_store_id", "store_name", "brand_name", "store_timezone"].map((name) => ({
+/** The store list's columns (dim_stores), and one unnamed store in `timeZone`. */
+export const ROSTER_FIELDS = ["sm_store_id", "store_name", "brand_name", "store_timezone"].map((name) => ({
   name,
   type: "STRING",
 }));
+export const storeRow = (id: string, timeZone: string | null = "America/New_York") => ({
+  sm_store_id: id,
+  store_name: null,
+  brand_name: null,
+  store_timezone: timeZone,
+});
 
 /**
  * Answers the store list with `storeIds`, each in `timeZone`, and every other
@@ -54,7 +61,7 @@ export function withStores(
     isStoreList(call)
       ? rowsResponse(
           ROSTER_FIELDS,
-          storeIds.map((id) => ({ sm_store_id: id, store_name: null, brand_name: null, store_timezone: timeZone })),
+          storeIds.map((id) => storeRow(id, timeZone)),
         )
       : submit(call, signal);
 }

@@ -27,7 +27,7 @@ export const LIVE_VARIABLES = [
   "SM_METADATA_DATASET_ID",
 ] as const;
 
-export const DEFAULT_MAX_BYTES_BILLED = 1024n * 1024n * 1024n; // 1 GiB
+const DEFAULT_MAX_BYTES_BILLED = 1024n * 1024n * 1024n; // 1 GiB
 
 export type ServiceAccountKey = {
   clientEmail: string;

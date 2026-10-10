@@ -7,7 +7,7 @@
 import "server-only";
 import { cache } from "react";
 import { appConfig } from "@/app.config";
-import { requestedStore, requireViewer } from "@/lib/auth/require-viewer";
+import { requireViewer } from "@/lib/auth/require-viewer";
 import { isTimeZone } from "@/lib/format";
 import { SAMPLE_STORES } from "@/lib/sample/stores";
 import { queryOrderTimeZone, queryStoreRoster } from "./store-roster.server";
@@ -76,8 +76,7 @@ export async function storeTimeZone(storeId: string, stores?: StoreOption[]): Pr
 }
 
 export type ReportStore =
-  /** `stores` is the store list when choosing the store needed it, else null. */
-  | { status: "ready"; storeId: string; timeZone: string; stores: StoreOption[] | null }
+  | { status: "ready"; storeId: string; timeZone: string }
   /** No store to show: the list failed (`error`) or has none (null). */
   | { status: "no_store"; error: WarehouseError | null }
   /** The store's dates are unknown: a lookup failed (`error`), or it is unlisted without recent orders (null). */
@@ -91,7 +90,8 @@ export type ReportStore =
  * a page shares with its filter bar.
  */
 export async function resolveReportStore(supplied: string | undefined): Promise<ReportStore> {
-  const requested = await requestedStore(supplied);
+  const access = await requireViewer(supplied === undefined ? undefined : { storeId: supplied });
+  const requested = (supplied ?? access.storeId)?.slice(0, 200) || null;
   let stores: StoreOption[] | null = null;
   if (requested === null) {
     try {
@@ -105,9 +105,7 @@ export async function resolveReportStore(supplied: string | undefined): Promise<
   if (!storeId) return { status: "no_store", error: null };
   try {
     const timeZone = await storeTimeZone(storeId, stores ?? undefined);
-    return timeZone === null
-      ? { status: "no_date", storeId, error: null }
-      : { status: "ready", storeId, timeZone, stores };
+    return timeZone === null ? { status: "no_date", storeId, error: null } : { status: "ready", storeId, timeZone };
   } catch (error) {
     if (!(error instanceof WarehouseError)) throw error;
     return { status: "no_date", storeId, error };

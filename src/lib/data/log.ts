@@ -50,7 +50,7 @@ const KEYS = [
   "variables",
 ] as const satisfies readonly (keyof LogEvent)[];
 
-export function formatLogLine(event: LogEvent, now: Date = new Date()): string {
+function formatLogLine(event: LogEvent, now: Date = new Date()): string {
   const line: Record<string, unknown> = { ts: now.toISOString() };
   for (const key of KEYS) line[key] = event[key] ?? null;
   return JSON.stringify(line);
