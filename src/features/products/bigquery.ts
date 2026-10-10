@@ -3,6 +3,7 @@ import { requireViewer } from "@/lib/auth/require-viewer";
 import { decodeRows } from "@/lib/data/decode";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import type { DateRange, ReportFilters } from "@/lib/filters";
+import { PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
 import type { ProductFilters, ProductsData } from "./queries";
 import { MAX_PRODUCTS, PRODUCTS_RELATION, ProductChannelRow, ProductRow } from "./rows";
 
@@ -33,7 +34,7 @@ export async function queryProducts(filters: ProductFilters, baseline: DateRange
   const dimension = DIMENSIONS[filters.dimension];
   const sort = SORTS[filters.metric];
   const measures = Object.entries(MEASURES);
-  // Each period's latest date with lines, for comparison coverage, comes from the same pass as the totals.
+  const period = periodSql("DATE(order_processed_at_local_datetime)");
   const result = await warehouse.query({
     name: "products_ranked",
     maxRows: MAX_PRODUCTS + 1,
@@ -41,14 +42,8 @@ export async function queryProducts(filters: ProductFilters, baseline: DateRange
       SELECT ${dimension.key} AS product_key,
         ARRAY_AGG(${dimension.label} ORDER BY order_processed_at_local_datetime DESC, sm_order_line_key DESC LIMIT 1)[OFFSET(0)] AS label,
         MAX(${dimension.reference}) AS reference,
-        ${measures
-          .flatMap(([name, column]) => [
-            `SUM(IF(DATE(order_processed_at_local_datetime) BETWEEN @start_date AND @end_date, ${column}, NULL)) AS ${name}`,
-            `SUM(IF(@compare AND DATE(order_processed_at_local_datetime) BETWEEN @baseline_from AND @baseline_to, ${column}, NULL)) AS previous_${name}`,
-          ])
-          .join(",\n")},
-        MAX(IF(DATE(order_processed_at_local_datetime) BETWEEN @start_date AND @end_date, DATE(order_processed_at_local_datetime), NULL)) AS group_latest_date,
-        MAX(IF(@compare AND DATE(order_processed_at_local_datetime) BETWEEN @baseline_from AND @baseline_to, DATE(order_processed_at_local_datetime), NULL)) AS group_previous_latest_date
+        ${measures.map(([name, column]) => period.sum(column, name)).join(",\n")},
+        ${period.latest}
       FROM ${warehouse.table(PRODUCTS_RELATION)}
       WHERE sm_store_id = @store_id AND is_order_sm_valid = TRUE
         AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
@@ -58,20 +53,14 @@ export async function queryProducts(filters: ProductFilters, baseline: DateRange
           AND order_processed_at_local_datetime < DATETIME(DATE_ADD(@baseline_to, INTERVAL 1 DAY))))
       GROUP BY product_key
     )
-    SELECT * EXCEPT (group_latest_date, group_previous_latest_date),
+    SELECT ${PERIOD_COVERAGE},
       ${measures.flatMap(([name]) => [`SUM(${name}) OVER () AS total_${name}`, `SUM(previous_${name}) OVER () AS total_previous_${name}`]).join(",\n")},
-      MIN(${sort}) OVER () AS minimum_value,
-      MAX(group_latest_date) OVER () AS latest_date,
-      MAX(group_previous_latest_date) OVER () AS previous_latest_date
+      MIN(${sort}) OVER () AS minimum_value
     FROM grouped ORDER BY ${sort} DESC NULLS LAST, product_key LIMIT ${MAX_PRODUCTS + 1}`,
     params: [
       { name: "store_id", type: "STRING", value: filters.storeId },
       { name: "channel", type: "STRING", value: filters.channel ?? "" },
-      { name: "start_date", type: "DATE", value: filters.range.from },
-      { name: "end_date", type: "DATE", value: filters.range.to },
-      { name: "compare", type: "BOOL", value: baseline !== null },
-      { name: "baseline_from", type: "DATE", value: baseline?.from ?? filters.range.from },
-      { name: "baseline_to", type: "DATE", value: baseline?.to ?? filters.range.to },
+      ...periodParams(filters.range, baseline),
     ],
   });
   if (result.truncated) throw new WarehouseError("result_too_large", { reason: "products_ranked" });

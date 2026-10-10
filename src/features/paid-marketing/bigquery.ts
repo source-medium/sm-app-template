@@ -8,6 +8,7 @@ import { decodeRows } from "@/lib/data/decode";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import type { DateRange } from "@/lib/filters";
 import type { BreakdownDimension, SpendBreakdown } from "./queries";
+import { PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
 import { SpendBreakdownRow, MAX_BREAKDOWN } from "./rows";
 import type { CampaignData, PaidMarketingData, PaidMarketingFilters } from "./queries";
 import {
@@ -37,32 +38,27 @@ export async function querySpendBreakdown(
 ): Promise<SpendBreakdown> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const selection = BREAKDOWN_SQL[dimension];
-  // Each period's latest date with rows, for comparison coverage, comes from the same pass as the totals.
+  const period = periodSql("date");
   const result = await warehouse.query({
     name: "paid_spend_breakdown",
     maxRows: MAX_BREAKDOWN + 1,
     sql: `WITH grouped AS (
       SELECT ${selection.key} AS dimension_key, MAX(${selection.label}) AS label,
-        SUM(IF(date BETWEEN @start_date AND @end_date, ad_spend, NULL)) AS spend,
-        SUM(IF(@compare AND date BETWEEN @baseline_from AND @baseline_to, ad_spend, NULL)) AS previous_spend,
-        MAX(IF(date BETWEEN @start_date AND @end_date, date, NULL)) AS group_latest_date,
-        MAX(IF(@compare AND date BETWEEN @baseline_from AND @baseline_to, date, NULL)) AS group_previous_latest_date
+        ${period.sum("ad_spend", "spend")},
+        ${period.latest}
       FROM ${warehouse.table(AD_RELATION)}
       WHERE sm_store_id = @store_id
-        AND ((date BETWEEN @start_date AND @end_date) OR (@compare AND date BETWEEN @baseline_from AND @baseline_to))
+        AND ${period.rows}
         AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
       GROUP BY dimension_key
     )
-    SELECT * EXCEPT (group_latest_date, group_previous_latest_date),
-      SUM(spend) OVER () AS total_spend, MIN(spend) OVER () AS minimum_spend,
-      MAX(group_latest_date) OVER () AS latest_date, MAX(group_previous_latest_date) OVER () AS previous_latest_date
+    SELECT ${PERIOD_COVERAGE},
+      SUM(spend) OVER () AS total_spend, MIN(spend) OVER () AS minimum_spend
     FROM grouped ORDER BY spend DESC NULLS LAST, dimension_key LIMIT ${MAX_BREAKDOWN + 1}`,
     params: [
-      ...queryScope(filters),
+      { name: "store_id", type: "STRING", value: filters.storeId },
       { name: "channel", type: "STRING", value: filters.channel ?? "" },
-      { name: "compare", type: "BOOL", value: baseline !== null },
-      { name: "baseline_from", type: "DATE", value: baseline?.from ?? filters.range.from },
-      { name: "baseline_to", type: "DATE", value: baseline?.to ?? filters.range.to },
+      ...periodParams(filters.range, baseline),
     ],
   });
   if (result.truncated) throw new WarehouseError("result_too_large", { reason: "paid_spend_breakdown" });

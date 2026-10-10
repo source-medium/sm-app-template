@@ -1,7 +1,7 @@
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
-import { coverageIssue } from "@/lib/comparison";
+import { periodChanges } from "@/lib/comparison";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatMoney, formatPercent } from "@/lib/format";
@@ -30,9 +30,7 @@ export function SpendBreakdownView({
   const first = data.rows[0];
   const total = first?.total_spend ?? null;
   const baseline = comparison?.range;
-  const issue =
-    baseline && first ? coverageIssue(filters.range, baseline, first.latest_date, first.previous_latest_date) : null;
-  const compare = Boolean(baseline) && !issue;
+  const { show: compare, issue } = periodChanges(filters.range, baseline, first);
   return (
     <section aria-label="Spend breakdown" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-4">

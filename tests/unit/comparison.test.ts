@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareValues, comparisonRange, coverageIssue, parseComparison } from "@/lib/comparison";
+import { compareValues, comparisonRange, coverageIssue, parseComparison, periodChanges } from "@/lib/comparison";
 import { rangeLength } from "@/lib/filters";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { formatCount, formatMoney } from "@/lib/format";
@@ -121,5 +121,30 @@ describe("comparison coverage", () => {
         "2027-02-28",
       ),
     ).toBe("Changes are hidden because the periods differ in length: 29 days selected, 28 days compared.");
+  });
+});
+
+describe("period changes", () => {
+  const range = { from: "2026-09-12", to: "2026-10-09" };
+  const baseline = { from: "2026-08-15", to: "2026-09-11" };
+
+  it("show only with a comparison period, its data, and full coverage", () => {
+    expect(periodChanges(range, baseline, { latest_date: "2026-10-09", previous_latest_date: "2026-09-11" })).toEqual({
+      show: true,
+      issue: null,
+    });
+    expect(periodChanges(range, null, { latest_date: "2026-10-09", previous_latest_date: "2026-09-11" })).toEqual({
+      show: false,
+      issue: null,
+    });
+    // The comparison query failed or returned no rows.
+    expect(periodChanges(range, baseline, null)).toEqual({ show: false, issue: null });
+    expect(periodChanges(range, baseline, undefined)).toEqual({ show: false, issue: null });
+  });
+
+  it("hide with coverageIssue's reason when the selected period's last days are missing", () => {
+    const changes = periodChanges(range, baseline, { latest_date: "2026-10-08", previous_latest_date: "2026-09-11" });
+    expect(changes.show).toBe(false);
+    expect(changes.issue).toBe(coverageIssue(range, baseline, "2026-10-08", "2026-09-11"));
   });
 });

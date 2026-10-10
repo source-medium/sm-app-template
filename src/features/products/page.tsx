@@ -10,7 +10,7 @@ import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
-import { coverageIssue } from "@/lib/comparison";
+import { periodChanges } from "@/lib/comparison";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatMeasure, formatMoney, formatPercent } from "@/lib/format";
 import { parseSalesChannel, type SearchParams } from "@/lib/filters";
@@ -86,11 +86,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               >
                 {(data) => {
                   const first = data.rows[0];
-                  const issue =
-                    baseline && first
-                      ? coverageIssue(filters.range, baseline, first.latest_date, first.previous_latest_date)
-                      : null;
-                  const compare = baseline !== null && !issue;
+                  const { show: compare, issue } = periodChanges(filters.range, baseline, first);
                   return (
                     <div className="flex flex-col gap-6">
                       <ComparisonIssue issue={issue} />

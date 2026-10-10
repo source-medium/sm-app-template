@@ -280,9 +280,11 @@ To add comparisons to a view, opt into `ReportPage comparisons`, use its
 filters. Copy Overview's `getOverviewReport`: it reuses the existing bounded
 query for each period in parallel, checks truncation, and keeps current data
 visible if the comparison query fails. This adds one query when enabled.
-In a new view, return each period's latest date with rows and pass both to
-`coverageIssue()` in `src/lib/comparison.ts`; show its message and hide changes
-when it returns one, as Overview and Products do.
+To compare in one query instead, as Products and Paid marketing do, group with
+`periodSql()` and select `PERIOD_COVERAGE`, pass `periodParams()`, and decode
+with `periodCoverageFields`, all in `src/lib/data/period-sql.ts`. Either way,
+pass each period's latest date with rows to `periodChanges()` in
+`src/lib/comparison.ts`: show its `issue`, and show changes only when `show`.
 Ratios are recomputed from each period's totals, not averaged from daily ratios.
 
 `lib/comparison.ts` owns date rules and arithmetic; `patterns/kpi-delta.ts`

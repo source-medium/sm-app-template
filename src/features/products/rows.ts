@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { bq } from "@/lib/data/decode";
+import { periodCoverageFields } from "@/lib/data/period-sql";
 
 export const PRODUCTS_RELATION = "obt_order_lines";
 export const ProductChannelRow = z.object({ channel: bq.string() });
@@ -22,8 +23,6 @@ export const ProductRow = z.object({
   total_previous_units: amount,
   total_previous_profit: amount,
   minimum_value: amount,
-  /** Each period's latest date with valid lines, for comparison coverage. */
-  latest_date: bq.date().nullable(),
-  previous_latest_date: bq.date().nullable(),
+  ...periodCoverageFields,
 });
 export type Product = z.output<typeof ProductRow>;

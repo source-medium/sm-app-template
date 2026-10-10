@@ -81,6 +81,24 @@ export function coverageIssue(
   return `Changes are hidden because the selected period has no rows for its last ${dayCount(missing)}, ${baselineMissing ? `and the comparison for only its last ${dayCount(baselineMissing)}` : "while the comparison has rows through its end"}. Days missing at the end are often ones that have not loaded yet, not zeros.`;
 }
 
+/** Each period's latest date with rows, as period-sql's PERIOD_COVERAGE selects them. */
+export type PeriodCoverage = { latest_date: string | null; previous_latest_date: string | null };
+
+/**
+ * Whether a view shows period changes (KPI deltas, change columns): only with a
+ * comparison period, its data (`coverage` is absent when that failed or has no
+ * rows), and coverage that allows them. `issue` says why changes are hidden.
+ */
+export function periodChanges(
+  range: DateRange,
+  baseline: DateRange | null | undefined,
+  coverage: PeriodCoverage | null | undefined,
+): { show: boolean; issue: string | null } {
+  if (!baseline || !coverage) return { show: false, issue: null };
+  const issue = coverageIssue(range, baseline, coverage.latest_date, coverage.previous_latest_date);
+  return { show: issue === null, issue };
+}
+
 export type MetricValue = string | bigint | number;
 export type MetricChange<T extends MetricValue> = {
   difference: T | null;

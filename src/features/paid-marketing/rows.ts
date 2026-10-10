@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { appConfig } from "@/app.config";
 import { bq } from "@/lib/data/decode";
+import { periodCoverageFields } from "@/lib/data/period-sql";
 import type { CampaignRow, ChannelDay } from "./queries";
 
 export const AD_RELATION = "rpt_ad_performance_daily";
@@ -16,9 +17,7 @@ export const SpendBreakdownRow = z.object({
   previous_spend: bq.numeric().nullable(),
   total_spend: bq.numeric().nullable(),
   minimum_spend: bq.numeric().nullable(),
-  /** Each period's latest date with rows, for comparison coverage. */
-  latest_date: bq.date().nullable(),
-  previous_latest_date: bq.date().nullable(),
+  ...periodCoverageFields,
 });
 
 export const ChannelDayRow = z.object({

@@ -9,7 +9,7 @@ import { KpiCard } from "@/components/patterns/kpi-card";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { cardGridStyles } from "@/components/ui/card";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
-import { comparisonDates, coverageIssue, type Comparison } from "@/lib/comparison";
+import { comparisonDates, periodChanges, type Comparison } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
 import { parseSalesChannel, withParams, datesInRange, latestDate, rangeLength, type SearchParams } from "@/lib/filters";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
@@ -85,11 +85,13 @@ function OverviewView({
   const previous = compared?.totals ?? null;
   const baseline = comparison?.range;
   const latest = (days: { date: string }[]) => latestDate(days.map((day) => day.date));
-  const issue =
-    baseline && compared ? coverageIssue(filters.range, baseline, latest(data.days), latest(compared.days)) : null;
+  const { show: showDelta, issue } = periodChanges(
+    filters.range,
+    baseline,
+    compared && { latest_date: latest(data.days), previous_latest_date: latest(compared.days) },
+  );
   // Daily lines align date by date, so they still show; period totals change only when coverage allows.
   const showLines = Boolean(baseline && compared);
-  const showDelta = showLines && !issue;
   const previousRevenue = decimalToNumber(previous?.netRevenue ?? null);
   const previousSpend = decimalToNumber(previous?.adSpend ?? null);
   const period = `${formatDate(filters.range.from)} – ${formatDate(filters.range.to)}`;

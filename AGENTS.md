@@ -118,7 +118,8 @@ use theme classes (`bg-card`, `text-muted-foreground`), not raw colors. Charts
 use `--chart-1`…`--chart-8` in order, one y-axis, and keep the table view.
 Comparisons: opt into `ReportPage comparisons` only when querying both periods.
 Reuse `lib/comparison.ts`, `lib/time-grain.ts`, and `patterns/kpi-delta.ts`;
-hide period changes when `coverageIssue()` returns a reason.
+build one-query comparisons with `lib/data/period-sql.ts`, and show period changes
+only when `periodChanges()` allows.
 Copy Products for simple pages and rankings, Overview for multi-measure summaries,
 Retention for `CohortMatrix`.
 
