@@ -17,6 +17,8 @@ const resolve = {
 
 // The invariant tests run twice: in Node and in workerd, the runtime Cloudflare deploys.
 const INVARIANTS = ["tests/invariants/**/*.test.ts"];
+/** Request headers, React's cache, and stub resets for server code under test. */
+const SERVER_SETUP = "tests/helpers/setup-server.ts";
 
 export default defineConfig({
   resolve,
@@ -30,6 +32,7 @@ export default defineConfig({
           testTimeout: 30_000,
           environment: "node",
           include: [...INVARIANTS, "tests/unit/**/*.test.ts", "tests/static/**/*.test.ts", "src/**/*.test.ts"],
+          setupFiles: [SERVER_SETUP],
         },
       },
       {
@@ -51,7 +54,13 @@ export default defineConfig({
             miniflare: { compatibilityDate: "2026-06-30", compatibilityFlags: ["nodejs_compat"] },
           }),
         ],
-        test: { name: "workerd", env: sampleEnvironment, include: INVARIANTS, testTimeout: 30_000 },
+        test: {
+          name: "workerd",
+          env: sampleEnvironment,
+          include: INVARIANTS,
+          setupFiles: [SERVER_SETUP],
+          testTimeout: 30_000,
+        },
       },
     ],
   },

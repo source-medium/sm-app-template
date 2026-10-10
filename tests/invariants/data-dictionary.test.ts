@@ -4,9 +4,6 @@ import { setLogEmitter } from "@/lib/data/log";
 import { goLive, requestHeaders, rowsResponse } from "../helpers/live";
 import { googleError, hang } from "../fake-bigquery/fake-bigquery";
 
-vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
-vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
-
 const fields = ["column_name", "data_type", "column_description", "table_description"].map((name) => ({
   name,
   type: "STRING",
@@ -21,9 +18,6 @@ const url = "https://app.test/data-dictionary?store=store-a&relation=obt_orders"
 
 afterEach(() => {
   setLogEmitter(() => undefined);
-  vi.unstubAllGlobals();
-  vi.unstubAllEnvs();
-  requestHeaders.current = new Headers();
 });
 
 it("reads only bound, store-scoped dictionary fields through the real guard and REST protocol", async () => {

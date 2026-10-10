@@ -1,12 +1,7 @@
-import { afterEach, expect, it, vi } from "vitest";
-import { goLive, requestHeaders, rowsResponse } from "../../../tests/helpers/live";
+import { expect, it, vi } from "vitest";
+import { goLive, rowsResponse } from "../../../tests/helpers/live";
 import type { ProductFilters } from "./queries";
-vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
-vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
-});
+
 const fields = [
   ...["product_key", "label", "reference"].map((name) => ({ name, type: "STRING" })),
   ...[

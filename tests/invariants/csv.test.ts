@@ -1,14 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { csvExport, csvResponse } from "@/lib/csv.server";
 import { googleError } from "../fake-bigquery/fake-bigquery";
-import { goLive, isStoreList, requestHeaders, rowsResponse, withStores } from "../helpers/live";
-
-vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
-vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
-});
+import { goLive, isStoreList, rowsResponse, withStores } from "../helpers/live";
 
 describe("CSV downloads", () => {
   it("preserves exact decimals, bigint, nulls, Unicode, quotes, and line breaks", async () => {

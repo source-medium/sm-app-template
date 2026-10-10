@@ -1,13 +1,6 @@
 /** Creatives' live path end to end against the fake BigQuery. */
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { goLive, requestHeaders, rowsResponse } from "../../../tests/helpers/live";
-
-vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
-vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
-});
+import { describe, expect, it, vi } from "vitest";
+import { goLive, rowsResponse } from "../../../tests/helpers/live";
 
 const FIELDS = [
   { name: "creative_id", type: "STRING" },

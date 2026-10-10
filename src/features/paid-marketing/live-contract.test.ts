@@ -1,15 +1,8 @@
 /** Paid marketing's live path end to end against the fake BigQuery. */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { FakeCall } from "../../../tests/fake-bigquery/fake-bigquery";
 import { goLive, isStoreList, requestHeaders, rowsResponse, withStores } from "../../../tests/helpers/live";
 import { MAX_SERIES_ROWS } from "./rows";
-
-vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
-vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
-});
 
 const SERIES_FIELDS = [
   { name: "channel", type: "STRING" },

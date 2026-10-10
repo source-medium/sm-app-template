@@ -2,20 +2,13 @@
  * requireViewer() re-derives the mode and authenticates every request; it is
  * the only way a page obtains a Warehouse.
  */
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { requestHeaders } from "../helpers/live";
 import { liveEnv, makeServiceAccountKey, TEST_PASSWORD, type TestKey } from "../helpers/service-account";
-
-const requestHeaders = { current: new Headers() };
-vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
-vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
 
 let key: TestKey;
 beforeAll(async () => {
   key = await makeServiceAccountKey();
-});
-afterEach(() => {
-  vi.unstubAllEnvs();
-  requestHeaders.current = new Headers();
 });
 
 function stubEnv(values: Record<string, string | undefined>) {

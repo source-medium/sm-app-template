@@ -2,7 +2,9 @@
  * Live mode in a unit test: a complete configuration with a generated key,
  * an authenticated request, and the fake BigQuery standing in for Google.
  * Exercises requireViewer, the token exchange, the REST client, and the
- * decoders exactly as a deployed app does.
+ * decoders exactly as a deployed app does. tests/helpers/setup-server.ts, a
+ * setup file for every server test, reads `requestHeaders` as the request's
+ * headers and resets it after each test.
  */
 import { vi } from "vitest";
 import { createFakeBigQuery, JOB, type FakeBigQueryScript, type FakeCall } from "../fake-bigquery/fake-bigquery";

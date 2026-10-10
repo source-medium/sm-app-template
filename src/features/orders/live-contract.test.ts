@@ -1,14 +1,7 @@
 /** Orders' live path end to end against the fake BigQuery: keyset pages and the detail read. */
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { goLive, requestHeaders, rowsResponse } from "../../../tests/helpers/live";
+import { describe, expect, it, vi } from "vitest";
+import { goLive, rowsResponse } from "../../../tests/helpers/live";
 import { PAGE_SIZE } from "./queries";
-
-vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
-vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
-});
 
 const FIELDS = [
   "order_key",

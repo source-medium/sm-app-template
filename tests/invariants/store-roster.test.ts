@@ -5,10 +5,7 @@ import { loadStores, resolveReportStore, storeTimeZone } from "@/lib/data/stores
 import { MAX_STORES } from "@/lib/data/store-roster.server";
 import { setLogEmitter } from "@/lib/data/log";
 import { googleError } from "../fake-bigquery/fake-bigquery";
-import { goLive, requestHeaders, ROSTER_FIELDS, rowsResponse, storeRow } from "../helpers/live";
-
-vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
-vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
+import { goLive, ROSTER_FIELDS, rowsResponse, storeRow } from "../helpers/live";
 
 const originalLabels = appConfig.storeLabels;
 const offset = [{ name: "offset_minutes", type: "INTEGER" }];
@@ -25,11 +22,8 @@ const metadata = [
 
 afterEach(() => {
   setLogEmitter(() => undefined);
-  vi.unstubAllGlobals();
-  vi.unstubAllEnvs();
   vi.restoreAllMocks();
   appConfig.storeLabels = originalLabels;
-  requestHeaders.current = new Headers();
 });
 
 it("loads named stores and brands from the dimension without scanning a fact table", async () => {

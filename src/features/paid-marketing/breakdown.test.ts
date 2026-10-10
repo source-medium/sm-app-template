@@ -1,14 +1,8 @@
-import { afterEach, expect, it, vi } from "vitest";
-import { goLive, requestHeaders, rowsResponse } from "../../../tests/helpers/live";
+import { expect, it, vi } from "vitest";
+import { goLive, rowsResponse } from "../../../tests/helpers/live";
 import { samplePaidSource, sampleSpendBreakdown } from "./sample";
 import { sumDecimals } from "@/lib/data/decimal";
 
-vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
-vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
-});
 const filters = { storeId: "sample-store-a", range: { from: "2026-09-01", to: "2026-09-07" }, channel: null };
 const baseline = { from: "2025-09-01", to: "2025-09-07" };
 const fields = [
