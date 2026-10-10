@@ -41,7 +41,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
       params={params}
       agentFilters={{ channel, sort }}
     >
-      {({ filters }) => (
+      {({ filters, timeZone }) => (
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-4">
             <Suspense
@@ -77,6 +77,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
             fallback={<LoadingState variant="grid" label="Loading creatives" />}
           >
             <DataRegion
+              timestamp={timeZone}
               load={() => getCreatives({ ...filters, sort, channel })}
               isEmpty={(data) => data.creatives.length === 0}
               emptyMessage="No ad creatives match this store, ad channel, and date range."

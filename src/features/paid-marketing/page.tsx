@@ -70,7 +70,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
       comparisons
       comparisonLabel="Compare spend breakdown with"
     >
-      {({ filters, comparison, params: applied }) => {
+      {({ filters, comparison, params: applied, timeZone }) => {
         const paidFilters: PaidMarketingFilters = { ...filters, channel };
         return (
           <>
@@ -79,6 +79,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
               fallback={<LoadingState variant="chart" label="Loading paid marketing" />}
             >
               <DataRegion
+                timestamp={timeZone}
                 load={() => getPaidMarketing(paidFilters)}
                 isEmpty={(data) => data.channelDays.length === 0}
                 emptyMessage="This store has no ad delivery in the selected dates."
@@ -91,6 +92,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
               fallback={<LoadingState variant="chart" label="Loading spend breakdown" />}
             >
               <DataRegion
+                timestamp={timeZone}
                 load={() => getSpendBreakdown(paidFilters, breakdownDimension(params), comparison?.range ?? null)}
                 isEmpty={(data) => data.rows.length === 0}
                 emptyMessage="No spend rows match these filters."

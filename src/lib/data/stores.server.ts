@@ -1,13 +1,14 @@
 /**
- * The store picker's roster, shared by every view's filter bar. Labels come
- * from dim_stores, with optional app.config.ts overrides. There is no
- * cross-store total anywhere in the example.
+ * The store picker's roster, shared by every view's filter bar, and the store
+ * and time zone each report or export uses. Labels come from dim_stores, with
+ * optional app.config.ts overrides. There is no cross-store total anywhere in
+ * the example.
  */
 import "server-only";
 import { cache } from "react";
 import { appConfig } from "@/app.config";
-import { requireViewer } from "@/lib/auth/require-viewer";
-import { calendarDate, isTimeZone } from "@/lib/format";
+import { requestedStore, requireViewer } from "@/lib/auth/require-viewer";
+import { isTimeZone } from "@/lib/format";
 import { SAMPLE_STORES } from "@/lib/sample/stores";
 import { queryOrderTimeZone, queryStoreRoster } from "./store-roster.server";
 import { WarehouseError } from "./warehouse-error";
@@ -50,10 +51,7 @@ const REMEMBER_MS = 60 * 60 * 1000;
  * the store list failed. Null for an unlisted store with neither. Never a
  * guess: a listed store with neither throws, as does a failed store list.
  */
-export async function storeTimeZone(
-  storeId: string,
-  stores?: StoreOption[] | Promise<StoreOption[]>,
-): Promise<string | null> {
+export async function storeTimeZone(storeId: string, stores?: StoreOption[]): Promise<string | null> {
   const access = await requireViewer({ storeId });
   const key = `${access.mode}|${storeId}`;
   const known = knownTimeZones.get(key);
@@ -77,12 +75,41 @@ export async function storeTimeZone(
   throw new WarehouseError("time_zone_unknown", { relation: "dim_stores", column: "store_timezone" });
 }
 
-/** Today's date for the store, in its time zone. Null for a store this app does not list. */
-export async function storeToday(
-  storeId: string,
-  stores?: StoreOption[] | Promise<StoreOption[]>,
-  now = new Date(),
-): Promise<string | null> {
-  const zone = await storeTimeZone(storeId, stores);
-  return zone === null ? null : calendarDate(now, zone);
+export type ReportStore =
+  /** `stores` is the store list when choosing the store needed it, else null. */
+  | { status: "ready"; storeId: string; timeZone: string; stores: StoreOption[] | null }
+  /** No store to show: the list failed (`error`) or has none (null). */
+  | { status: "no_store"; error: WarehouseError | null }
+  /** The store's dates are unknown: a lookup failed (`error`), or it is unlisted without recent orders (null). */
+  | { status: "no_date"; storeId: string; error: WarehouseError | null };
+
+/**
+ * The store a report or export shows, and its time zone: the URL's store
+ * (`?store=`) when the viewer may see it, otherwise the fixed or first listed
+ * store. A store the viewer may not see throws StoreAccessError before any
+ * query. The store list is read only when needed, through loadStores(), which
+ * a page shares with its filter bar.
+ */
+export async function resolveReportStore(supplied: string | undefined): Promise<ReportStore> {
+  const requested = await requestedStore(supplied);
+  let stores: StoreOption[] | null = null;
+  if (requested === null) {
+    try {
+      stores = await loadStores();
+    } catch (error) {
+      if (!(error instanceof WarehouseError)) throw error;
+      return { status: "no_store", error };
+    }
+  }
+  const storeId = requested ?? stores?.[0]?.id;
+  if (!storeId) return { status: "no_store", error: null };
+  try {
+    const timeZone = await storeTimeZone(storeId, stores ?? undefined);
+    return timeZone === null
+      ? { status: "no_date", storeId, error: null }
+      : { status: "ready", storeId, timeZone, stores };
+  } catch (error) {
+    if (!(error instanceof WarehouseError)) throw error;
+    return { status: "no_date", storeId, error };
+  }
 }

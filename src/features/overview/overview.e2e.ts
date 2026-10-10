@@ -195,6 +195,8 @@ test("unknown stores remain unselected until the viewer chooses a valid store", 
   await expect(page.getByText("This store is not in the store list")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("href", /store=sample-store-b/);
   await expect(page.getByText("Dates are calendar dates in the store's time zone, America/Los_Angeles.")).toBeVisible();
+  // Load times are in the store's zone too, and say which.
+  await expect(page.locator('[data-slot="data-loaded-at"]').first()).toHaveText(/ P[DS]T$/);
 });
 
 test("overview: comparison dates and the dashed baseline survive the table toggle", async ({ page }) => {

@@ -18,6 +18,7 @@ async function renderRegion(load: () => Promise<string[]>) {
     load,
     isEmpty: (rows: string[]) => rows.length === 0,
     emptyMessage: "No rows for this store.",
+    timestamp: "America/New_York",
     children: (rows: string[]) => <p>{rows.join(",")}</p>,
   });
   render(element);
@@ -29,14 +30,37 @@ describe("DataRegion", () => {
     expect(screen.getByText("a,b")).toBeInTheDocument();
   });
 
-  it("timestamps completion, not the start of the query", async () => {
+  it("timestamps completion, not the start of the query, in the store's time zone", async () => {
     await renderRegion(async () => {
       vi.setSystemTime(new Date("2026-10-06T12:00:17Z"));
       return ["a", "b"];
     });
-    const timestamp = screen.getByText("Oct 6, 2026, 12:00:17 PM UTC");
+    const timestamp = screen.getByText("Oct 6, 2026, 8:00:17 AM EDT");
     expect(timestamp).toHaveAttribute("datetime", "2026-10-06T12:00:17.000Z");
     expect(timestamp.parentElement).toHaveTextContent("Queried at");
+  });
+
+  it("names an order-offset zone, and skips the time for filter options", async () => {
+    const offsetZone = await DataRegion({
+      load: async () => ["a"],
+      isEmpty: () => false,
+      emptyMessage: "",
+      timestamp: "-07:00",
+      children: () => null,
+    });
+    const { unmount } = render(offsetZone);
+    expect(screen.getByText("Oct 6, 2026, 5:00:00 AM GMT-7")).toBeInTheDocument();
+    unmount();
+    const options = await DataRegion({
+      load: async () => ["a"],
+      isEmpty: () => false,
+      emptyMessage: "",
+      timestamp: false,
+      children: () => <p>options</p>,
+    });
+    render(options);
+    expect(screen.getByText("options")).toBeInTheDocument();
+    expect(screen.queryByText(/Queried at/)).not.toBeInTheDocument();
   });
 
   it("labels a sample load without claiming a warehouse query", async () => {
@@ -79,6 +103,7 @@ describe("DataRegion", () => {
         },
         isEmpty: () => false,
         emptyMessage: "",
+        timestamp: "UTC",
         children: () => null,
       }),
     ).rejects.toThrow("a bug");

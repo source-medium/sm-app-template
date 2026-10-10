@@ -239,9 +239,12 @@ selectable end date, and each dated report's footer names it. There is no
 setting and no UTC default. Where `dim_stores` has no recognized zone for the
 store (or is not published yet, or the store list fails), the zone is the UTC
 offset SourceMedium applied to the store's recent orders, preferring non-Amazon
-sources. A listed store with neither shows an error rather than a guessed date. In a view, take today from
-`ReportContext.today`; elsewhere call `storeToday()` in
-`src/lib/data/stores.server.ts`. Never use the server clock's date or UTC.
+sources. A listed store with neither shows an error rather than a guessed date.
+In a view, take today and the zone from `ReportContext.today` and
+`ReportContext.timeZone`; a route handler calls `resolveReportStore()` in
+`src/lib/data/stores.server.ts`, as `csvExport()` does. Moments such as
+**Queried at** and an order's created time show in the store's zone, named.
+Never use the server clock's date or UTC.
 
 Date presets include Yesterday, Last 7/28/90 days, Last full week
 (Monday–Sunday), Last month, and Month to date through yesterday. They use

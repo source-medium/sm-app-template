@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { csvExport, csvResponse } from "@/lib/csv.server";
+import { googleError } from "../fake-bigquery/fake-bigquery";
 import { goLive, isStoreList, requestHeaders, rowsResponse, withStores } from "../helpers/live";
 
 vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
@@ -99,6 +100,29 @@ describe("CSV export scope", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("says why it cannot export a store's report, as the page does", async () => {
+    const build = vi.fn(ok);
+    const reply = async (url: string) => {
+      const response = await csvExport(new Request(`https://example.test/x/export${url}`), build);
+      return { status: response.status, body: await response.json() };
+    };
+    await goLive({ submit: withStores(() => rowsResponse([], []), []) });
+    expect(await reply("")).toEqual({ status: 400, body: { title: "No store selected" } });
+    await goLive({ submit: withStores(() => rowsResponse([], []), ["s-listed"]) });
+    expect(await reply("?store=s-unlisted")).toEqual({
+      status: 400,
+      body: { title: "This store is not in the store list" },
+    });
+    await goLive({ submit: withStores(() => rowsResponse([], []), ["s-no-zone"], null) });
+    expect(await reply("?store=s-no-zone")).toMatchObject({
+      status: 503,
+      body: { title: "This store's time zone is not published" },
+    });
+    await goLive({ submit: () => googleError(403, "accessDenied") });
+    expect(await reply("")).toMatchObject({ status: 503, body: { title: "The app cannot read this data" } });
+    expect(build).not.toHaveBeenCalled();
   });
 
   it("passes the applied store and range, and refuses another store when one is fixed", async () => {

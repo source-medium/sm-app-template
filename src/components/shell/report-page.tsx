@@ -1,7 +1,7 @@
 /**
  * The frame every report view shares: title, the store and date filters
  * parsed from the URL, refresh and share controls, and a freshness footer.
- * Each DataRegion timestamps its own successful load.
+ * Each DataRegion timestamps its own successful load, in the store's time zone.
  *
  * A view passes a render function that receives the applied filters.
  *
@@ -21,8 +21,8 @@ import { FilterBar } from "@/components/shell/filter-bar";
 import { CopyReportLink } from "@/components/shell/copy-report-link";
 import { RefreshReport } from "@/components/shell/refresh-report";
 import { Skeleton } from "@/components/ui/skeleton";
-import { requestedStore, requireViewer } from "@/lib/auth/require-viewer";
-import { loadStores, storeTimeZone, type StoreOption } from "@/lib/data/stores.server";
+import { requireViewer } from "@/lib/auth/require-viewer";
+import { loadStores, resolveReportStore, type StoreOption } from "@/lib/data/stores.server";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { parseComparison, type Comparison } from "@/lib/comparison";
 import { calendarDate } from "@/lib/format";
@@ -37,8 +37,14 @@ import {
   type SearchParams,
 } from "@/lib/filters";
 
-/** `today` is the store's current date in its SourceMedium time zone. */
-export type ReportContext = { filters: ReportFilters; params: SearchParams; comparison?: Comparison; today: string };
+/** `timeZone` is the store's SourceMedium time zone; `today` is its current date there. */
+export type ReportContext = {
+  filters: ReportFilters;
+  params: SearchParams;
+  comparison?: Comparison;
+  today: string;
+  timeZone: string;
+};
 
 type FilterBarProps = {
   pathname: string;
@@ -91,10 +97,6 @@ export async function ReportPage({
   children: (context: ReportContext) => React.ReactNode;
 }) {
   const access = await requireViewer();
-  const requested = await requestedStore(single(params, "store"));
-  const roster = loadStores();
-  // Handled where it is awaited; this keeps an early failure from being reported as unhandled.
-  roster.catch(() => undefined);
   const fixedStore = access.storeId !== null;
 
   /** `view` is the applied report state, once the store's date is known. */
@@ -146,71 +148,52 @@ export async function ReportPage({
     );
   }
 
-  let stores: StoreOption[] | null = null;
-  let storeId: string;
-  if (requested !== null) storeId = requested;
-  else {
-    try {
-      stores = await roster;
-    } catch (error) {
-      if (!(error instanceof WarehouseError)) throw error;
-      return (
-        <div className="flex flex-col gap-4">
-          {header()}
-          <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} />
-        </div>
-      );
-    }
-    const first = stores[0];
-    if (!first) {
-      return (
-        <div className="flex flex-col gap-4">
-          {header()}
+  const store = await resolveReportStore(single(params, "store"));
+  if (store.status === "no_store") {
+    return (
+      <div className="flex flex-col gap-4">
+        {header()}
+        {store.error ? (
+          <ErrorState title={store.error.title} remedy={store.error.remedy} detail={store.error.detail} />
+        ) : (
           <EmptyState message="This warehouse has no stores available yet." />
-        </div>
-      );
-    }
-    // Links built from params now name the store, so the next page runs its queries in parallel.
-    storeId = first.id;
+        )}
+      </div>
+    );
   }
-
-  /** The store picker without dates, for a store whose date is unknown. */
-  const storeOnly = (notice: React.ReactNode) => (
-    <div className="flex flex-col gap-4">
-      {header(storeId)}
-      <Suspense fallback={<Skeleton className="h-[4.75rem] rounded-lg" />}>
-        <RosterFilterBar
-          roster={roster}
-          storeId={storeId}
-          pathname={pathname}
-          params={params}
-          range={null}
-          today={null}
-          dates={false}
-          fixedStore={fixedStore}
-        />
-      </Suspense>
-      {notice}
-    </div>
-  );
-
-  let timeZone: string | null;
-  try {
-    timeZone = await storeTimeZone(storeId, stores ?? roster);
-  } catch (error) {
-    if (!(error instanceof WarehouseError)) throw error;
-    // The filter bar reports a store list failure itself.
+  // The request's store list, shared with resolveReportStore when it needed one; the filter bar renders it.
+  const roster = loadStores();
+  // Handled where it is awaited; this keeps an early failure from being reported as unhandled.
+  roster.catch(() => undefined);
+  if (store.status === "no_date") {
+    // The filter bar shows a failed store list itself, or that the store is not listed.
     const rosterFailed = await roster.then(
       () => false,
       () => true,
     );
-    return storeOnly(
-      rosterFailed ? null : <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} />,
+    return (
+      <div className="flex flex-col gap-4">
+        {header(store.storeId)}
+        <Suspense fallback={<Skeleton className="h-[4.75rem] rounded-lg" />}>
+          <RosterFilterBar
+            roster={roster}
+            storeId={store.storeId}
+            pathname={pathname}
+            params={params}
+            range={null}
+            today={null}
+            dates={false}
+            fixedStore={fixedStore}
+          />
+        </Suspense>
+        {store.error && !rosterFailed && (
+          <ErrorState title={store.error.title} remedy={store.error.remedy} detail={store.error.detail} />
+        )}
+      </div>
     );
   }
-  // An unlisted store without recent orders: the filter bar says it is not listed.
-  if (timeZone === null) return storeOnly(null);
-
+  // Links built from params name the store, so the next page can run its queries in parallel.
+  const { storeId, stores, timeZone } = store;
   const today = calendarDate(new Date(), timeZone);
   const derived = defaults?.(today) ?? {};
   params = { ...params, ...derived };
@@ -245,7 +228,7 @@ export async function ReportPage({
           remedy={`${issue} The controls show a suggested range. Apply it or choose another range to load the report.`}
         />
       ) : (
-        children({ filters: { storeId, range }, params: { ...params, store: storeId }, comparison, today })
+        children({ filters: { storeId, range }, params: { ...params, store: storeId }, comparison, today, timeZone })
       )}
       <footer className="border-t pt-4 text-xs text-muted-foreground">
         {access.mode === "sample"

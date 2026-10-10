@@ -73,9 +73,9 @@ docs/                         Guides (index below)
 2. Add `src/app/(app)/<route>/page.tsx`: `export { default, metadata } from "@/features/<name>/page";`
 3. Add one entry to `nav` in `app.config.ts`.
 4. Wrap each data region in `<Suspense key={…the filters it reads…} fallback={<LoadingState …/>}>`
-   and `<DataRegion>`, so it has loading, empty, error, and incompatible-schema
-   states. A view with no date range (current state, such as inventory) passes
-   `dates={false}` to `ReportPage`.
+   and `<DataRegion timestamp={timeZone}>` (from the `ReportPage` context), so it
+   has loading, empty, error, and incompatible-schema states. A view with no date
+   range (current state, such as inventory) passes `dates={false}` to `ReportPage`.
 5. Add tests beside the view: `fixture-contract.test.ts` (sample shape and
    totals), `live-contract.test.ts` (the SQL, the `store_id` and other parameters,
    and truncation against the fake BigQuery; copy an example view's), and
@@ -105,7 +105,8 @@ to delete any of them.
   Keep NUMERIC exact, add with `sumDecimals`, format with `formatMoney`.
   Read each field's type: platform-reported revenue is FLOAT64. Never add across stores.
 - Dates are each store's calendar dates in its SourceMedium time zone. Take
-  today from `ReportContext.today` (or `storeToday()`), never the server clock or UTC.
+  today and times from `ReportContext.today` and `timeZone` (or `resolveReportStore()`), never
+  the server clock's date or UTC.
 - Show "Queried at" and "Data freshness unknown"; never claim freshness from `MAX(date)`.
 
 ## UI

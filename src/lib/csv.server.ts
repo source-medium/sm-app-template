@@ -1,10 +1,11 @@
 /** Small, bounded CSV downloads. Feature code owns the query and column definitions. */
 import "server-only";
-import { requestedStore, requireViewer, type ViewerAccess } from "@/lib/auth/require-viewer";
+import { requireViewer, type ViewerAccess } from "@/lib/auth/require-viewer";
 import { StoreAccessError } from "@/lib/auth/store-access";
-import { loadStores, storeToday, type StoreOption } from "@/lib/data/stores.server";
+import { resolveReportStore } from "@/lib/data/stores.server";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { dateRangeIssue, parseDateRange, single, type DateRange, type SearchParams } from "@/lib/filters";
+import { calendarDate } from "@/lib/format";
 
 type CsvValue = string | number | bigint | boolean | null;
 export type CsvColumn<Row> = { header: string; value: (row: Row) => CsvValue; numeric?: boolean };
@@ -46,16 +47,18 @@ export async function csvExport(request: Request, build: (scope: ExportScope) =>
   for (const [key, value] of new URL(request.url).searchParams) if (params[key] === undefined) params[key] = value;
   try {
     const { mode } = await requireViewer();
-    const requested = await requestedStore(single(params, "store"));
-    const stores: StoreOption[] | undefined = requested === null ? await loadStores() : undefined;
-    const storeId = requested ?? stores?.[0]?.id;
-    if (!storeId) return failure(400, { title: "No store selected" });
+    const store = await resolveReportStore(single(params, "store"));
+    if (store.status !== "ready") {
+      if (store.error) throw store.error;
+      return failure(400, {
+        title: store.status === "no_store" ? "No store selected" : "This store is not in the store list",
+      });
+    }
     // Dates are the store's calendar dates, so its time zone decides today.
-    const today = await storeToday(storeId, stores);
-    if (today === null) return failure(400, { title: "This store is not in the store list" });
+    const today = calendarDate(new Date(), store.timeZone);
     const issue = dateRangeIssue(params, today);
     if (issue) return failure(400, { title: "Check the date range", remedy: issue });
-    return await build({ params, storeId, range: parseDateRange(params, today), mode });
+    return await build({ params, storeId: store.storeId, range: parseDateRange(params, today), mode });
   } catch (error) {
     if (error instanceof StoreAccessError) return failure(403, { title: error.message });
     if (!(error instanceof WarehouseError)) throw error;

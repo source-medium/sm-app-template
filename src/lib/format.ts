@@ -23,17 +23,6 @@ const longDate = new Intl.DateTimeFormat(appConfig.locale, {
   timeZone: "UTC",
 });
 const monthDate = new Intl.DateTimeFormat(appConfig.locale, { year: "numeric", month: "short", timeZone: "UTC" });
-const clockOptions = {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  timeZone: "UTC",
-  timeZoneName: "short",
-} satisfies Intl.DateTimeFormatOptions;
-const clock = new Intl.DateTimeFormat(appConfig.locale, clockOptions);
-const preciseClock = new Intl.DateTimeFormat(appConfig.locale, { ...clockOptions, second: "2-digit" });
 
 export const EMPTY_VALUE = "—";
 
@@ -101,8 +90,26 @@ export function formatMonth(date: string): string {
   return monthDate.format(new Date(`${date}T00:00:00Z`));
 }
 
-export function formatInstant(iso: string, includeSeconds = false): string {
-  return (includeSeconds ? preciseClock : clock).format(new Date(iso));
+const clocks = new Map<string, Intl.DateTimeFormat>();
+
+/** A moment in the store's time zone (ReportContext.timeZone), named, so it is never mistaken for UTC. */
+export function formatInstant(iso: string, timeZone: string, includeSeconds = false): string {
+  const key = `${timeZone}|${includeSeconds}`;
+  let clock = clocks.get(key);
+  if (!clock) {
+    clock = new Intl.DateTimeFormat(appConfig.locale, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      ...(includeSeconds ? { second: "2-digit" } : {}),
+      timeZone,
+      timeZoneName: "short",
+    });
+    clocks.set(key, clock);
+  }
+  return clock.format(new Date(iso));
 }
 
 const wallTime = new Intl.DateTimeFormat(appConfig.locale, {

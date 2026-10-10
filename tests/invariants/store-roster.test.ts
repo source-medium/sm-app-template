@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { appConfig } from "@/app.config";
-import { loadStores, storeTimeZone, storeToday } from "@/lib/data/stores.server";
+import { StoreAccessError } from "@/lib/auth/store-access";
+import { loadStores, resolveReportStore, storeTimeZone } from "@/lib/data/stores.server";
 import { MAX_STORES } from "@/lib/data/store-roster.server";
 import { setLogEmitter } from "@/lib/data/log";
 import { googleError } from "../fake-bigquery/fake-bigquery";
@@ -157,8 +158,7 @@ describe("store time zones", () => {
 
   it("uses the store's dim_stores time zone, and remembers it", async () => {
     const fake = await goLive({ submit: () => rowsResponse(fields, roster("zone-ny", "America/New_York")) });
-    // 03:30 UTC on 10 October is still the evening of 9 October in New York.
-    expect(await storeToday("zone-ny", undefined, new Date("2026-10-10T03:30:00Z"))).toBe("2026-10-09");
+    expect(await storeTimeZone("zone-ny")).toBe("America/New_York");
     expect(await storeTimeZone("zone-ny")).toBe("America/New_York");
     expect(fake.count("submit")).toBe(1);
   });
@@ -170,7 +170,6 @@ describe("store time zones", () => {
           ? rowsResponse(offset, [{ offset_minutes: "-420" }])
           : rowsResponse(fields, roster("zone-masked", "2d4bbedff8")),
     });
-    expect(await storeToday("zone-masked", undefined, new Date("2026-10-10T05:00:00Z"))).toBe("2026-10-09");
     expect(await storeTimeZone("zone-masked")).toBe("-07:00");
     const sql = fake.calls.map(query).find((text) => text?.includes("offset_minutes"));
     expect(sql).toContain("sm_store_id = @store_id");
@@ -233,6 +232,86 @@ describe("store time zones", () => {
           : rowsResponse(fields, roster("zone-none", null)),
     });
     await expect(storeTimeZone("zone-none")).rejects.toMatchObject({ kind: "time_zone_unknown" });
-    await expect(storeToday("zone-unlisted")).resolves.toBeNull();
+    await expect(storeTimeZone("zone-unlisted")).resolves.toBeNull();
+  });
+});
+
+describe("the store a report shows", () => {
+  const offset = [{ name: "offset_minutes", type: "INTEGER" }];
+  const store = (id: string, zone: string | null) => ({
+    sm_store_id: id,
+    store_name: null,
+    brand_name: null,
+    store_timezone: zone,
+  });
+  /** A store list, and recent orders for any store, or a failure for either. */
+  function warehouse(list: ReturnType<typeof store>[] | "fails", orders: { offset_minutes: string }[] = []) {
+    return goLive({
+      submit: ({ body }) =>
+        (body as { query: string }).query.includes("offset_minutes")
+          ? rowsResponse(offset, orders)
+          : list === "fails"
+            ? googleError(403, "accessDenied")
+            : rowsResponse(fields, list),
+    });
+  }
+
+  it("is the first listed store when the URL names none, with the list for the picker", async () => {
+    await warehouse([store("first-ny", "America/New_York"), store("second-la", "America/Los_Angeles")]);
+    expect(await resolveReportStore(undefined)).toMatchObject({
+      status: "ready",
+      storeId: "first-ny",
+      timeZone: "America/New_York",
+      stores: [{ id: "first-ny" }, { id: "second-la" }],
+    });
+  });
+
+  it("is the URL's store, reading the store list once", async () => {
+    const fake = await warehouse([store("url-ny", "America/New_York"), store("url-la", "America/Los_Angeles")]);
+    expect(await resolveReportStore("url-la")).toEqual({
+      status: "ready",
+      storeId: "url-la",
+      timeZone: "America/Los_Angeles",
+      stores: null,
+    });
+    expect(fake.count("submit")).toBe(1);
+  });
+
+  it("says when there is no store to show, and why", async () => {
+    await warehouse([]);
+    expect(await resolveReportStore(undefined)).toEqual({ status: "no_store", error: null });
+    await warehouse("fails");
+    expect(await resolveReportStore(undefined)).toMatchObject({
+      status: "no_store",
+      error: { kind: "permission_denied" },
+    });
+  });
+
+  it("says when the store's dates are unknown, and why", async () => {
+    await warehouse([store("dateless", null)]);
+    expect(await resolveReportStore("not-listed")).toEqual({ status: "no_date", storeId: "not-listed", error: null });
+    expect(await resolveReportStore("dateless")).toMatchObject({
+      status: "no_date",
+      storeId: "dateless",
+      error: { kind: "time_zone_unknown" },
+    });
+  });
+
+  it("still shows a store whose orders give its zone when the list fails", async () => {
+    await warehouse("fails", [{ offset_minutes: "-240" }]);
+    expect(await resolveReportStore("listless")).toEqual({
+      status: "ready",
+      storeId: "listless",
+      timeZone: "-04:00",
+      stores: null,
+    });
+  });
+
+  it("refuses a store the deployment does not serve before any query", async () => {
+    const fake = await warehouse([store("allowed", "UTC")]);
+    vi.stubEnv("APP_STORE_ID", "allowed");
+    await expect(resolveReportStore("other")).rejects.toBeInstanceOf(StoreAccessError);
+    expect(fake.count("submit")).toBe(0);
+    expect(await resolveReportStore(undefined)).toMatchObject({ status: "ready", storeId: "allowed" });
   });
 });

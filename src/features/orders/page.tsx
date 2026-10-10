@@ -55,7 +55,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         ...(selected ? ["Order details"] : []),
       ]}
     >
-      {({ filters, params: linkParams }) => {
+      {({ filters, params: linkParams, timeZone }) => {
         const orderFilters: OrdersFilters = { ...filters, search, cursor, channel };
         return (
           <div className="flex flex-col gap-4">
@@ -87,6 +87,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               fallback={<LoadingState variant="table" label="Loading orders" />}
             >
               <DataRegion
+                timestamp={timeZone}
                 load={() => getOrders(orderFilters)}
                 isEmpty={(data) => data.orders.length === 0}
                 emptyMessage={
@@ -106,11 +107,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               >
                 <Suspense fallback={<LoadingState variant="table" label="Loading the order" />}>
                   <DataRegion
+                    timestamp={timeZone}
                     load={() => getOrderDetail(filters.storeId, selected)}
                     isEmpty={(order) => order === null}
                     emptyMessage="This order is not in the selected store."
                   >
-                    {(order) => (order ? <OrderDetailList order={order} /> : null)}
+                    {(order) => (order ? <OrderDetailList order={order} timeZone={timeZone} /> : null)}
                   </DataRegion>
                 </Suspense>
               </OrderDrawer>
@@ -180,12 +182,12 @@ function OrdersList({ data, params, paged }: { data: OrdersPage; params: SearchP
   );
 }
 
-function OrderDetailList({ order }: { order: OrderDetail }) {
+function OrderDetailList({ order, timeZone }: { order: OrderDetail; timeZone: string }) {
   const rows: [string, string][] = [
     ["Order", order.name ?? EMPTY_VALUE],
     ["Order id", order.orderId ?? EMPTY_VALUE],
     ["Processed (store time)", formatWallTime(order.processedLocal)],
-    ["Created", order.createdAt ? formatInstant(order.createdAt.iso) : EMPTY_VALUE],
+    ["Created", order.createdAt ? formatInstant(order.createdAt.iso, timeZone) : EMPTY_VALUE],
     ["Channel", [order.channel, order.subChannel].filter(Boolean).join(" · ") || EMPTY_VALUE],
     ["Sales channel", order.salesChannel ?? EMPTY_VALUE],
     ["Source system", formatLabel(order.sourceSystem)],
@@ -210,7 +212,7 @@ function OrderDetailList({ order }: { order: OrderDetail }) {
     [
       "Cancelled",
       order.cancelledAt
-        ? `${formatInstant(order.cancelledAt.iso)}${order.cancellationReason ? ` (${order.cancellationReason})` : ""}`
+        ? `${formatInstant(order.cancelledAt.iso, timeZone)}${order.cancellationReason ? ` (${order.cancellationReason})` : ""}`
         : "No",
     ],
   ];

@@ -4,7 +4,7 @@
  * module; there is no client data layer.
  *
  * Dates are calendar dates (YYYY-MM-DD). `today` is the store's date in its
- * SourceMedium time zone (storeToday in src/lib/data/stores.server.ts).
+ * SourceMedium time zone (ReportContext.today; resolveReportStore finds the zone).
  * The range ends no later than today, so forward-dated target rows never
  * appear as zero-valued days.
  */

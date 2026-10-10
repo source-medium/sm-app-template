@@ -38,7 +38,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
       }}
       dates={false}
     >
-      {({ filters, today }) => {
+      {({ filters, today, timeZone }) => {
         const options = retentionOptions(params, today);
         const metricLabel =
           RETENTION_METRICS.find((item) => item.value === options.metric)?.label ?? "Monthly retention";
@@ -79,6 +79,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
               fallback={<LoadingState variant="table" label="Loading retention cohorts" />}
             >
               <DataRegion
+                timestamp={timeZone}
                 load={() => getRetention({ storeId: filters.storeId, asOf: options.asOf })}
                 isEmpty={(rows) => rows.length === 0}
                 emptyMessage="No published acquisition cohorts for this store and observation window."

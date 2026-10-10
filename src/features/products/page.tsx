@@ -37,7 +37,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       agentFilters={{ sales_channel: channel, dimension: options.dimension, metric: options.metric }}
       comparisons
     >
-      {({ filters, comparison }) => {
+      {({ filters, comparison, timeZone }) => {
         const baseline = comparison?.range ?? null;
         const format = options.metric === "units" ? formatMeasure : formatMoney;
         const metricLabel = PRODUCT_METRICS.find((item) => item.value === options.metric)?.label ?? "Net revenue";
@@ -79,6 +79,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               fallback={<LoadingState variant="chart" label="Loading products" />}
             >
               <DataRegion
+                timestamp={timeZone}
                 load={() => getProducts({ ...filters, ...options, channel }, baseline)}
                 isEmpty={(data) => data.rows.length === 0}
                 emptyMessage="No valid-order product lines match this store, sales channel, and date range."

@@ -41,7 +41,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       agentFilters={{ sales_channel: channel, grain }}
       comparisons
     >
-      {({ filters, comparison }) => {
+      {({ filters, comparison, timeZone }) => {
         const selected: OverviewFilters = { ...filters, channel, grain };
         return (
           <>
@@ -56,6 +56,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
               fallback={<LoadingState variant="kpis" label="Loading the overview" />}
             >
               <DataRegion
+                timestamp={timeZone}
                 load={() => getOverviewReport(selected, comparison?.range ?? null)}
                 isEmpty={(report) => report.current.days.length === 0}
                 emptyMessage="No rows match this store, sales channel, and date range."

@@ -48,7 +48,7 @@ const ROSTER_FIELDS = ["sm_store_id", "store_name", "brand_name", "store_timezon
 export function withStores(
   submit: NonNullable<FakeBigQueryScript["submit"]>,
   storeIds = ["store-1"],
-  timeZone = "America/New_York",
+  timeZone: string | null = "America/New_York",
 ): NonNullable<FakeBigQueryScript["submit"]> {
   return (call, signal) =>
     isStoreList(call)
