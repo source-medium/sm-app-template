@@ -11,31 +11,16 @@
  * store list: each is a BigQuery job, so running them together saves a round
  * trip. Otherwise the page first waits for the list.
  */
-import { Suspense } from "react";
-import type { AgentReportContext } from "@/lib/agent-prompt";
-import type { ReportSource } from "@/lib/report-data";
-import { AboutData } from "./about-data";
 import { appConfig } from "@/app.config";
 import { EmptyState, ErrorState } from "@/components/patterns/data-states";
-import { FilterBar } from "@/components/shell/filter-bar";
-import { CopyReportLink } from "@/components/shell/copy-report-link";
-import { RefreshReport } from "@/components/shell/refresh-report";
-import { Skeleton } from "@/components/ui/skeleton";
 import { requireViewer } from "@/lib/auth/require-viewer";
-import { loadStores, resolveReportStore, type StoreOption } from "@/lib/data/stores.server";
-import { WarehouseError } from "@/lib/data/warehouse-error";
+import { loadStores, resolveReportStore } from "@/lib/data/stores.server";
 import { parseComparison, type Comparison } from "@/lib/comparison";
 import { calendarDate } from "@/lib/format";
-import {
-  datePresets,
-  dateRangeIssue,
-  parseDateRange,
-  single,
-  withParams,
-  type DateRange,
-  type ReportFilters,
-  type SearchParams,
-} from "@/lib/filters";
+import { dateRangeIssue, parseDateRange, single, type ReportFilters, type SearchParams } from "@/lib/filters";
+import type { ReportSource } from "@/lib/report-data";
+import { ReportFilterBar } from "./report-filter-bar";
+import { ReportHeader } from "./report-header";
 
 /** `timeZone` is the store's SourceMedium time zone; `today` is its current date there. */
 export type ReportContext = {
@@ -44,18 +29,6 @@ export type ReportContext = {
   comparison?: Comparison;
   today: string;
   timeZone: string;
-};
-
-type FilterBarProps = {
-  pathname: string;
-  params: SearchParams;
-  /** Null when the store's date is unknown, which hides the date controls. */
-  range: DateRange | null;
-  today: string | null;
-  comparisonLabel?: string;
-  dates: boolean;
-  comparison?: Comparison;
-  fixedStore: boolean;
 };
 
 export async function ReportPage({
@@ -99,60 +72,14 @@ export async function ReportPage({
   const access = await requireViewer();
   const fixedStore = access.storeId !== null;
 
-  /** `view` is the applied report state, once the store's date is known. */
-  function header(
-    storeId?: string,
-    view?: { range: DateRange; issue: string | null; comparison?: Comparison; derived: Record<string, string> },
-  ) {
-    const shareHref =
-      storeId && view ? withParams(pathname, params, { store: storeId, ...(dates ? view.range : {}) }) : null;
-    const agentContext: AgentReportContext = {
-      pathname,
-      title,
-      filters: {
-        ...agentFilters,
-        ...view?.derived,
-        ...(storeId ? { store: storeId } : {}),
-        ...(view && dates && !view.issue ? view.range : {}),
-        ...(view?.comparison && !view.issue ? { compare: view.comparison.mode } : {}),
-      },
-      currency: appConfig.currency,
-      sources: sources.map((source) => source.relation),
-      status: view?.issue
-        ? `Report not loaded: ${view.issue}`
-        : storeId && view
-          ? undefined
-          : "Store context is unavailable; report not loaded.",
-      omitted: agentOmissions,
-    };
-    return (
-      <header
-        data-agent-page={JSON.stringify(agentContext)}
-        className="flex flex-wrap items-start justify-between gap-3"
-      >
-        <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          <p className="max-w-prose text-sm text-muted-foreground">{description}</p>
-          {appConfig.currency && (
-            <p className="text-xs text-muted-foreground">Reporting currency: {appConfig.currency}</p>
-          )}
-        </div>
-        <div className="flex flex-wrap items-start gap-2">
-          {sources.length > 0 && (
-            <AboutData key={JSON.stringify(agentContext)} context={agentContext} sources={sources} mode={access.mode} />
-          )}
-          <RefreshReport />
-          {shareHref && <CopyReportLink key={shareHref} href={shareHref} />}
-        </div>
-      </header>
-    );
-  }
+  // Each header also gets the current params, which grow as date defaults and the comparison apply.
+  const header = { title, description, pathname, dates, agentFilters, agentOmissions, sources, mode: access.mode };
 
   const store = await resolveReportStore(single(params, "store"));
   if (store.status === "no_store") {
     return (
       <div className="flex flex-col gap-4">
-        {header()}
+        <ReportHeader {...header} params={params} />
         {store.error ? (
           <ErrorState title={store.error.title} remedy={store.error.remedy} detail={store.error.detail} />
         ) : (
@@ -173,19 +100,17 @@ export async function ReportPage({
     );
     return (
       <div className="flex flex-col gap-4">
-        {header(store.storeId)}
-        <Suspense fallback={<Skeleton className="h-[4.75rem] rounded-lg" />}>
-          <RosterFilterBar
-            roster={roster}
-            storeId={store.storeId}
-            pathname={pathname}
-            params={params}
-            range={null}
-            today={null}
-            dates={false}
-            fixedStore={fixedStore}
-          />
-        </Suspense>
+        <ReportHeader {...header} params={params} storeId={store.storeId} />
+        <ReportFilterBar
+          roster={roster}
+          storeId={store.storeId}
+          pathname={pathname}
+          params={params}
+          range={null}
+          today={null}
+          dates={false}
+          fixedStore={fixedStore}
+        />
         {store.error && !rosterFailed && (
           <ErrorState title={store.error.title} remedy={store.error.remedy} detail={store.error.detail} />
         )}
@@ -201,25 +126,22 @@ export async function ReportPage({
   const issue = dates ? dateRangeIssue(params, today) : null;
   const comparison = comparisons && dates ? parseComparison(params, range) : undefined;
   if (comparison) params = { ...params, compare: comparison.mode };
-  const barProps: FilterBarProps = {
-    pathname,
-    params,
-    range,
-    today,
-    comparisonLabel,
-    dates,
-    comparison,
-    fixedStore,
-  };
   const zoneLabel = /^[+-]/.test(timeZone) ? `UTC${timeZone}` : timeZone;
   return (
     <div className="flex flex-col gap-4">
-      {header(storeId, { range, issue, comparison, derived })}
-      {/* One shape whether or not the URL named the store, so a navigation that adds the
-          store keeps the report form mounted; a choice made meanwhile still submits. */}
-      <Suspense fallback={<Skeleton className="h-[4.75rem] rounded-lg" />}>
-        <RosterFilterBar roster={roster} storeId={storeId} {...barProps} />
-      </Suspense>
+      <ReportHeader {...header} params={params} storeId={storeId} view={{ range, issue, comparison, derived }} />
+      <ReportFilterBar
+        roster={roster}
+        storeId={storeId}
+        pathname={pathname}
+        params={params}
+        range={range}
+        today={today}
+        comparisonLabel={comparisonLabel}
+        dates={dates}
+        comparison={comparison}
+        fixedStore={fixedStore}
+      />
       {issue ? (
         <ErrorState
           title="Check the date range"
@@ -237,74 +159,5 @@ export async function ReportPage({
         {appConfig.currency && <span className="mt-1 block">Reporting currency: {appConfig.currency}.</span>}
       </footer>
     </div>
-  );
-}
-
-/** The filter bar once the store list arrives; says so when the URL names a store the warehouse does not have. */
-async function RosterFilterBar({
-  roster,
-  storeId,
-  ...props
-}: FilterBarProps & { roster: Promise<StoreOption[]>; storeId: string }) {
-  let stores: StoreOption[];
-  try {
-    stores = await roster;
-  } catch (error) {
-    if (!(error instanceof WarehouseError)) throw error;
-    return <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} />;
-  }
-  if (stores.some((store) => store.id === storeId))
-    return <StoreFilterBar stores={stores} storeId={storeId} {...props} />;
-  return (
-    <div className="flex flex-col gap-3">
-      <ErrorState
-        title="This store is not in the store list"
-        remedy={
-          props.fixedStore
-            ? "The configured store is not one this app lists. Ask the app owner to check APP_STORE_ID."
-            : "The link names a store this app does not list. Choose a listed store to continue."
-        }
-      />
-      {stores[0] && <StoreFilterBar stores={stores} storeId={storeId} {...props} />}
-    </div>
-  );
-}
-
-function StoreFilterBar({
-  stores,
-  storeId,
-  pathname,
-  params,
-  range,
-  today,
-  comparisonLabel,
-  dates,
-  comparison,
-  fixedStore,
-}: FilterBarProps & { stores: StoreOption[]; storeId: string }) {
-  const presets =
-    dates && today !== null && range !== null
-      ? datePresets(today).map(({ label, range: preset }) => ({
-          label,
-          href: withParams(pathname, params, { store: storeId, ...preset, cursor: null, order: null }),
-          active: range.from === preset.from && range.to === preset.to,
-        }))
-      : [];
-  return (
-    <FilterBar
-      key={`${storeId}|${range?.from}|${range?.to}|${comparison?.mode}`}
-      pathname={pathname}
-      stores={stores}
-      storeId={storeId}
-      from={range?.from}
-      to={range?.to}
-      maxDate={today ?? undefined}
-      presets={presets}
-      carriedComparison={single(params, "compare")}
-      comparisonLabel={comparisonLabel}
-      dates={dates && today !== null}
-      comparison={comparison?.mode}
-      fixedStore={fixedStore}
-    />
   );
 }
