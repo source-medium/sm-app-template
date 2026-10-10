@@ -1,7 +1,6 @@
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { decodeRows } from "@/lib/data/decode";
-import { WarehouseError } from "@/lib/data/warehouse-error";
 import type { DateRange, ReportFilters } from "@/lib/filters";
 import { PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
 import type { ProductFilters, ProductsData } from "./queries";
@@ -63,7 +62,6 @@ export async function queryProducts(filters: ProductFilters, baseline: DateRange
       ...periodParams(filters.range, baseline),
     ],
   });
-  if (result.truncated) throw new WarehouseError("result_too_large", { reason: "products_ranked" });
   const rows = decodeRows(ProductRow, result.rows, PRODUCTS_RELATION);
   return { rows: rows.slice(0, MAX_PRODUCTS), hasMore: rows.length > MAX_PRODUCTS };
 }
@@ -86,6 +84,5 @@ export async function queryProductChannels(filters: ReportFilters): Promise<stri
       { name: "end_date", type: "DATE", value: filters.range.to },
     ],
   });
-  if (result.truncated) throw new WarehouseError("result_too_large", { reason: "product_channels" });
   return decodeRows(ProductChannelRow, result.rows, PRODUCTS_RELATION).map((row) => row.channel);
 }

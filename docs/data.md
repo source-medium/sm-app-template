@@ -125,6 +125,7 @@ const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId
 const result = await warehouse.query({
   name: "top_products", // becomes the sm_query job label
   maxRows: 200,
+  partial: true, // a list that says when more matched; see below
   sql: `
     SELECT product_title, SUM(units) AS units
     FROM ${warehouse.table("your_relation")}
@@ -152,11 +153,11 @@ return {
   `table("dim_data_dictionary", "metadata")` for its metadata dataset, and
   `table("customized_views.my_table")` for any other dataset in your warehouse
   project that the app can read.
-- Aggregate in SQL. `maxRows` bounds the rows returned across pages, and
-  `result.truncated` says when more matched. Pass the returned flag to
-  `<DataTable truncated={data.truncated}>` or show the view's truncation warning.
-  Never compute a total from a truncated list: throw
-  `new WarehouseError("result_too_large")` instead. Independently, the client
+- Aggregate in SQL. `maxRows` bounds the rows returned across pages. More rows
+  than that fail with `result_too_large`, so a total or picker is never computed
+  from part of a result. A list that can say it is partial sets `partial: true`
+  and reads `result.truncated`: pass it to `<DataTable truncated={data.truncated}>`
+  or show the view's truncation warning. Independently, the client
   stops when cumulative response bodies exceed 10 MiB across submission, polls
   and retries, counting UTF-8 bytes as chunks arrive. Exceeding that limit
   throws instead of returning partial

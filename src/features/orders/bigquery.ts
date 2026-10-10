@@ -5,7 +5,6 @@
  */
 import "server-only";
 import type { ReportFilters } from "@/lib/filters";
-import { WarehouseError } from "@/lib/data/warehouse-error";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { QueryParameter } from "@/lib/data/bigquery-rest.server";
 import { decodeRows } from "@/lib/data/decode";
@@ -114,6 +113,5 @@ export async function queryOrderChannels(filters: ReportFilters): Promise<string
       { name: "end_date", type: "DATE", value: filters.range.to },
     ],
   });
-  if (result.truncated) throw new WarehouseError("result_too_large", { reason: "order_channels" });
   return decodeRows(OrderChannelRow, result.rows, ORDERS_RELATION).map((row) => row.channel);
 }

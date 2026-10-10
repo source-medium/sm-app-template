@@ -5,7 +5,6 @@
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { decodeRows } from "@/lib/data/decode";
-import { WarehouseError } from "@/lib/data/warehouse-error";
 import type { DateRange } from "@/lib/filters";
 import type { BreakdownDimension, SpendBreakdown } from "./queries";
 import { PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
@@ -61,7 +60,6 @@ export async function querySpendBreakdown(
       ...periodParams(filters.range, baseline),
     ],
   });
-  if (result.truncated) throw new WarehouseError("result_too_large", { reason: "paid_spend_breakdown" });
   const rows = decodeRows(SpendBreakdownRow, result.rows, AD_RELATION);
   return { rows: rows.slice(0, MAX_BREAKDOWN), hasMore: rows.length > MAX_BREAKDOWN };
 }
@@ -92,7 +90,6 @@ export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise
     queryPaidCampaigns(filters),
   ]);
 
-  if (series.truncated) throw new WarehouseError("result_too_large", { reason: "paid_channel_daily" });
   return {
     channelDays: decodeRows(ChannelDayRow, series.rows, AD_RELATION).map(toChannelDay),
     ...campaigns,
@@ -109,6 +106,7 @@ export async function queryPaidCampaigns(filters: PaidMarketingFilters): Promise
   const table = warehouse.table(AD_RELATION);
   const campaigns = await warehouse.query({
     name: "paid_campaigns",
+    partial: true,
     maxRows: MAX_CAMPAIGNS,
     sql: `
         SELECT

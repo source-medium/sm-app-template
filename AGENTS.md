@@ -96,8 +96,9 @@ to delete any of them.
 - Keep `sm_store_id = @store_id` on every data source read (`pnpm check` enforces it); see `docs/data.md#store-scope`.
 - Fully qualified names come from `warehouse.table("<relation>")`; your own
   datasets in the warehouse project: `warehouse.table("customized_views.my_table")`.
-- Aggregate in SQL. Every query has `maxRows`; check `result.truncated`. Totals
-  are never computed from a truncated list.
+- Aggregate in SQL. Every query has `maxRows`; more rows fail with
+  `result_too_large` unless a list that says it is partial sets `partial: true`
+  and shows `result.truncated`. Totals are never computed from a truncated list.
 - INT64 decodes to `bigint`, FLOAT64 to a finite number, DATE stays a string.
 - Use the workspace reporting currency for money; confirm source alignment in
   `docs/data.md` before combining amounts. Set `app.config.ts` currency once.

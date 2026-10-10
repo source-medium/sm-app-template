@@ -7,7 +7,6 @@ import "server-only";
 import { appConfig } from "@/app.config";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { decodeRows } from "@/lib/data/decode";
-import { WarehouseError } from "@/lib/data/warehouse-error";
 import type { TimeGrain } from "@/lib/time-grain";
 import type { OverviewData, OverviewFilters } from "./queries";
 import { OVERVIEW_RELATION, OverviewChannelRow, OverviewRow, toOverviewData } from "./rows";
@@ -75,7 +74,6 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
       { name: "channel", type: "STRING", value: filters.channel ?? "" },
     ],
   });
-  if (result.truncated) throw new WarehouseError("result_too_large", { reason: "overview_daily" });
   return toOverviewData(decodeRows(OverviewRow, result.rows, OVERVIEW_RELATION));
 }
 
@@ -94,6 +92,5 @@ export async function queryOverviewChannels(filters: OverviewFilters): Promise<s
       { name: "end_date", type: "DATE", value: filters.range.to },
     ],
   });
-  if (result.truncated) throw new WarehouseError("result_too_large", { reason: "overview_channels" });
   return decodeRows(OverviewChannelRow, result.rows, OVERVIEW_RELATION).map((row) => row.channel);
 }

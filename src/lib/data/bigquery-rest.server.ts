@@ -56,6 +56,12 @@ export type QueryRequest = {
   params?: readonly QueryParameter[];
   /** Overall row bound across pages. Defaults to 1,000. */
   maxRows?: number;
+  /**
+   * More rows than maxRows fail with result_too_large, so totals and pickers
+   * are never computed from part of a result. `partial` instead returns the
+   * first maxRows with `truncated: true`, for a list that says it is partial.
+   */
+  partial?: boolean;
 };
 
 export type QueryOptions = {
@@ -163,6 +169,7 @@ export async function runQuery(
       bytesBilled: first.totalBytesBilled ?? null,
       cacheHit: page.cacheHit ?? first.cacheHit ?? null,
     };
+    if (truncated && !request.partial) throw new WarehouseError("result_too_large", { reason: request.name });
     return result;
   } catch (error) {
     failure = WarehouseError.fromTransport(error, "query");

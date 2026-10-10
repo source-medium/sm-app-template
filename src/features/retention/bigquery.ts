@@ -1,6 +1,5 @@
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
-import { WarehouseError } from "@/lib/data/warehouse-error";
 import type { RetentionFilters } from "./queries";
 import { COHORT_MONTHS, shiftMonth } from "./filters";
 import { decodeRetention, RETENTION_RELATION, type RetentionRowData } from "./rows";
@@ -32,6 +31,5 @@ export async function queryRetention(filters: RetentionFilters): Promise<Retenti
       { name: "as_of_month", type: "DATE", value: `${filters.asOf}-01` },
     ],
   });
-  if (result.truncated) throw new WarehouseError("result_too_large", { reason: "retention_cohorts" });
   return decodeRetention(result.rows);
 }

@@ -32,6 +32,8 @@ export function storeRosterQuery(
 ): QueryRequest {
   return {
     name: "store_roster",
+    // More than MAX_STORES fails below, with a remedy for this case.
+    partial: true,
     sql: `
       SELECT ${relation === ROSTER_RELATION ? "sm_store_id, store_name, brand_name, store_timezone" : "DISTINCT sm_store_id, CAST(NULL AS STRING) AS store_name, CAST(NULL AS STRING) AS brand_name, CAST(NULL AS STRING) AS store_timezone"}
       FROM ${warehouse.table(relation)}

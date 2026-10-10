@@ -218,7 +218,7 @@ describe("BigQuery REST protocol", () => {
     expect(fake.count("submit")).toBe(1);
   });
 
-  it("bounds rows overall, not per page, and flags truncation", async () => {
+  it("bounds rows overall, not per page, and flags truncation for a partial list", async () => {
     let page = 0;
     const { client, fake } = await clientFor({
       submit: () =>
@@ -244,13 +244,13 @@ describe("BigQuery REST protocol", () => {
         );
       },
     });
-    const result = await runQuery(client, { ...REQUEST, maxRows: 3 });
+    const result = await runQuery(client, { ...REQUEST, maxRows: 3, partial: true });
     expect(result.rows.map((row) => row.sessions)).toEqual(["1", "2", "3"]);
     expect(result.truncated).toBe(true);
     expect(fake.count("poll")).toBe(1);
   });
 
-  it("flags truncation when the bound is reached with pages remaining", async () => {
+  it("fails on more rows than the bound unless the caller accepts a partial list", async () => {
     const { client } = await clientFor({
       submit: () =>
         Response.json(
@@ -263,9 +263,27 @@ describe("BigQuery REST protocol", () => {
           }),
         ),
     });
-    const result = await runQuery(client, { ...REQUEST, maxRows: 2 });
-    expect(result.rows).toHaveLength(2);
-    expect(result.truncated).toBe(true);
+    // Totals or a picker from part of a result would look complete, so the default is an error naming the query.
+    await expect(runQuery(client, { ...REQUEST, maxRows: 2 })).rejects.toMatchObject({
+      kind: "result_too_large",
+      reason: REQUEST.name,
+    });
+    const partial = await runQuery(client, { ...REQUEST, maxRows: 2, partial: true });
+    expect(partial.rows).toHaveLength(2);
+    expect(partial.truncated).toBe(true);
+    // Exactly the bound, with nothing more to read, is complete.
+    const { client: exact } = await clientFor({
+      submit: () =>
+        Response.json(
+          queryResponse({
+            rows: wireRows([
+              ["d1", "1"],
+              ["d2", "2"],
+            ]),
+          }),
+        ),
+    });
+    await expect(runQuery(exact, { ...REQUEST, maxRows: 2 })).resolves.toMatchObject({ truncated: false });
   });
 
   it.each(["submit", "poll"] as const)("rejects an oversized %s response without retrying", async (stage) => {

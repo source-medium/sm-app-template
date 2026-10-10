@@ -4,7 +4,6 @@
  */
 import "server-only";
 import type { ReportFilters } from "@/lib/filters";
-import { WarehouseError } from "@/lib/data/warehouse-error";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { decodeRows } from "@/lib/data/decode";
 import type { CreativeSort, CreativesData, CreativesFilters } from "./queries";
@@ -22,6 +21,7 @@ export async function queryCreatives(filters: CreativesFilters): Promise<Creativ
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "creatives",
+    partial: true,
     maxRows: MAX_CREATIVES,
     sql: `
       SELECT
@@ -76,6 +76,5 @@ export async function queryCreativeChannels(filters: ReportFilters): Promise<str
       { name: "end_date", type: "DATE", value: filters.range.to },
     ],
   });
-  if (result.truncated) throw new WarehouseError("result_too_large", { reason: "creative_channels" });
   return decodeRows(CreativeChannelRow, result.rows, CREATIVE_RELATION).map((row) => row.channel);
 }
