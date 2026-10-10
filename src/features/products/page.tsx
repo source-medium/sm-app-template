@@ -12,7 +12,7 @@ import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { periodChanges } from "@/lib/comparison";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
-import { formatMeasure, formatMoney, formatPercent } from "@/lib/format";
+import { formatMeasure, formatMoneyIn, formatPercent } from "@/lib/format";
 import { parseSalesChannel, type SearchParams } from "@/lib/filters";
 import { getProductChannels, getProducts, productOptions, PRODUCT_DIMENSIONS, PRODUCT_METRICS } from "./queries";
 
@@ -37,9 +37,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       agentFilters={{ sales_channel: channel, dimension: options.dimension, metric: options.metric }}
       comparisons
     >
-      {({ filters, comparison, timeZone }) => {
+      {({ filters, comparison, timeZone, currency }) => {
         const baseline = comparison?.range ?? null;
-        const format = options.metric === "units" ? formatMeasure : formatMoney;
+        const money = formatMoneyIn(currency);
+        const format = options.metric === "units" ? formatMeasure : money;
         const metricLabel = PRODUCT_METRICS.find((item) => item.value === options.metric)?.label ?? "Net revenue";
         return (
           <>
@@ -92,7 +93,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                       <ComparisonIssue issue={issue} />
                       <section aria-label="All product totals" className="grid gap-4 sm:grid-cols-3">
                         {PRODUCT_METRICS.map((item) => {
-                          const formatValue = item.value === "units" ? formatMeasure : formatMoney;
+                          const formatValue = item.value === "units" ? formatMeasure : money;
                           return (
                             <KpiCard
                               key={item.value}

@@ -21,6 +21,7 @@ const StoreRow = z.object({
   store_name: bq.string().nullable(),
   brand_name: bq.string().nullable(),
   store_timezone: bq.string().nullable(),
+  store_currency_code: bq.string().nullable(),
 });
 type StoreMetadata = z.infer<typeof StoreRow>;
 export type StoreRoster = { stores: StoreMetadata[]; relation: RosterRelation };
@@ -35,7 +36,11 @@ export function storeRosterQuery(
     // More than MAX_STORES fails below, with a remedy for this case.
     partial: true,
     sql: `
-      SELECT ${relation === ROSTER_RELATION ? "sm_store_id, store_name, brand_name, store_timezone" : "DISTINCT sm_store_id, CAST(NULL AS STRING) AS store_name, CAST(NULL AS STRING) AS brand_name, CAST(NULL AS STRING) AS store_timezone"}
+      SELECT ${
+        relation === ROSTER_RELATION
+          ? "sm_store_id, store_name, brand_name, store_timezone, store_currency_code"
+          : "DISTINCT sm_store_id, CAST(NULL AS STRING) AS store_name, CAST(NULL AS STRING) AS brand_name, CAST(NULL AS STRING) AS store_timezone, CAST(NULL AS STRING) AS store_currency_code"
+      }
       FROM ${warehouse.table(relation)}
       WHERE sm_store_id IS NOT NULL
       ${storeId !== null ? "AND sm_store_id = @store_id" : ""}

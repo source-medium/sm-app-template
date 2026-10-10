@@ -8,11 +8,13 @@ export function RetentionCurves({
   channel,
   asOf,
   window,
+  currency,
 }: {
   rows: RetentionRowData[];
   channel: string;
   asOf: string;
   window: CohortWindow;
+  currency: string | null;
 }) {
   return (
     <section aria-label="Retention and lifetime value curves" className="grid min-w-0 gap-6 xl:grid-cols-2">
@@ -23,7 +25,7 @@ export function RetentionCurves({
         categoryHeader="Cohort age"
         valueFormat="percent"
         showPoints
-        {...retentionChart(rows, channel, "retention", asOf, window)}
+        {...retentionChart(rows, channel, "retention", asOf, window, currency)}
       />
       <ChartCard
         title="Gross profit LTV by cohort age"
@@ -31,7 +33,7 @@ export function RetentionCurves({
         kind="line"
         categoryHeader="Cohort age"
         showPoints
-        {...retentionChart(rows, channel, "profit", asOf, window)}
+        {...retentionChart(rows, channel, "profit", asOf, window, currency)}
       />
     </section>
   );

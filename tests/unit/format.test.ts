@@ -3,6 +3,7 @@ import { compactNumber } from "@/components/charts/compact-number";
 import {
   calendarDate,
   EMPTY_VALUE,
+  isCurrency,
   formatCount,
   formatDay,
   formatLabel,
@@ -77,5 +78,10 @@ describe("store dates", () => {
   it("recognizes zones calendarDate accepts, and rejects masked or unknown values", () => {
     for (const zone of ["America/Los_Angeles", "UTC", "-07:00"]) expect(isTimeZone(zone)).toBe(true);
     for (const zone of ["2d4bbedff8", "Mars/Olympus", ""]) expect(isTimeZone(zone)).toBe(false);
+  });
+
+  it("accepts ISO currency codes Intl can format", () => {
+    for (const code of ["USD", "EUR", "JPY"]) expect(isCurrency(code)).toBe(true);
+    for (const code of ["nope", "", "US$"]) expect(isCurrency(code)).toBe(false);
   });
 });

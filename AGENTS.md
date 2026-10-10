@@ -100,11 +100,13 @@ to delete any of them.
   `result_too_large` unless a list that says it is partial sets `partial: true`
   and shows `result.truncated`. Totals are never computed from a truncated list.
 - INT64 decodes to `bigint`, FLOAT64 to a finite number, DATE stays a string.
-- Use the workspace reporting currency for money; confirm source alignment in
-  `docs/data.md` before combining amounts. Set `app.config.ts` currency once.
-  `dim_stores.store_currency_code` alone does not establish reporting currency.
-  Keep NUMERIC exact, add with `sumDecimals`, format with `formatMoney`.
-  Read each field's type: platform-reported revenue is FLOAT64. Never add across stores.
+- Label money with the selected store's `dim_stores.store_currency_code`. That
+  code is the currency of the store's published money columns. Set
+  `app.config.ts` `currency` only as the fallback when a store has no code.
+  The setting formats amounts; it does not convert them. Keep NUMERIC exact,
+  add with `sumDecimals`, format with `formatMoney`, and pass the report
+  store's currency. Read each field's type: platform-reported revenue is
+  FLOAT64. Never add across stores. Do not label from `order_currency_code`.
 - Dates are each store's calendar dates in its SourceMedium time zone. Take
   today and times from `ReportContext.today` and `timeZone` (or `resolveReportStore()`), never
   the server clock's date or UTC.

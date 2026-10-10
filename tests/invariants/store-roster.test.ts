@@ -29,12 +29,13 @@ afterEach(() => {
 it("loads named stores and brands from the dimension without scanning a fact table", async () => {
   const fake = await goLive({ submit: () => rowsResponse(ROSTER_FIELDS, metadata) });
   expect(await loadStores()).toEqual([
-    { id: "store-us", label: "US store", brand: "First brand", timeZone: "America/New_York" },
-    { id: "store-uk", label: "UK store", brand: "Second brand", timeZone: "Europe/London" },
+    { id: "store-us", label: "US store", brand: "First brand", timeZone: "America/New_York", currency: null },
+    { id: "store-uk", label: "UK store", brand: "Second brand", timeZone: "Europe/London", currency: null },
   ]);
   expect(fake.count("submit")).toBe(1);
   const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string };
   expect(body.query).toContain("`sm-demotenant.sm_transformed_v2.dim_stores`");
+  expect(body.query).toContain("store_currency_code");
   expect(body.query).not.toContain("rpt_executive_summary_daily");
 });
 
@@ -49,9 +50,9 @@ it("keeps display overrides and missing names safe, including object-prototype I
       ]),
   });
   expect(await loadStores()).toEqual([
-    { id: "store-us", label: "Custom label", brand: "First brand", timeZone: "America/New_York" },
-    { id: "constructor", label: "constructor", brand: null, timeZone: null },
-    { id: "__proto__", label: "__proto__", brand: null, timeZone: null },
+    { id: "store-us", label: "Custom label", brand: "First brand", timeZone: "America/New_York", currency: null },
+    { id: "constructor", label: "constructor", brand: null, timeZone: null, currency: null },
+    { id: "__proto__", label: "__proto__", brand: null, timeZone: null, currency: null },
   ]);
 });
 
@@ -65,13 +66,16 @@ it("only a missing dimension uses the scoped ID-only roster, and the handled pro
         : rowsResponse(ROSTER_FIELDS, [storeRow("store-us", null)]),
   });
   vi.stubEnv("APP_STORE_ID", "store-us");
-  expect(await loadStores()).toEqual([{ id: "store-us", label: "store-us", brand: null, timeZone: null }]);
+  expect(await loadStores()).toEqual([
+    { id: "store-us", label: "store-us", brand: null, timeZone: null, currency: null },
+  ]);
   const queries = logs.filter(({ line }) => line.includes('"event":"bq_query"'));
   expect(queries.map(({ level }) => level)).toEqual(["info", "info"]);
   expect(queries[0]?.line).toContain('"error_kind":"not_found"');
   const submissions = fake.calls.filter((call) => call.kind === "submit");
   expect(submissions).toHaveLength(2);
   for (const { body } of submissions) {
+    expect((body as { query: string }).query).toContain("store_currency_code");
     expect((body as { query: string }).query).toContain("AND sm_store_id = @store_id");
     expect((body as { queryParameters: unknown[] }).queryParameters).toContainEqual({
       name: "store_id",
@@ -239,12 +243,39 @@ describe("the store a report shows", () => {
     });
   });
 
+  it("labels the report with the store currency code, and falls back when that code is missing", async () => {
+    const original = appConfig.currency;
+    appConfig.currency = "GBP";
+    try {
+      await warehouse([
+        storeRow("eur-store", "Europe/Paris", "eur"),
+        storeRow("bad-store", "UTC", "not-money"),
+        storeRow("blank-store", "UTC", "  "),
+      ]);
+      expect(await loadStores()).toEqual([
+        { id: "eur-store", label: "eur-store", brand: null, timeZone: "Europe/Paris", currency: "EUR" },
+        { id: "bad-store", label: "bad-store", brand: null, timeZone: "UTC", currency: null },
+        { id: "blank-store", label: "blank-store", brand: null, timeZone: "UTC", currency: null },
+      ]);
+      expect(await resolveReportStore("eur-store")).toMatchObject({
+        status: "ready",
+        timeZone: "Europe/Paris",
+        currency: "EUR",
+      });
+      expect(await resolveReportStore("bad-store")).toMatchObject({ currency: "GBP" });
+      expect(await resolveReportStore("blank-store")).toMatchObject({ currency: "GBP" });
+    } finally {
+      appConfig.currency = original;
+    }
+  });
+
   it("is the URL's store, reading the store list once", async () => {
     const fake = await warehouse([storeRow("url-ny", "America/New_York"), storeRow("url-la", "America/Los_Angeles")]);
     expect(await resolveReportStore("url-la")).toEqual({
       status: "ready",
       storeId: "url-la",
       timeZone: "America/Los_Angeles",
+      currency: null,
     });
     expect(fake.count("submit")).toBe(1);
   });
@@ -275,6 +306,7 @@ describe("the store a report shows", () => {
       status: "ready",
       storeId: "listless",
       timeZone: "-04:00",
+      currency: null,
     });
   });
 

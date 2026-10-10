@@ -10,8 +10,9 @@ export function retentionChart(
   metric: RetentionMetric,
   asOf: string,
   window: CohortWindow,
+  currency?: string | null,
 ) {
-  const cohorts = retentionMatrix(rows, channel, metric, asOf).slice(
+  const cohorts = retentionMatrix(rows, channel, metric, asOf, currency).slice(
     window === "recent" ? -6 : 0,
     window === "recent" ? undefined : 6,
   );

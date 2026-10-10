@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { FilterBar } from "@/components/shell/filter-bar";
 
-const firstStore = { id: "a", label: "US", brand: "First brand", timeZone: "America/New_York" };
+const firstStore = { id: "a", label: "US", brand: "First brand", timeZone: "America/New_York", currency: null };
 const props = {
   pathname: "/overview",
   storeId: "a",
@@ -12,9 +12,9 @@ const props = {
   presets: [],
   stores: [
     firstStore,
-    { id: "b", label: "US", brand: "Second brand", timeZone: "America/Los_Angeles" },
-    { id: "c", label: "UK", brand: "First brand", timeZone: "Europe/London" },
-    { id: "d", label: "Unnamed store", brand: null, timeZone: null },
+    { id: "b", label: "US", brand: "Second brand", timeZone: "America/Los_Angeles", currency: null },
+    { id: "c", label: "UK", brand: "First brand", timeZone: "Europe/London", currency: "GBP" },
+    { id: "d", label: "Unnamed store", brand: null, timeZone: null, currency: null },
   ],
 };
 

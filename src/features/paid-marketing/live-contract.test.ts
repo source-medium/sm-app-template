@@ -48,8 +48,12 @@ const queryName = (call: FakeCall) => (call.body as Submitted).labels.sm_query;
 describe("paid marketing, live", () => {
   it("exports through the real guard, query, and decoders, without reading the chart", async () => {
     const fake = await goLive({
-      submit: withStores(() =>
-        rowsResponse(CAMPAIGN_FIELDS, [{ ...CAMPAIGN_ROW, campaign_name: "=1+1", impressions: "9007199254740993" }]),
+      submit: withStores(
+        () =>
+          rowsResponse(CAMPAIGN_FIELDS, [{ ...CAMPAIGN_ROW, campaign_name: "=1+1", impressions: "9007199254740993" }]),
+        ["store-1"],
+        "America/New_York",
+        "USD",
       ),
     });
     const { GET } = await import("./download");
@@ -62,7 +66,7 @@ describe("paid marketing, live", () => {
     expect(response.status).toBe(200);
     expect(csv).toContain('"123456789012345678.123456789","9007199254740993"');
     expect(csv).toContain('"\'=1+1"');
-    expect(csv).toContain('"live","store-1","2026-09-01","2026-09-02","","false"');
+    expect(csv).toContain('"live","store-1","2026-09-01","2026-09-02","USD","false"');
     const queries = fake.calls.filter((call) => call.kind === "submit" && !isStoreList(call));
     expect(queries).toHaveLength(1);
     const submitted = queries[0];

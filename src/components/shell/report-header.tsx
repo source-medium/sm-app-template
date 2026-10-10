@@ -2,7 +2,6 @@
  * The report's title row: About this data, refresh, and a share link, with
  * the page's context for agent prompts on the element itself.
  */
-import { appConfig } from "@/app.config";
 import type { AgentReportContext } from "@/lib/agent-prompt";
 import type { ViewerAccess } from "@/lib/auth/require-viewer";
 import type { Comparison } from "@/lib/comparison";
@@ -32,6 +31,7 @@ export function ReportHeader({
   sources,
   mode,
   storeId,
+  currency = null,
   view,
 }: {
   title: string;
@@ -45,6 +45,8 @@ export function ReportHeader({
   mode: ViewerAccess["mode"];
   /** Absent when no store can be shown; then the report is not loaded. */
   storeId?: string;
+  /** The selected store's currency, once its dates are known. */
+  currency?: string | null;
   /** Absent when the store's date is unknown; then the report is not loaded. */
   view?: ReportView;
 }) {
@@ -60,7 +62,7 @@ export function ReportHeader({
       ...(view && dates && !view.issue ? view.range : {}),
       ...(view?.comparison && !view.issue ? { compare: view.comparison.mode } : {}),
     },
-    currency: appConfig.currency,
+    currency,
     sources: sources.map((source) => source.relation),
     status: view?.issue
       ? `Report not loaded: ${view.issue}`
@@ -74,9 +76,7 @@ export function ReportHeader({
       <div className="flex min-w-0 flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="max-w-prose text-sm text-muted-foreground">{description}</p>
-        {appConfig.currency && (
-          <p className="text-xs text-muted-foreground">Reporting currency: {appConfig.currency}</p>
-        )}
+        {currency && <p className="text-xs text-muted-foreground">Reporting currency: {currency}</p>}
       </div>
       <div className="flex flex-wrap items-start gap-2">
         {sources.length > 0 && (

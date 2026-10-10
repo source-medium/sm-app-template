@@ -20,6 +20,7 @@ import {
   formatDay,
   formatMeasure,
   formatMoney,
+  formatMoneyIn,
   formatMultiple,
   formatPercent,
 } from "@/lib/format";
@@ -70,7 +71,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
       comparisons
       comparisonLabel="Compare spend breakdown with"
     >
-      {({ filters, comparison, params: applied, timeZone }) => {
+      {({ filters, comparison, params: applied, timeZone, currency }) => {
         const paidFilters: PaidMarketingFilters = { ...filters, channel };
         return (
           <>
@@ -84,7 +85,15 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                 isEmpty={(data) => data.channelDays.length === 0}
                 emptyMessage="This store has no ad delivery in the selected dates."
               >
-                {(data) => <PaidMarketingView data={data} filters={paidFilters} metric={metric} params={applied} />}
+                {(data) => (
+                  <PaidMarketingView
+                    data={data}
+                    filters={paidFilters}
+                    metric={metric}
+                    params={applied}
+                    currency={currency}
+                  />
+                )}
               </DataRegion>
             </Suspense>
             <Suspense
@@ -104,6 +113,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                     dimension={breakdownDimension(params)}
                     comparison={comparison}
                     params={applied}
+                    currency={currency}
                   />
                 )}
               </DataRegion>
@@ -115,8 +125,8 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
   );
 }
 
-function point(value: MetricValue): PointValue {
-  if (typeof value === "string") return { value: decimalToNumber(value), display: formatMoney(value) };
+function point(value: MetricValue, currency: string | null): PointValue {
+  if (typeof value === "string") return { value: decimalToNumber(value), display: formatMoney(value, currency) };
   if (typeof value === "number") return { value, display: formatMeasure(value) };
   return { value, display: value === null ? EMPTY_VALUE : formatCount(value) };
 }
@@ -126,17 +136,20 @@ function PaidMarketingView({
   filters,
   metric,
   params,
+  currency,
 }: {
   data: PaidMarketingData;
   filters: PaidMarketingFilters;
   metric: PaidMetric;
   params: SearchParams;
+  currency: string | null;
 }) {
+  const money = formatMoneyIn(currency);
   const { series, byDate, channels, folded } = channelChart(data.channelDays, metric, filters.channel);
   const chart = buildChartData(
     datesInRange(filters.range).map((date) => {
       const values: Record<string, PointValue> = {};
-      for (const item of series) values[item.key] = point(byDate.get(date)?.[item.key] ?? null);
+      for (const item of series) values[item.key] = point(byDate.get(date)?.[item.key] ?? null, currency);
       return { label: formatDay(date), values };
     }),
   );
@@ -227,11 +240,11 @@ function PaidMarketingView({
                   cells: {
                     campaign: { display: campaign.campaignName ?? campaign.campaignId },
                     channel: { display: campaign.channel ?? EMPTY_VALUE },
-                    spend: { display: formatMoney(campaign.spend), sort: spend },
+                    spend: { display: money(campaign.spend), sort: spend },
                     impressions: { display: formatCount(campaign.impressions), sort: impressions },
                     clicks: { display: formatCount(campaign.clicks), sort: clicks },
                     ctr: { display: formatPercent(ctr), sort: ctr },
-                    cpc: { display: formatMoney(cpc), sort: cpc },
+                    cpc: { display: money(cpc), sort: cpc },
                     conversions: { display: formatMeasure(campaign.conversions), sort: campaign.conversions },
                     roas: { display: formatMultiple(roas), sort: roas },
                   },

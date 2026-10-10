@@ -74,14 +74,11 @@ list needs to be configured. Optional `storeLabels` in `app.config.ts` overrides
 individual names. See [store scope](data.md#store-scope) for warehouses awaiting
 the metadata table and stable links to each store.
 
-Set `currency` in `app.config.ts` to your SourceMedium workspace's reporting
-currency, for example `"USD"`. All views use this one setting for money
-formatting and show the currency code in the report footer. Confirm that the
-order and advertising sources included in the app already report in that
-currency; setting the code does not convert values. Amazon Ads uses the store
-currency, which can differ from the workspace reporting currency. Resolve any
-mismatch in SourceMedium or a warehouse view before combining amounts or using
-MER. `dim_stores.store_currency_code` alone does not verify reporting currency.
+Money labels come from each store's `dim_stores.store_currency_code`. The
+report footer, agent prompt, and CSV `reporting_currency` column show that
+code. Set `currency` in `app.config.ts` only as the fallback for a store with
+no code, for example `"USD"`. Setting a code formats amounts; it does not
+convert them. Never add money across stores.
 See [money and currency](data.md#money-and-currency).
 
 Dates need no setting: each store's dates follow its SourceMedium time zone,

@@ -41,7 +41,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
       params={params}
       agentFilters={{ channel, sort }}
     >
-      {({ filters, timeZone }) => (
+      {({ filters, timeZone, currency }) => (
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-4">
             <Suspense
@@ -82,7 +82,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
               isEmpty={(data) => data.creatives.length === 0}
               emptyMessage="No ad creatives match this store, ad channel, and date range."
             >
-              {(data) => <CreativesView data={data} />}
+              {(data) => <CreativesView data={data} currency={currency} />}
             </DataRegion>
           </Suspense>
         </div>
@@ -91,7 +91,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
   );
 }
 
-function CreativesView({ data }: { data: CreativesData }) {
+function CreativesView({ data, currency }: { data: CreativesData; currency: string | null }) {
   return (
     <div className="flex flex-col gap-3">
       <CardGrid
@@ -106,7 +106,7 @@ function CreativesView({ data }: { data: CreativesData }) {
           badge: creative.channel,
           imageUrl: creative.imageUrl,
           metrics: [
-            { label: "Spend", display: formatMoney(creative.spend) },
+            { label: "Spend", display: formatMoney(creative.spend, currency) },
             { label: "Impressions", display: formatCount(creative.impressions) },
             { label: "CTR", display: formatPercent(creative.ctr) },
             { label: "Conversions", display: formatMeasure(creative.conversions) },

@@ -1,3 +1,4 @@
+import { appConfig } from "@/app.config";
 import type { CohortCell } from "@/components/patterns/cohort-matrix";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { formatMeasure, formatMoney, formatMonth, formatPercent } from "@/lib/format";
@@ -15,11 +16,17 @@ export function cohortValue(row: RetentionRowData, metric: RetentionMetric): num
   );
 }
 
-export function retentionMatrix(rows: RetentionRowData[], channel: string, metric: RetentionMetric, asOf: string) {
+export function retentionMatrix(
+  rows: RetentionRowData[],
+  channel: string,
+  metric: RetentionMetric,
+  asOf: string,
+  currency: string | null = appConfig.currency,
+) {
   const selected = rows.filter((row) => row.channel === channel);
   const byKey = new Map(selected.map((row) => [`${row.cohort_month}|${row.month_age}`, row]));
   const maximum = Math.max(0, ...selected.map((row) => cohortValue(row, metric) ?? 0));
-  const format = metric === "retention" ? formatPercent : formatMoney;
+  const format = metric === "retention" ? formatPercent : (value: number | null) => formatMoney(value, currency);
   return cohortMonths(asOf).map((cohort) => {
     const first = selected.find((row) => row.cohort_month === cohort);
     return {

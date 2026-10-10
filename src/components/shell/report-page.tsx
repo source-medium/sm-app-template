@@ -11,7 +11,6 @@
  * store list: each is a BigQuery job, so running them together saves a round
  * trip. Otherwise the page first waits for the list.
  */
-import { appConfig } from "@/app.config";
 import { EmptyState, ErrorState } from "@/components/patterns/data-states";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { loadStores, resolveReportStore } from "@/lib/data/stores.server";
@@ -22,13 +21,17 @@ import type { ReportSource } from "@/lib/report-data";
 import { ReportFilterBar } from "./report-filter-bar";
 import { ReportHeader } from "./report-header";
 
-/** `timeZone` is the store's SourceMedium time zone; `today` is its current date there. */
+/**
+ * `timeZone` is the store's SourceMedium time zone; `today` is its current date there.
+ * `currency` is that store's currency code, or the app.config.ts fallback when the store has none.
+ */
 export type ReportContext = {
   filters: ReportFilters;
   params: SearchParams;
   comparison?: Comparison;
   today: string;
   timeZone: string;
+  currency: string | null;
 };
 
 export async function ReportPage({
@@ -118,7 +121,7 @@ export async function ReportPage({
     );
   }
   // Links built from params name the store, so the next page can run its queries in parallel.
-  const { storeId, timeZone } = store;
+  const { storeId, timeZone, currency } = store;
   const today = calendarDate(new Date(), timeZone);
   const derived = defaults?.(today) ?? {};
   params = { ...params, ...derived };
@@ -129,7 +132,13 @@ export async function ReportPage({
   const zoneLabel = /^[+-]/.test(timeZone) ? `UTC${timeZone}` : timeZone;
   return (
     <div className="flex flex-col gap-4">
-      <ReportHeader {...header} params={params} storeId={storeId} view={{ range, issue, comparison, derived }} />
+      <ReportHeader
+        {...header}
+        params={params}
+        storeId={storeId}
+        currency={currency}
+        view={{ range, issue, comparison, derived }}
+      />
       <ReportFilterBar
         roster={roster}
         storeId={storeId}
@@ -148,7 +157,14 @@ export async function ReportPage({
           remedy={`${issue} The controls show a suggested range. Apply it or choose another range to load the report.`}
         />
       ) : (
-        children({ filters: { storeId, range }, params: { ...params, store: storeId }, comparison, today, timeZone })
+        children({
+          filters: { storeId, range },
+          params: { ...params, store: storeId },
+          comparison,
+          today,
+          timeZone,
+          currency,
+        })
       )}
       <footer className="border-t pt-4 text-xs text-muted-foreground">
         {access.mode === "sample"
@@ -156,7 +172,7 @@ export async function ReportPage({
           : "Data freshness unknown."}
         {dates && ` Dates are calendar dates in the store's time zone, ${zoneLabel}.`}
         {dates && range.to === today && " Today may be incomplete."}
-        {appConfig.currency && <span className="mt-1 block">Reporting currency: {appConfig.currency}.</span>}
+        {currency && <span className="mt-1 block">Reporting currency: {currency}.</span>}
       </footer>
     </div>
   );

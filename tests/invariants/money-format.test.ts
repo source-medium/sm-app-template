@@ -10,6 +10,13 @@ describe("money formatting", () => {
     expect(formatMoney("0.009")).toBe("0.01");
   });
 
+  it("labels an amount with the currency it is given", () => {
+    expect(formatMoney("1234.56", "USD")).toBe("$1,234.56");
+    expect(formatMoney("1234.56", "EUR")).toBe("€1,234.56");
+    expect(formatMoney("-1.01", "USD")).toBe("-$1.01");
+    expect(formatMoney("1234.56", null)).toBe("1,234.56");
+  });
+
   it("does not present rounded zero as negative money or nonfinite ratios as amounts", () => {
     for (const value of [0, -0, "-0", "-0.001", -0.001]) expect(formatMoney(value)).toBe("0.00");
     for (const value of [null, Infinity, -Infinity, NaN]) expect(formatMoney(value)).toBe("—");

@@ -4,7 +4,7 @@ import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { periodChanges } from "@/lib/comparison";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
-import { formatMoney, formatPercent } from "@/lib/format";
+import { formatMoney, formatMoneyIn, formatPercent } from "@/lib/format";
 import { withParams, type SearchParams } from "@/lib/filters";
 import type { Comparison } from "@/lib/comparison";
 import {
@@ -20,13 +20,16 @@ export function SpendBreakdownView({
   dimension,
   comparison,
   params,
+  currency,
 }: {
   data: SpendBreakdown;
   filters: PaidMarketingFilters;
   dimension: BreakdownDimension;
   comparison?: Comparison;
   params: SearchParams;
+  currency: string | null;
 }) {
+  const money = formatMoneyIn(currency);
   const first = data.rows[0];
   const total = first?.total_spend ?? null;
   const baseline = comparison?.range;
@@ -45,15 +48,15 @@ export function SpendBreakdownView({
       <RankedBreakdown
         title={`Spend by ${dimension}`}
         valueLabel="Spend"
-        description={`Spend in the selected period: ${formatMoney(total)}. ${data.hasMore ? "Top 10 by spend. " : ""}Shares use all matching rows for this store, date range, and channel. Zero totals and negative spend have no share.`}
+        description={`Spend in the selected period: ${formatMoney(total, currency)}. ${data.hasMore ? "Top 10 by spend. " : ""}Shares use all matching rows for this store, date range, and channel. Zero totals and negative spend have no share.`}
         comparisonLabel={compare ? "Change vs comparison" : undefined}
         hasMore={data.hasMore}
         rows={data.rows.map((row) => ({
           id: row.dimension_key,
           label: dimension === "campaign" ? `${row.label} (${row.dimension_key})` : row.label,
-          value: { value: decimalToNumber(row.spend), display: formatMoney(row.spend) },
+          value: { value: decimalToNumber(row.spend), display: money(row.spend) },
           share: formatPercent(nonnegativeShare(row.spend, total, first?.minimum_spend ?? null)),
-          change: compare ? kpiDelta(row.spend, row.previous_spend, formatMoney).display : undefined,
+          change: compare ? kpiDelta(row.spend, row.previous_spend, money).display : undefined,
           href:
             dimension === "channel"
               ? withParams("/paid-marketing", params, {

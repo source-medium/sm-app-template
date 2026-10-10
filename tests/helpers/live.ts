@@ -38,32 +38,36 @@ export function rowsResponse(
 }
 
 /** The store list's columns (dim_stores), and one unnamed store in `timeZone`. */
-export const ROSTER_FIELDS = ["sm_store_id", "store_name", "brand_name", "store_timezone"].map((name) => ({
-  name,
-  type: "STRING",
-}));
-export const storeRow = (id: string, timeZone: string | null = "America/New_York") => ({
+export const ROSTER_FIELDS = ["sm_store_id", "store_name", "brand_name", "store_timezone", "store_currency_code"].map(
+  (name) => ({
+    name,
+    type: "STRING",
+  }),
+);
+export const storeRow = (id: string, timeZone: string | null = "America/New_York", currency: string | null = null) => ({
   sm_store_id: id,
   store_name: null,
   brand_name: null,
   store_timezone: timeZone,
+  store_currency_code: currency,
 });
 
 /**
- * Answers the store list with `storeIds`, each in `timeZone`, and every other
- * query with `submit`. Pages and exports read the store's time zone before
- * their dates, unless this server already knows it.
+ * Answers the store list with `storeIds`, each in `timeZone` and `currency`,
+ * and every other query with `submit`. Pages and exports read the store's
+ * time zone before their dates, unless this server already knows it.
  */
 export function withStores(
   submit: NonNullable<FakeBigQueryScript["submit"]>,
   storeIds = ["store-1"],
   timeZone: string | null = "America/New_York",
+  currency: string | null = null,
 ): NonNullable<FakeBigQueryScript["submit"]> {
   return (call, signal) =>
     isStoreList(call)
       ? rowsResponse(
           ROSTER_FIELDS,
-          storeIds.map((id) => storeRow(id, timeZone)),
+          storeIds.map((id) => storeRow(id, timeZone, currency)),
         )
       : submit(call, signal);
 }

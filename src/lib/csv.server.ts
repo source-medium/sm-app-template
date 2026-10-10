@@ -35,7 +35,14 @@ export function csvResponse<Row>(filename: string, columns: CsvColumn<Row>[], ro
   });
 }
 
-export type ExportScope = { params: SearchParams; storeId: string; range: DateRange; mode: ViewerAccess["mode"] };
+export type ExportScope = {
+  params: SearchParams;
+  storeId: string;
+  range: DateRange;
+  mode: ViewerAccess["mode"];
+  /** The selected store's currency, or the app.config.ts fallback when the store has none. */
+  currency: string | null;
+};
 
 /**
  * Runs an export for the store and dates the report would show. A range the
@@ -58,7 +65,13 @@ export async function csvExport(request: Request, build: (scope: ExportScope) =>
     const today = calendarDate(new Date(), store.timeZone);
     const issue = dateRangeIssue(params, today);
     if (issue) return failure(400, { title: "Check the date range", remedy: issue });
-    return await build({ params, storeId: store.storeId, range: parseDateRange(params, today), mode });
+    return await build({
+      params,
+      storeId: store.storeId,
+      range: parseDateRange(params, today),
+      mode,
+      currency: store.currency,
+    });
   } catch (error) {
     if (error instanceof StoreAccessError) return failure(403, { title: error.message });
     if (!(error instanceof WarehouseError)) throw error;

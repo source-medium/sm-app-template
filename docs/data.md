@@ -77,8 +77,9 @@ per day, while headline ratios continue to use full-period totals.
 
 Every data query filters one store with `sm_store_id = @store_id`. There are no
 cross-store totals. The store picker reads `dim_stores`: one row per active
-store, with `sm_store_id`, `store_name`, `brand_name`, and `store_timezone`
-([dates](#dates)). It groups stores by
+store, with `sm_store_id`, `store_name`, `brand_name`, `store_timezone`
+([dates](#dates)), and `store_currency_code` ([money](#money-and-currency)).
+It groups stores by
 brand, uses their names automatically, and appends the ID when names repeat.
 The selected value and shareable URL remain `?store=<sm_store_id>`, so renaming
 a store does not break links. `app.config.ts` `storeLabels` is an optional
@@ -187,31 +188,30 @@ integer into a plausible-looking chart value.
 
 ## Money and currency
 
-`dim_stores.store_currency_code` is the currency configured for the store,
-not a reporting-currency guarantee for the report measures. Do not use it to
-automatically label combined revenue or spend. Its `store_timezone` is the
-store's SourceMedium time zone, which sets the store's dates in the app (see
-[dates](#dates)); it is not every source's date convention (Amazon order local
-times use America/Los_Angeles). The currency code changes no calculation. The
-bundled schema documents all seven metadata fields; the picker reads only the
-identity, name, brand and time zone it needs. Websites and logos are not
-fetched by the picker.
+`dim_stores.store_currency_code` is the currency of that store's published
+money columns. The roster loads it with the store's name, brand, and time
+zone. Reports, the footer, the agent prompt, and CSV `reporting_currency`
+label amounts with that code. A code Intl cannot format is treated as
+missing. `app.config.ts` `currency` is the fallback only when the store has
+no code; `null` leaves those amounts unlabeled. Either source formats
+amounts. Neither converts them, and neither changes a calculation.
 
-Use one SourceMedium workspace reporting currency throughout the app. Keep
-conversion in SourceMedium or the warehouse, and read the standard published
-fields (`order_net_revenue`, `ad_spend`, and related measures). Set `currency`
-in `app.config.ts` to the verified ISO code, for example `"USD"`; every view
-uses it through `formatMoney`, and the report footer identifies it. This
-setting formats amounts; it does not convert them. `null` leaves amounts
-unlabeled and is not a currency check.
+`store_timezone` is the store's SourceMedium time zone, which sets the
+store's dates in the app (see [dates](#dates)); it is not every source's date
+convention (Amazon order local times use America/Los_Angeles). The bundled
+schema documents all seven metadata fields. The picker reads the identity,
+name, brand, time zone, and currency. Websites and logos are not fetched.
 
-Confirm alignment when connecting data. SourceMedium converts supported
-order money when reporting-currency conversion is enabled. Google Ads, Meta,
-TikTok, AppLovin, and Snapchat also use reporting currency when enabled.
-Amazon Ads uses the store currency, which may differ; other advertising
-sources may retain account currency. One store's combined spend and MER can
-therefore mix currencies. Resolve mismatches upstream before using these
-totals; never relabel a source-currency amount as reporting currency.
+Keep conversion in SourceMedium or the warehouse, and read the standard
+published fields (`order_net_revenue`, `ad_spend`, and related measures).
+Pass the report store's currency into `formatMoney`. Chart axis ticks stay
+compact numbers without a currency symbol, because that formatter is shared
+with counts.
+
+Published report amounts for a store are in that store's currency.
+SourceMedium converts supported order and ad money when conversion is
+enabled. Resolve a source that still reports in an account currency before
+combining it with the rest of the store.
 See SourceMedium's [reporting currency rules](https://sourcemedium.com/docs/help-center/core-concepts/data-definitions/reporting-currency).
 
 - Inspect each column's type. Order revenue and ad spend are NUMERIC: decode
@@ -219,15 +219,15 @@ See SourceMedium's [reporting currency rules](https://sourcemedium.com/docs/help
   is FLOAT64: decode with `bq.float64()`; it is approximate at the source.
 - Add NUMERIC values with `sumDecimals` (`src/lib/data/decimal.ts`), never as
   JavaScript numbers. Ratios use `decimalToNumber` and `ratio`.
-- Never add money across stores. The one configured currency must match every
-  store exposed by this app; use separately scoped apps if they differ.
+- Never add money across stores. Each store is labeled with its own currency
+  code. Use a separately scoped app when a deployment should show one store.
 
 For order reconciliation, inspect `order_original_currency_code`,
 `order_converted_currency_code`, `is_order_currency_canonicalized`, and
 `order_original_*` / `order_converted_*` amounts. `order_currency_code` remains
-the source transaction currency; do not use it to label converted revenue.
-The summary and advertising report tables do not expose a common currency
-code, so the app cannot infer their reporting currency from an order row.
+the source transaction currency; do not use it to label report money.
+The summary and advertising tables do not repeat a currency code on each
+row. The store's `store_currency_code` labels those published amounts.
 Discounts and refunds are normally signed negative amounts; read published
 net revenue rather than subtracting those signed amounts again.
 
@@ -474,7 +474,7 @@ with the same campaign query as the table. It includes all loaded campaigns
 across the table's pages, up to 200, in the query's spend order. It does not
 run the chart query or start a background export job. Unapplied filter edits
 are ignored. Each row includes the store, inclusive dates, sample/live mode,
-configured reporting currency (blank when unset), and `export_truncated`.
+the selected store's currency (the `app.config.ts` fallback when the store has no code, blank when both are unset), and `export_truncated`.
 A bounded partial result sets that flag to `true` and uses `-partial-` in the
 filename; it is not a complete campaign export.
 

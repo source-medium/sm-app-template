@@ -38,7 +38,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
       }}
       dates={false}
     >
-      {({ filters, today, timeZone }) => {
+      {({ filters, today, timeZone, currency }) => {
         const options = retentionOptions(params, today);
         const metricLabel =
           RETENTION_METRICS.find((item) => item.value === options.metric)?.label ?? "Monthly retention";
@@ -111,6 +111,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                           channel={options.channel}
                           asOf={options.asOf}
                           window={options.curveWindow}
+                          currency={currency}
                         />
                       )}
                       <div className="flex flex-wrap items-end justify-between gap-4 border-t pt-6">
@@ -133,7 +134,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                         <CohortMatrix
                           caption={metricLabel}
                           columns={Array.from({ length: COHORT_MONTHS }, (_, index) => `Month ${index}`)}
-                          rows={retentionMatrix(rows, options.channel, options.metric, options.asOf)}
+                          rows={retentionMatrix(rows, options.channel, options.metric, options.asOf, currency)}
                         />
                       ) : (
                         <EmptyState message="No cohorts for this channel. Choose another acquisition sales channel." />

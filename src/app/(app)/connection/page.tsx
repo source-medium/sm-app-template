@@ -21,12 +21,14 @@ export default async function ConnectionPage() {
       <div className="space-y-2 rounded-lg border bg-card p-4 text-sm">
         <h2 className="font-semibold">Reporting currency</h2>
         <p>
-          {appConfig.currency
-            ? `Configured as ${appConfig.currency}. Confirm that your included sources report in this currency.`
-            : "Not set. Ask your agent to set the workspace reporting currency in app.config.ts after confirming it with SourceMedium."}
+          Each report labels money with the selected store&apos;s currency from dim_stores (store_currency_code). Sample
+          stores use USD.
         </p>
         <p className="text-muted-foreground">
-          Store currency does not establish reporting currency. This setting formats money; it does not convert it.
+          {appConfig.currency
+            ? `When a store has no currency code, amounts use ${appConfig.currency} from app.config.ts.`
+            : "When a store has no currency code, amounts stay unlabeled. Set currency in app.config.ts only as that fallback."}{" "}
+          This labels amounts. It does not convert them, and amounts are never added across stores.
         </p>
       </div>
       <p className="text-sm text-muted-foreground">

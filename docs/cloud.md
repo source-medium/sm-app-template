@@ -230,7 +230,7 @@ data and ask SourceMedium support. An agent cannot generate a valid warehouse
 credential for you.
 
 Then ask the agent to follow [Connect and deploy](connect.md#connect-a-hosted-app),
-which also sets the reporting currency. Enter the values privately
+which also covers how money is labeled. Enter the values privately
 in the Worker's **production runtime** settings; no `.env.local` file, terminal,
 or warehouse key in the agent's environment is needed. Connect
 [preview data](#connect-preview-data) at the same time, with the same warehouse,

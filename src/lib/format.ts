@@ -32,20 +32,37 @@ export function formatLabel(value: string | null): string {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : EMPTY_VALUE;
 }
 
-const money = new Intl.NumberFormat(
-  appConfig.locale,
-  appConfig.currency
-    ? { style: "currency", currency: appConfig.currency, signDisplay: "negative" }
-    : { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: "negative" },
-);
+const moneyFormatters = new Map<string, Intl.NumberFormat>();
+
+function moneyFormatter(currency: string | null): Intl.NumberFormat {
+  const key = currency ?? "";
+  const cached = moneyFormatters.get(key);
+  if (cached) return cached;
+  const formatter = new Intl.NumberFormat(
+    appConfig.locale,
+    currency
+      ? { style: "currency", currency, signDisplay: "negative" }
+      : { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: "negative" },
+  );
+  moneyFormatters.set(key, formatter);
+  return formatter;
+}
 
 /**
- * Money in the reporting currency. NUMERIC text is formatted exactly (no
- * float rounding); ratios such as AOV arrive as numbers.
+ * Money in `currency`, the selected store's code (ReportContext.currency).
+ * Callers outside a report, including tests, use `app.config.ts` `currency`.
+ * NUMERIC text is formatted exactly (no float rounding); ratios such as AOV
+ * arrive as numbers. This labels amounts; it does not convert them.
  */
-export function formatMoney(value: string | number | null): string {
+export function formatMoney(value: string | number | null, currency: string | null = appConfig.currency): string {
   if (value === null || (typeof value === "number" && !Number.isFinite(value))) return EMPTY_VALUE;
+  const money = moneyFormatter(currency);
   return typeof value === "string" ? money.format(value as `${number}`) : money.format(value);
+}
+
+/** A one-argument formatter bound to one store's currency, for kpiDelta and rankings. */
+export function formatMoneyIn(currency: string | null): (value: string | number | null) => string {
+  return (value) => formatMoney(value, currency);
 }
 
 /** A multiple such as MER or ROAS: 3.42x. */
@@ -138,6 +155,17 @@ export function calendarDate(now: Date, timeZone: string): string {
 export function isTimeZone(timeZone: string): boolean {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
+  } catch (error) {
+    if (error instanceof RangeError) return false;
+    throw error;
+  }
+}
+
+/** Whether Intl can format this ISO 4217 code. Callers uppercase and trim first. */
+export function isCurrency(code: string): boolean {
+  try {
+    new Intl.NumberFormat("en-US", { style: "currency", currency: code });
     return true;
   } catch (error) {
     if (error instanceof RangeError) return false;

@@ -10,8 +10,8 @@ import { presentOverviewMeasures } from "./measures";
 import { overviewSummaryRows } from "./summary-rows";
 import type { OverviewData, OverviewFilters, OverviewMeasures } from "./queries";
 
-function cells(label: string, measures: OverviewMeasures): DataTableRow["cells"] {
-  const presented = presentOverviewMeasures(measures);
+function cells(label: string, measures: OverviewMeasures, currency: string | null): DataTableRow["cells"] {
+  const presented = presentOverviewMeasures(measures, currency);
   return {
     period: { display: label },
     revenue: { display: presented.revenue.display, sort: presented.revenue.sort },
@@ -23,13 +23,25 @@ function cells(label: string, measures: OverviewMeasures): DataTableRow["cells"]
   };
 }
 
-export function OverviewSummary({ data, filters }: { data: OverviewData; filters: OverviewFilters }) {
+export function OverviewSummary({
+  data,
+  filters,
+  currency,
+}: {
+  data: OverviewData;
+  filters: OverviewFilters;
+  currency: string | null;
+}) {
   const records = overviewSummaryRows(data, filters);
   const rows = records
     .filter((row) => row.rowType === "period")
     .map((row) => ({
       id: row.from,
-      cells: cells(row.from === row.to ? formatDate(row.from) : `${formatDate(row.from)} – ${formatDate(row.to)}`, row),
+      cells: cells(
+        row.from === row.to ? formatDate(row.from) : `${formatDate(row.from)} – ${formatDate(row.to)}`,
+        row,
+        currency,
+      ),
     }));
   return (
     <section aria-labelledby="summary-heading" className="flex flex-col gap-3">
@@ -74,7 +86,7 @@ export function OverviewSummary({ data, filters }: { data: OverviewData; filters
           { key: "sessions", header: "Sessions", align: "right" },
         ]}
         rows={rows}
-        totals={data.totals ? { id: "total", cells: cells("Selected period total", data.totals) } : undefined}
+        totals={data.totals ? { id: "total", cells: cells("Selected period total", data.totals, currency) } : undefined}
       />
     </section>
   );

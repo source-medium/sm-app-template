@@ -3,6 +3,7 @@
  * table. Descriptions and sparklines stay with the card. CSV export stays raw.
  */
 import "server-only";
+import { appConfig } from "@/app.config";
 import type { MetricValue } from "@/lib/comparison";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
@@ -25,14 +26,17 @@ export type PresentedMeasure = {
 
 export type OverviewPresentation = Record<OverviewMeasureKey, PresentedMeasure>;
 
-const money = (value: MetricValue | null) => formatMoney(typeof value === "bigint" ? null : value);
 const measure = (value: MetricValue | null) => formatMeasure(typeof value === "bigint" ? null : value);
 const multiple = (value: MetricValue | null) => formatMultiple(typeof value === "number" ? value : null);
 const count = (value: MetricValue | null) =>
   formatCount(typeof value === "bigint" || typeof value === "number" ? value : null);
 
-/** `measures` is null when the period has no rows. */
-export function presentOverviewMeasures(measures: OverviewMeasures | null): OverviewPresentation {
+/** `measures` is null when the period has no rows. `currency` defaults to the app.config.ts fallback. */
+export function presentOverviewMeasures(
+  measures: OverviewMeasures | null,
+  currency: string | null = appConfig.currency,
+): OverviewPresentation {
+  const money = (value: MetricValue | null) => formatMoney(typeof value === "bigint" ? null : value, currency);
   const revenue = decimalToNumber(measures?.netRevenue ?? null);
   const orders = measures?.orders ?? null;
   const spend = decimalToNumber(measures?.adSpend ?? null);
@@ -41,7 +45,7 @@ export function presentOverviewMeasures(measures: OverviewMeasures | null): Over
   const mer = ratio(revenue, spend);
   return {
     revenue: {
-      display: formatMoney(measures?.netRevenue ?? null),
+      display: formatMoney(measures?.netRevenue ?? null, currency),
       sort: revenue,
       amount: measures?.netRevenue ?? null,
       format: money,
@@ -54,9 +58,15 @@ export function presentOverviewMeasures(measures: OverviewMeasures | null): Over
       format: measure,
       better: "higher",
     },
-    average: { display: formatMoney(average), sort: average, amount: average, format: money, better: "neutral" },
+    average: {
+      display: formatMoney(average, currency),
+      sort: average,
+      amount: average,
+      format: money,
+      better: "neutral",
+    },
     spend: {
-      display: formatMoney(measures?.adSpend ?? null),
+      display: formatMoney(measures?.adSpend ?? null, currency),
       sort: spend,
       amount: measures?.adSpend ?? null,
       format: money,

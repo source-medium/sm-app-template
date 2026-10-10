@@ -42,7 +42,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       agentFilters={{ sales_channel: channel, grain }}
       comparisons
     >
-      {({ filters, comparison, timeZone }) => {
+      {({ filters, comparison, timeZone, currency }) => {
         const selected: OverviewFilters = { ...filters, channel, grain };
         return (
           <>
@@ -62,7 +62,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                 isEmpty={(report) => report.current.days.length === 0}
                 emptyMessage="No rows match this store, sales channel, and date range."
               >
-                {(report) => <OverviewView report={report} filters={selected} comparison={comparison} />}
+                {(report) => (
+                  <OverviewView report={report} filters={selected} comparison={comparison} currency={currency} />
+                )}
               </DataRegion>
             </Suspense>
           </>
@@ -76,10 +78,12 @@ function OverviewView({
   report,
   filters,
   comparison,
+  currency,
 }: {
   report: OverviewReport;
   filters: OverviewFilters;
   comparison?: Comparison;
+  currency: string | null;
 }) {
   const data = report.current;
   const compared = report.comparison?.data ?? null;
@@ -89,9 +93,9 @@ function OverviewView({
   const showLines = Boolean(baseline && compared);
   const period = `${formatDate(filters.range.from)} – ${formatDate(filters.range.to)}`;
   const byDate = new Map(data.days.map((day) => [day.date, day]));
-  const presentedDays = new Map(data.days.map((day) => [day.date, presentOverviewMeasures(day)]));
-  const currentMeasures = presentOverviewMeasures(data.totals);
-  const previousMeasures = presentOverviewMeasures(compared?.totals ?? null);
+  const presentedDays = new Map(data.days.map((day) => [day.date, presentOverviewMeasures(day, currency)]));
+  const currentMeasures = presentOverviewMeasures(data.totals, currency);
+  const previousMeasures = presentOverviewMeasures(compared?.totals ?? null, currency);
   // Every date in the range, so a date with no rows is a gap in the line, not a zero.
   const dates = datesInRange(filters.range);
   const dailyTableHref =
@@ -117,7 +121,7 @@ function OverviewView({
     const value = row?.[measure] ?? null;
     return {
       value: typeof value === "string" ? decimalToNumber(value) : value,
-      display: `${row ? (measure === "netRevenue" ? formatMoney(value) : formatMeasure(value as number | null)) : "No rows"}${date ? ` (${formatDate(date)})` : " (no matching calendar day)"}`,
+      display: `${row ? (measure === "netRevenue" ? formatMoney(value, currency) : formatMeasure(value as number | null)) : "No rows"}${date ? ` (${formatDate(date)})` : " (no matching calendar day)"}`,
     };
   }
   const revenue = buildChartData(
@@ -127,7 +131,7 @@ function OverviewView({
       return {
         label: formatDay(date),
         values: {
-          revenue: { value, display: day ? formatMoney(day.netRevenue) : "No rows" },
+          revenue: { value, display: day ? formatMoney(day.netRevenue, currency) : "No rows" },
           ...(showLines ? { previous_revenue: previousPoint(index, "netRevenue") } : {}),
         },
       };
@@ -245,6 +249,7 @@ function OverviewView({
         current={data.purchases}
         previous={report.comparison?.data?.purchases ?? null}
         comparedTo={showDelta && baseline ? `${formatDate(baseline.from)} – ${formatDate(baseline.to)}` : undefined}
+        currency={currency}
       />
       <section aria-label="Daily trends" className="grid gap-4 lg:grid-cols-2">
         <ChartCard
@@ -274,7 +279,7 @@ function OverviewView({
           plottable={orders.plottable}
         />
       </section>
-      <OverviewSummary data={data} filters={filters} />
+      <OverviewSummary data={data} filters={filters} currency={currency} />
     </div>
   );
 }

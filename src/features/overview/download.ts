@@ -1,4 +1,3 @@
-import { appConfig } from "@/app.config";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { csvExport, csvResponse } from "@/lib/csv.server";
 import { parseSalesChannel } from "@/lib/filters";
@@ -9,7 +8,7 @@ import { overviewSummaryRows } from "./summary-rows";
 /** Re-read the applied summary filters; export period rows and one explicitly marked full total. */
 export async function GET(request: Request): Promise<Response> {
   await requireViewer();
-  return csvExport(request, async ({ params, storeId, range, mode }) => {
+  return csvExport(request, async ({ params, storeId, range, mode, currency }) => {
     const filters = { storeId, range, channel: parseSalesChannel(params), grain: parseTimeGrain(params) };
     const data = await getOverview(filters);
     const rows = overviewSummaryRows(data, filters);
@@ -20,7 +19,7 @@ export async function GET(request: Request): Promise<Response> {
         { header: "store_id", value: () => storeId },
         { header: "from", value: () => range.from },
         { header: "to", value: () => range.to },
-        { header: "reporting_currency", value: () => appConfig.currency },
+        { header: "reporting_currency", value: () => currency },
         { header: "sales_channel", value: () => filters.channel },
         { header: "grain", value: () => filters.grain },
         { header: "row_type", value: (row) => row.rowType },

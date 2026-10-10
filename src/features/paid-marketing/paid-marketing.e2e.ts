@@ -38,7 +38,7 @@ test("paid marketing: downloads raw campaigns for the applied filters", async ({
   expect(lines).toHaveLength(4); // Three Meta campaigns, plus the header.
   expect(lines[0]).toContain('"spend","impressions","clicks"');
   for (const line of lines.slice(1)) {
-    expect(line).toContain('"sample","sample-store-b","2026-09-01","2026-09-07","","false"');
+    expect(line).toContain('"sample","sample-store-b","2026-09-01","2026-09-07","USD","false"');
     expect(line).toMatch(/,"Meta","\d+(?:\.\d+)?","\d+","\d+",/);
   }
 });

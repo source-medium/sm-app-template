@@ -44,7 +44,15 @@ it("the scoped warehouse rejects missing, mismatched and duplicate store paramet
   expect(fake.calls).toHaveLength(0);
   expect(await queryStoreRoster(warehouse, "store-a")).toEqual({
     relation: "dim_stores",
-    stores: [{ sm_store_id: "store-a", store_name: "Store A", brand_name: "Brand", store_timezone: "Europe/Paris" }],
+    stores: [
+      {
+        sm_store_id: "store-a",
+        store_name: "Store A",
+        brand_name: "Brand",
+        store_timezone: "Europe/Paris",
+        store_currency_code: null,
+      },
+    ],
   });
   const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string; queryParameters: unknown[] };
   expect(body.query).toContain("AND sm_store_id = @store_id");

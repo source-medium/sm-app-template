@@ -1,4 +1,3 @@
-import { appConfig } from "@/app.config";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { csvExport, csvResponse } from "@/lib/csv.server";
 import { campaignRatios, getPaidCampaigns, paidChannel } from "./queries";
@@ -6,7 +5,7 @@ import { campaignRatios, getPaidCampaigns, paidChannel } from "./queries";
 /** Export the same filtered, bounded campaign set as the report, including all table pages. */
 export async function GET(request: Request): Promise<Response> {
   await requireViewer();
-  return csvExport(request, async ({ params, storeId, range, mode }) => {
+  return csvExport(request, async ({ params, storeId, range, mode, currency }) => {
     const data = await getPaidCampaigns({ storeId, range, channel: paidChannel(params) });
     const rows = data.campaigns.map((row) => ({ ...row, ...campaignRatios(row) }));
     return csvResponse(
@@ -16,7 +15,7 @@ export async function GET(request: Request): Promise<Response> {
         { header: "store_id", value: () => storeId },
         { header: "from", value: () => range.from },
         { header: "to", value: () => range.to },
-        { header: "reporting_currency", value: () => appConfig.currency },
+        { header: "reporting_currency", value: () => currency },
         { header: "export_truncated", value: () => data.campaignsTruncated },
         { header: "campaign_id", value: (row) => row.campaignId },
         { header: "campaign_name", value: (row) => row.campaignName },

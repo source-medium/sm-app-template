@@ -55,7 +55,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         ...(selected ? ["Order details"] : []),
       ]}
     >
-      {({ filters, params: linkParams, timeZone }) => {
+      {({ filters, params: linkParams, timeZone, currency }) => {
         const orderFilters: OrdersFilters = { ...filters, search, cursor, channel };
         return (
           <div className="flex flex-col gap-4">
@@ -96,7 +96,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     : "No orders match this store, sales channel, and date range."
                 }
               >
-                {(data) => <OrdersList data={data} params={linkParams} paged={cursor !== null} />}
+                {(data) => <OrdersList data={data} params={linkParams} paged={cursor !== null} currency={currency} />}
               </DataRegion>
             </Suspense>
             {selected && (
@@ -112,7 +112,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     isEmpty={(order) => order === null}
                     emptyMessage="This order is not in the selected store."
                   >
-                    {(order) => (order ? <OrderDetailList order={order} timeZone={timeZone} /> : null)}
+                    {(order) =>
+                      order ? <OrderDetailList order={order} timeZone={timeZone} currency={currency} /> : null
+                    }
                   </DataRegion>
                 </Suspense>
               </OrderDrawer>
@@ -124,7 +126,17 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   );
 }
 
-function OrdersList({ data, params, paged }: { data: OrdersPage; params: SearchParams; paged: boolean }) {
+function OrdersList({
+  data,
+  params,
+  paged,
+  currency,
+}: {
+  data: OrdersPage;
+  params: SearchParams;
+  paged: boolean;
+  currency: string | null;
+}) {
   const linkTo = (ref: OrderRef) => withParams(PATHNAME, params, { order: encodeRef(ref) });
   return (
     <div className="flex flex-col gap-3">
@@ -152,7 +164,7 @@ function OrdersList({ data, params, paged }: { data: OrdersPage; params: SearchP
             type: { display: formatLabel(order.orderType) },
             status: { display: formatLabel(order.paymentStatus) },
             items: { display: order.items ?? EMPTY_VALUE },
-            revenue: { display: formatMoney(order.netRevenue) },
+            revenue: { display: formatMoney(order.netRevenue, currency) },
           },
         }))}
         actions={
@@ -182,7 +194,15 @@ function OrdersList({ data, params, paged }: { data: OrdersPage; params: SearchP
   );
 }
 
-function OrderDetailList({ order, timeZone }: { order: OrderDetail; timeZone: string }) {
+function OrderDetailList({
+  order,
+  timeZone,
+  currency,
+}: {
+  order: OrderDetail;
+  timeZone: string;
+  currency: string | null;
+}) {
   const rows: [string, string][] = [
     ["Order", order.name ?? EMPTY_VALUE],
     ["Order id", order.orderId ?? EMPTY_VALUE],
@@ -197,13 +217,13 @@ function OrderDetailList({ order, timeZone }: { order: OrderDetail; timeZone: st
     ["Items", order.items ?? EMPTY_VALUE],
     ["Items refunded", order.refundedItems ?? EMPTY_VALUE],
     ["Products", order.productTitles ?? EMPTY_VALUE],
-    ["Gross revenue", formatMoney(order.grossRevenue)],
-    ["Discounts", formatMoney(order.discounts)],
-    ["Refunds", formatMoney(order.refunds)],
-    ["Net revenue", formatMoney(order.netRevenue)],
-    ["Shipping", formatMoney(order.shipping)],
-    ["Taxes", formatMoney(order.taxes)],
-    ["Total revenue", formatMoney(order.totalRevenue)],
+    ["Gross revenue", formatMoney(order.grossRevenue, currency)],
+    ["Discounts", formatMoney(order.discounts, currency)],
+    ["Refunds", formatMoney(order.refunds, currency)],
+    ["Net revenue", formatMoney(order.netRevenue, currency)],
+    ["Shipping", formatMoney(order.shipping, currency)],
+    ["Taxes", formatMoney(order.taxes, currency)],
+    ["Total revenue", formatMoney(order.totalRevenue, currency)],
     ["Discount codes", order.discountCodes ?? EMPTY_VALUE],
     ["Ships to", [order.shippingState, order.shippingCountry].filter(Boolean).join(", ") || EMPTY_VALUE],
     ["UTM source / medium", [order.utmSource, order.utmMedium].filter(Boolean).join(" / ") || EMPTY_VALUE],

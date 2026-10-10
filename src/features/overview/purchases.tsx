@@ -1,19 +1,23 @@
 import "server-only";
+import { appConfig } from "@/app.config";
 import { DataTable } from "@/components/patterns/data-table";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
-import { formatMeasure, formatMoney } from "@/lib/format";
+import { formatMeasure, formatMoney, formatMoneyIn } from "@/lib/format";
 import type { PurchaseMix } from "./queries";
 
 export function OverviewPurchases({
   current,
   previous,
   comparedTo,
+  currency = appConfig.currency,
 }: {
   current: PurchaseMix | null;
   previous: PurchaseMix | null;
   comparedTo?: string;
+  currency?: string | null;
 }) {
+  const money = formatMoneyIn(currency);
   const rows = (["first", "repeat"] as const).map((key) => {
     const measures = current?.[key];
     const baseline = previous?.[key];
@@ -23,10 +27,10 @@ export function OverviewPurchases({
       id: key,
       cells: {
         purchase: { display: key === "first" ? "New-customer orders" : "Repeat-customer orders" },
-        revenue: { display: formatMoney(revenue) },
+        revenue: { display: formatMoney(revenue, currency) },
         orders: { display: formatMeasure(orders) },
-        average: { display: formatMoney(ratio(decimalToNumber(revenue), orders)) },
-        change: { display: kpiDelta(revenue, baseline?.netRevenue ?? null, formatMoney).display },
+        average: { display: formatMoney(ratio(decimalToNumber(revenue), orders), currency) },
+        change: { display: kpiDelta(revenue, baseline?.netRevenue ?? null, money).display },
       },
     };
   });
