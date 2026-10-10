@@ -1,5 +1,8 @@
 # Release readiness
 
+Maintainer release evidence for this template, not setup instructions. To set
+up an app, start with the [README](../README.md).
+
 Status: 0.1.0 preview, suitable for public source distribution. The tested
 path is local setup and Cloudflare Workers with a shared password. A fresh
 Cloudflare account, real Access offboarding and self-service Apps provisioning
@@ -18,7 +21,7 @@ The Cloudflare build and workerd smoke suite passed. The hosted verifier matched
 the build, checked anonymous protection, passed live Connection, and passed all
 12 live browser tests across the six reports. Connection has the existing
 missing-`dim_stores` warning; store IDs remain usable. This verifies the running
-demo, not fresh-account onboarding or Urchin credential issuance. README
+demo, not fresh-account onboarding or Apps credential issuance. README
 screenshots use synthetic fixtures and contain no warehouse data.
 
 ## Local release gates
@@ -163,12 +166,12 @@ reported the known missing-`dim_stores` warning. Version URLs were disabled
 for this real-data check and verified to return 404; the branch-inheritance
 exercise above used synthetic credentials. No real secret was printed or
 copied into a temporary file. These tests do not verify Cloudflare's Git
-integration, a fresh cloud-agent session, or issuance of a new Urchin key.
+integration, a fresh cloud-agent session, or issuance of a new Apps credential.
 Cleanup removed the temporary key binding first and verified reports failed
 closed with 503. The temporary Worker was then deleted; its live URL and the
 tested immutable URLs returned 404. The public demo was not changed.
 
-The Production/Development guidance is also aligned with Urchin's Apps page.
+The Production/Development guidance is also aligned with SourceMedium's Apps page.
 Its six handoff component tests and targeted lint passed. No app identity,
 warehouse grant, or customer credential was created or changed in this rehearsal.
 
@@ -244,7 +247,7 @@ credential. It reported the expected store-ID fallback because `dim_stores`
 is not yet published there. No credential or warehouse row was printed.
 This checks connectivity, not metric accuracy or freshness.
 
-Urchin's customer-admin Apps handoff is implemented separately and needs its
+The Apps page's customer-admin handoff is implemented separately and needs its
 own migration, infrastructure and demo-only issuance rollout before it is
 enabled. These starter checks do not prove newly issued Google credentials,
 effective provider quotas, or the two fresh cloud-agent account journeys.
@@ -269,21 +272,21 @@ the sample-only preview rehearsal above predates that change.
 - `pnpm test:live --grep 'renders live data'` passed all six views on the
   authorized demo checkout using its existing credential. Browser sign-in was
   automatic, with one worker and no traces, screenshots, videos or HTML report.
-- Urchin's updated handoff passed its component tests, typecheck, lint and
+- The Apps page's updated handoff passed its component tests, typecheck, lint and
   modularity checks. Production and Development use the same issuance code.
 
 These checks verify the environment-variable contract locally. They do not
-claim a fresh Codex/Claude cloud session or a newly issued Urchin key was tested.
-The opt-in Urchin rollout and real cloud-account walkthroughs remain separate
+claim a fresh Codex/Claude cloud session or a newly issued Apps credential was tested.
+The opt-in Apps credential rollout and real cloud-account walkthroughs remain separate
 release checks; no real key was copied to a cloud agent during this work.
 
 ## Onboarding review (2026-10-08, unreleased follow-up)
 
 The onboarding guides now connect the production Worker before the preview
 Worker, state the Workers Paid price, document the viewer password rule, and
-describe the Apps page in the words urchin's page uses (checked against its
-`customer-apps` component and issuance contract: variable names, block order,
-password shape and button labels match). `pnpm preview` runs the doctor's
+describe the Apps page in its own words (checked against its issuance
+contract: variable names, block order, password shape and button labels
+match). `pnpm preview` runs the doctor's
 `--dev-vars` mode first. The claim it rests on was verified here: with a live
 `.env.local` and no `.dev.vars`, the built Worker preview served public sample
 data, so the preview reads `.dev.vars` alone. The preflight was exercised with
@@ -316,7 +319,7 @@ reporting-currency ISO code or reliability across other agents and tenants.
 | Gate                            | Evidence required before closing                                                                                                                                                                                                                                                                                           |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | SourceMedium Apps availability  | An admin can issue and replace an app-specific block through the published UI. Outside the starter release scope; keep planned-flow labels until it ships. Its absence does not block publishing the starter source.                                                                                                       |
-| Fresh-account Cloudflare button | After publication, use a fresh account on Workers Paid. Copy the template, set runtime secrets, deploy, verify the password and Live data, and verify an anonymous request to a page, RSC request and public asset is denied. Confirm subsequent deployment retains secrets. Record versions and date without credentials. |
+| Fresh-account Cloudflare deploy | After publication, use a fresh account on Workers Paid. Copy the template, set runtime secrets, deploy, verify the password and Live data, and verify an anonymous request to a page, RSC request and public asset is denied. Confirm subsequent deployment retains secrets. Record versions and date without credentials. |
 | Real Cloudflare Access          | Cover every hostname, verify allowed and denied identities and origin requests, then remove a test viewer and revoke sessions. Record actual offboarding behavior. Local JWT tests do not prove the edge policy.                                                                                                           |
 | Vercel                          | Unverified and outside this preview's support claim. Before advertising support, deploy the same source with Basic auth and test configuration failures, public assets, RSC, headers and secret isolation. Remove the upstream spec's historical “Vercel smoke-tested” claim until evidence exists.                        |
 | Connect my data prompt          | On a fresh copy, a maintainer enters a demo app block privately and follows the prompt with their agent. Record diagnose output, Live data on each view, and pnpm check. Do not use customer data.                                                                                                                         |

@@ -72,3 +72,13 @@ export async function requireViewer(options?: { live?: true; storeId?: string })
   }
   return access;
 }
+
+/**
+ * The store a request names with ?store=, checked against APP_STORE_ID, or
+ * the fixed store. Null means the caller picks the first store in the roster.
+ * Pages and exports both resolve the store here.
+ */
+export async function requestedStore(supplied: string | undefined): Promise<string | null> {
+  const access = await requireViewer(supplied === undefined ? undefined : { storeId: supplied });
+  return (supplied ?? access.storeId)?.slice(0, 200) || null;
+}

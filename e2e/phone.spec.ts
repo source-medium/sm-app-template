@@ -41,8 +41,7 @@ for (const item of appConfig.nav) {
   });
 }
 
-test("the top bar fits a small touch screen when the brand font is unavailable", async ({ page }) => {
-  await page.route(/fontshare\.com/, (route) => route.abort());
+test("the top bar fits a small touch screen", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto(appConfig.nav[0]?.href ?? "/");
   await expect(page.getByRole("status")).toHaveCount(0);

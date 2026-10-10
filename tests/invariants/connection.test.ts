@@ -16,10 +16,10 @@ function fakeWarehouse(
       Response.json({
         location: options.location ?? "US",
         schema: {
-          fields: (options.missingColumns
-            ? ["sm_store_id"]
-            : ["sm_store_id", "date", "order_net_revenue", "order_count", "website_sessions", "ad_clicks", "ad_spend"]
-          ).map((name) => ({ name, type: "STRING" })),
+          fields: (options.missingColumns ? ["date", "order_net_revenue"] : ["sm_store_id", "date"]).map((name) => ({
+            name,
+            type: "STRING",
+          })),
         },
       }),
     submit: ({ body }) => {
@@ -29,8 +29,13 @@ function fakeWarehouse(
       if (query.query.includes("store_name"))
         return Response.json(
           queryResponse({
-            schema: { fields: ["sm_store_id", "store_name", "brand_name"].map((name) => ({ name, type: "STRING" })) },
-            rows: options.empty ? [] : [row(["private-store", "Private Brand", "Private Brand"])],
+            schema: {
+              fields: ["sm_store_id", "store_name", "brand_name", "store_timezone"].map((name) => ({
+                name,
+                type: "STRING",
+              })),
+            },
+            rows: options.empty ? [] : [row(["private-store", "Private Brand", "Private Brand", "America/Chicago"])],
           }),
         );
       const names = query.query.includes("column_name")
@@ -91,12 +96,14 @@ describe("connection diagnostics", () => {
     ).toBe(true);
   });
 
-  it("preserves the CLI example-schema check", async () => {
+  it("requires only the store column the shell reads; report columns belong to each view", async () => {
     const { warehouse } = await setup(fakeWarehouse({ missingColumns: true }));
     expect((await warehouse.checkConnection()).checks.at(-1)).toMatchObject({
-      name: "Example columns",
+      name: "Store column",
       status: "fail",
     });
+    const { warehouse: minimal } = await setup(fakeWarehouse());
+    expect((await minimal.checkConnection()).checks.every((check) => check.status === "pass")).toBe(true);
   });
 
   it("stops at an invalid credential without echoing provider text", async () => {

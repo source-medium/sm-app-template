@@ -18,15 +18,6 @@ import { retentionMatrix } from "./matrix";
 export const metadata: Metadata = { title: "Retention" };
 export default async function RetentionPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
-  const options = retentionOptions(params, new Date());
-  const applied = {
-    ...params,
-    as_of: options.asOf,
-    channel: options.channel,
-    measure: options.metric,
-    cohorts: options.curveWindow,
-  };
-  const metricLabel = RETENTION_METRICS.find((item) => item.value === options.metric)?.label ?? "Monthly retention";
   return (
     <ReportPage
       sources={[
@@ -39,16 +30,18 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
       title="Retention"
       description="Compare monthly purchase cohorts at the same age, one sales channel at a time."
       pathname="/retention"
-      params={applied}
-      agentFilters={{
-        as_of: options.asOf,
-        channel: options.channel,
-        measure: options.metric,
-        cohorts: options.curveWindow,
+      params={params}
+      // The latest complete month depends on the store's date, so the shell applies these once it knows it.
+      defaults={(today) => {
+        const options = retentionOptions(params, today);
+        return { as_of: options.asOf, channel: options.channel, measure: options.metric, cohorts: options.curveWindow };
       }}
       dates={false}
     >
-      {({ filters }) => {
+      {({ filters, today }) => {
+        const options = retentionOptions(params, today);
+        const metricLabel =
+          RETENTION_METRICS.find((item) => item.value === options.metric)?.label ?? "Monthly retention";
         return (
           <>
             <div className="flex flex-wrap items-end gap-4">

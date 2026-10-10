@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // Rename freely; the Deploy to Cloudflare button sets it to your project's name.
+  // A unique Worker name for this app (docs/connect.md); keep it once deployed.
   "name": "sm-app",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-06-30",

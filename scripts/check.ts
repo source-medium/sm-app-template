@@ -1,11 +1,12 @@
 /**
  * pnpm check: the one command to run before declaring a change done.
- * Format, lint, types, auth coverage, skill copies, and every test
+ * Format, lint, types, auth and store-scope coverage, skill copies, and every test
  * (including the invariants, in Node and workerd), run side by side. Each
  * failure is one sentence naming the file and the fix.
  */
 import { spawn } from "node:child_process";
 import { findAuthGaps } from "./lib/auth-coverage";
+import { findStoreScopeGaps } from "./lib/store-scope";
 import { root } from "./lib/environment";
 import { skillDifferences } from "./lib/skills";
 import { readdirSync, readFileSync } from "node:fs";
@@ -81,13 +82,13 @@ const steps: Step[] = [
   },
   {
     name: "auth-coverage",
-    run: () =>
-      findAuthGaps(
-        sourceFiles(join(root, "src")).map((path) => ({
-          path: relative(root, path).split(sep).join("/"),
-          text: readFileSync(path, "utf8"),
-        })),
-      ),
+    run: () => {
+      const files = sourceFiles(join(root, "src")).map((path) => ({
+        path: relative(root, path).split(sep).join("/"),
+        text: readFileSync(path, "utf8"),
+      }));
+      return [...findAuthGaps(files), ...findStoreScopeGaps(files)];
+    },
   },
   { name: "skills", run: () => skillDifferences(root) },
   {

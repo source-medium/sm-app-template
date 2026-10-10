@@ -118,3 +118,22 @@ const wallTime = new Intl.DateTimeFormat(appConfig.locale, {
 export function formatWallTime(datetime: string | null): string {
   return datetime ? wallTime.format(new Date(`${datetime.slice(0, 19)}Z`)) : EMPTY_VALUE;
 }
+
+/** The calendar date (YYYY-MM-DD) at an instant in a time zone: an IANA name or an offset such as "-07:00". */
+export function calendarDate(now: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" })
+    .formatToParts(now)
+    .reduce<Record<string, string>>((all, part) => ({ ...all, [part.type]: part.value }), {});
+  return `${parts.year?.padStart(4, "0")}-${parts.month}-${parts.day}`;
+}
+
+/** Whether calendarDate accepts this time zone. */
+export function isTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
+  } catch (error) {
+    if (error instanceof RangeError) return false;
+    throw error;
+  }
+}

@@ -9,9 +9,9 @@ import { KpiCard } from "@/components/patterns/kpi-card";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { cardGridStyles } from "@/components/ui/card";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
-import { comparisonDates, type Comparison } from "@/lib/comparison";
+import { comparisonDates, coverageIssue, type Comparison } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
-import { parseSalesChannel, withParams, datesInRange, rangeLength, type SearchParams } from "@/lib/filters";
+import { parseSalesChannel, withParams, datesInRange, latestDate, rangeLength, type SearchParams } from "@/lib/filters";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { formatCount, formatDate, formatDay, formatMeasure, formatMoney, formatMultiple } from "@/lib/format";
 import { getOverviewReport, type OverviewDay, type OverviewFilters, type OverviewReport } from "./queries";
@@ -80,9 +80,15 @@ function OverviewView({
   comparison?: Comparison;
 }) {
   const data = report.current;
-  const previous = report.comparison?.data?.totals ?? null;
+  const compared = report.comparison?.data ?? null;
+  const previous = compared?.totals ?? null;
   const baseline = comparison?.range;
-  const showDelta = Boolean(baseline && !report.comparison?.error);
+  const latest = (days: { date: string }[]) => latestDate(days.map((day) => day.date));
+  const issue =
+    baseline && compared ? coverageIssue(filters.range, baseline, latest(data.days), latest(compared.days)) : null;
+  // Daily lines align date by date, so they still show; period totals change only when coverage allows.
+  const showLines = Boolean(baseline && compared);
+  const showDelta = showLines && !issue;
   const previousRevenue = decimalToNumber(previous?.netRevenue ?? null);
   const previousSpend = decimalToNumber(previous?.adSpend ?? null);
   const period = `${formatDate(filters.range.from)} – ${formatDate(filters.range.to)}`;
@@ -106,7 +112,7 @@ function OverviewView({
   const aligned = comparison ? comparisonDates(filters.range, comparison) : [];
   const prior = new Map(report.comparison?.data?.days.map((day) => [day.date, day]));
   const baselineSeries = (key: string) =>
-    showDelta ? [{ key: `previous_${key}`, label: "Comparison", color: "var(--chart-2)", dashed: true }] : [];
+    showLines ? [{ key: `previous_${key}`, label: "Comparison", color: "var(--chart-2)", dashed: true }] : [];
   function previousPoint(index: number, measure: "netRevenue" | "orders") {
     const date = aligned[index];
     const row = date ? prior.get(date) : undefined;
@@ -124,7 +130,7 @@ function OverviewView({
         label: formatDay(date),
         values: {
           revenue: { value, display: day ? formatMoney(day.netRevenue) : "No rows" },
-          ...(showDelta ? { previous_revenue: previousPoint(index, "netRevenue") } : {}),
+          ...(showLines ? { previous_revenue: previousPoint(index, "netRevenue") } : {}),
         },
       };
     }),
@@ -136,7 +142,7 @@ function OverviewView({
         label: formatDay(date),
         values: {
           orders: { value: day?.orders ?? null, display: day ? formatMeasure(day.orders) : "No rows" },
-          ...(showDelta ? { previous_orders: previousPoint(index, "orders") } : {}),
+          ...(showLines ? { previous_orders: previousPoint(index, "orders") } : {}),
         },
       };
     }),
@@ -148,7 +154,7 @@ function OverviewView({
   return (
     <div className="flex flex-col gap-6">
       {baseline && comparison && (
-        <ComparisonCaption comparison={comparison}>
+        <ComparisonCaption comparison={comparison} issue={issue}>
           <p>
             {rangeLength(filters.range)} selected days vs {rangeLength(baseline)} comparison days.
           </p>
@@ -167,7 +173,8 @@ function OverviewView({
           )}
         </ComparisonCaption>
       )}
-      {report.comparison?.data &&
+      {showDelta &&
+        report.comparison?.data &&
         (data.days.length < rangeLength(filters.range) ||
           (baseline && report.comparison.data.days.length < rangeLength(baseline))) && (
           <p className="text-sm text-muted-foreground">
@@ -225,7 +232,7 @@ function OverviewView({
         />
         <KpiCard
           label="Ad spend"
-          description="Published advertising spend summed across the selected sales channels for this store and period, in the warehouse's reporting currency."
+          description="Published advertising spend summed across the selected sales channels for this store and period, in the warehouse's reporting currency. It comes from the daily summary, so it can differ by cents from Paid marketing, which sums ad-level rows."
           value={formatMoney(totals?.adSpend ?? null)}
           trend={trend((day) => day.adSpend)}
           delta={showDelta ? kpiDelta(totals?.adSpend ?? null, previous?.adSpend ?? null, formatMoney) : undefined}
@@ -265,7 +272,7 @@ function OverviewView({
         <ChartCard
           title="Net revenue by day"
           description={
-            showDelta
+            showLines
               ? "Selected period and dashed comparison. Comparison dates appear in the table and tooltip."
               : "Selected period"
           }
@@ -278,7 +285,7 @@ function OverviewView({
         <ChartCard
           title="Summary orders by day"
           description={
-            showDelta
+            showLines
               ? "Selected period and dashed comparison. Comparison dates appear in the table and tooltip."
               : "Selected period"
           }

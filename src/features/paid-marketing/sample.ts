@@ -5,7 +5,7 @@
  */
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits } from "@/lib/data/decimal";
-import { datesInRange, type DateRange } from "@/lib/filters";
+import { datesInRange, latestDate, type DateRange } from "@/lib/filters";
 import { randomInt, seededRandom } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import type { PaidMarketingData, PaidMarketingFilters } from "./queries";
@@ -68,6 +68,7 @@ export async function sampleSpendBreakdown(
   baseline: DateRange | null,
 ): Promise<SpendBreakdown> {
   const grouped = new Map<string, { label: string; spend: bigint | null; previous: bigint | null }>();
+  const dates = { spend: new Set<string>(), previous: new Set<string>() };
   for (const [period, range] of [
     ["spend", filters.range],
     ["previous", baseline],
@@ -75,7 +76,7 @@ export async function sampleSpendBreakdown(
     if (!range) continue;
     for (const row of samplePaidSource(filters.storeId, range)) {
       if (filters.channel && row.channel !== filters.channel) continue;
-      const key = dimension === "channel" ? row.channel : row.campaign.id;
+      const key = dimension === "channel" ? row.channel : `${row.channel} / ${row.campaign.id}`;
       const sums = grouped.get(key) ?? {
         label: dimension === "channel" ? row.channel : row.campaign.name,
         spend: null,
@@ -83,6 +84,7 @@ export async function sampleSpendBreakdown(
       };
       sums[period] = (sums[period] ?? 0n) + row.spendCents;
       grouped.set(key, sums);
+      dates[period].add(row.date);
     }
   }
   const current = [...grouped.values()].flatMap((row) => (row.spend === null ? [] : [row.spend]));
@@ -107,6 +109,8 @@ export async function sampleSpendBreakdown(
       previous_spend: row.previous === null ? null : money(row.previous),
       total_spend: total === null ? null : money(total),
       minimum_spend: minimum === null ? null : money(minimum),
+      latest_date: latestDate(dates.spend),
+      previous_latest_date: latestDate(dates.previous),
     }));
   return {
     rows: decodeRows(SpendBreakdownRow, wire.slice(0, MAX_BREAKDOWN), AD_RELATION),

@@ -20,6 +20,7 @@ export type WarehouseErrorKind =
   | "response_invalid"
   | "incompatible_schema"
   | "result_too_large"
+  | "time_zone_unknown"
   | "unknown";
 
 const COPY: Record<WarehouseErrorKind, { title: string; remedy: string }> = {
@@ -80,6 +81,11 @@ const COPY: Record<WarehouseErrorKind, { title: string; remedy: string }> = {
     title: "Too much data for this view",
     remedy:
       "The query exceeded its row bound or the 10 MiB response limit. Narrow the filters, select fewer columns, or aggregate more in SQL.",
+  },
+  time_zone_unknown: {
+    title: "This store's time zone is not published",
+    remedy:
+      "Report dates follow each store's SourceMedium time zone. This store has none in dim_stores and no recent orders to read it from. Ask your SourceMedium admin to set the store's time zone.",
   },
   unknown: {
     title: "Something went wrong",

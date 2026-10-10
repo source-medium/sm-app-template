@@ -17,7 +17,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
         remedy={
           denied
             ? "Reload the page and sign in to view this app."
-            : `Reload the page; if it keeps failing, run \`pnpm diagnose\`.${error.digest ? ` Reference: ${error.digest}.` : ""}`
+            : `Reload the page. If it keeps failing, open Connection from the data badge, run Check connection, and share its report with the app owner.${error.digest ? ` Reference: ${error.digest}.` : ""}`
         }
       />
       <Button variant="outline" onClick={reset}>

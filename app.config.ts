@@ -29,7 +29,7 @@ export const appConfig = {
    * formats amounts; it does not convert them. Null leaves amounts unlabeled.
    */
   currency: null as string | null,
-  /** The first entry is the home page. Adding a page is one route file and one entry here. */
+  /** The first entry is the home page. A page also needs a feature folder and a route; see the sm-add-page skill. */
   nav: [
     { href: "/overview", label: "Overview", icon: LayoutDashboard },
     { href: "/paid-marketing", label: "Paid marketing", icon: Megaphone },
@@ -40,6 +40,6 @@ export const appConfig = {
   ] satisfies NavItem[] as NavItem[],
   /** Optional overrides for dim_stores.store_name. Names and brand groups otherwise come from SourceMedium. */
   storeLabels: {} as Record<string, string>,
-  /** Date picker defaults: the default range ends yesterday (UTC). */
+  /** Date picker defaults: the default range ends yesterday, in the store's SourceMedium time zone. */
   dateRange: { defaultDays: 28, maxDays: 90 },
 };

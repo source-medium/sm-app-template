@@ -57,7 +57,8 @@ test.describe("protected sample (shared password)", () => {
     await page.goto(home);
     await expect(page.getByTestId("mode-chip")).toHaveText("Sample data");
     const next = appConfig.nav.at(-1);
-    await page.getByRole("link", { name: next?.label ?? "" }).click();
+    // Exact: a KPI's "View daily values for Summary orders" link would also match "Orders".
+    await page.getByRole("link", { name: next?.label ?? "", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(next?.href ?? ""));
     await context.close();
   });

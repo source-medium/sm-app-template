@@ -80,3 +80,16 @@ test("retention: keyboard scrolling keeps cohort labels pinned on a phone", asyn
   const after = await label.boundingBox();
   expect(Math.abs((after?.x ?? 0) - (before?.x ?? 0))).toBeLessThanOrEqual(1);
 });
+
+test("retention: without a month, the store's last complete month applies and is kept for sharing", async ({
+  page,
+}) => {
+  await page.goto("/retention?store=sample-store-a");
+  const month = page.getByLabel("Through completed month");
+  // The latest selectable month is the last one complete in the store's time zone.
+  const latest = await month.getAttribute("max");
+  expect(latest).toMatch(/^\d{4}-\d{2}$/);
+  await expect(month).toHaveValue(latest ?? "");
+  const context = JSON.parse((await page.locator("main [data-agent-page]").getAttribute("data-agent-page")) ?? "{}");
+  expect(context.filters).toMatchObject({ store: "sample-store-a", as_of: latest, channel: "online_dtc" });
+});

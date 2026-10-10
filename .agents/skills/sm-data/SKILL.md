@@ -18,6 +18,10 @@ Follow `docs/data.md` in this repository. In order:
    Keep `sm_store_id = @store_id` on every data source read; see `docs/data.md#store-scope`.
 3. Decode with a Zod row schema in `rows.ts` built from `bq.*` decoders.
 4. Validate the result against the MCP's `query_metrics`, or a number
-   someone has reviewed, before building charts on it.
+   someone has reviewed, before building charts on it. If you cannot run the
+   query against live data (no Development credential, MCP or reviewed number),
+   say the numbers are unverified in your report and name the check that remains,
+   for example `pnpm test:live` or the protected preview. Passing fixtures and
+   `pnpm check` do not verify warehouse numbers.
 
 Then run `pnpm check`.

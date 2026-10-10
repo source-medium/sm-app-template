@@ -199,6 +199,7 @@ function PaidMarketingView({
             </div>
             <p className="text-xs text-muted-foreground">
               CSV includes all loaded campaigns, up to {MAX_CAMPAIGNS}, with raw values and a partial-results flag.
+              Spend without a campaign ID appears as (none) in the spend breakdown by campaign.
             </p>
             <DataTable
               caption="Campaigns by spend"
@@ -220,7 +221,7 @@ function PaidMarketingView({
                 const clicks = campaign.clicks === null ? null : toChartNumber(campaign.clicks);
                 const { ctr, cpc, roas } = campaignRatios(campaign);
                 return {
-                  id: campaign.campaignId,
+                  id: JSON.stringify([campaign.channel, campaign.campaignId]),
                   cells: {
                     campaign: { display: campaign.campaignName ?? campaign.campaignId },
                     channel: { display: campaign.channel ?? EMPTY_VALUE },

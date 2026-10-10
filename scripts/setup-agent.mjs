@@ -52,7 +52,8 @@ if (claudeHook && process.env.CLAUDE_ENV_FILE) {
   appendFileSync(process.env.CLAUDE_ENV_FILE, `export PATH='${nodeBin}':"$PATH"\n`);
 }
 
-function pnpm(...args) {
+/** Runs the pinned pnpm and returns its exit status (1 when it cannot start). */
+function runPnpm(...args) {
   // The temporary executable environment exposes the pinned pnpm to nested
   // package scripts without replacing the machine's package manager.
   const result = spawnSync("npm", ["exec", "--yes", `--package=${pkg.packageManager}`, "--", "pnpm", ...args], {
@@ -61,9 +62,14 @@ function pnpm(...args) {
     env: { ...process.env, CI: "true" },
     shell: process.platform === "win32",
   });
-  if (result.error || result.status !== 0) {
+  return result.error ? 1 : (result.status ?? 1);
+}
+
+function pnpm(...args) {
+  const status = runPnpm(...args);
+  if (status !== 0) {
     console.error("Agent setup failed. Check the command above and docs/cloud.md#setup-help, then rerun setup.");
-    process.exit(result.status || 1);
+    process.exit(status);
   }
 }
 
@@ -71,22 +77,28 @@ pnpm("install", "--frozen-lockfile");
 const { chromium } = createRequire(import.meta.url)("@playwright/test");
 // A cached executable alone does not prove the headless shell and OS libraries
 // are installed. Exercise the browser the tests actually use before skipping setup.
-async function checkBrowser() {
-  const browser = await chromium.launch();
-  await browser.close();
-}
-try {
-  await checkBrowser();
-} catch {
-  pnpm("exec", "playwright", "install", "chromium");
+let browserError;
+async function browserWorks() {
   try {
-    await checkBrowser();
+    const browser = await chromium.launch();
+    await browser.close();
+    return true;
   } catch (error) {
-    if (process.platform !== "linux") throw error;
-    // A browser download needs no root access. Only try the system-library
-    // installer when the downloaded browser still cannot launch.
-    pnpm("exec", "playwright", "install-deps", "chromium");
-    await checkBrowser();
+    browserError = error;
+    return false;
   }
+}
+let browserReady = await browserWorks();
+if (!browserReady && runPnpm("exec", "playwright", "install", "chromium") === 0) {
+  browserReady = await browserWorks();
+  // A browser download needs no root access. Only try the system-library
+  // installer when the downloaded browser still cannot launch.
+  if (!browserReady && process.platform === "linux" && runPnpm("exec", "playwright", "install-deps", "chromium") === 0)
+    browserReady = await browserWorks();
+}
+if (!browserReady) {
+  console.warn(
+    `Agent setup ready without a test browser (${String(browserError?.message ?? browserError).split("\n")[0]}). pnpm check and pnpm dev work; browser tests need Chromium. Allow the browser download (docs/cloud.md#setup-help), then run pnpm exec playwright install chromium.`,
+  );
 }
 console.log("Agent setup ready. Follow sm-cloud for first setup, then protected previews on your actual data.");

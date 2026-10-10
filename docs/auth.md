@@ -55,8 +55,7 @@ scripts and styles under `/_next/static` are open; they carry no data.
 2. **Cloudflare Access.** When someone leaving must lose access on their own,
    when you want to know who looked, or past roughly ten viewers. No code: host
    configuration plus two variables.
-3. **Sign-in inside the app.** On Vercel, or when the app grows actions tied to
-   a person. `requireViewer()` in `src/lib/auth/require-viewer.ts` is the seam:
+3. **Sign-in inside the app.** When the app grows actions tied to a person. `requireViewer()` in `src/lib/auth/require-viewer.ts` is the seam:
    it can read a Clerk or Auth.js session instead of a header. The identity
    integration, session handling, and tests are your work, not a few lines.
 4. **Sign in with SourceMedium.** Not available yet.

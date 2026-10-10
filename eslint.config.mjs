@@ -18,6 +18,7 @@ export default tseslint.config(
       "test-results/**",
       "next-env.d.ts",
       "cloudflare-env.d.ts",
+      ".claude/worktrees/**",
     ],
   },
   js.configs.recommended,

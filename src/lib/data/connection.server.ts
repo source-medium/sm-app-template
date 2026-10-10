@@ -74,7 +74,7 @@ export async function checkWarehouseConnection(
       name: "Store names",
       status: "warning",
       message:
-        "dim_stores is not published yet. Store IDs are available; names and brands will appear when it arrives.",
+        "dim_stores is not published yet. Store IDs are available, and each store's time zone is read from its recent orders; names and brands will follow when it arrives.",
     });
   const firstStore = stores.stores[0]?.sm_store_id;
   if (!firstStore) {
@@ -104,23 +104,19 @@ export async function checkWarehouseConnection(
     });
     return report;
   }
-  // Preserve the CLI's published example-schema check without importing a removable feature.
+  // The store list falls back to this relation. Report columns belong to each view, which names a missing one on screen.
   const table = await step(
     "Published schema",
     () => getTableMetadata(client, live.dataProjectId, live.transformedDatasetId, LEGACY_ROSTER_RELATION, { signal }),
-    "The example relation's schema is readable.",
+    "The executive summary's schema is readable.",
   );
   if (!table) return report;
-  if (
-    ["sm_store_id", "date", "order_net_revenue", "order_count", "website_sessions", "ad_clicks", "ad_spend"].some(
-      (name) => !table.fields.some((field) => field.name === name),
-    )
-  ) {
+  if (!table.fields.some((field) => field.name === "sm_store_id")) {
     checks.push({
-      name: "Example columns",
+      name: "Store column",
       status: "fail",
       message:
-        "The published executive summary is missing columns required by the starter. Ask your SourceMedium admin to verify its schema.",
+        "The published executive summary has no sm_store_id column, which the store list needs. Ask your SourceMedium admin to verify its schema.",
     });
     return report;
   }

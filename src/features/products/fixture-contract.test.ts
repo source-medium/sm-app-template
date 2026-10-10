@@ -90,3 +90,15 @@ it("filters channels before both period totals and leaves unknown channels empty
   expect(aggregateProducts(source, { ...filters, channel: "(none)" }, baseline).rows[0]?.total_revenue).toBe("4");
   expect(aggregateProducts(source, { ...filters, channel: "unknown" }, baseline).rows).toEqual([]);
 });
+
+it("returns each period's latest date with valid lines, for comparison coverage", () => {
+  const source = [
+    line,
+    { ...line, productId: "p2", date: "2026-09-02", valid: false },
+    { ...line, date: "2026-08-30" },
+    { ...line, date: "2026-08-31", productId: "p3" },
+  ];
+  const data = aggregateProducts(source, filters, { from: "2026-08-30", to: "2026-08-31" });
+  expect(data.rows[0]).toMatchObject({ latest_date: line.date, previous_latest_date: "2026-08-31" });
+  expect(aggregateProducts(source, filters, null).rows[0]).toMatchObject({ previous_latest_date: null });
+});

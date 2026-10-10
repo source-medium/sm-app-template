@@ -11,8 +11,9 @@ export async function queryRetention(filters: RetentionFilters): Promise<Retenti
     name: "retention_cohorts",
     maxRows: 2000,
     // The unsegmented slice is already one row per channel/cohort/age. Other dimensions overlap.
-    // Demo masking publishes FLOAT64 counts/money; NUMERIC casts also preserve the canonical INT64/NUMERIC schema.
-    sql: `SELECT sm_channel AS channel, cohort_month, months_since_first_order AS month_age,
+    // The relation publishes counts and money as FLOAT64; NUMERIC casts keep the decoders and sums exact from here.
+    // A row with no channel is its own '(none)' group, as in the other views, not a decoding error.
+    sql: `SELECT IFNULL(sm_channel, '(none)') AS channel, cohort_month, months_since_first_order AS month_age,
         CAST(cohort_size AS NUMERIC) AS cohort_size,
         CAST(customer_count AS NUMERIC) AS customers,
         CAST(cumulative_order_net_revenue AS NUMERIC) AS cumulative_revenue,
@@ -24,7 +25,7 @@ export async function queryRetention(filters: RetentionFilters): Promise<Retenti
         AND cohort_month BETWEEN @cohort_from AND @as_of_month
         AND months_since_first_order BETWEEN 0 AND ${COHORT_MONTHS - 1}
         AND DATE_ADD(cohort_month, INTERVAL months_since_first_order MONTH) <= @as_of_month
-      ORDER BY sm_channel, cohort_month, months_since_first_order`,
+      ORDER BY channel, cohort_month, months_since_first_order`,
     params: [
       { name: "store_id", type: "STRING", value: filters.storeId },
       { name: "cohort_from", type: "DATE", value: `${shiftMonth(filters.asOf, 1 - COHORT_MONTHS)}-01` },

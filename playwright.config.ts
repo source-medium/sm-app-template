@@ -56,7 +56,8 @@ if (live && !hosted && (!process.env.SM_APP_KEY || !liveUser || !livePassword.jo
 export default defineConfig({
   // Shared checks in e2e/; each view's own tests sit in its feature folder, so deleting a view deletes them.
   testDir: ".",
-  testIgnore: ["**/node_modules/**", ".pnpm-store/**", ".next/**", ".open-next/**"],
+  // An agent worktree under .claude/ is a second checkout with its own node_modules.
+  testIgnore: ["**/node_modules/**", ".pnpm-store/**", ".next/**", ".open-next/**", "**/.claude/worktrees/**"],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

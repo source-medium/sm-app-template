@@ -11,7 +11,6 @@ import "server-only";
 import { z } from "zod";
 import { bq, decodeRows } from "./decode";
 import type { Warehouse } from "./warehouse.server";
-import { WarehouseError } from "./warehouse-error";
 
 const DICTIONARY = "dim_data_dictionary";
 const METRIC_CATALOG = "dim_semantic_metric_catalog";
@@ -33,7 +32,11 @@ const MetricRow = z.object({
 export type DictionaryEntry = z.output<typeof DictionaryRow>;
 export type CatalogMetric = z.output<typeof MetricRow>;
 
-/** One relation's documented columns, as published for one store. */
+/**
+ * One relation's documented columns, as published for one store: at most
+ * `limit` rows. To detect a longer list, ask for one more than you show, as
+ * the data-dictionary route does.
+ */
 export async function readDictionary(
   warehouse: Warehouse,
   storeId: string,
@@ -59,11 +62,10 @@ export async function readDictionary(
     },
     { signal },
   );
-  if (result.truncated) throw new WarehouseError("result_too_large");
   return decodeRows(DictionaryRow, result.rows, DICTIONARY);
 }
 
-/** The metric catalog has no store column; do not filter it by store. */
+/** At most `limit` metrics. The metric catalog has no store column; do not filter it by store. */
 export async function readMetricCatalog(warehouse: Warehouse, limit = 500): Promise<CatalogMetric[]> {
   const result = await warehouse.query({
     name: "metric_catalog",

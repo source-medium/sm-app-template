@@ -5,7 +5,7 @@
  * decoders exactly as a deployed app does.
  */
 import { vi } from "vitest";
-import { createFakeBigQuery, JOB, type FakeBigQueryScript } from "../fake-bigquery/fake-bigquery";
+import { createFakeBigQuery, JOB, type FakeBigQueryScript, type FakeCall } from "../fake-bigquery/fake-bigquery";
 import { liveEnv, makeServiceAccountKey, TEST_PASSWORD } from "./service-account";
 
 export const requestHeaders = { current: new Headers() };
@@ -34,3 +34,30 @@ export function rowsResponse(
     ...extra,
   });
 }
+
+const ROSTER_FIELDS = ["sm_store_id", "store_name", "brand_name", "store_timezone"].map((name) => ({
+  name,
+  type: "STRING",
+}));
+
+/**
+ * Answers the store list with `storeIds`, each in `timeZone`, and every other
+ * query with `submit`. Pages and exports read the store's time zone before
+ * their dates, unless this server already knows it.
+ */
+export function withStores(
+  submit: NonNullable<FakeBigQueryScript["submit"]>,
+  storeIds = ["store-1"],
+  timeZone = "America/New_York",
+): NonNullable<FakeBigQueryScript["submit"]> {
+  return (call, signal) =>
+    isStoreList(call)
+      ? rowsResponse(
+          ROSTER_FIELDS,
+          storeIds.map((id) => ({ sm_store_id: id, store_name: null, brand_name: null, store_timezone: timeZone })),
+        )
+      : submit(call, signal);
+}
+
+export const isStoreList = (call: FakeCall) =>
+  (call.body as { labels?: Record<string, string> }).labels?.sm_query === "store_roster";

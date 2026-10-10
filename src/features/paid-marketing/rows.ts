@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { appConfig } from "@/app.config";
 import { bq } from "@/lib/data/decode";
 import type { CampaignRow, ChannelDay } from "./queries";
 
@@ -6,6 +7,8 @@ export const AD_RELATION = "rpt_ad_performance_daily";
 /** The campaign table shows the top campaigns by spend; more is reported as truncation. */
 export const MAX_CAMPAIGNS = 200;
 export const MAX_BREAKDOWN = 10;
+/** Channel-by-day series rows: the longest allowed range times up to 25 channels. Past this bound is an error. */
+export const MAX_SERIES_ROWS = appConfig.dateRange.maxDays * 25;
 export const SpendBreakdownRow = z.object({
   dimension_key: bq.string(),
   label: bq.string(),
@@ -13,6 +16,9 @@ export const SpendBreakdownRow = z.object({
   previous_spend: bq.numeric().nullable(),
   total_spend: bq.numeric().nullable(),
   minimum_spend: bq.numeric().nullable(),
+  /** Each period's latest date with rows, for comparison coverage. */
+  latest_date: bq.date().nullable(),
+  previous_latest_date: bq.date().nullable(),
 });
 
 export const ChannelDayRow = z.object({

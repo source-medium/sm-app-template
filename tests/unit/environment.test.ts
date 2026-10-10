@@ -1,4 +1,6 @@
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -57,5 +59,22 @@ describe("Worker preview runtime values", () => {
     expect(readDevVars(directory)).toBeNull();
     writeFileSync(join(directory, ".dev.vars"), "APP_STORE_ID=store_1\n");
     expect(readDevVars(directory)).toEqual({ APP_STORE_ID: "store_1" });
+  });
+});
+
+describe("scripts under react-server conditions", () => {
+  it("load the modules pnpm dev and pnpm diagnose import", () => {
+    // app.config.ts's navigation icons cannot load under these conditions, so shared data modules must not import it.
+    const modules = [
+      "./src/lib/config/env.server.ts",
+      "./src/lib/data/warehouse.server.ts",
+      "./src/lib/data/connection-report.ts",
+      "./scripts/lib/environment.ts",
+    ];
+    const code = `Promise.all(${JSON.stringify(modules)}.map((path) => import(path))).then(() => console.log("loaded"))`;
+    const tsx = createRequire(import.meta.url).resolve("tsx/cli");
+    const result = spawnSync(process.execPath, [tsx, "--conditions=react-server", "-e", code], { encoding: "utf8" });
+    expect(result.stderr).toBe("");
+    expect(result.stdout.trim()).toBe("loaded");
   });
 });

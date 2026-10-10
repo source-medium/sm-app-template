@@ -192,7 +192,8 @@ export function DataTable({
             </Button>
           </div>
         ) : (
-          actions
+          // A fragment makes server-built actions a single child here, not an unkeyed list item.
+          <>{actions}</>
         )}
       </div>
     </div>

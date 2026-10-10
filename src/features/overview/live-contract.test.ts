@@ -1,5 +1,7 @@
 /** Overview's live path end to end against the fake BigQuery. */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { appConfig } from "@/app.config";
+import { datesInRange, rangeLength } from "@/lib/filters";
 import { goLive, requestHeaders, rowsResponse } from "../../../tests/helpers/live";
 
 vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
@@ -105,6 +107,29 @@ describe("overview, live", () => {
     const { getOverviewReport } = await import("./queries");
     expect((await getOverviewReport(FILTERS, null)).comparison).toBeNull();
     expect(fake.count("submit")).toBe(1);
+  });
+
+  it("keeps a full-length range's year comparison across Feb 29", async () => {
+    await goLive({
+      submit: (call) => {
+        const values = Object.fromEntries(
+          (call.body as { queryParameters: { name: string; parameterValue: { value: string } }[] }).queryParameters.map(
+            (param) => [param.name, param.parameterValue.value],
+          ),
+        );
+        const dates = datesInRange({ from: values.start_date ?? "", to: values.end_date ?? "" });
+        return rowsResponse(
+          FIELDS,
+          dates.map((date) => ({ date, ...MONEY, period_date: date })),
+        );
+      },
+    });
+    const { getOverviewReport } = await import("./queries");
+    const range = { from: "2025-01-01", to: "2025-03-31" };
+    expect(rangeLength(range)).toBe(appConfig.dateRange.maxDays);
+    const report = await getOverviewReport({ ...FILTERS, range }, { from: "2024-01-01", to: "2024-03-31" });
+    expect(report.comparison?.error).toBeNull();
+    expect(report.comparison?.data?.days).toHaveLength(91);
   });
 
   it("keeps the current report when comparison data is truncated", async () => {

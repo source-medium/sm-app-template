@@ -12,7 +12,7 @@ import { aggregateOverviewWire, sampleOverview, sampleOverviewSource, type Overv
 import { overviewSummaryRows } from "./summary-rows";
 
 const RANGE = { from: "2026-09-01", to: "2026-09-28" };
-const NOW = new Date("2026-10-05T12:00:00Z");
+const TODAY = "2026-10-05";
 
 function source(
   date: string,
@@ -46,7 +46,7 @@ describe("overview fixture contract", () => {
     "does not generate spend, clicks, or totals for %s",
     async (storeId) => {
       expect(sampleOverviewSource(storeId, RANGE, "2026-10-05")).toEqual([]);
-      expect(await sampleOverview({ storeId, range: RANGE }, NOW)).toEqual({
+      expect(await sampleOverview({ storeId, range: RANGE }, TODAY)).toEqual({
         days: [],
         summaries: [],
         totals: null,
@@ -157,8 +157,8 @@ describe("overview fixture contract", () => {
 
   it("is deterministic: the same filters give the same numbers at any time", async () => {
     const filters = { storeId: "sample-store-a", range: RANGE };
-    const first = await sampleOverview(filters, NOW);
-    const later = await sampleOverview(filters, new Date("2027-01-01T00:00:00Z"));
+    const first = await sampleOverview(filters, TODAY);
+    const later = await sampleOverview(filters, "2027-01-01");
     expect(later).toEqual(first);
   });
 

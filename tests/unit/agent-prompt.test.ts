@@ -6,6 +6,7 @@ const context = {
   title: "Overview",
   filters: { store: "sample-store-a", from: "2026-09-01", to: "2026-09-07", sales_channel: null },
   currency: "USD",
+  sources: ["rpt_executive_summary_daily"],
   targets: [],
   mode: "sample" as const,
   build: "review-build",
@@ -37,6 +38,7 @@ describe("composeAgentPrompt", () => {
     expect(prompt).toContain('Component: "ChartCard"');
     expect(prompt).toContain('store="sample-store-a", from="2026-09-01", to="2026-09-07", sales_channel=null');
     expect(prompt).toContain("Reporting currency: USD");
+    expect(prompt).toContain("Source relations: rpt_executive_summary_daily");
     expect(prompt).toContain("App build: review-build");
     expect(prompt).toContain("Read AGENTS.md first");
     expect(prompt).toContain("The revenue chart dips to zero on Sundays.");
@@ -86,11 +88,8 @@ describe("composeAgentPrompt", () => {
     for (const intent of AGENT_INTENTS) {
       const prompt = composeAgentPrompt(intent.id, "Why?", context);
       expect(prompt.includes("Run pnpm check")).toBe(intent.changesCode);
-      expect(prompt.includes("cloud preview workflow")).toBe(intent.changesCode);
-      expect(prompt.includes("I have already authorized a hosted preview in this conversation")).toBe(
-        intent.changesCode,
-      );
-      expect(prompt.includes("do not merge or publish without my approval")).toBe(intent.changesCode);
+      expect(prompt.includes("If I asked for a hosted preview, follow the sm-cloud skill")).toBe(intent.changesCode);
+      expect(prompt.includes("Do not merge or publish without my approval")).toBe(intent.changesCode);
     }
     expect(composeAgentPrompt("ask", "Why?", context)).toContain("Do not change any files.");
   });

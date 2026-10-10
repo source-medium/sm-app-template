@@ -11,6 +11,7 @@ import tseslint from "typescript-eslint";
 import { afterAll, describe, expect, it } from "vitest";
 import template from "../../eslint-rules/index.mjs";
 import { findAuthGaps } from "../../scripts/lib/auth-coverage";
+import { findStoreScopeGaps } from "../../scripts/lib/store-scope";
 import { skillDifferences, syncSkills } from "../../scripts/lib/skills";
 
 RuleTester.describe = describe;
@@ -313,6 +314,62 @@ describe("auth-coverage", () => {
     const files = walk("src").map((path) => ({ path: path.split(sep).join("/"), text: readFileSync(path, "utf8") }));
     expect(files.some((file) => file.path.startsWith("src/features/"))).toBe(true);
     expect(findAuthGaps(files)).toEqual([]);
+  });
+});
+
+describe("store-scope", () => {
+  const feature = (sql: string, extra = "") => [
+    {
+      path: "src/features/traffic/bigquery.ts",
+      text: `${extra}\nexport async function q(warehouse: any) {\n  return warehouse.query({ sql: \`${sql}\` });\n}\n`,
+    },
+  ];
+
+  it("names the file, line and fix when a query reads a relation without the store predicate", () => {
+    const gaps = findStoreScopeGaps(feature("SELECT date FROM ${warehouse.table(TRAFFIC)} WHERE date >= @start_date"));
+    expect(gaps).toHaveLength(1);
+    expect(gaps[0]).toMatch(/^`src\/features\/traffic\/bigquery.ts:3` .*sm_store_id = @store_id.*filter each relation/);
+  });
+
+  it("follows a relation bound to a name and needs one predicate per relation", () => {
+    expect(
+      findStoreScopeGaps(feature("SELECT 1 FROM ${table} WHERE TRUE", "const table = warehouse.table(TRAFFIC);")),
+    ).toHaveLength(1);
+    expect(
+      findStoreScopeGaps(
+        feature(
+          "SELECT 1 FROM ${warehouse.table(A)} a JOIN ${warehouse.table(B)} b USING (sm_store_id) WHERE a.sm_store_id = @store_id",
+        ),
+      ),
+    ).toHaveLength(1);
+    expect(
+      findStoreScopeGaps(
+        feature(
+          "SELECT 1 FROM ${warehouse.table(A)} a WHERE a.sm_store_id = @store_id UNION ALL SELECT 1 FROM ${warehouse.table(B)} WHERE sm_store_id   =  @store_id",
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("passes on this repository's own feature queries", () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory() ? walk(join(dir, entry.name)) : /\.tsx?$/.test(entry.name) ? [join(dir, entry.name)] : [],
+      );
+    const files = walk("src/features").map((path) => ({
+      path: path.split(sep).join("/"),
+      text: readFileSync(path, "utf8"),
+    }));
+    expect(files.some((file) => file.path.endsWith("/bigquery.ts"))).toBe(true);
+    expect(findStoreScopeGaps(files)).toEqual([]);
+  });
+
+  it("catches each example query once its store predicate is removed", () => {
+    for (const path of readdirSync("src/features").map((name) => `src/features/${name}/bigquery.ts`)) {
+      const text = readFileSync(path, "utf8");
+      const stripped = text.replaceAll(/sm_store_id = @store_id( AND)?/g, "TRUE$1");
+      expect(findStoreScopeGaps([{ path, text: stripped }]).length, path).toBeGreaterThan(0);
+    }
   });
 });
 

@@ -19,7 +19,9 @@ export async function middleware(request: NextRequest) {
   // monitors and deploy checks see it. Pages render the same list as a backstop.
   if (config.status === "error") {
     const problems = config.problems.map((problem) => `- ${problem.message}`).join("\n");
-    return new NextResponse(`This app's configuration needs attention:\n${problems}\nSee docs/connect.md.\n`, {
+    const owner =
+      "The app owner can fix this in the host's variables; docs/connect.md in the app's repository explains each one.";
+    return new NextResponse(`This app's configuration needs attention:\n${problems}\n${owner}\n`, {
       status: 503,
       headers: {
         ...SECURITY_HEADERS,

@@ -12,9 +12,10 @@
  */
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits } from "@/lib/data/decimal";
-import { datesInRange, todayUtc, type DateRange } from "@/lib/filters";
+import { datesInRange, type DateRange } from "@/lib/filters";
+import { calendarDate } from "@/lib/format";
 import { randomInt, seededRandom } from "@/lib/sample/random";
-import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
+import { SAMPLE_STORE_SCALE, SAMPLE_STORES } from "@/lib/sample/stores";
 import { periodStart, type TimeGrain } from "@/lib/time-grain";
 import type { OverviewData, OverviewFilters } from "./queries";
 import { OVERVIEW_RELATION, OverviewRow, toOverviewData } from "./rows";
@@ -72,10 +73,16 @@ const SOURCES = [
 /** Average net revenue per order, in cents. */
 const ORDER_VALUE_CENTS = 6840;
 
-/** The relation's rows for one store. Dates after `today` carry targets only, so every actual measure is zero. */
-export function sampleOverviewSource(storeId: string, range: DateRange, today: string): OverviewSourceRow[] {
+/**
+ * The relation's rows for one store. Dates after `today` (by default, the
+ * store's date in its time zone) carry targets only, so every actual measure
+ * is zero.
+ */
+export function sampleOverviewSource(storeId: string, range: DateRange, today?: string): OverviewSourceRow[] {
+  const store = SAMPLE_STORES.find((candidate) => candidate.id === storeId);
   const scale = SAMPLE_STORE_SCALE.get(storeId);
-  if (scale === undefined) return [];
+  if (!store || scale === undefined) return [];
+  const cutoff = today ?? calendarDate(new Date(), store.timeZone);
   const rows: OverviewSourceRow[] = [];
   for (const date of datesInRange(range)) {
     const day = seededRandom(`overview|${storeId}|${date}`);
@@ -87,7 +94,7 @@ export function sampleOverviewSource(storeId: string, range: DateRange, today: s
 
     for (const source of SOURCES) {
       const base = { sm_store_id: storeId, sm_channel: source.channel, sm_sub_channel: source.subChannel, date };
-      if (date > today) {
+      if (date > cutoff) {
         rows.push({
           ...base,
           order_net_revenue_cents: 0n,
@@ -223,8 +230,8 @@ export function aggregateOverviewWire(
   });
 }
 
-export async function sampleOverview(filters: OverviewFilters, now: Date = new Date()): Promise<OverviewData> {
-  const source = sampleOverviewSource(filters.storeId, filters.range, todayUtc(now));
+export async function sampleOverview(filters: OverviewFilters, today?: string): Promise<OverviewData> {
+  const source = sampleOverviewSource(filters.storeId, filters.range, today);
   const wire = aggregateOverviewWire(source, filters.storeId, filters.range, filters.grain, filters.channel);
   return toOverviewData(decodeRows(OverviewRow, wire, OVERVIEW_RELATION));
 }

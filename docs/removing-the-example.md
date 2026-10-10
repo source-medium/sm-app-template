@@ -16,11 +16,19 @@ makes the next entry the home page. Keep at least one entry, or replace
 To remove all six, repeat the steps for `overview`, `paid-marketing`,
 `creatives`, `products`, `retention`, and `orders`, and add your own page first. Keep the shell
 (`src/components/shell`), the patterns (`src/components/patterns`,
-`src/components/charts`), and `src/lib`; they are what new pages use. The
-guides name the example folders as models to copy ("Add a page" in
-`AGENTS.md`, `docs/data.md`, `docs/prompts.md`, and
-`.agents/skills/sm-add-page`); point them at your own pages, then run
-`pnpm skills:sync`.
+`src/components/charts`), and `src/lib`; they are what new pages use.
+
+Then point the guidance that names example views at your own pages:
+
+- `AGENTS.md`: "Add a page" (the views to copy and the `live-contract.test.ts`
+  to copy) and the **UI** section's "Copy Products..." line.
+- `.agents/skills/sm-add-page/SKILL.md` (the example to start from), then run
+  `pnpm skills:sync`.
+- `src/lib/agent-prompt.ts` and `docs/prompts.md`: the new-page instruction to
+  "copy the closest example view".
+- `docs/data.md`: the relations table and the sections describing each example,
+  such as comparisons copying Overview's `getOverviewReport`.
+- `README.md`: the "Six reports to make your own" table.
 
 The store picker reads `dim_stores` (`src/lib/data/store-roster.server.ts`)
 and falls back to `rpt_executive_summary_daily` only while that dimension is

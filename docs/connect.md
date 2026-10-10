@@ -84,6 +84,9 @@ mismatch in SourceMedium or a warehouse view before combining amounts or using
 MER. `dim_stores.store_currency_code` alone does not verify reporting currency.
 See [money and currency](data.md#money-and-currency).
 
+Dates need no setting: each store's dates follow its SourceMedium time zone,
+which each dated report's footer names. See [dates](data.md#dates).
+
 Paste the block into `.env.local` at the repository root (git ignores it), then:
 
 ```sh
@@ -167,24 +170,6 @@ Your agent can inspect code and bundled schemas without the warehouse key.
 When troubleshooting, use **Copy safe report** on Connection. Never share
 values from the settings screen. Live rendering is a connection check, not an
 independent reconciliation of the metrics.
-
-### Starting with a new hosted copy
-
-The [Deploy to Cloudflare button](https://deploy.workers.cloudflare.com/?url=https://github.com/source-medium/sm-app-template)
-is an alternative that creates a fresh repository in your GitHub or GitLab account. It asks for
-the eight values in `.env.example` as encrypted secrets. Clone the repository
-it creates to make your changes, including setting the reporting currency,
-then deploy from that checkout. The fresh-account button walkthrough remains
-unverified; command-line deployment is the tested path.
-
-## 5. Vercel (unverified)
-
-No Vercel deployment has been tested, and this preview does not claim Vercel
-support. To evaluate it yourself: import the repository (framework: Next.js),
-add the same eight values
-as environment variables for Production (mark the two secrets as sensitive),
-and deploy. Use the shared password on Vercel; Cloudflare Access is
-Cloudflare-only. Vercel's own deployment protection is optional and separate.
 
 ## Test the Worker locally
 

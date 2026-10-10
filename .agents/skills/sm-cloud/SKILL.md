@@ -12,8 +12,10 @@ and environment; never create another template copy during iteration.
 ## First useful preview
 
 - Run `node scripts/setup-agent.mjs` when dependencies are missing or the
-  lockfile changed. It uses the pinned pnpm and installs Chromium. Choose
-  Node 24 when selecting a runtime; the minimum is in `package.json`.
+  lockfile changed. It uses the pinned pnpm and tries to install Chromium; if
+  the browser download is blocked it warns and continues. `pnpm check` and
+  `pnpm dev` work without it; browser tests need it (`docs/cloud.md#setup-help`).
+  Choose Node 24 when selecting a runtime; the minimum is in `package.json`.
 - Start with sample data and bundled schemas only for the initial look. Do not request warehouse
   credentials, an AI API key, a Cloudflare token, or MCP login to get started.
 - Keep the default app name unless the person supplies one. Ask only for
@@ -84,7 +86,8 @@ is needed. Only trusted branches may receive preview credentials. Never use
 `--ignore-base-config`. Keep
 `APP_REQUIRE_LIVE`, production's `preview_urls: false`, and the viewer guard on
 every hostname. If issuance is unavailable, sample setup can continue, but
-live iteration is not ready.
+live iteration is not ready. When connecting data, set `currency` in
+`app.config.ts` as `docs/connect.md#connect-a-hosted-app` describes.
 
 For credential rotation or tighter viewer/store access, follow
 `docs/operations.md#replacing-secrets`. Base updates and branch deletion do not

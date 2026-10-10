@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { compactNumber } from "@/components/charts/compact-number";
 import {
+  calendarDate,
   EMPTY_VALUE,
   formatCount,
   formatDay,
@@ -8,6 +9,7 @@ import {
   formatMeasure,
   formatPercent,
   formatWallTime,
+  isTimeZone,
 } from "@/lib/format";
 
 describe("server formatting", () => {
@@ -61,4 +63,19 @@ it("formatLabel turns warehouse codes into readable labels", () => {
   expect(formatLabel(" paid ")).toBe("Paid");
   expect(formatLabel("")).toBe(EMPTY_VALUE);
   expect(formatLabel(null)).toBe(EMPTY_VALUE);
+});
+
+describe("store dates", () => {
+  it("uses the calendar date in the store's time zone, an IANA name or an order offset", () => {
+    const usEvening = new Date("2026-10-10T01:30:00Z");
+    expect(calendarDate(usEvening, "America/New_York")).toBe("2026-10-09");
+    expect(calendarDate(usEvening, "-07:00")).toBe("2026-10-09");
+    expect(calendarDate(new Date("2026-10-09T19:00:00Z"), "+05:30")).toBe("2026-10-10");
+    expect(calendarDate(new Date("2026-10-09T12:30:00Z"), "Pacific/Auckland")).toBe("2026-10-10");
+  });
+
+  it("recognizes zones calendarDate accepts, and rejects masked or unknown values", () => {
+    for (const zone of ["America/Los_Angeles", "UTC", "-07:00"]) expect(isTimeZone(zone)).toBe(true);
+    for (const zone of ["2d4bbedff8", "Mars/Olympus", ""]) expect(isTimeZone(zone)).toBe(false);
+  });
 });

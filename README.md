@@ -90,7 +90,7 @@ credentials are still being enabled, stay on sample data and ask
 [SourceMedium support](SUPPORT.md). Do not substitute an admin credential.
 
 For an already provisioned app, follow [docs/connect.md](docs/connect.md).
-Cloudflare Workers is the tested runtime; Vercel deployment is unverified.
+Cloudflare Workers is the tested runtime.
 
 ## Build with your coding agent
 
@@ -168,7 +168,7 @@ React · strict TypeScript · shadcn/ui on Tailwind CSS · Recharts · Zod ·
 jose · Vitest (Node and workerd) · Playwright with axe.
 
 This is the 0.1.0 preview. Cloudflare Workers Paid is the deployment target.
-See [validation and current limits](docs/release-readiness.md); no stable
-release has been tagged yet.
+No stable release has been tagged yet. The fresh-account cloud journey and
+Apps credential issuance have not been verified end to end.
 
 [License](LICENSE) · [Security](SECURITY.md) · [Support](SUPPORT.md) · [Contributing](CONTRIBUTING.md)

@@ -1,7 +1,8 @@
 /** Paid marketing's live path end to end against the fake BigQuery. */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FakeCall } from "../../../tests/fake-bigquery/fake-bigquery";
-import { goLive, requestHeaders, rowsResponse } from "../../../tests/helpers/live";
+import { goLive, isStoreList, requestHeaders, rowsResponse, withStores } from "../../../tests/helpers/live";
+import { MAX_SERIES_ROWS } from "./rows";
 
 vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
 vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
@@ -54,8 +55,9 @@ const queryName = (call: FakeCall) => (call.body as Submitted).labels.sm_query;
 describe("paid marketing, live", () => {
   it("exports through the real guard, query, and decoders, without reading the chart", async () => {
     const fake = await goLive({
-      submit: () =>
+      submit: withStores(() =>
         rowsResponse(CAMPAIGN_FIELDS, [{ ...CAMPAIGN_ROW, campaign_name: "=1+1", impressions: "9007199254740993" }]),
+      ),
     });
     const { GET } = await import("./download");
     const response = await GET(
@@ -68,7 +70,7 @@ describe("paid marketing, live", () => {
     expect(csv).toContain('"123456789012345678.123456789","9007199254740993"');
     expect(csv).toContain('"\'=1+1"');
     expect(csv).toContain('"live","store-1","2026-09-01","2026-09-02","","false"');
-    const queries = fake.calls.filter((call) => call.kind === "submit");
+    const queries = fake.calls.filter((call) => call.kind === "submit" && !isStoreList(call));
     expect(queries).toHaveLength(1);
     const submitted = queries[0];
     if (!submitted) throw new Error("No campaign query submitted");
@@ -83,17 +85,18 @@ describe("paid marketing, live", () => {
     await expect(GET(new Request("https://example.test/paid-marketing/export?store=store-1"))).rejects.toThrow(
       "not signed in",
     );
-    expect(fake.calls.filter((call) => call.kind === "submit")).toHaveLength(1);
+    expect(fake.calls.filter((call) => call.kind === "submit" && !isStoreList(call))).toHaveLength(1);
   });
 
   it("marks a bounded CSV as partial and returns actionable failures", async () => {
     await goLive({
-      submit: () =>
+      submit: withStores(() =>
         rowsResponse(
           CAMPAIGN_FIELDS,
           Array.from({ length: 201 }, (_, i) => ({ ...CAMPAIGN_ROW, campaign_id: `c${i}` })),
           { pageToken: "more" },
         ),
+      ),
     });
     const { GET } = await import("./download");
     const url = "https://example.test/paid-marketing/export?store=store-1&from=2026-09-01&to=2026-09-02";
@@ -134,10 +137,24 @@ describe("paid marketing, live", () => {
     });
   });
 
+  it("keeps one campaign ID on two ad platforms as two campaigns", async () => {
+    const fake = await goLive({
+      submit: () => rowsResponse(CAMPAIGN_FIELDS, [CAMPAIGN_ROW, { ...CAMPAIGN_ROW, channel: "Google", spend: "1" }]),
+    });
+    const { getPaidCampaigns } = await import("./queries");
+    const data = await getPaidCampaigns(FILTERS);
+    expect(data.campaigns.map((campaign) => [campaign.channel, campaign.campaignId])).toEqual([
+      ["Meta", "c1"],
+      ["Google", "c1"],
+    ]);
+    const sql = (fake.calls.find((call) => call.kind === "submit")?.body as Submitted).query;
+    expect(sql).toContain("GROUP BY channel, campaign_id");
+  });
+
   it("treats a truncated series as an error, and a truncated campaign list as a notice", async () => {
     const many = (fields: { name: string }[]) => ({
       pageToken: "more",
-      rows: Array.from({ length: 2001 }, () => ({ f: fields.map(() => ({ v: "1" })) })),
+      rows: Array.from({ length: MAX_SERIES_ROWS + 1 }, () => ({ f: fields.map(() => ({ v: "1" })) })),
     });
     await goLive({
       submit: (call) =>

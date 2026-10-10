@@ -5,11 +5,12 @@ import { ReportPage } from "@/components/shell/report-page";
 import { DataRegion } from "@/components/patterns/data-region";
 import { LoadingState } from "@/components/patterns/data-states";
 import { KpiCard } from "@/components/patterns/kpi-card";
-import { ComparisonCaption } from "@/components/patterns/comparison-caption";
+import { ComparisonCaption, ComparisonIssue } from "@/components/patterns/comparison-caption";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
+import { coverageIssue } from "@/lib/comparison";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatMeasure, formatMoney, formatPercent } from "@/lib/format";
 import { parseSalesChannel, type SearchParams } from "@/lib/filters";
@@ -84,8 +85,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               >
                 {(data) => {
                   const first = data.rows[0];
+                  const issue =
+                    baseline && first
+                      ? coverageIssue(filters.range, baseline, first.latest_date, first.previous_latest_date)
+                      : null;
+                  const compare = baseline !== null && !issue;
                   return (
                     <div className="flex flex-col gap-6">
+                      <ComparisonIssue issue={issue} />
                       <section aria-label="All product totals" className="grid gap-4 sm:grid-cols-3">
                         {PRODUCT_METRICS.map((item) => {
                           const formatValue = item.value === "units" ? formatMeasure : formatMoney;
@@ -96,7 +103,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                               value={formatValue(first?.[`total_${item.value}`] ?? null)}
                               period="All matching products in the selected period"
                               delta={
-                                baseline
+                                compare
                                   ? kpiDelta(
                                       first?.[`total_${item.value}`] ?? null,
                                       first?.[`total_previous_${item.value}`] ?? null,
@@ -114,7 +121,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         valueLabel={metricLabel}
                         description="Top 10 by the selected measure. Shares and headline totals include all matching products. Shares are unavailable for zero totals or negative values."
                         hasMore={data.hasMore}
-                        comparisonLabel={baseline ? "Change vs comparison" : undefined}
+                        comparisonLabel={compare ? "Change vs comparison" : undefined}
                         rows={data.rows.map((row) => ({
                           id: row.product_key,
                           label: `${row.label} (${row.reference})`,
@@ -122,7 +129,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                           share: formatPercent(
                             nonnegativeShare(row[options.metric], row[`total_${options.metric}`], row.minimum_value),
                           ),
-                          change: baseline
+                          change: compare
                             ? kpiDelta(row[options.metric], row[`previous_${options.metric}`], format).display
                             : undefined,
                         }))}

@@ -18,6 +18,8 @@ describe("browser checks in a cloud agent environment", () => {
     vi.stubEnv("APP_BASIC_AUTH", "viewer:synthetic-live-password-0123456789");
     vi.stubEnv("APP_REQUIRE_LIVE", "true");
     const { default: config } = await import("../../playwright.config");
+    // A Claude Code worktree is a nested checkout; collecting its specs loads @playwright/test twice.
+    expect(config.testIgnore).toContain("**/.claude/worktrees/**");
     expect(config.projects?.map((project) => project.name)).not.toContain("live");
     const servers = [config.webServer].flat();
     expect(servers).toHaveLength(3);

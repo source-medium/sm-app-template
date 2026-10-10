@@ -27,8 +27,9 @@ it("the scoped warehouse rejects missing, mismatched and duplicate store paramet
           { name: "sm_store_id", type: "STRING" },
           { name: "store_name", type: "STRING" },
           { name: "brand_name", type: "STRING" },
+          { name: "store_timezone", type: "STRING" },
         ],
-        [{ sm_store_id: "store-a", store_name: "Store A", brand_name: "Brand" }],
+        [{ sm_store_id: "store-a", store_name: "Store A", brand_name: "Brand", store_timezone: "Europe/Paris" }],
       ),
   });
   vi.stubGlobal("fetch", fake.fetch);
@@ -49,7 +50,7 @@ it("the scoped warehouse rejects missing, mismatched and duplicate store paramet
   expect(fake.calls).toHaveLength(0);
   expect(await queryStoreRoster(warehouse, "store-a")).toEqual({
     relation: "dim_stores",
-    stores: [{ sm_store_id: "store-a", store_name: "Store A", brand_name: "Brand" }],
+    stores: [{ sm_store_id: "store-a", store_name: "Store A", brand_name: "Brand", store_timezone: "Europe/Paris" }],
   });
   const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string; queryParameters: unknown[] };
   expect(body.query).toContain("AND sm_store_id = @store_id");

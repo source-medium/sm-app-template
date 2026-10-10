@@ -24,7 +24,7 @@ in your agent and Cloudflare; making another copy loses your changes.
 
 Open [Codex](https://chatgpt.com/codex), connect GitHub, and select **your copy**.
 Create a cloud environment for it. **Before running setup**, enable
-package-manager network access and allow the [browser and font download hosts](#setup-help).
+package-manager network access and allow the [browser download hosts](#setup-help).
 Then ask Codex:
 
 ```text
@@ -44,12 +44,11 @@ Codex needs to open it. See [OpenAI's environment guide](https://learn.chatgpt.c
 
 Open [Claude Code](https://claude.ai/code), connect GitHub, and grant access
 to **your copy**. Select that repository and its default branch. Use the
-Default environment with **Trusted** network access, the [browser and font download hosts](#setup-help), and an editing mode.
-The repository's startup hook runs the shared setup automatically in cloud
-sessions. If Claude's default Node is too old, it selects Node 24 for setup and
-subsequent commands without a global install. No setup script needs to be
-pasted into Claude's settings. Allow those download hosts before starting
-the first session; **Trusted** alone may block them.
+Default environment with **Trusted** network access plus the
+[browser download hosts](#setup-help), and an editing mode. **Trusted** alone
+may block them. The repository's startup hook runs the shared setup
+automatically, selecting Node 24 if Claude's default is too old; nothing needs
+to be pasted into Claude's settings.
 
 Use one repository per session so its hooks load. Organization accounts may
 need an owner to enable the GitHub connector. See Anthropic's
@@ -105,18 +104,16 @@ without its live configuration deliberately shows a setup error (503), not
 sample numbers. Complete [Connect your data](#connect-your-data), including
 preview data, before moving to step 4.
 
-Every merge into `main` publishes to the production URL. The preview
-connection uses the `preview` environment and creates one **Worker Preview**
-per task branch, so a pull request gets its own URL and `main` stays as it
-was; no empty pull request is needed. Cloudflare Builds targets its connected
-Worker; adding `--env preview` to the production Worker's preview command is
-not a substitute for a separate preview connection. See [Cloudflare's environment setup](https://developers.cloudflare.com/workers/ci-cd/builds/advanced-setups/#wrangler-environments).
-
-The preview Worker reads the same warehouse through the Development app
-credential and requires a viewer guard. Production's extra URLs stay disabled.
-Keeping a separate preview Worker avoids enabling production Version URLs
-when enabling branch previews: Cloudflare uses the same URL switch for both.
-See [preview hosts](https://developers.cloudflare.com/workers/previews/custom-domains/).
+Every merge into `main` publishes to the production URL. The preview Worker
+uses the `preview` environment and creates one **Worker Preview** per task
+branch, so each pull request gets its own URL and `main` stays as it was. Its
+preview command runs `wrangler preview`, which Wrangler labels open beta.
+Adding `--env preview` to the production Worker's preview command is not a
+substitute for the separate preview Worker, which also keeps production
+Version URLs disabled. The preview Worker reads the same warehouse through the
+Development app credential and requires a viewer guard. See
+[Cloudflare's environment setup](https://developers.cloudflare.com/workers/ci-cd/builds/advanced-setups/#wrangler-environments)
+and [preview hosts](https://developers.cloudflare.com/workers/previews/custom-domains/).
 
 For an existing Worker using the old preview system, follow Cloudflare's
 [one-time switch](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/#existing-workers-connected-to-builds)
@@ -177,22 +174,19 @@ pnpm test:hosted <https-origin> <full-git-commit>
 
 Use the actual deployed origin (no page path) and the full PR commit, or the
 resulting `main` commit after publication. Enter only that deployment's
-`APP_BASIC_AUTH` privately in the agent environment, never in chat or command
-arguments. The agent needs no warehouse key or local `.env` file. Anyone using
-that environment can read its variables and view the app's data, so use a
-private environment with authorized collaborators. Allow the exact app hostname
+`APP_BASIC_AUTH` privately in a private agent environment, never in chat or
+command arguments; anyone using that environment can view the app's data. The
+agent needs no warehouse key or local `.env` file. Allow the exact app hostname
 in its network settings.
 
-The command starts no server and makes no deployment. It first checks the build,
-anonymous page/asset/RSC/Connection protection, then runs the hosted Connection
-check and the selected live browser tests, one worker with no retries. It fails
-on the wrong commit, missing guard, sample mode, or a failed Connection check.
-Explicit empty reports are valid; interactions needing rows are skipped when
-none are available. This checks app behavior, not the completeness or accuracy
-of your warehouse data.
-Warnings are counted; review their safe report on Connection. Browser traces,
-screenshots, videos, and retained test artifacts are disabled. Run it only with
-permission to view the data; these tests issue real warehouse queries.
+The command starts no server and deploys nothing. It checks the build and
+anonymous protection, then runs the hosted Connection check and the live
+browser tests with one worker and no retries. It fails on the wrong commit, a
+missing guard, sample mode, or a failed Connection check; review any counted
+warnings on Connection. It checks app behavior, not the completeness or
+accuracy of your warehouse data, and issues real warehouse queries, so run it
+only with permission to view the data. Traces, screenshots and videos are
+disabled.
 
 Use the full suite above for first connection and changes to shared auth,
 configuration, data handling, filters, runtime, or dependencies. For a change
@@ -202,10 +196,9 @@ confined to one report, select its relevant test titles from `e2e/live.spec.ts`:
 pnpm test:hosted <https-origin> <full-git-commit> --grep '/overview|Overview'
 ```
 
-`--grep` is Playwright's test-title regular expression. It only narrows report
-tests; build, guard, and Connection checks always run. A filter matching no tests
-fails. For a new interaction, add or update its test rather than relying on a
-render check. Use the same scope on the preview and resulting production commit.
+`--grep` narrows report tests by title; build, guard, and Connection checks
+always run, and a filter matching no tests fails. For a new interaction, add or
+update its test. Use the same scope on the preview and resulting production commit.
 
 Still confirm the intended store and requested change. For a restricted app,
 verify that another `?store=` returns 403. With Cloudflare Access, or if you
@@ -224,30 +217,25 @@ Use two app credentials for the same warehouse:
 | **Development**  | Preview Worker's **Previews Base**, and optionally the coding agent's private environment for live debugging |
 
 Create each once and keep its one-time block in your private password manager.
-Reuse Development across previews and debugging; there is no third Preview
-credential to create. Replacing or revoking Development affects both uses,
-without changing Production. Each deployment still has its own store and
-sign-in settings.
-Already created a separate app named Preview? Reuse it as your Development
-credential. These names describe how you use the apps; renaming or replacing
-a working credential is not required.
+Reuse Development for previews and debugging; there is no third credential, and
+replacing or revoking Development does not change Production. Already created
+an app named Preview? Reuse it as Development; the names only describe how you
+use the apps.
 
-Once you have an app-specific SourceMedium block, ask the agent to follow
-[Connect and deploy](connect.md#connect-a-hosted-app). Enter the values privately
-in the Worker's **production runtime** settings. No `.env.local` file, terminal,
-or warehouse key in either agent's environment is needed for hosted setup.
-Keep the complete viewer guard in place before sharing live data.
-
-Connect [preview data](#connect-preview-data) at the same time. Production and
-preview should use the same warehouse, reporting currency, and store scope.
-There is no extra staging app to set up for ordinary iteration.
-
-An accepted organization admin gets the block from **Apps** in their
+An accepted organization admin gets each block from **Apps** in their
 SourceMedium workspace: name the app, confirm its read access, and copy the
 one-time configuration. Apps appears in the workspace menu once data has been
 delivered. If the page says credentials are still being enabled, stay on sample
 data and ask SourceMedium support. An agent cannot generate a valid warehouse
 credential for you.
+
+Then ask the agent to follow [Connect and deploy](connect.md#connect-a-hosted-app),
+which also sets the reporting currency. Enter the values privately
+in the Worker's **production runtime** settings; no `.env.local` file, terminal,
+or warehouse key in the agent's environment is needed. Connect
+[preview data](#connect-preview-data) at the same time, with the same warehouse,
+reporting currency, and store scope. Keep the complete viewer guard in place
+before sharing live data.
 
 After entering the runtime settings, click **Live data → Check connection**
 in your hosted app. The report is safe to paste into either coding agent; it
@@ -285,9 +273,8 @@ preview's own settings and deploy it again, or have your agent delete and
 recreate that specific preview with your approval. Republishing its code alone
 does not import the new Base secrets. See [Cloudflare's secret inheritance](https://developers.cloudflare.com/workers/previews/configuration/#secrets).
 For credential rotation or tighter access, follow [Replacing secrets](operations.md#replacing-secrets).
-Old immutable URLs retain their original secrets; our hosted rehearsal required
-retiring the preview Worker to close them. A branch update or deletion alone
-is not a verified access-revocation path.
+Old immutable preview URLs keep their original secrets until you retire the
+preview Worker; updating or deleting a branch does not revoke access.
 
 Only trusted branches may receive these credentials: anyone able to deploy
 preview code can use its read-only warehouse access. Do not enable live previews
@@ -336,20 +323,13 @@ a data error, or test changed queries. Sample development needs no credential.
    Report what you verified and any remaining failure. Do not deploy or change IAM.
    ```
 
-The existing commands consume environment settings directly; no local secret
-file is needed. `pnpm test:live` signs in automatically using `APP_BASIC_AUTH`,
-runs one browser worker without automatic retries, and disables traces, videos,
-screenshots and HTML reports. It executes real queries and uses the app's query
-allowance. Start with `pnpm diagnose`; use `pnpm test:live --grep Overview`
-when only Overview changed, or omit the filter for all included views. Treat
-live test output as internal; it may identify warehouse fields or values.
-
-`pnpm check` and `pnpm test:e2e` stay on synthetic data even in a live-configured
-environment. Cloudflare builds and `pnpm test:secrets` scan for both local-file
-and injected credentials. Keep any
-live browser session private and guarded; never remove the password to make
-automation easier. Hosted previews and authorized agent debugging share the
-Development credential. Neither requires the production key.
+The commands read environment settings directly; no local secret file is
+needed. `pnpm test:live` signs in with `APP_BASIC_AUTH`, runs one browser
+worker without retries or artifacts, and executes real queries. Use
+`pnpm test:live --grep Overview` when only Overview changed, or omit the filter
+for all views. Treat its output as internal; it may identify warehouse fields or
+values. `pnpm check` and `pnpm test:e2e` stay on synthetic data even in a
+live-configured environment. Never remove the password to make automation easier.
 
 Replace or revoke the **Development** app in SourceMedium when needed. Follow
 [Replacing secrets](operations.md#replacing-secrets) to update Base, retire old
@@ -364,35 +344,32 @@ See [the legacy environment guide](https://learn.chatgpt.com/docs/environments/c
 
 ### Discover schemas without sharing the app key
 
-Both cloud agents can use `pnpm schema <relation>` on the bundled starter
-snapshot with no secrets. Its output labels the snapshot; it does not verify
-your warehouse. For a custom relation, use your separately authorized
-SourceMedium MCP connection if your agent environment supports it. Otherwise
-ask your SourceMedium admin for the relation's columns and types, or run
-`pnpm schema <relation>` from an authorized local checkout and share that
-schema-only output. For direct inspection by your cloud agent, opt into the
-[Development credential](#debug-with-live-data) above. A deployed app's
-key does not connect MCP.
+Without secrets, `pnpm schema <relation>` prints the bundled starter snapshot,
+labeled as such; it does not verify your warehouse. For a custom relation, use
+a separately authorized SourceMedium MCP connection, ask your SourceMedium
+admin for its columns and types, or share schema-only `pnpm schema` output from
+an authorized local checkout. For direct inspection, use the
+[Development credential](#debug-with-live-data) above.
 
 ## Setup help
 
 Tell the agent what failed. It should resolve setup before asking you to run commands.
 
-For browser installation, allow `cdn.playwright.dev`, `storage.googleapis.com`,
-and `playwright.download.prss.microsoft.com` in the agent environment. These
-are download destinations, not warehouse credentials. An agent can check the
-current URLs with `pnpm exec playwright install --dry-run chromium`.
-For the starter's fonts, also allow `fonts.googleapis.com`, `fonts.gstatic.com`,
-`api.fontshare.com`, and `cdn.fontshare.com`; otherwise font loading or the
-production build can fail. Keep the
-locked Playwright browser version for release checks; a different preinstalled
-Chromium is only a limited visual smoke check.
+Browser tests need Chromium. Setup tries to download it and only warns if it
+cannot; `pnpm check` and `pnpm dev` work without it. To enable browser tests,
+allow `cdn.playwright.dev`, `storage.googleapis.com`, and
+`playwright.download.prss.microsoft.com` in the agent environment. These are
+download destinations, not warehouse credentials; an agent can check the
+current URLs with `pnpm exec playwright install --dry-run chromium`. The app
+uses system fonts, so no font hosts are needed. Keep the locked Playwright
+browser version for release checks; a different preinstalled Chromium is only
+a limited visual smoke check.
 
 | What happened                            | What the agent should do                                                                                                                                                                                                   |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Repository missing                       | Check that the GitHub connection includes your copy; organization approval may be needed.                                                                                                                                  |
 | Install failed or dependencies changed   | Run `node scripts/setup-agent.mjs` again. It preserves the lockfile and uses the pinned pnpm without a global install. Use Node 24 if the runtime is too old.                                                              |
-| Browser download blocked                 | Allow `cdn.playwright.dev` and its download redirect hosts reported by Playwright, then rerun setup. Keep TLS verification enabled.                                                                                        |
+| Browser download blocked                 | Setup warns and continues; `pnpm check` and `pnpm dev` still work. For browser tests, allow `cdn.playwright.dev` and the redirect hosts Playwright reports, then rerun setup. Keep TLS verification enabled.               |
 | Cache directory is read-only             | In the Codex environment, set writable workspace paths for `npm_config_cache`, `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_CONFIG_HOME`, and `PLAYWRIGHT_BROWSERS_PATH`. Save them for both setup and later tasks, then retry. |
 | Port 3000 is occupied                    | Reuse the intended server or stop only the stale process the agent started. Stopping an npm wrapper may leave Next running; verify the listener stops. Do not switch ports silently.                                       |
 | Linux browser libraries missing          | Run `pnpm exec playwright install --with-deps chromium` in the cloud VM. No changes to your own computer.                                                                                                                  |
@@ -405,6 +382,6 @@ Chromium is only a limited visual smoke check.
 | Google requests cannot connect           | Allow `oauth2.googleapis.com` and `bigquery.googleapis.com`. Keep TLS verification enabled; do not change the key or disable the guard to fix a network policy.                                                            |
 | Live app shows a configuration error     | Fix the named production runtime settings using [operations.md](operations.md); never paste secret values into chat.                                                                                                       |
 
-The platform account/authorization screens must be completed by the account
-owner. Fresh-account journeys in both cloud agents are tracked separately in
-[release readiness](release-readiness.md); local checks do not prove those screens.
+The account owner completes the platform account and authorization screens.
+Fresh-account journeys in both cloud agents have not yet been verified end to
+end; local checks do not prove those screens.

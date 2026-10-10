@@ -184,21 +184,21 @@ describe("cloud agent bootstrap", () => {
     expect(result.stdout).not.toContain("Agent setup ready");
   });
 
-  it("stops when the browser download or OS dependency installation fails", () => {
+  // pnpm check and pnpm dev need no browser; a blocked download must not block the session.
+  it("finishes with a warning when the browser download fails", () => {
     const project = fixture({ browser: false, browserInstallExit: 23 });
     const result = project.run(true);
-    expect(result.status).toBe(23);
+    expect(result.status).toBe(0);
     expect(project.calls()).toHaveLength(2);
-    expect(result.stdout).not.toContain("Agent setup ready");
-    expect(result.stderr).toContain("Agent setup failed");
+    expect(result.stderr).toContain("without a test browser (Browser unavailable)");
+    expect(result.stderr).not.toContain("Agent setup failed");
   });
 
-  it("does not report readiness when a successful install still cannot launch the browser", () => {
+  it("finishes with a warning when an installed browser still cannot launch", () => {
     const project = fixture({ browser: false, repairBrowser: false });
     const result = project.run(true);
-    expect(result.status).toBe(1);
+    expect(result.status).toBe(0);
     expect(project.calls()).toHaveLength(process.platform === "linux" ? 3 : 2);
-    expect(result.stdout).not.toContain("Agent setup ready");
-    expect(result.stderr).toContain("Browser unavailable");
+    expect(result.stderr).toContain("without a test browser (Browser unavailable)");
   });
 });

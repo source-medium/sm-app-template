@@ -9,3 +9,4 @@ public/sample-creatives
 scripts/schema-snapshot.json
 next-env.d.ts
 cloudflare-env.d.ts
+.claude/worktrees

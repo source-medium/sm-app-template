@@ -2,5 +2,13 @@
   "//": "Type checks source only. Next regenerates .next/types on every build and a deleted route's stub outlives it, which would fail tsc after you remove a view.",
   "extends": "./tsconfig.json",
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.mts"],
-  "exclude": ["node_modules", ".next", ".open-next", ".wrangler", "playwright-report", "test-results"]
+  "exclude": [
+    "node_modules",
+    ".next",
+    ".open-next",
+    ".wrangler",
+    "playwright-report",
+    "test-results",
+    ".claude/worktrees"
+  ]
 }

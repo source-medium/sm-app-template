@@ -7,7 +7,7 @@
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { TimeGrain } from "@/lib/time-grain";
-import { todayUtc, type DateRange, type ReportFilters } from "@/lib/filters";
+import type { DateRange, ReportFilters } from "@/lib/filters";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { queryOverview, queryOverviewChannels } from "./bigquery";
 import { sampleOverview, sampleOverviewSource } from "./sample";
@@ -52,11 +52,7 @@ export async function getOverviewChannels(filters: ReportFilters): Promise<strin
   const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live"
     ? queryOverviewChannels(filters)
-    : [
-        ...new Set(
-          sampleOverviewSource(filters.storeId, filters.range, todayUtc(new Date())).map((row) => row.sm_channel),
-        ),
-      ].sort();
+    : [...new Set(sampleOverviewSource(filters.storeId, filters.range).map((row) => row.sm_channel))].sort();
 }
 
 export type OverviewReport = {

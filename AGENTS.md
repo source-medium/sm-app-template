@@ -15,7 +15,7 @@ Keep only UI components the app uses; add more when a view needs them.
 ## Commands
 
 - `pnpm dev`: checks configuration, then serves on http://127.0.0.1:3000.
-- `pnpm check`: format, lint, types, auth coverage, skill copies, all tests. Under a minute.
+- `pnpm check`: format, lint, types, auth and store-scope coverage, skill copies, all tests. Under a minute.
 - `pnpm schema <relation>`: a relation's columns and types (never rows).
 - `pnpm skills:sync`: run after editing anything in `.agents/skills`.
 
@@ -25,7 +25,7 @@ Also: `pnpm diagnose`, `pnpm test:e2e`, `pnpm build`, `pnpm build:cloudflare`. U
 ## Repo map
 
 ```text
-app.config.ts                 Name, logo, navigation, store labels, date defaults
+app.config.ts                 Name, logo, navigation, store labels, currency, date defaults
 src/app/(app)/<route>/page.tsx  One line re-exporting a feature's page
 src/features/<view>/          One view: queries.ts (contract), rows.ts (row schema),
                               bigquery.ts (live SQL), sample.ts (fixtures), page.tsx
@@ -77,20 +77,23 @@ docs/                         Guides (index below)
    states. A view with no date range (current state, such as inventory) passes
    `dates={false}` to `ReportPage`.
 5. Add tests beside the view: `fixture-contract.test.ts` (sample shape and
-   totals), `live-contract.test.ts` (the SQL, parameters, and truncation against
-   the fake BigQuery; copy an example view's), and `<view>.e2e.ts` for interactions.
-   Then `pnpm check`, and `pnpm test:e2e` after UI changes.
+   totals), `live-contract.test.ts` (the SQL, the `store_id` and other parameters,
+   and truncation against the fake BigQuery; copy an example view's), and
+   `<view>.e2e.ts` for interactions. Then `pnpm check`, and `pnpm test:e2e`
+   after UI changes.
 
-Copy `overview` (summaries), `paid-marketing` (filters), `creatives` (cards),
-`orders` (search/detail), `products` (rankings), or `retention` (cohorts), all in
-`src/features`. See `docs/removing-the-example.md` to delete any of them.
+Copy `products` for a simple page (KPIs, one chart, one table; the simplest view),
+`overview` (multi-measure daily summaries, grains, comparisons, CSV),
+`paid-marketing` (filters), `creatives` (cards), `orders` (search/detail), or
+`retention` (cohorts), all in `src/features`. See `docs/removing-the-example.md`
+to delete any of them.
 
 ## SQL and data
 
 - SQL is written by developers, never built from browser input. Browser input
   becomes typed named parameters (`@store_id`), or picks from a fixed map in code.
 - Store names and brands come from `dim_stores` via `loadStores()`; keep IDs in URLs.
-- Keep `sm_store_id = @store_id` on every data source read; see `docs/data.md#store-scope`.
+- Keep `sm_store_id = @store_id` on every data source read (`pnpm check` enforces it); see `docs/data.md#store-scope`.
 - Fully qualified names come from `warehouse.table("<relation>")`; your own
   datasets in the warehouse project: `warehouse.table("customized_views.my_table")`.
 - Aggregate in SQL. Every query has `maxRows`; check `result.truncated`. Totals
@@ -101,6 +104,8 @@ Copy `overview` (summaries), `paid-marketing` (filters), `creatives` (cards),
   `dim_stores.store_currency_code` alone does not establish reporting currency.
   Keep NUMERIC exact, add with `sumDecimals`, format with `formatMoney`.
   Read each field's type: platform-reported revenue is FLOAT64. Never add across stores.
+- Dates are each store's calendar dates in its SourceMedium time zone. Take
+  today from `ReportContext.today` (or `storeToday()`), never the server clock or UTC.
 - Show "Queried at" and "Data freshness unknown"; never claim freshness from `MAX(date)`.
 
 ## UI
@@ -111,14 +116,17 @@ Use the shadcn primitives in `components/ui` and the patterns in
 use theme classes (`bg-card`, `text-muted-foreground`), not raw colors. Charts
 use `--chart-1`…`--chart-8` in order, one y-axis, and keep the table view.
 Comparisons: opt into `ReportPage comparisons` only when querying both periods.
-Reuse `lib/comparison.ts`, `lib/time-grain.ts`, and `patterns/kpi-delta.ts`.
-Copy Overview for summaries, Products for rankings, Retention for `CohortMatrix`.
+Reuse `lib/comparison.ts`, `lib/time-grain.ts`, and `patterns/kpi-delta.ts`;
+hide period changes when `coverageIssue()` returns a reason.
+Copy Products for simple pages and rankings, Overview for multi-measure summaries,
+Retention for `CohortMatrix`.
 
 ## Route handlers and downloads
 
 A `route.ts` handler (a CSV download, an API) calls `await requireViewer()`
 first, like any data function. On a `WarehouseError`, return its `title` and
-`remedy` with a 5xx status. Exports carry raw values (exact decimals, ISO
+`remedy` with a 5xx status. A CSV download wraps its query in `csvExport()`
+(`src/lib/csv.server.ts`), which applies the page's store, dates and errors. Exports carry raw values (exact decimals, ISO
 dates), not display formatting. This app is read-only: anything that writes or
 acts for a person needs a real per-person authorization design first.
 

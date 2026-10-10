@@ -15,6 +15,7 @@ const fields = [
   { name: "dimension_key", type: "STRING" },
   { name: "label", type: "STRING" },
   ...["spend", "previous_spend", "total_spend", "minimum_spend"].map((name) => ({ name, type: "NUMERIC" })),
+  ...["latest_date", "previous_latest_date"].map((name) => ({ name, type: "DATE" })),
 ];
 
 it("reconciles sample spend and channel-filtered campaign shares without changing the denominator", async () => {
@@ -43,6 +44,8 @@ it("uses typed parameters and SQL totals before top-N, retaining exact decimals"
           previous_spend: null,
           total_spend: "9007199254740993.123456789",
           minimum_spend: "0.1",
+          latest_date: "2026-09-07",
+          previous_latest_date: null,
         })),
       ),
   });
@@ -82,6 +85,8 @@ it("rejects a truncated response instead of presenting unverified totals", async
           previous_spend: "1",
           total_spend: "20",
           minimum_spend: "1",
+          latest_date: "2026-09-07",
+          previous_latest_date: null,
         })),
         { pageToken: "more" },
       ),

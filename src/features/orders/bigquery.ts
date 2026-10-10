@@ -30,7 +30,6 @@ export async function queryOrders(filters: OrdersFilters): Promise<OrdersPage> {
     { name: "limit", type: "INT64", value: PAGE_SIZE + 1 },
   ];
   const predicates = [
-    "sm_store_id = @store_id",
     "order_processed_at_local_datetime >= DATETIME(@start_date)",
     "order_processed_at_local_datetime < DATETIME(DATE_ADD(@end_date, INTERVAL 1 DAY))",
   ];
@@ -60,7 +59,8 @@ export async function queryOrders(filters: OrdersFilters): Promise<OrdersPage> {
     sql: `
       SELECT ${SUMMARY_COLUMNS}
       FROM ${warehouse.table(ORDERS_RELATION)}
-      WHERE ${predicates.join("\n        AND ")}
+      WHERE sm_store_id = @store_id
+        AND ${predicates.join("\n        AND ")}
       ORDER BY order_processed_at_local_datetime DESC, sm_order_key DESC
       LIMIT @limit`,
     params,

@@ -21,6 +21,9 @@ coverage
 .dev.vars
 .dev.vars.*
 
+# Agent worktrees: Claude Code creates them inside the repository.
+.claude/worktrees/
+
 # OS and editors
 .DS_Store
 *.log

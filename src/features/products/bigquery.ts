@@ -33,6 +33,7 @@ export async function queryProducts(filters: ProductFilters, baseline: DateRange
   const dimension = DIMENSIONS[filters.dimension];
   const sort = SORTS[filters.metric];
   const measures = Object.entries(MEASURES);
+  // Each period's latest date with lines, for comparison coverage, comes from the same pass as the totals.
   const result = await warehouse.query({
     name: "products_ranked",
     maxRows: MAX_PRODUCTS + 1,
@@ -45,7 +46,9 @@ export async function queryProducts(filters: ProductFilters, baseline: DateRange
             `SUM(IF(DATE(order_processed_at_local_datetime) BETWEEN @start_date AND @end_date, ${column}, NULL)) AS ${name}`,
             `SUM(IF(@compare AND DATE(order_processed_at_local_datetime) BETWEEN @baseline_from AND @baseline_to, ${column}, NULL)) AS previous_${name}`,
           ])
-          .join(",\n")}
+          .join(",\n")},
+        MAX(IF(DATE(order_processed_at_local_datetime) BETWEEN @start_date AND @end_date, DATE(order_processed_at_local_datetime), NULL)) AS group_latest_date,
+        MAX(IF(@compare AND DATE(order_processed_at_local_datetime) BETWEEN @baseline_from AND @baseline_to, DATE(order_processed_at_local_datetime), NULL)) AS group_previous_latest_date
       FROM ${warehouse.table(PRODUCTS_RELATION)}
       WHERE sm_store_id = @store_id AND is_order_sm_valid = TRUE
         AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
@@ -55,9 +58,11 @@ export async function queryProducts(filters: ProductFilters, baseline: DateRange
           AND order_processed_at_local_datetime < DATETIME(DATE_ADD(@baseline_to, INTERVAL 1 DAY))))
       GROUP BY product_key
     )
-    SELECT *,
+    SELECT * EXCEPT (group_latest_date, group_previous_latest_date),
       ${measures.flatMap(([name]) => [`SUM(${name}) OVER () AS total_${name}`, `SUM(previous_${name}) OVER () AS total_previous_${name}`]).join(",\n")},
-      MIN(${sort}) OVER () AS minimum_value
+      MIN(${sort}) OVER () AS minimum_value,
+      MAX(group_latest_date) OVER () AS latest_date,
+      MAX(group_previous_latest_date) OVER () AS previous_latest_date
     FROM grouped ORDER BY ${sort} DESC NULLS LAST, product_key LIMIT ${MAX_PRODUCTS + 1}`,
     params: [
       { name: "store_id", type: "STRING", value: filters.storeId },

@@ -24,11 +24,14 @@ const fields = [
     "total_previous_profit",
     "minimum_value",
   ].map((name) => ({ name, type: "NUMERIC" })),
+  ...["latest_date", "previous_latest_date"].map((name) => ({ name, type: "DATE" })),
 ];
 const row = {
   product_key: "p1",
   label: "Product",
   reference: "shopify / p1",
+  latest_date: "2026-09-02",
+  previous_latest_date: null,
   revenue: "9007199254740993.123456789",
   units: "1.5",
   total_revenue: "9007199254740993.123456789",

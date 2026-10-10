@@ -20,8 +20,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Windows too: many customers' agents run there, and symlinks or CRLF would break the template.
-        os: [ubuntu-latest, windows-latest]
+        # The template itself also checks Windows, where symlinks or CRLF would break it for customers'
+        # agents. A copy of the template checks Linux only; add windows-latest back if you develop there.
+        os: ${{ github.repository == 'source-medium/sm-app-template' && fromJSON('["ubuntu-latest","windows-latest"]') || fromJSON('["ubuntu-latest"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:

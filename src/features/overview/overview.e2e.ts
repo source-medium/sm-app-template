@@ -185,14 +185,16 @@ test("unknown stores remain unselected until the viewer chooses a valid store", 
   await expect(page.getByText("This store is not in the store list")).toBeVisible();
   await expect(page.getByLabel("Store")).toHaveValue("unknown-store");
   await expect(page.locator('[data-slot="kpi-value"]')).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("href", /store=unknown-store/);
+  // Without a listed store there is no time zone, so no date to offer ranges from.
+  await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveCount(0);
   await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/store=unknown-store/);
   await expect(page.getByText("This store is not in the store list")).toBeVisible();
-  await page.getByLabel("Store").selectOption("sample-store-a");
-  await expect(page).toHaveURL(/store=sample-store-a/);
+  await page.getByLabel("Store").selectOption("sample-store-b");
+  await expect(page).toHaveURL(/store=sample-store-b/);
   await expect(page.getByText("This store is not in the store list")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("href", /store=sample-store-a/);
+  await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("href", /store=sample-store-b/);
+  await expect(page.getByText("Dates are calendar dates in the store's time zone, America/Los_Angeles.")).toBeVisible();
 });
 
 test("overview: comparison dates and the dashed baseline survive the table toggle", async ({ page }) => {
@@ -292,4 +294,24 @@ test("overview: the agent prompt identifies a KPI and an invalid date state", as
   expect(prompt).toContain("Report not loaded: Choose a valid start and end date.");
   expect(prompt).not.toContain("from=");
   expect(prompt).not.toContain("to=");
+});
+
+test("overview: hides period changes only when the selected period's last days have no rows", async ({ page }) => {
+  // Sample store B has no rows on 3, 11, 13 and 19 September.
+  await page.goto("/overview?store=sample-store-b&from=2026-09-13&to=2026-09-19&compare=previous");
+  const totals = page.getByRole("region", { name: "Period totals" });
+  await expect(page.locator("[data-comparison-issue]")).toHaveText(
+    /no rows for its last 1 day, while the comparison has rows through its end/,
+  );
+  await expect(totals.locator('[data-slot="kpi-value"]').first()).toBeVisible();
+  await expect(totals.locator('[data-slot="kpi-comparison"]')).toHaveCount(0);
+  // Per-day lines align date by date, so the dashed comparison still shows.
+  const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
+  await expect(card.locator('.recharts-line-curve[stroke-dasharray="6 4"]')).toBeVisible();
+
+  // A gap before the end is not a day still loading: changes show, with the caution note.
+  await page.goto("/overview?store=sample-store-b&from=2026-09-01&to=2026-09-07&compare=previous");
+  await expect(page.locator("[data-comparison-issue]")).toHaveCount(0);
+  await expect(page.getByText("Some dates have no rows.", { exact: false })).toBeVisible();
+  await expect(totals.locator('[data-slot="kpi-comparison"]')).toHaveCount(6);
 });

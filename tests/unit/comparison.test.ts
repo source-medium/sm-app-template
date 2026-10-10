@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareValues, comparisonRange, parseComparison } from "@/lib/comparison";
+import { compareValues, comparisonRange, coverageIssue, parseComparison } from "@/lib/comparison";
 import { rangeLength } from "@/lib/filters";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { formatCount, formatMoney } from "@/lib/format";
@@ -86,5 +86,40 @@ describe("metric changes", () => {
     expect(kpiDelta("10", "0", formatMoney).display).toBe("+10.00 (zero baseline)");
     expect(kpiDelta("-5", "-10", formatMoney).display).toBe("+5.00 (negative baseline)");
     expect(kpiDelta(10n, null, formatCount)).toMatchObject({ display: "No comparison value", good: null });
+  });
+});
+
+describe("comparison coverage", () => {
+  const range = { from: "2026-09-12", to: "2026-10-09" };
+  const baseline = { from: "2026-08-15", to: "2026-09-11" };
+
+  it("hides period changes when the latest days have not loaded yet", () => {
+    // The live case: a missing 9 October read as a 4% decline instead of under 1%.
+    expect(coverageIssue(range, baseline, "2026-10-08", "2026-09-11")).toBe(
+      "Changes are hidden because the selected period has no rows for its last 1 day, while the comparison has rows through its end. Days missing at the end are often ones that have not loaded yet, not zeros.",
+    );
+    expect(coverageIssue(range, baseline, "2026-10-06", "2026-09-10")).toContain(
+      "no rows for its last 3 days, and the comparison for only its last 1 day",
+    );
+    expect(coverageIssue(range, baseline, null, "2026-09-11")).toContain("its last 28 days");
+  });
+
+  it("shows changes when gaps are not at the selected period's end, as in sparse data", () => {
+    // Gaps before the end are not days that have yet to load, so sparse data keeps its changes.
+    expect(coverageIssue(range, baseline, "2026-10-09", "2026-09-11")).toBeNull();
+    expect(coverageIssue(range, baseline, "2026-10-09", "2026-09-01")).toBeNull();
+    expect(coverageIssue(range, baseline, "2026-10-08", "2026-09-10")).toBeNull();
+    expect(coverageIssue(range, baseline, "2026-10-09", null)).toBeNull();
+  });
+
+  it("hides changes across a leap day, where the periods differ in length", () => {
+    expect(
+      coverageIssue(
+        { from: "2028-02-01", to: "2028-02-29" },
+        { from: "2027-02-01", to: "2027-02-28" },
+        "2028-02-29",
+        "2027-02-28",
+      ),
+    ).toBe("Changes are hidden because the periods differ in length: 29 days selected, 28 days compared.");
   });
 });

@@ -3,8 +3,10 @@
  * view and a shared link shares it. Server components parse them with this
  * module; there is no client data layer.
  *
- * Dates are calendar dates (YYYY-MM-DD) in UTC. The range ends no later than
- * today, so forward-dated target rows never appear as zero-valued days.
+ * Dates are calendar dates (YYYY-MM-DD). `today` is the store's date in its
+ * SourceMedium time zone (storeToday in src/lib/data/stores.server.ts).
+ * The range ends no later than today, so forward-dated target rows never
+ * appear as zero-valued days.
  */
 import { appConfig } from "@/app.config";
 
@@ -17,10 +19,6 @@ export type ReportFilters = { storeId: string; range: DateRange };
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86_400_000;
 
-export function todayUtc(now: Date): string {
-  return now.toISOString().slice(0, 10);
-}
-
 export function addDays(date: string, days: number): string {
   return new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 }
@@ -28,6 +26,13 @@ export function addDays(date: string, days: number): string {
 /** Inclusive day count of a range. */
 export function rangeLength(range: DateRange): number {
   return Math.round((Date.parse(`${range.to}T00:00:00Z`) - Date.parse(`${range.from}T00:00:00Z`)) / DAY_MS) + 1;
+}
+
+/** The latest of some calendar dates, or null for none. */
+export function latestDate(dates: Iterable<string>): string | null {
+  let latest: string | null = null;
+  for (const date of dates) if (latest === null || date > latest) latest = date;
+  return latest;
 }
 
 export function datesInRange(range: DateRange): string[] {
@@ -52,18 +57,17 @@ export function parseSalesChannel(params: SearchParams): string | null {
   return single(params, "sales_channel")?.slice(0, 100) || null;
 }
 
-export function defaultRange(now: Date): DateRange {
-  const to = addDays(todayUtc(now), -1);
+export function defaultRange(today: string): DateRange {
+  const to = addDays(today, -1);
   return { from: addDays(to, -(appConfig.dateRange.defaultDays - 1)), to };
 }
 
-/** Calendar presets use UTC, matching the date picker. Weeks run Monday–Sunday. */
-export function datePresets(now: Date): { label: string; range: DateRange }[] {
-  const today = todayUtc(now);
+/** Completed calendar periods relative to today. Weeks run Monday–Sunday. */
+export function datePresets(today: string): { label: string; range: DateRange }[] {
   const yesterday = addDays(today, -1);
   const monthStart = `${today.slice(0, 8)}01`;
   const lastMonthEnd = addDays(monthStart, -1);
-  const monday = addDays(today, -((now.getUTCDay() + 6) % 7));
+  const monday = addDays(today, -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7));
   const presets = [
     { label: "Yesterday", range: { from: yesterday, to: yesterday } },
     ...[7, 28, 90].map((days) => ({
@@ -82,9 +86,8 @@ export function datePresets(now: Date): { label: string; range: DateRange }[] {
  * The applied range: the URL's range when it is valid, otherwise the default.
  * The end is clamped to today and the length to the configured maximum.
  */
-export function parseDateRange(params: SearchParams, now: Date): DateRange {
-  const fallback = defaultRange(now);
-  const today = todayUtc(now);
+export function parseDateRange(params: SearchParams, today: string): DateRange {
+  const fallback = defaultRange(today);
   const fromParam = single(params, "from");
   const toParam = single(params, "to");
   if (!isCalendarDate(fromParam) || !isCalendarDate(toParam) || fromParam > toParam) return fallback;
@@ -97,13 +100,13 @@ export function parseDateRange(params: SearchParams, now: Date): DateRange {
 }
 
 /** A supplied URL must never silently report a different period. Missing dates use the default. */
-export function dateRangeIssue(params: SearchParams, now: Date): string | null {
+export function dateRangeIssue(params: SearchParams, today: string): string | null {
   const from = single(params, "from");
   const to = single(params, "to");
   if (from === undefined && to === undefined) return null;
   if (!isCalendarDate(from) || !isCalendarDate(to)) return "Choose a valid start and end date.";
   if (from > to) return "The start date must be on or before the end date.";
-  if (to > todayUtc(now)) return "The end date cannot be after today.";
+  if (to > today) return "The end date cannot be after today.";
   if (rangeLength({ from, to }) > appConfig.dateRange.maxDays)
     return `Choose a range of ${appConfig.dateRange.maxDays} days or fewer.`;
   return null;

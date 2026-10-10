@@ -33,7 +33,7 @@ command against your warehouse. MCP is not required for that path.
 | Creatives      | `rpt_ad_performance_daily`                                            | ad by day, aggregated to creative                                   | `ad_creative_*` text and image URLs, the same measures                                                                                                                 |
 | Orders         | `obt_orders`                                                          | one row per order                                                   | `sm_order_key`, `order_name`, `order_processed_at_local_datetime`, channel, type, status, quantities, and the order's revenue columns                                  |
 | Products       | `obt_order_lines`                                                     | one row per order line, aggregated to product or variant            | `source_system`, product/variant ids and titles, `is_order_sm_valid`, `order_line_net_revenue`, `order_line_net_quantity`, `order_line_product_gross_profit` (NUMERIC) |
-| Retention      | `rpt_cohort_ltv_by_first_valid_purchase_attribute_no_product_filters` | channel, acquisition cohort month, month age, one unsegmented slice | `cohort_size`, `customer_count`, `cumulative_order_net_revenue`, `cumulative_order_gross_profit`                                                                       |
+| Retention      | `rpt_cohort_ltv_by_first_valid_purchase_attribute_no_product_filters` | channel, acquisition cohort month, month age, one unsegmented slice | `cohort_size`, `customer_count`, `cumulative_order_net_revenue`, `cumulative_order_gross_profit` (FLOAT64, cast to NUMERIC)                                            |
 
 The example uses these formulas: net revenue is
 `SUM(order_net_revenue)`, revenue per summary order is net revenue ÷ summary
@@ -49,8 +49,12 @@ match, not an independent numerical reconciliation. Summary orders include
 excluded, draft and exchanged channels when published and can differ from
 valid orders in `obt_orders`. The UI labels that count and its revenue ratio
 explicitly; do not present the ratio as valid-order AOV without reconciling the
-definitions, dates and store. The demo discrepancy remains a release check in
-[release readiness](release-readiness.md).
+definitions, dates and store.
+
+Overview's ad spend reads `rpt_executive_summary_daily`; Paid marketing and
+Creatives read `rpt_ad_performance_daily`. The two published relations can
+differ by cents for the same store and dates, so do not expect them to match
+exactly or reconcile one against the other in code.
 
 Overview's **New vs repeat purchases** reads the same summary relation and
 filters. It sums `new_customer_order_net_revenue`, `new_customer_order_count`,
@@ -73,7 +77,8 @@ per day, while headline ratios continue to use full-period totals.
 
 Every data query filters one store with `sm_store_id = @store_id`. There are no
 cross-store totals. The store picker reads `dim_stores`: one row per active
-store, with `sm_store_id`, `store_name`, and `brand_name`. It groups stores by
+store, with `sm_store_id`, `store_name`, `brand_name`, and `store_timezone`
+([dates](#dates)). It groups stores by
 brand, uses their names automatically, and appends the ID when names repeat.
 The selected value and shareable URL remain `?store=<sm_store_id>`, so renaming
 a store does not break links. `app.config.ts` `storeLabels` is an optional
@@ -98,9 +103,14 @@ receiving the id directly, use `{ storeId }`. This also protects sample reads.
 The scoped warehouse additionally refuses queries without exactly one matching
 STRING `store_id` parameter before making a network call. Keep the corresponding
 `sm_store_id = @store_id` SQL predicate on every source read; the guard checks
-the parameter, not arbitrary SQL semantics. Review joins and subqueries when
+the parameter, not arbitrary SQL semantics. `pnpm check` fails any SQL template under
+`src/features` that reads `warehouse.table(...)` without its own copy of that
+predicate, and each view's `live-contract.test.ts` checks the parameters. A
+textual check cannot prove every join is scoped: review joins and subqueries when
 extending the app. Store-free custom data needs a deliberate authorization
-design before exposing it from a restricted deployment.
+design before exposing it from a restricted deployment. After that review, list
+the file and its reason in `STORE_SCOPE_EXEMPT` in `scripts/lib/store-scope.ts`;
+never add a placeholder predicate to satisfy the check.
 
 Orders are listed by `order_processed_at_local_datetime`, the column
 SourceMedium partitions `obt_orders` on, so a date range reads only the months
@@ -178,12 +188,13 @@ integer into a plausible-looking chart value.
 
 `dim_stores.store_currency_code` is the currency configured for the store,
 not a reporting-currency guarantee for the report measures. Do not use it to
-automatically label combined revenue or spend. Its `store_timezone` describes
-store configuration, not every source's date convention (Amazon order local
-times use America/Los_Angeles). Neither field changes report calculations or
-date presets. The bundled schema documents all seven metadata fields; the
-picker reads only the identity, name, and brand it needs. Websites and logos
-are not fetched by the picker.
+automatically label combined revenue or spend. Its `store_timezone` is the
+store's SourceMedium time zone, which sets the store's dates in the app (see
+[dates](#dates)); it is not every source's date convention (Amazon order local
+times use America/Los_Angeles). The currency code changes no calculation. The
+bundled schema documents all seven metadata fields; the picker reads only the
+identity, name, brand and time zone it needs. Websites and logos are not
+fetched by the picker.
 
 Use one SourceMedium workspace reporting currency throughout the app. Keep
 conversion in SourceMedium or the warehouse, and read the standard published
@@ -219,13 +230,26 @@ code, so the app cannot infer their reporting currency from an order row.
 Discounts and refunds are normally signed negative amounts; read published
 net revenue rather than subtracting those signed amounts again.
 
-## Period comparisons
+## Dates
+
+Warehouse dates are calendar dates in each store's SourceMedium time zone,
+`dim_stores.store_timezone`. The app uses the selected store's zone for today,
+the date presets, the default range (ending yesterday) and the latest
+selectable end date, and each dated report's footer names it. There is no
+setting and no UTC default. Where `dim_stores` has no recognized zone for the
+store (or is not published yet, or the store list fails), the zone is the UTC
+offset SourceMedium applied to the store's recent orders, preferring non-Amazon
+sources. A listed store with neither shows an error rather than a guessed date. In a view, take today from
+`ReportContext.today`; elsewhere call `storeToday()` in
+`src/lib/data/stores.server.ts`. Never use the server clock's date or UTC.
 
 Date presets include Yesterday, Last 7/28/90 days, Last full week
 (Monday–Sunday), Last month, and Month to date through yesterday. They use
-UTC calendar dates, like the picker defaults. Month to date is omitted on
+the store's calendar dates, like the picker defaults. Month to date is omitted on
 the first of the month, when it has no completed days. Presets longer than
 the configured maximum range are omitted rather than silently shortened.
+
+## Period comparisons
 
 Overview defaults to **Previous period**: the same number of calendar days,
 immediately before the selected range. **Same dates last year** shifts the
@@ -240,11 +264,22 @@ align by position; yearly days align by month and day. Unmatched leap days stay
 gaps. Period totals still include every date in the displayed comparison range. Missing days stay missing, never zero. Days with rows do not
 prove complete data, and a range including today may be incomplete.
 
+Data loads in date order, so a day that has not loaded yet is missing from the
+end of the selected period, where it would read as a decline. Overview, Products
+and the Paid marketing spend breakdown hide period-total changes (KPI deltas and
+change columns) when the selected period has more days without rows at its end
+than the comparison, or when the periods differ in length (a leap day), and a
+visible note says why. Gaps earlier in a period do not hide changes. Per-day
+comparison lines still show, with gaps for missing days.
+
 To add comparisons to a view, opt into `ReportPage comparisons`, use its
 `comparison.range`, and query each period with the same store and dimension
 filters. Copy Overview's `getOverviewReport`: it reuses the existing bounded
 query for each period in parallel, checks truncation, and keeps current data
 visible if the comparison query fails. This adds one query when enabled.
+In a new view, return each period's latest date with rows and pass both to
+`coverageIssue()` in `src/lib/comparison.ts`; show its message and hide changes
+when it returns one, as Overview and Products do.
 Ratios are recomputed from each period's totals, not averaged from daily ratios.
 
 `lib/comparison.ts` owns date rules and arithmetic; `patterns/kpi-delta.ts`
@@ -253,7 +288,8 @@ Percentages are `(current - baseline) / baseline`, displayed to two decimals.
 Zero, negative, and missing baselines have explicit states instead of a
 misleading percentage. Unchanged values are neutral. The default color is
 neutral; a feature must explicitly choose whether higher or lower is better.
-Overview uses higher-is-better only for net revenue and MER. Percentage-valued
+Overview uses higher-is-better for net revenue, Summary orders, MER and
+website sessions. Percentage-valued
 metrics should label absolute changes as percentage points, distinct from
 relative percent changes. Custom ranges, targets and weekday-aligned calendars
 are intentionally left for apps that need them.
@@ -346,7 +382,7 @@ or a zero total suppress shares. Missing comparisons stay missing. The date
 predicate uses `order_processed_at_local_datetime` directly for partition pruning.
 
 **Retention** uses `?as_of=YYYY-MM&channel=online_dtc&measure=retention|revenue|profit`.
-The cutoff defaults to the last completed UTC calendar month and is frozen in
+The cutoff defaults to the store's last completed calendar month and is frozen in
 shared links. It shows twelve acquisition months through that cutoff, at ages
 0–11. Month 0 means the acquisition calendar month, not a fixed 30-day window.
 Ordinary `from`/`to` filters do not define this report's observation window.
@@ -379,10 +415,11 @@ fixed charts.
 
 No averages across cohorts, stores or channels are shown. Unelapsed months are
 blank; missing published values say **No data**, and a real zero remains zero.
-Elapsed time does not establish warehouse completeness. Cohort money/counts
-are cast to NUMERIC in SQL: this preserves canonical INT64/NUMERIC inputs and
-accommodates demo masking's FLOAT64 values, rounded to nine fractional places.
-Per-customer ratios are approximate. The misleading `cohort_month_*` legacy
+Elapsed time does not establish warehouse completeness. The published cohort
+money and counts are FLOAT64; SQL casts them to NUMERIC, rounded to nine
+fractional places, so they decode exactly from that point on. Values are
+therefore no more exact than the FLOAT64 source, and per-customer ratios are
+approximate. The misleading `cohort_month_*` legacy
 fields are deliberately unused; some published implementations sum those across
 all ages despite their names. The [published cohort schema](https://sourcemedium.com/docs/data-activation/data-tables/sm_transformed_v2/rpt_cohort_ltv_by_first_valid_purchase_attribute_no_product_filters)
 and [query guidance](https://sourcemedium.com/docs/data-activation/template-resources/sql-query-library/ltv-and-retention)
@@ -438,12 +475,15 @@ that precision matters. Text cells that could execute as spreadsheet formulas
 receive a leading apostrophe. Treat CSV as data when importing it: spreadsheet
 re-saving can remove formula escapes ([OWASP guidance](https://owasp.org/www-community/attacks/CSV_Injection)).
 Downloads require the same viewer guard as pages
-and use `private, no-store` responses.
+and use `private, no-store` responses. An invalid date range, an end date after
+today, or a range longer than the configured maximum returns HTTP 400 with the
+same message the page shows; a download never silently uses another period.
 
 For another feature, copy `paid-marketing/download.ts` and its route re-export.
-Reuse `src/lib/csv.server.ts` for encoding, mark numeric columns explicitly,
-reuse the feature's guarded loader, and include its filter and truncation
-context. Keep the route under the feature's own route folder so removing the
+Wrap the export in `csvExport()` from `src/lib/csv.server.ts`, which applies the
+page's store and date checks, and use `csvResponse()` for encoding. Mark numeric
+columns explicitly, reuse the feature's guarded loader, and include its filter
+and truncation context. Keep the route under the feature's own route folder so removing the
 example removes its download too.
 
 ## Metadata
@@ -501,8 +541,10 @@ the existing text fallback. Never put app credentials in image URLs.
 
 ## Speed and cost
 
-Every page runs its queries in parallel with the store list when the URL names
-a store, which the filter bar and navigation keep doing. Each BigQuery query
+A page's dates follow its store's time zone, so its queries wait for that zone.
+A server reuses each store's zone for an hour after looking it up, so later pages
+whose URL names the store, as the filter bar and navigation keep doing, run their
+queries in parallel with the store list. Each BigQuery query
 still takes a moment (on the demo warehouse, pages took 1 to 2.5 seconds from
 Cloudflare's edge), so keep pages to a few queries each. `LIMIT` does not
 reduce cost; filtering on a partition column and selecting fewer columns do.

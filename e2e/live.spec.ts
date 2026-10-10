@@ -40,6 +40,20 @@ test("the live dictionary opens for the selected store without a sample fallback
   await expect(panel).not.toContainText("bundled schema snapshot");
 });
 
+test("dates follow the store's SourceMedium time zone", async ({ page }) => {
+  await page.goto(appConfig.nav[0]?.href ?? "/");
+  await expectLiveReport(page);
+  const footer = page.locator("footer", { hasText: "store's time zone" });
+  const zone = /store's time zone, (?:UTC(?=[+-]))?([^ ]+?)\./.exec((await footer.textContent()) ?? "")?.[1];
+  if (!zone) throw new Error("The report footer does not name the store's time zone");
+  const to = page.locator('input[name="to"]');
+  test.skip((await to.count()) === 0, "The first view has no date range");
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" })
+    .formatToParts(new Date())
+    .reduce<Record<string, string>>((all, part) => ({ ...all, [part.type]: part.value }), {});
+  await expect(to).toHaveAttribute("max", `${parts.year}-${parts.month}-${parts.day}`);
+});
+
 for (const item of appConfig.nav) {
   test(`${item.href} renders live data without errors`, async ({ page }) => {
     const problems = watchConsole(page);

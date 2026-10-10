@@ -32,9 +32,10 @@ export function FilterBar({
   pathname: string;
   stores: StoreOption[];
   storeId: string;
-  from: string;
-  to: string;
-  maxDate: string;
+  /** Absent when the store's date is unknown; the date controls are then hidden. */
+  from?: string;
+  to?: string;
+  maxDate?: string;
   presets: FilterPreset[];
   dates?: boolean;
   comparison?: ComparisonMode;
@@ -80,11 +81,11 @@ export function FilterBar({
       aria-label="Report filters"
       className="grid grid-cols-2 items-end gap-3 rounded-xl border bg-card p-3 sm:flex sm:flex-wrap"
       onSubmit={(event) => {
-        if (!dates) return;
+        if (!dates || maxDate === undefined) return;
         const data = new FormData(event.currentTarget);
         const issue = dateRangeIssue(
           { from: String(data.get("from") ?? ""), to: String(data.get("to") ?? "") },
-          new Date(`${maxDate}T12:00:00Z`),
+          maxDate,
         );
         setError(issue);
         if (issue) {
@@ -170,10 +171,13 @@ export function FilterBar({
           </div>
         </div>
       ) : (
-        <>
-          <input type="hidden" name="from" value={from} />
-          <input type="hidden" name="to" value={to} />
-        </>
+        from !== undefined &&
+        to !== undefined && (
+          <>
+            <input type="hidden" name="from" value={from} />
+            <input type="hidden" name="to" value={to} />
+          </>
+        )
       )}
       <Button type="submit" variant="secondary" className="sm:order-3">
         Apply

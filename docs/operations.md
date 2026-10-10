@@ -86,6 +86,7 @@ agent. Hosted onboarding does not require a local file.
 | The data no longer matches this view     | A column changed type or disappeared                | `pnpm schema <relation>`, then update the view's row schema         |
 | The query may not have started           | The connection dropped before BigQuery confirmed it | Reload once; the app never resubmits automatically                  |
 | The warehouse is temporarily unavailable | A temporary error or a short-term rate limit        | Reload in a minute                                                  |
+| This store's time zone is not published  | No zone in `dim_stores` and no recent orders        | Ask your SourceMedium admin to set the store's time zone            |
 
 A deployment never falls back to sample data when live data fails.
 
@@ -95,7 +96,7 @@ The server writes one JSON line per event with a fixed set of keys
 (`src/lib/data/log.ts`): `bq_query` for every query (app id, query name, job
 id, duration, bytes billed, rows, truncation, error kind), `viewer_denied`, and
 `config_error`. They never contain SQL, rows, keys, passwords, or headers.
-Search them in Workers Logs (Cloudflare) or Runtime Logs (Vercel), for example
+Search them in Cloudflare's Workers Logs, for example
 by `"event":"bq_query"` and `"error_kind"`. To forward them to an error
 tracker, replace `emit` in `log.ts`.
 

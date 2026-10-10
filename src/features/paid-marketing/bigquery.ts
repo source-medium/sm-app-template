@@ -10,14 +10,23 @@ import type { DateRange } from "@/lib/filters";
 import type { BreakdownDimension, SpendBreakdown } from "./queries";
 import { SpendBreakdownRow, MAX_BREAKDOWN } from "./rows";
 import type { CampaignData, PaidMarketingData, PaidMarketingFilters } from "./queries";
-import { AD_RELATION, CampaignWireRow, ChannelDayRow, MAX_CAMPAIGNS, toCampaign, toChannelDay } from "./rows";
-
-/** Channels times days: 90 days of up to ~20 channels. Past this bound is an error. */
-const MAX_SERIES_ROWS = 2000;
+import {
+  AD_RELATION,
+  CampaignWireRow,
+  ChannelDayRow,
+  MAX_CAMPAIGNS,
+  MAX_SERIES_ROWS,
+  toCampaign,
+  toChannelDay,
+} from "./rows";
 
 const BREAKDOWN_SQL = {
   channel: { key: "IFNULL(sm_channel, '(none)')", label: "IFNULL(sm_channel, '(none)')" },
-  campaign: { key: "IFNULL(ad_campaign_id, '(none)')", label: "COALESCE(ad_campaign_name, ad_campaign_id, '(none)')" },
+  // Campaign IDs are unique within an ad platform, so the key names both.
+  campaign: {
+    key: "CONCAT(IFNULL(sm_channel, '(none)'), ' / ', IFNULL(ad_campaign_id, '(none)'))",
+    label: "COALESCE(ad_campaign_name, ad_campaign_id, '(none)')",
+  },
 } as const;
 
 /** Full-period totals are calculated before the top-N limit; both periods have identical store/channel scope. */
@@ -28,20 +37,25 @@ export async function querySpendBreakdown(
 ): Promise<SpendBreakdown> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const selection = BREAKDOWN_SQL[dimension];
+  // Each period's latest date with rows, for comparison coverage, comes from the same pass as the totals.
   const result = await warehouse.query({
     name: "paid_spend_breakdown",
     maxRows: MAX_BREAKDOWN + 1,
     sql: `WITH grouped AS (
       SELECT ${selection.key} AS dimension_key, MAX(${selection.label}) AS label,
         SUM(IF(date BETWEEN @start_date AND @end_date, ad_spend, NULL)) AS spend,
-        SUM(IF(@compare AND date BETWEEN @baseline_from AND @baseline_to, ad_spend, NULL)) AS previous_spend
+        SUM(IF(@compare AND date BETWEEN @baseline_from AND @baseline_to, ad_spend, NULL)) AS previous_spend,
+        MAX(IF(date BETWEEN @start_date AND @end_date, date, NULL)) AS group_latest_date,
+        MAX(IF(@compare AND date BETWEEN @baseline_from AND @baseline_to, date, NULL)) AS group_previous_latest_date
       FROM ${warehouse.table(AD_RELATION)}
       WHERE sm_store_id = @store_id
         AND ((date BETWEEN @start_date AND @end_date) OR (@compare AND date BETWEEN @baseline_from AND @baseline_to))
         AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
       GROUP BY dimension_key
     )
-    SELECT *, SUM(spend) OVER () AS total_spend, MIN(spend) OVER () AS minimum_spend
+    SELECT * EXCEPT (group_latest_date, group_previous_latest_date),
+      SUM(spend) OVER () AS total_spend, MIN(spend) OVER () AS minimum_spend,
+      MAX(group_latest_date) OVER () AS latest_date, MAX(group_previous_latest_date) OVER () AS previous_latest_date
     FROM grouped ORDER BY spend DESC NULLS LAST, dimension_key LIMIT ${MAX_BREAKDOWN + 1}`,
     params: [
       ...queryScope(filters),
@@ -89,7 +103,11 @@ export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise
   };
 }
 
-/** The same bounded campaign read serves the table and CSV, without rerunning the chart query. */
+/**
+ * The same bounded campaign read serves the table and CSV, without rerunning the chart query.
+ * Campaign IDs are unique within an ad platform, so a campaign is its channel and ID. Spend
+ * without a campaign ID is not a campaign; the spend breakdown shows it as (none).
+ */
 export async function queryPaidCampaigns(filters: PaidMarketingFilters): Promise<CampaignData> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const table = warehouse.table(AD_RELATION);
@@ -100,7 +118,7 @@ export async function queryPaidCampaigns(filters: PaidMarketingFilters): Promise
         SELECT
           ad_campaign_id AS campaign_id,
           MAX(ad_campaign_name) AS campaign_name,
-          MAX(sm_channel) AS channel,
+          sm_channel AS channel,
           SUM(ad_spend) AS spend,
           SUM(ad_impressions) AS impressions,
           SUM(ad_clicks) AS clicks,
@@ -111,8 +129,8 @@ export async function queryPaidCampaigns(filters: PaidMarketingFilters): Promise
           AND date BETWEEN @start_date AND @end_date
           AND ad_campaign_id IS NOT NULL
           AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
-        GROUP BY campaign_id
-        ORDER BY spend DESC, impressions DESC, campaign_id
+        GROUP BY channel, campaign_id
+        ORDER BY spend DESC, impressions DESC, campaign_id, channel
         LIMIT @limit`,
     params: [
       ...queryScope(filters),

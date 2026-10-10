@@ -1,4 +1,4 @@
-import { addDays, parseChoice, single, todayUtc, type SearchParams } from "@/lib/filters";
+import { addDays, parseChoice, single, type SearchParams } from "@/lib/filters";
 
 export const COHORT_MONTHS = 12;
 export const RETENTION_METRICS = [
@@ -19,8 +19,9 @@ export function shiftMonth(month: string, offset: number): string {
   date.setUTCMonth(date.getUTCMonth() + offset);
   return date.toISOString().slice(0, 7);
 }
-export function retentionOptions(params: SearchParams, now: Date) {
-  const maxMonth = addDays(`${todayUtc(now).slice(0, 7)}-01`, -1).slice(0, 7);
+/** `today` is the store's date; the latest selectable cohort month is the last complete one. */
+export function retentionOptions(params: SearchParams, today: string) {
+  const maxMonth = addDays(`${today.slice(0, 7)}-01`, -1).slice(0, 7);
   const value = single(params, "as_of");
   const asOf =
     value && /^\d{4}-(0[1-9]|1[0-2])$/.test(value) && value >= "0002-01" && value <= maxMonth ? value : maxMonth;

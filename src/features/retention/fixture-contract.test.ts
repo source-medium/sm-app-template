@@ -14,7 +14,7 @@ const row = {
   cumulative_profit: "200",
 };
 it("uses complete calendar months, year boundaries, and bounded URL choices", () => {
-  const now = new Date("2026-03-01T00:00:00Z");
+  const now = "2026-03-01";
   expect(retentionOptions({}, now).asOf).toBe("2026-02");
   expect(retentionOptions({ as_of: "2026-03", measure: "invalid" }, now)).toMatchObject({
     asOf: "2026-02",
@@ -105,5 +105,5 @@ it("plots the same values as the matrix, preserving missing and unelapsed ages a
     "Sep 2026",
   ]);
   expect(recent.data).toHaveLength(6);
-  expect(retentionOptions({ cohorts: "invalid" }, new Date("2026-10-07")).curveWindow).toBe("recent");
+  expect(retentionOptions({ cohorts: "invalid" }, "2026-10-07").curveWindow).toBe("recent");
 });

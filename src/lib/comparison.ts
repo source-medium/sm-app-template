@@ -50,6 +50,37 @@ export function comparisonDates(range: DateRange, comparison: Comparison): (stri
   });
 }
 
+const dayCount = (days: number) => (days === 1 ? "1 day" : `${days} days`);
+
+/** Days at the end of a period after its latest date with rows: all of them when it has none. */
+function trailingDays(range: DateRange, latest: string | null): number {
+  return latest === null ? rangeLength(range) : rangeLength({ from: latest, to: range.to }) - 1;
+}
+
+/**
+ * Whether the two periods' totals can be compared. Data loads in date order,
+ * so a day that has not loaded yet is missing from the end of the selected
+ * period, where it would read as a decline. Earlier gaps are not unloaded
+ * days, so they do not hide changes. `latest` and `baselineLatest` are each
+ * period's latest date with rows, or null. Returns why changes are hidden, or
+ * null when they can show.
+ */
+export function coverageIssue(
+  range: DateRange,
+  baseline: DateRange,
+  latest: string | null,
+  baselineLatest: string | null,
+): string | null {
+  const length = rangeLength(range);
+  const baselineLength = rangeLength(baseline);
+  if (length !== baselineLength)
+    return `Changes are hidden because the periods differ in length: ${dayCount(length)} selected, ${dayCount(baselineLength)} compared.`;
+  const missing = trailingDays(range, latest);
+  const baselineMissing = trailingDays(baseline, baselineLatest);
+  if (missing <= baselineMissing) return null;
+  return `Changes are hidden because the selected period has no rows for its last ${dayCount(missing)}, ${baselineMissing ? `and the comparison for only its last ${dayCount(baselineMissing)}` : "while the comparison has rows through its end"}. Days missing at the end are often ones that have not loaded yet, not zeros.`;
+}
+
 export type MetricValue = string | bigint | number;
 export type MetricChange<T extends MetricValue> = {
   difference: T | null;

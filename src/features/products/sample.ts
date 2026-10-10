@@ -1,6 +1,6 @@
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits, sumDecimals, toUnits } from "@/lib/data/decimal";
-import { datesInRange, type DateRange } from "@/lib/filters";
+import { datesInRange, latestDate, type DateRange } from "@/lib/filters";
 import { seededRandom, randomInt } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import type { ProductFilters, ProductsData } from "./queries";
@@ -106,6 +106,9 @@ export function aggregateProducts(
       previous_profit: sum("profit", baseline),
     };
   });
+  const latest = (range: DateRange | null) =>
+    latestDate([...groups.values()].flat().flatMap((row) => (inRange(row.date, range) ? [row.date] : [])));
+  const coverage = { latest_date: latest(filters.range), previous_latest_date: latest(baseline) };
   const amounts = rows.flatMap((row) => (row[filters.metric] === null ? [] : [toUnits(row[filters.metric] as string)]));
   const minimum = amounts.length ? fromUnits(amounts.reduce((a, b) => (a < b ? a : b))) : null;
   const totals = {
@@ -127,7 +130,7 @@ export function aggregateProducts(
   return {
     rows: decodeRows(
       ProductRow,
-      rows.slice(0, MAX_PRODUCTS).map((row) => ({ ...row, ...totals, minimum_value: minimum })),
+      rows.slice(0, MAX_PRODUCTS).map((row) => ({ ...row, ...totals, ...coverage, minimum_value: minimum })),
       PRODUCTS_RELATION,
     ),
     hasMore: rows.length > MAX_PRODUCTS,

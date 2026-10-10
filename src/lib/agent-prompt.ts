@@ -73,6 +73,8 @@ export type AgentReportContext = {
   title: string;
   filters: Record<string, string | null>;
   currency: string | null;
+  /** Warehouse relations the page's feature reads, from its ReportPage sources. */
+  sources?: string[];
   status?: string;
   /** Names only, not values, of active private context omitted from the prompt. */
   omitted?: string[];
@@ -130,6 +132,7 @@ export function composeAgentPrompt(
         ]
       : []),
     `- Applied filters: ${filters.length ? filters.join(", ") : "no report filters available"}`,
+    ...(context.sources?.length ? [`- Source relations: ${context.sources.join(", ")}`] : []),
     ...(context.status ? [`- Report status: ${JSON.stringify(context.status)}`] : []),
     ...(context.omitted?.length
       ? [
@@ -150,7 +153,7 @@ export function composeAgentPrompt(
       ? [
           "- Run pnpm check when done, and pnpm test:e2e after UI changes.",
           "- Tell me separately what you verified on sample data and what still needs live data.",
-          "- If this repository uses the cloud preview workflow and I have already authorized a hosted preview in this conversation, follow the sm-cloud skill and return the actual preview URL; do not merge or publish without my approval. Otherwise finish with local verification and explain how to preview it.",
+          "- Do not merge or publish without my approval. If I asked for a hosted preview, follow the sm-cloud skill and return its URL; otherwise explain how to preview locally.",
         ]
       : []),
   ].join("\n");

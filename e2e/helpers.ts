@@ -22,12 +22,24 @@ export async function expectTextContained(locator: Locator) {
   expect(overflow, "Text must fit its own card content or metric cell").toEqual([]);
 }
 
-/** Console errors and hydration warnings, minus the sample's deliberately expired creative image. */
+/**
+ * Console errors and hydration warnings. Only creative images may fail to
+ * load: the sample's deliberately expired link and ad-platform links (another
+ * origin), which expire and show the creative's text instead. A failed
+ * script, style, or route on the app's own origin is a problem.
+ */
 export function watchConsole(page: Page): string[] {
   const problems: string[] = [];
   page.on("console", (message) => {
     const text = message.text();
-    if (message.type() === "error" && /Failed to load resource/.test(text)) return;
+    const url = message.location().url;
+    if (
+      message.type() === "error" &&
+      /Failed to load resource/.test(text) &&
+      (url.endsWith("/sample-creatives/expired-link.svg") ||
+        (URL.canParse(url) && new URL(url).origin !== new URL(page.url()).origin))
+    )
+      return;
     if (message.type() === "error" || /hydrat/i.test(text)) problems.push(text);
   });
   page.on("pageerror", (error) => problems.push(error.message));

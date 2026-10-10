@@ -4,6 +4,7 @@
  * totals are never computed from a truncated list.
  */
 import "server-only";
+import { appConfig } from "@/app.config";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { decodeRows } from "@/lib/data/decode";
 import { WarehouseError } from "@/lib/data/warehouse-error";
@@ -11,8 +12,11 @@ import type { TimeGrain } from "@/lib/time-grain";
 import type { OverviewData, OverviewFilters } from "./queries";
 import { OVERVIEW_RELATION, OverviewChannelRow, OverviewRow, toOverviewData } from "./rows";
 
-/** The maximum range is 90 days; anything past this bound is an error, not a shorter answer. */
-const MAX_ROWS = 100;
+/**
+ * One row per date, so the longest allowed range bounds the result; past it is an error, not a shorter
+ * answer. A same-dates-last-year baseline can hold one more day, Feb 29.
+ */
+const MAX_ROWS = appConfig.dateRange.maxDays + 1;
 const GRAIN_SQL: Record<TimeGrain, string> = { day: "DAY", week: "WEEK(MONDAY)", month: "MONTH" };
 
 export async function queryOverview(filters: OverviewFilters): Promise<OverviewData> {

@@ -69,6 +69,8 @@ test("paid marketing: each picker replaces its own value and preserves the other
   await page.goto("/paid-marketing?store=sample-store-b&from=2026-09-01&to=2026-09-07&metric=spend&channel=Google");
   await page.getByLabel("Measure", { exact: true }).selectOption("clicks");
   await expect(page).toHaveURL(/metric=clicks/);
+  // Let the clicks view render before the next choice, so its render cannot replace the channel picker mid-change.
+  await expect(page.getByText("Clicks by channel over time", { exact: true })).toBeVisible();
   await page.getByLabel("Channel", { exact: true }).selectOption("Meta");
   await expect(page).toHaveURL(/channel=Meta/);
   const params = new URL(page.url()).searchParams;
