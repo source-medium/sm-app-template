@@ -38,9 +38,12 @@ The agent handles these one-time steps with your authorization:
    repository during iteration; do not create a second copy.
 3. Configure Git with the returned HTTPS remote and repo-scoped write access.
    Keep token values out of chat, command arguments, logs and remote URLs.
-   Capture credential-bearing CLI output privately, and use a secure Git
-   credential helper or process-scoped Git configuration. Never store a token
-   in tracked files or `.git/config`. Follow [Artifacts Git authentication](https://developers.cloudflare.com/artifacts/api/git-protocol/).
+   Set `WRANGLER_WRITE_LOGS=false` when capturing credential-bearing CLI output
+   privately, and use a secure Git credential helper or process-scoped Git
+   configuration. Treat returned tokens as opaque credentials. Track their
+   expiration; renew repo-scoped access with `wrangler artifacts repos issue-token`
+   and replace the saved credential when needed. Never store a token in tracked
+   files or `.git/config`. Follow [Artifacts Git authentication](https://developers.cloudflare.com/artifacts/api/git-protocol/).
 4. Preserve the upstream remote, add the customer's remote as `cloudflare`,
    and push the intended initial commit to `main`. Do not force-push or copy
    unrelated branches. Confirm that the remote contains the commit before
