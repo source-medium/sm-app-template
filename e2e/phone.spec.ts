@@ -74,6 +74,24 @@ test("report fields have room for their values on the smallest phones", async ({
   }
 });
 
+test("the retention month and its apply action fit a small phone", async ({ page }) => {
+  test.skip(!appConfig.nav.some((item) => item.href === "/retention"), "Retention was removed");
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto("/retention?as_of=2026-09");
+  const group = page.getByRole("group", { name: "Cohort observation window" });
+  const month = group.getByLabel("Through completed month");
+  const apply = group.getByRole("button", { name: "Apply month", exact: true });
+  for (const control of [month, apply]) {
+    const box = await control.boundingBox();
+    if (!box) throw new Error("A cohort window control is not visible");
+    expect(box.width).toBeGreaterThanOrEqual(240);
+    expect(box.x + box.width).toBeLessThanOrEqual(320);
+  }
+  await month.fill("2026-08");
+  await apply.click();
+  await expect(page).toHaveURL(/as_of=2026-08/);
+});
+
 test("the navigation opens as a sheet", async ({ page }) => {
   const target = appConfig.nav.at(-1);
   await page.goto(appConfig.nav[0]?.href ?? "/");

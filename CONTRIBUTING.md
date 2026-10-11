@@ -28,7 +28,10 @@ For live checks, put a test app's configuration block in `.env.local` and run
 `pnpm diagnose` and `pnpm test:live`. They run real (small) BigQuery queries,
 so they never run by default or in CI.
 
-CI runs the offline checks on every pull request. Live checks are opt-in and
+`pnpm check:deploy` runs the complete offline release gate without deploying.
+Both deployment commands run it before uploading, so Cloudflare Builds owns
+release validation even without GitHub. The GitHub workflow provides optional
+maintainer feedback and Windows coverage. Live checks are opt-in and
 never run in CI; use only SourceMedium's demo tenant for template validation.
 
 ## Rules for changes

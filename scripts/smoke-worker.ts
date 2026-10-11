@@ -5,12 +5,12 @@
  * Runtime values come from
  * temporary env files, never from your .dev.vars.
  */
-import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { appConfig } from "../app.config";
 import { root } from "./lib/environment";
+import { startServer, wranglerCli } from "./lib/test-server";
 import { liveEnv, makeServiceAccountKey } from "../tests/helpers/service-account";
 
 const PORT = 8791;
@@ -161,38 +161,13 @@ if (appConfig.nav.some((item) => item.href === "/paid-marketing")) {
   ]);
 }
 
-async function waitForServer(): Promise<void> {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
-    if (
-      await fetch(`${BASE}/healthz`).then(
-        (response) => response.ok,
-        () => false,
-      )
-    )
-      return;
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error("The Worker did not start; run `pnpm build:cloudflare` first and check that port 8791 is free.");
-}
-
-/** Stops the Worker's process group; it may already have exited. */
-function stop(pid: number | undefined): void {
-  if (!pid) return;
-  try {
-    process.kill(-pid, "SIGTERM");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
-  }
-}
-
 const failures: string[] = [];
 try {
   for (const mode of modes) {
     const envFile = join(dir, `${mode.name.replace(/\s+/g, "-")}.env`);
     writeFileSync(envFile, mode.env);
-    const wrangler = join(root, "node_modules/.bin/wrangler");
-    const worker = spawn(
-      wrangler,
+    const worker = await startServer(
+      wranglerCli,
       [
         "dev",
         "--port",
@@ -207,12 +182,10 @@ try {
       ],
       {
         cwd: root,
-        stdio: "ignore",
-        detached: true,
+        healthUrl: `${BASE}/healthz`,
       },
     );
     try {
-      await waitForServer();
       for (const [path, init, status, text] of mode.checks) {
         const response = await fetch(`${BASE}${path}`, init);
         const body = await response.text();
@@ -224,8 +197,7 @@ try {
           );
       }
     } finally {
-      stop(worker.pid);
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await worker.stop();
     }
   }
 } finally {

@@ -1,15 +1,9 @@
 import type { NextConfig } from "next";
+import { buildId } from "./scripts/lib/build-id";
 import { SECURITY_HEADERS } from "./src/lib/security-headers";
 
-// A non-secret build identifier for logs and /healthz. Hosts expose the commit.
-const buildId =
-  process.env.WORKERS_CI_COMMIT_SHA ??
-  process.env.VERCEL_GIT_COMMIT_SHA ??
-  process.env.GITHUB_SHA ??
-  `local-${Date.now()}`;
-
 const nextConfig: NextConfig = {
-  env: { SM_BUILD_ID: buildId.slice(0, 12) },
+  env: { SM_BUILD_ID: buildId() },
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
   async headers() {

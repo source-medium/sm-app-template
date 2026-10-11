@@ -8,9 +8,8 @@ store and date filters, charts, tables, and loading and error states.
 You get a normal Next.js app with editable code throughout.
 
 **[Try the demo](https://sm-app-starter-demo.source-medium.workers.dev)** ·
-[Use this template](https://github.com/source-medium/sm-app-template/generate) ·
-[Start with Codex](docs/cloud.md#codex-cloud) ·
-[Start with Claude](docs/cloud.md#claude-code-in-the-cloud)
+[Deploy on Cloudflare](docs/cloud.md) ·
+[Browser agent setup](docs/cloud.md#optional-browser-coding-agents)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.png">
@@ -20,28 +19,27 @@ You get a normal Next.js app with editable code throughout.
 
 _The hosted demo uses SourceMedium's demo warehouse and requires sign-in ([request access](mailto:support@sourcemedium.com)). These screenshots use synthetic sample data. Light and dark modes are built in._
 
-## Start in your browser
+## Start with your coding agent
 
-Use **Codex Cloud** or **Claude Code in the cloud**. No local installation needed.
+Ask local Codex or Claude Code to follow the [starter message](docs/cloud.md#your-first-message-in-either-agent).
+Your agent prepares the app and connects it once:
 
-1. [Create your copy](https://github.com/source-medium/sm-app-template/generate).
-2. Choose your agent below and paste the [starter message](docs/cloud.md#your-first-message-in-either-agent).
-3. Connect your copy to one Cloudflare Worker (Workers Paid, from US$5 a month)
-   for the first hosted URL. Then connect your warehouse and a protected preview
-   Worker once. Describe a change → review it on your data → approve publication.
+1. **Cloudflare Artifacts** stores your app's Git repository.
+2. **Workers Builds** checks each push and creates protected branch previews.
+3. Approve a reviewed change; pushing it to `main` checks and deploys it automatically.
 
-| Coding agent                 | Start here                                              |
-| ---------------------------- | ------------------------------------------------------- |
-| **Codex Cloud**              | [Set up Codex](docs/cloud.md#codex-cloud)               |
-| **Claude Code in the cloud** | [Set up Claude](docs/cloud.md#claude-code-in-the-cloud) |
+GitHub and GitHub Actions are not required for this path. Artifacts is in open
+beta on Workers Paid, with [usage allowances](https://developers.cloudflare.com/artifacts/platform/pricing/).
+An existing GitHub repository can also connect directly to Workers Builds.
+[Browser-based Codex or Claude](docs/cloud.md#optional-browser-coding-agents)
+can use that optional source-hosting path with the same Cloudflare release gate.
 
-The first look uses labeled **sample data**, with no warehouse credentials.
-After connection, previews use your actual data; missing preview settings
-show a setup error instead of sample numbers. Your agent runs setup and checks.
-Cloudflare Workers Paid hosts the app; GitHub and your
-chosen coding agent need access to your repository.
+The first look uses labeled **sample data** without warehouse credentials.
+Connect your warehouse and protected previews once, then review changes on
+your actual data. Your agent handles setup and checks; you sign in, enter
+credentials privately and approve publication.
 
-**[Follow the browser setup and preview-to-live guide →](docs/cloud.md)**
+**[Follow the setup and preview-to-live guide →](docs/cloud.md)**
 
 ## Reports to make your own
 
@@ -71,8 +69,9 @@ states keep cohort comparisons readable.
 ## Prefer local development?
 
 Install Node.js 22.22.1 or newer (CI uses 24) and pnpm 10.34.5 first. Create your
-own repository with GitHub's **Use this template**, then clone it and open a
-terminal in that folder.
+project by cloning this public starter, then open a terminal in that folder.
+No GitHub account is needed to clone it. Connect your own remote using the
+[Cloudflare setup](docs/cloud.md#1-make-your-copy) before publishing.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -128,15 +127,15 @@ starter does not include. See [docs/auth.md](docs/auth.md).
 
 ## Guides
 
-| Guide                                                   | For                                                  |
-| ------------------------------------------------------- | ---------------------------------------------------- |
-| [cloud.md](docs/cloud.md)                               | Codex or Claude in the browser, previews, publishing |
-| [connect.md](docs/connect.md)                           | Going live, deploying, replacing lost secrets        |
-| [data.md](docs/data.md)                                 | Schemas, SQL rules, exact decoding, money, freshness |
-| [auth.md](docs/auth.md)                                 | The shared password, Cloudflare Access, sign-in      |
-| [operations.md](docs/operations.md)                     | Rotation, query allowances, errors and remedies      |
-| [removing-the-example.md](docs/removing-the-example.md) | Deleting one example view or all six                 |
-| [prompts.md](docs/prompts.md)                           | Starter prompts for your agent                       |
+| Guide                                                   | For                                                           |
+| ------------------------------------------------------- | ------------------------------------------------------------- |
+| [cloud.md](docs/cloud.md)                               | Cloudflare source, automatic deploys, previews, coding agents |
+| [connect.md](docs/connect.md)                           | Going live, deploying, replacing lost secrets                 |
+| [data.md](docs/data.md)                                 | Schemas, SQL rules, exact decoding, money, freshness          |
+| [auth.md](docs/auth.md)                                 | The shared password, Cloudflare Access, sign-in               |
+| [operations.md](docs/operations.md)                     | Rotation, query allowances, errors and remedies               |
+| [removing-the-example.md](docs/removing-the-example.md) | Deleting one example view or all six                          |
+| [prompts.md](docs/prompts.md)                           | Starter prompts for your agent                                |
 
 ## Conventions you can build on
 

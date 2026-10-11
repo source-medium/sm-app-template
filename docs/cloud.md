@@ -1,136 +1,183 @@
-# Build in your browser
+# Deploy and iterate on Cloudflare
 
-Use **Codex Cloud** or **Claude Code in the cloud** to change this app by
-chatting. Both follow the same loop:
+Cloudflare owns the default deployment path: **Artifacts stores your Git
+repository, Workers Builds checks each push, and Workers hosts the app.**
+GitHub Actions and pull requests are not required to publish.
 
-**Describe a change → open its preview → ask for adjustments → approve publication.**
+**Describe a change → open its branch preview → ask for adjustments → approve publication.**
 
-You need GitHub, access to either coding agent's cloud service, and a
-Cloudflare account on Workers Paid to host the app. You do not need to
-install anything on your computer. Sample data is only for the first look.
-Connect your warehouse once, then review changes on protected previews with
-your actual data before publishing them.
+Use your coding agent to handle setup and changes. You sign into accounts,
+accept billing, enter warehouse credentials privately, and review the result.
+Samples are for the first look; after connection, previews use your actual data.
+
+Artifacts is in **open beta** and requires Workers Paid, as does this app.
+Check current [Artifacts pricing](https://developers.cloudflare.com/artifacts/platform/pricing/)
+and [build allowances](https://developers.cloudflare.com/workers/ci-cd/builds/limits-and-pricing/).
+Workers Paid starts at US$5 a month; Artifacts storage/operations and build
+usage have their own allowances. Artifacts billing begins October 14, 2026.
+An existing GitHub repository can stay there if you prefer: Cloudflare runs
+the same checks and deployments directly from that source too.
 
 ## 1. Make your copy
 
-[Create a repository from this template](https://github.com/source-medium/sm-app-template/generate).
-Choose your own account or organization and a name for the app. A private
-repository is a good default for an internal app. Keep using this same copy
-in your agent and Cloudflare; making another copy loses your changes.
+Keep using your existing app repository. For a new app, have your local agent
+clone [this starter](https://github.com/source-medium/sm-app-template) into a
+new project directory; reading the public starter needs no GitHub account.
+Have it create your own Artifacts repository and push the starter there once.
+Do not point a customer's deploy at the upstream template repository.
+
+The agent handles these one-time steps with your authorization:
+
+1. Sign in to Cloudflare with the project-local `pnpm exec wrangler login`.
+   Confirm the account, namespace, repository and unique Worker name first.
+   Artifacts needs Read/Edit permissions; refresh an older Wrangler login if
+   it lacks Artifacts access. You complete sign-in and billing privately.
+2. Use the installed `wrangler artifacts repos` commands to create the app's
+   repository in the chosen namespace (`default` is enough for one app).
+   Creating a repository also creates a missing namespace. Reuse an existing
+   repository during iteration; do not create a second copy.
+3. Configure Git with the returned HTTPS remote and repo-scoped write access.
+   Keep token values out of chat, command arguments, logs and remote URLs.
+   Capture credential-bearing CLI output privately, and use a secure Git
+   credential helper or process-scoped Git configuration. Never store a token
+   in tracked files or `.git/config`. Follow [Artifacts Git authentication](https://developers.cloudflare.com/artifacts/api/git-protocol/).
+4. Preserve the upstream remote, add the customer's remote as `cloudflare`,
+   and push the intended initial commit to `main`. Do not force-push or copy
+   unrelated branches. Confirm that the remote contains the commit before
+   connecting Builds. Artifacts Builds requires `main` for production.
+
+For later changes, the agent uses ordinary Git against that same remote.
+No GitHub account, pull request, or GitHub Actions secret is needed.
 
 ## 2. Choose your agent
 
-### Codex Cloud
-
-Open [Codex](https://chatgpt.com/codex), connect GitHub, and select **your copy**.
-Create a cloud environment for it. **Before running setup**, enable
-package-manager network access and allow the [browser download hosts](#setup-help).
-Then ask Codex:
-
-```text
-Prepare this repository using Node 24 and node scripts/setup-agent.mjs.
-Run pnpm check. Use pnpm dev when a task needs a local browser preview.
-Keep sample data; no secrets or MCP connection are needed.
-If default cache directories are read-only, choose writable workspace caches
-and save those paths in the environment for subsequent tasks too.
-```
-
-Review the setup result, **Publish** the environment, and start a task in it.
-Publishing the Codex environment saves its tools; it does not publish the app.
-Allow the preview's hostname later if
-Codex needs to open it. See [OpenAI's environment guide](https://learn.chatgpt.com/docs/environments/cloud-environments).
-
-### Claude Code in the cloud
-
-Open [Claude Code](https://claude.ai/code), connect GitHub, and grant access
-to **your copy**. Select that repository and its default branch. Use the
-Default environment with **Trusted** network access plus the
-[browser download hosts](#setup-help), and an editing mode. **Trusted** alone
-may block them. The repository's startup hook runs the shared setup
-automatically, selecting Node 24 if Claude's default is too old; nothing needs
-to be pasted into Claude's settings.
-
-Use one repository per session so its hooks load. Organization accounts may
-need an owner to enable the GitHub connector. See Anthropic's
-[quickstart](https://code.claude.com/docs/en/web-quickstart) and
-[environment guide](https://code.claude.com/docs/en/cloud-environments).
+Use local Codex or Claude Code with the Artifacts-backed checkout for the
+Cloudflare-only path. Ask it to run `node scripts/setup-agent.mjs` with Node 24.
+The setup installs the pinned dependencies and test browser; it needs no
+warehouse key. Start with the message below.
 
 ### Your first message, in either agent
 
 ```text
 Help me get this app running. Read AGENTS.md and use the sm-cloud skill.
-Use the existing defaults. Run the setup and checks yourself.
-Walk me through connecting this repository to Cloudflare using docs/cloud.md.
-I authorize committing my requested changes, pushing a task branch, and
-opening or updating its pull request. Sample data is for initial setup only;
-help me connect production and protected previews to my warehouse before iteration.
-Give me the hosted link, build id, and verified data mode when it is ready. Do not merge or publish to the
-production branch until I approve the reviewed change. Ask me only for
-account connections or choices you cannot complete yourself.
+Use the existing defaults. Run setup and checks yourself.
+Set up Cloudflare Artifacts and Workers Builds using docs/cloud.md, so pushing
+an approved change to main automatically checks and deploys it.
+I authorize creating this app's repository and Workers, seeding main for the
+initial sample deployment, committing my requested changes, and pushing task
+branches for previews. Reuse my existing app if present.
+Sample data is for initial setup only; help me connect production and protected
+previews to my warehouse before iteration.
+Give me the hosted link, build id, and verified data mode. After initial setup,
+do not push to main or publish changes until I approve the reviewed change. Ask only for
+account connections or decisions you cannot complete yourself.
 ```
+
+### Optional browser coding agents
+
+If your browser agent uses a GitHub repository connection, keep GitHub as its
+source host and connect that same repository to Workers Builds in step 3.
+There is no additional GitHub deployment step; Cloudflare runs the release gate.
+Use [a copy of the template](https://github.com/source-medium/sm-app-template/generate),
+not the upstream repository. The starter message's Artifacts setup can be
+replaced with “Use my existing GitHub repository as the source.” Authorize PR
+creation if that is how your agent hands off changes.
+
+### Codex Cloud
+
+Open [Codex](https://chatgpt.com/codex), connect GitHub, and select **your copy**.
+Create a cloud environment for it. Before setup, enable package-manager
+network access and allow the [browser download hosts](#setup-help). Ask it to
+use Node 24 and run `node scripts/setup-agent.mjs`, then `pnpm check`.
+If caches are read-only, have it choose writable workspace caches and save
+those paths for subsequent tasks. Publish the environment and start a task.
+Publishing this environment saves its tools; it does not publish the app.
+Allow the preview hostname when needed. See [OpenAI's environment guide](https://learn.chatgpt.com/docs/environments/cloud-environments).
+
+### Claude Code in the cloud
+
+Open [Claude Code](https://claude.ai/code), connect GitHub, and grant access
+to **your copy**. Select its default branch. Use the Default environment with
+Trusted network access plus the [browser download hosts](#setup-help), and an
+editing mode. Trusted alone may block browser downloads. The startup hook
+runs setup automatically and selects Node 24 if needed. Use one repository
+per session so its hooks load. Organization accounts may need an owner to
+enable the connector. See Anthropic's [quickstart](https://code.claude.com/docs/en/web-quickstart)
+and [environment guide](https://code.claude.com/docs/en/cloud-environments).
 
 ## 3. Connect Cloudflare once
 
-In [Cloudflare Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages),
-choose **Create application → Import a repository** and connect **your copy**.
-The agent can walk you through this screen; sign in and accept billing yourself.
-Workers Paid starts at US$5 a month; the Free plan's CPU limit is too low to
-render a page.
+Connect the **Production Worker** first for the initial sample app, then the
+**Preview Worker** and its data before iteration. Both use the same repository.
+The agent supplies the name from `wrangler.jsonc` (initially `sm-app`); choose
+a unique name first if either target already belongs to another app.
 
-Connect the **Production Worker** first for the initial sample app. Connect
-the **Preview Worker** and its data before starting the preview-to-publish loop.
-Both use the same repository; no second template copy is needed.
-Your agent supplies the app name from `wrangler.jsonc` (initially `sm-app`).
-If either name already belongs to another app, have the agent prepare a unique
-name in your copy before connecting it. Never overwrite a different app.
+For Artifacts, open [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages),
+choose **Create application → Continue with Artifacts**, then the namespace
+and repository. For an existing Worker, use **Settings → Builds → Connect**
+and select the Artifacts namespace in **Git connection**. With the optional
+GitHub source, choose **Import a repository** instead. See [Cloudflare's Artifacts integration](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/artifacts-integration/).
 
-| Setting           | Production Worker            | Preview Worker                             |
-| ----------------- | ---------------------------- | ------------------------------------------ |
-| Worker name       | `<app>` (initially `sm-app`) | `<app>-preview`                            |
-| Production branch | `main`                       | `main`                                     |
-| Build command     | `pnpm check`                 | `pnpm check`                               |
-| Deploy command    | `pnpm run deploy`            | `pnpm run deploy --env preview`            |
-| Preview command   | Unused                       | `pnpm run deploy:preview`                  |
-| Preview builds    | Disabled                     | Enabled for non-production branches        |
-| Root directory    | Repository root              | Repository root                            |
-| Runtime secrets   | Production app block         | Development app block in **Previews Base** |
+| Setting           | Production Worker                                   | Preview Worker                                      |
+| ----------------- | --------------------------------------------------- | --------------------------------------------------- |
+| Worker name       | `<app>` (initially `sm-app`)                        | `<app>-preview`                                     |
+| Production branch | `main`                                              | `main`                                              |
+| Build command     | `pnpm exec playwright install --with-deps chromium` | `pnpm exec playwright install --with-deps chromium` |
+| Deploy command    | `pnpm run deploy`                                   | `pnpm run deploy --env preview`                     |
+| Preview command   | Unused                                              | `pnpm run deploy:preview`                           |
+| Preview builds    | Disabled                                            | Enabled for trusted non-production branches         |
+| Root directory    | Repository root                                     | Repository root                                     |
+| Runtime secrets   | Production app block                                | Development app block in **Previews Base**          |
 
-Both deploy commands build the Worker and remove build-time environment values.
-Cloudflare handles its deployment credentials; neither agent needs a Cloudflare
-API token. See [Workers Builds settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/).
+Use the repository's Node version and pinned pnpm version from `package.json`;
+set the build variable `PNPM_VERSION` to that pnpm version if needed. The build
+command installs the locked browser and its Linux libraries. Both deployment
+commands then run **`pnpm check:deploy`**: format/lint/types/guardrails/unit
+checks, browser tests, secret isolation, the sanitized Cloudflare build, and
+Worker smoke tests. Only a passing gate uploads that built artifact. The
+same gate runs for local deployment, so GitHub CI is never the release gate.
+Missing browser dependencies or failed checks stop the deploy; fix the cause
+instead of bypassing the command. No live warehouse credentials belong in Builds.
+When upgrading an existing connection, update both Workers' Build commands to
+the browser-install command above before pushing this deployment change.
 
+Cloudflare supplies its deployment credentials through Workers Builds. Keep
+app credentials in runtime settings only. See [Builds settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/).
 Leave production secrets empty only for the initial sample app. A preview
-without its live configuration deliberately shows a setup error (503), not
-sample numbers. Complete [Connect your data](#connect-your-data), including
-preview data, before moving to step 4.
+without live configuration deliberately returns a setup error, not sample
+numbers. Complete [Connect your data](#connect-your-data) and
+[Connect preview data](#connect-preview-data) before iteration.
 
-Every merge into `main` publishes to the production URL. The preview Worker
-uses the `preview` environment and creates one **Worker Preview** per task
-branch, so each pull request gets its own URL and `main` stays as it was. Its
-preview command runs `wrangler preview`, which Wrangler labels open beta.
-Adding `--env preview` to the production Worker's preview command is not a
-substitute for the separate preview Worker, which also keeps production
-Version URLs disabled. The preview Worker reads the same warehouse through the
-Development app credential and requires a viewer guard. See
-[Cloudflare's environment setup](https://developers.cloudflare.com/workers/ci-cd/builds/advanced-setups/#wrangler-environments)
+Every successful push to `main` checks and deploys production automatically.
+Task branches build on `<app>-preview` and get their own Worker Preview URL
+under its **Previews** tab. Production keeps serving its current version if
+checks fail. Keep production Version URLs disabled; adding `--env preview`
+to the production Worker's preview command does not replace the separate
+preview Worker. See [environment setup](https://developers.cloudflare.com/workers/ci-cd/builds/advanced-setups/#wrangler-environments)
 and [preview hosts](https://developers.cloudflare.com/workers/previews/custom-domains/).
 
 For an existing Worker using the old preview system, follow Cloudflare's
 [one-time switch](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/#existing-workers-connected-to-builds)
-before setting the Preview command. Do not turn on `preview_urls` as a workaround.
+before setting the Preview command. Do not turn on production `preview_urls`.
+
+**Setup is complete only after the first real task-branch push creates a
+passing preview build for that commit.** Check the actual commands and source
+connection on both Workers. A local commit, a push to a different remote, or
+passing GitHub checks does not establish auto-deploy. Before migrating an
+existing connection, push its reviewed source to Artifacts, then disconnect
+the old Builds source and connect Artifacts. Existing deployments stay live
+during this switch. Keep the old remote until the new path is verified.
 
 ## 4. Change, review, publish
 
-Ask either agent to make a change. It opens a pull request (the proposed change
-in GitHub). Open the Preview URL on that pull request, or under the
-`<app>-preview` Worker's **Previews**, and sign in with the preview password.
-Confirm **Live data**, the intended store, and the change before approving.
-Your agent checks `/healthz` against the PR's current commit and runs the
-hosted verification below when authenticated access is available. A successful
-build alone is not a working preview. If the agent cannot sign in, it gives
-you the exact check to finish privately. Keep feedback in the same agent conversation to update
-that pull request. The app's **Vibe code** button can compose the next request
-from a page or component.
+Ask your agent to make a change on a task branch and push it to the connected
+remote. Open its URL under the `<app>-preview` Worker's **Previews** tab and
+sign in. Confirm **Live data**, the intended store, and the requested change.
+The agent matches `/healthz` to that branch commit and runs the
+[hosted verification](#verify-a-hosted-build) when authenticated access is
+available. If it cannot sign in, it gives you the exact private check to finish.
+Keep feedback in the same conversation and branch. The app's **Vibe code**
+button can compose the next request from a page or component.
 
 When it looks right, say:
 
@@ -140,28 +187,25 @@ Give me the live link only after verifying the deployment, or the exact step
 that still needs me. Do not include unrelated changes.
 ```
 
-Do not approve a sample-data or broken preview after connecting your data.
-If no preview Worker is connected, finish that setup before iterating on the
-live app; merging into production is not a preview step.
+The agent checks the remote `main` and reviewed branch again, promotes only
+that reviewed change, and pushes `main` to the connected remote. Cloudflare
+runs the release gate and deploys it. If combining with newer `main` changes
+alters the reviewed result, verify that combined commit on the task preview
+before promotion. Never force-push. With GitHub source hosting, an approved PR
+merge can do this promotion instead; GitHub Actions is not required by the
+Cloudflare deploy commands. Keep any repository protection rules in place.
 
-If the agent cannot merge, click **Merge pull request** in GitHub after the
-checks pass. Cloudflare then deploys `main`. The agent verifies `/healthz`
-matches the resulting commit on `main` (which can differ from the PR commit
-after merging), sign-in protection, **Live data**, the warehouse connection,
-and the changed page with the intended store. If authenticated verification
-needs you, the agent says **Deployed, awaiting verification**, not **Done**.
+The agent verifies the resulting production commit via `/healthz`, anonymous
+sign-in protection, hosted Connection, and the changed page with the intended
+store. If authenticated verification needs you, it reports **Deployed,
+awaiting verification**. A successful build alone is not proof the app works.
+Do not publish a broken or sample-data preview after connecting live data.
 
-For enforced review, protect `main` with a GitHub branch rule requiring a pull
-request and the CI checks. Have the agent guide that one-time setting where
-your GitHub plan supports it. Cloudflare does not wait for GitHub CI by itself;
-its build runs `pnpm check`, while the PR's CI also tests browsers and the Worker.
-Never merge a failing PR or push directly to `main` in this workflow.
-
-To undo a change, ask the agent to revert that publication through a new PR
-and deploy with the current runtime settings. For urgent Worker version
-rollbacks, first follow [Rolling back](operations.md#rolling-back): they can
-restore old passwords and store restrictions. Also revert the Git change so
-the next build does not restore the broken code.
+To undo a publication, revert its code on a task branch, review, and push the
+approved revert to `main` using current runtime settings. For urgent Worker
+version rollbacks, first follow [Rolling back](operations.md#rolling-back):
+they can restore old passwords and store restrictions. Revert the source too
+so the next push does not restore the broken change.
 
 ### Verify a hosted build
 
@@ -172,7 +216,13 @@ matching checkout:
 pnpm test:hosted <https-origin> <full-git-commit>
 ```
 
-Use the actual deployed origin (no page path) and the full PR commit, or the
+Clean local builds and Workers Builds both identify the source commit in
+`/healthz`. A local checkout with uncommitted or untracked files appends
+`-dirty`; a source archive without Git or host metadata uses a unique `local-`
+identifier. Neither passes commit verification. Commit the reviewed changes
+and rebuild before publishing a verifiable manual deployment.
+
+Use the actual deployed origin (no page path) and the full task-branch commit, or the
 resulting `main` commit after publication. Enter only that deployment's
 `APP_BASIC_AUTH` privately in a private agent environment, never in chat or
 command arguments; anyone using that environment can view the app's data. The
@@ -367,7 +417,7 @@ a limited visual smoke check.
 
 | What happened                            | What the agent should do                                                                                                                                                                                                   |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repository missing                       | Check that the GitHub connection includes your copy; organization approval may be needed.                                                                                                                                  |
+| Repository missing                       | Check the connected Artifacts namespace/repository and Git access. For a browser agent, check its GitHub access to your copy.                                                                                              |
 | Install failed or dependencies changed   | Run `node scripts/setup-agent.mjs` again. It preserves the lockfile and uses the pinned pnpm without a global install. Use Node 24 if the runtime is too old.                                                              |
 | Browser download blocked                 | Setup warns and continues; `pnpm check` and `pnpm dev` still work. For browser tests, allow `cdn.playwright.dev` and the redirect hosts Playwright reports, then rerun setup. Keep TLS verification enabled.               |
 | Cache directory is read-only             | In the Codex environment, set writable workspace paths for `npm_config_cache`, `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_CONFIG_HOME`, and `PLAYWRIGHT_BROWSERS_PATH`. Save them for both setup and later tasks, then retry. |

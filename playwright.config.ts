@@ -62,7 +62,11 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   // Live traces/HTML reports can retain warehouse rows and Authorization headers.
-  reporter: live ? "list" : process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  reporter: live
+    ? "list"
+    : process.env.CI
+      ? [[process.env.GITHUB_ACTIONS ? "github" : "list"], ["html", { open: "never" }]]
+      : "list",
   use: { trace: live ? "off" : "retain-on-failure", screenshot: "off", video: "off" },
   ...(live ? { workers: 1, retries: 0, preserveOutput: "never" as const } : {}),
   ...(hosted ? { globalSetup: "./e2e/hosted.setup.ts" } : {}),

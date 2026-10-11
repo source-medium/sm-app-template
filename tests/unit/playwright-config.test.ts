@@ -12,6 +12,14 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("browser checks in a cloud agent environment", () => {
+  it.each([true, false])("uses readable CI output for the current build host (GitHub: %s)", async (github) => {
+    vi.stubEnv("SM_LIVE_E2E", "");
+    vi.stubEnv("CI", "true");
+    vi.stubEnv("GITHUB_ACTIONS", github ? "true" : "");
+    const { default: config } = await import("../../playwright.config");
+    expect(config.reporter).toEqual([[github ? "github" : "list"], ["html", { open: "never" }]]);
+  });
+
   it("keeps every sample server isolated from injected live credentials", async () => {
     vi.stubEnv("SM_LIVE_E2E", "");
     vi.stubEnv("SM_APP_KEY", "synthetic-live-key");

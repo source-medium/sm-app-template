@@ -134,9 +134,11 @@ warehouse is reachable; Connection or `pnpm diagnose` checks that.
 
 ## Rolling back
 
-Prefer reverting the code through a new PR and deploying with the **current
+Prefer reverting the code on a task branch, reviewing its preview, and pushing
+the approved revert to `main` on the connected remote. Deploy with the **current
 runtime settings**, especially after replacing a password or tightening store
-access. Review any reverted `wrangler.jsonc` settings before publishing.
+access. A pull request is optional when using GitHub. Review any reverted
+`wrangler.jsonc` settings before publishing.
 
 A [Cloudflare version rollback](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/)
 restores that version's code, variables, and secret bindings. It can restore an

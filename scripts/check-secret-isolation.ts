@@ -12,12 +12,13 @@
  *
  * Builds into .next, so stop `pnpm dev` first. CI runs this on every change.
  */
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { appConfig } from "../app.config";
 import { configuredSecretValues, root } from "./lib/environment";
 import { sampleEnvironment as cleared } from "./lib/sample-env";
+import { nextCli, startServer } from "./lib/test-server";
 
 const PORT = 3107;
 const PASSWORD = "SentinelPasswordDoNotShip0123456789";
@@ -66,11 +67,12 @@ const scan = (label: string, text: string) => {
 };
 
 console.log("Building with sentinel credentials in the build environment...");
-const build = spawnSync("pnpm", ["exec", "next", "build"], {
+const build = spawnSync(process.execPath, [nextCli, "build"], {
   cwd: root,
   env: { ...process.env, ...cleared, ...liveEnv },
   stdio: "inherit",
 });
+if (build.error) throw build.error;
 if (build.status !== 0) process.exit(build.status ?? 1);
 
 const outputs = [
@@ -98,21 +100,13 @@ const modes = [
 let pages = 0;
 for (const mode of modes) {
   console.log(`Serving in ${mode.name} mode...`);
-  const server = spawn("pnpm", ["exec", "next", "start", "--hostname", "127.0.0.1", "--port", String(PORT)], {
+  const server = await startServer(nextCli, ["start", "--hostname", "127.0.0.1", "--port", String(PORT)], {
     cwd: root,
     env: { ...process.env, ...cleared, ...mode.env },
-    stdio: "ignore",
-    detached: true,
+    healthUrl: `${base}/healthz`,
+    timeoutMs: 30_000,
   });
   try {
-    for (let attempt = 0; attempt < 60; attempt += 1) {
-      const ready = await fetch(`${base}/healthz`).then(
-        (response) => response.ok,
-        () => false,
-      );
-      if (ready) break;
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
     let sawMode = false;
     // With ?store= a view renders its body even when the store list fails, as it does with the sentinel key.
     const views = appConfig.nav.flatMap((item) => [item.href, `${item.href}?store=sentinel-store`]);
@@ -132,8 +126,7 @@ for (const mode of modes) {
       process.exitCode = 1;
     }
   } finally {
-    if (server.pid) process.kill(-server.pid, "SIGTERM");
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await server.stop();
   }
 }
 console.log(`Scanned ${pages} rendered responses.`);

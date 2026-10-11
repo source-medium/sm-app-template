@@ -45,8 +45,12 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
         return (
           <>
             <div className="flex flex-wrap items-end gap-4">
-              <div role="group" aria-label="Cohort observation window" className="flex items-end gap-2">
-                <div className="flex flex-col gap-1.5">
+              <div
+                role="group"
+                aria-label="Cohort observation window"
+                className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-end"
+              >
+                <div className="flex min-w-0 flex-col gap-1.5">
                   <label htmlFor="cohort-as-of" className="text-xs font-medium text-muted-foreground">
                     Through completed month
                   </label>

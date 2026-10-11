@@ -100,7 +100,10 @@ Your browser asks for the username and password from `APP_BASIC_AUTH`
 
 Deploy from the repository you have been editing, so your branding, currency,
 and new views are included. The [cloud workflow](cloud.md#3-connect-cloudflare-once)
-uses Git integration. The steps below are the alternative for local agents.
+uses Cloudflare Artifacts and Workers Builds by default: task pushes create
+previews, and approved pushes to `main` check and deploy automatically.
+Connect that once for normal iteration. The steps below are a manual deployment
+alternative; a manual deploy alone does not configure push-to-deploy.
 
 1. Use a Cloudflare account on **Workers Paid**. Have your agent set `name` in
    `wrangler.jsonc` to a unique Worker name for this app; keep that name for
@@ -112,12 +115,16 @@ uses Git integration. The steps below are the alternative for local agents.
    pnpm run deploy
    ```
 
+   `pnpm run deploy` runs the full release gate before uploading. Have your
+   agent install the locked test browser with `pnpm exec playwright install --with-deps chromium`
+   once if needed. Failed checks stop publication.
+
    The first deployment of a new Worker serves sample data. `.env.local` is
    not uploaded; your hosted app needs its own runtime settings.
 
 3. Follow [Connect a hosted app](#connect-a-hosted-app) below to use live data.
 
-For later code changes, run `pnpm run deploy` from this same checkout. Runtime
+For later manual deployments, run `pnpm run deploy` from this same checkout. Runtime
 variables and secrets are retained, including `APP_STORE_ID`; `keep_vars: true`
 in `wrangler.jsonc` preserves variables set through the dashboard. Delete a
 runtime setting from the Worker explicitly when you intend to remove it.

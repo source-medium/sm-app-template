@@ -19,7 +19,7 @@ Keep only UI components the app uses; add more when a view needs them.
 - `pnpm schema <relation>`: a relation's columns and types (never rows).
 - `pnpm skills:sync`: run after editing anything in `.agents/skills`.
 
-Cloud setup/previews/publishing: use `sm-cloud` and `docs/cloud.md` (Codex and Claude). Hosted previews use guarded live data; samples are for first setup and tests.
+Cloud setup/previews/publishing: use `sm-cloud` and `docs/cloud.md`. Default to Cloudflare Artifacts + Workers Builds; GitHub is optional. Deploy commands run `pnpm check:deploy` before uploading; do not bypass that gate. Hosted previews use guarded live data; samples are for first setup and tests.
 Also: `pnpm diagnose`, `pnpm test:e2e`, `pnpm build`, `pnpm build:cloudflare`. Use `pnpm run deploy`, never `pnpm deploy` (a pnpm built-in).
 
 ## Repo map
@@ -153,7 +153,7 @@ acts for a person needs a real per-person authorization design first.
 
 ## Guides
 
-- `docs/cloud.md`: Codex or Claude in the browser, previews, publishing.
+- `docs/cloud.md`: Cloudflare source, automatic deploys, previews, coding agents.
 - `docs/connect.md`: configuration/deploying; `docs/auth.md`: sign-in and store access.
 - `docs/data.md`: schemas/SQL/money; `docs/operations.md`: quotas/errors/secrets.
 - `docs/removing-the-example.md`: deleting views; `docs/prompts.md`: composer context and starter prompts.

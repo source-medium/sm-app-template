@@ -1,13 +1,17 @@
 ---
 name: sm-cloud
-description: Set up this app in Codex Cloud or Claude Code in the cloud, prepare a hosted preview, or publish an approved change through the connected Git repository.
+description: Set up Cloudflare hosting and automatic deployments, prepare a hosted preview, or publish an approved change from a local or cloud coding agent.
 ---
 
 # Cloud setup and iteration
 
-Read `AGENTS.md` and `docs/cloud.md`. Both agents use the same source, setup
-command, and Cloudflare Git integration. Use the person's existing repository
-and environment; never create another template copy during iteration.
+Read `AGENTS.md` and `docs/cloud.md`. Default to Cloudflare Artifacts for source
+and Workers Builds for checks, branch previews and automatic main deployments.
+GitHub is optional source hosting for an existing repository or browser agent
+that needs it; GitHub Actions and PRs are not required for the Artifacts path.
+Use the person's existing app and environment; do not migrate its source host
+or create another template copy without authorization. Artifacts is open beta;
+keep that limitation and its pricing visible during first setup.
 
 ## First useful preview
 
@@ -26,6 +30,11 @@ and environment; never create another template copy during iteration.
   is using the preview. If port 3000 is occupied, reuse the intended server or
   stop only your own stale process; never pick another port silently. After
   stopping a shell wrapper, verify its server process stopped too.
+- With authorization, establish the app's Artifacts repository, secure Git
+  authentication and remote as described in `docs/cloud.md`. Confirm the account
+  and Worker targets, and keep tokens out of tool output, arguments and URLs.
+  Never replace the upstream remote or force-push. If source access or billing
+  needs the person, name that exact step while continuing local preparation.
 - Follow the Cloudflare setup table in `docs/cloud.md`. Connect the production
   Worker first for a hosted sample URL; then connect the preview Worker and
   actual warehouse data before iteration. Each targets its own
@@ -35,7 +44,7 @@ and environment; never create another template copy during iteration.
   shell as a substitute for a missing preview. Finish preview setup before
   proposing publication of a live-data change.
 - For the unchanged starter, return the initial sample app URL from the
-  Cloudflare import. Do not manufacture an empty PR. The first actual edit
+  Cloudflare connection. Do not manufacture an empty commit or PR. The first actual edit
   starts the branch-preview loop below.
 
 ## Change, preview, publish
@@ -46,38 +55,44 @@ and environment; never create another template copy during iteration.
 2. Make the requested change using existing patterns. Run `pnpm check` and
    `pnpm test:e2e` after UI changes. Report live-data validation separately;
    sample fixtures do not establish warehouse correctness.
-3. With the person's authorization to commit, push, and open a PR (included
-   in the starter prompt), push only the requested changes to the task branch.
-   Use the platform's GitHub tools or Create PR control; do not ask for a PAT
-   just because the shell lacks GitHub authentication. Do not merge yet.
-4. Cloudflare Builds runs `deploy:preview` against the preview Worker. Wait for the
-   current commit's successful build; get its actual Preview URL from the PR or
-   `<app>-preview` Worker dashboard. Open it when network access permits.
+3. With authorization to commit and push, send only the requested changes to
+   the task branch on the connected remote. Artifacts uses ordinary Git;
+   do not create a PR or route through GitHub for that path. For a browser
+   agent using GitHub, use its existing repository tools and authorized PR
+   workflow; do not request a PAT just because shell authentication is absent.
+4. Cloudflare runs `deploy:preview`, including the full `check:deploy` gate,
+   against the separate preview Worker. Wait for the current commit's successful
+   build and get the actual URL from `<app>-preview` → Previews (or a linked PR).
+   On first setup, verify the source connection, build/deploy/Preview commands
+   and successful push-triggered build before claiming auto-deploy is ready.
+   Do not infer this from GitHub status or a local check.
    Follow `docs/cloud.md#verify-a-hosted-build` from the matching checkout.
    Always verify build, guard and Connection; use the documented `--grep` option
    for report-only changes, and the full suite for first connection or shared
-   changes. Confirm the intended store and changed behavior too. If authenticated
+   changes. Confirm the intended store and changed behavior. If authenticated
    browser access is unavailable, ask the person to finish that specific check
-   privately; never request the password in chat or weaken the guard.
-   Report the link, commit, data mode, checks, and whether browser verification ran. Never
-   invent a URL or return an older preview as if it included the current
-   change. A sample report after onboarding or a 503 is a setup failure, not a
-   successful preview. Without a preview Worker, finish its connection first.
-5. Publishing needs explicit approval for the reviewed change. Check the
-   PR's latest commit is the reviewed preview, CI passed, the viewer guard and
-   hosted Connection check passed, and the changed page works on actual data
-   with the intended store. If new commits arrived, review and verify them
-   before promotion. Give the GitHub merge link when the platform cannot merge.
-   After merge, obtain the resulting `main` commit (squash/merge can change the
-   hash), wait for its successful Cloudflare deployment, and match `/healthz`
-   to that commit. Repeat the same verification scope against production.
-   If the person must complete authenticated verification, report
-   **Deployed, awaiting verification** and the exact check. Only call it done
-   after verification; a merge or successful build is not proof it works.
-6. To undo a publication, propose reverting its code change through a new PR.
-   Deploy with current runtime settings. Before an urgent Cloudflare version
-   rollback, follow `docs/operations.md#rolling-back`: it can restore old
-   passwords and store restrictions. Follow the person's authorization.
+   privately; never request passwords in chat or weaken the guard.
+   Report the link, commit, data mode, checks and whether browser verification ran.
+   Never invent a URL or return an older preview as the current change. A sample
+   report after onboarding or a 503 is a setup failure. Without a preview Worker,
+   finish its connection before proposing publication.
+5. Publishing needs explicit approval for the reviewed change. Fetch the remote
+   state and confirm the task commit is the reviewed preview, its Cloudflare
+   release gate passed, the viewer guard and Connection passed, and the changed
+   page works on actual data with the intended store. Promote the reviewed
+   change to `main` and push the connected remote only with that approval.
+   If newer main changes require combining commits, verify the combined result
+   on the task preview before promotion. Never force-push. On GitHub, an approved
+   PR merge is an alternative promotion; honor existing branch protection.
+   Obtain the resulting `main` commit, wait for its successful Cloudflare deploy,
+   match `/healthz` to it, and repeat the same hosted verification scope against
+   production. If the person must finish authenticated verification, report
+   **Deployed, awaiting verification** and the exact check. A push or successful
+   build alone does not establish that it works.
+6. To undo publication, prepare a revert on a task branch, review it and publish
+   it with approval using current runtime settings. Before an urgent Cloudflare
+   version rollback, follow `docs/operations.md#rolling-back`: it can restore
+   old passwords and store restrictions. Revert the source too.
 
 Follow `docs/cloud.md#connect-your-data` and `#connect-preview-data` for private
 credential placement. Reuse **Production** for the production Worker only and
