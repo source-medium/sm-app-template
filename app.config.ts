@@ -6,9 +6,18 @@
  * Rebranding is this file (name, logo) plus src/styles/tokens.css (colors,
  * fonts, radius).
  */
-import { ImageIcon, LayoutDashboard, Megaphone, Package, Repeat2, ShoppingBag, type LucideIcon } from "lucide-react";
+import {
+  ImageIcon,
+  LayoutDashboard,
+  Megaphone,
+  Package,
+  Repeat2,
+  ShoppingBag,
+  Store,
+  type LucideIcon,
+} from "lucide-react";
 
-export type NavItem = { href: `/${string}`; label: string; icon: LucideIcon };
+export type NavItem = { href: `/${string}`; label: string; icon: LucideIcon; scope?: "all-stores" };
 
 export const appConfig = {
   name: "Store Insights",
@@ -34,6 +43,7 @@ export const appConfig = {
   /** The first entry is the home page. A page also needs a feature folder and a route; see the sm-add-page skill. */
   nav: [
     { href: "/overview", label: "Overview", icon: LayoutDashboard },
+    { href: "/stores", label: "All stores", icon: Store, scope: "all-stores" },
     { href: "/paid-marketing", label: "Paid marketing", icon: Megaphone },
     { href: "/creatives", label: "Creatives", icon: ImageIcon },
     { href: "/products", label: "Products", icon: Package },

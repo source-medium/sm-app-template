@@ -351,6 +351,18 @@ describe("store-scope", () => {
     ).toEqual([]);
   });
 
+  it("allows the roster predicate only in the guarded portfolio loader", () => {
+    const query = feature(
+      "SELECT 1 FROM ${warehouse.table(SUMMARY)} WHERE sm_store_id IN UNNEST(JSON_VALUE_ARRAY(@store_ids))",
+    );
+    expect(findStoreScopeGaps(query)).toHaveLength(1);
+    const portfolio = query.map((file) => ({ ...file, path: "src/features/stores/bigquery.ts" }));
+    expect(findStoreScopeGaps(portfolio)).toEqual([]);
+    expect(
+      findStoreScopeGaps(portfolio.map((file) => ({ ...file, text: file.text.replace("@store_ids", "@anything") }))),
+    ).toHaveLength(1);
+  });
+
   it("passes on this repository's own feature queries", () => {
     const walk = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
@@ -367,7 +379,10 @@ describe("store-scope", () => {
   it("catches each example query once its store predicate is removed", () => {
     for (const path of readdirSync("src/features").map((name) => `src/features/${name}/bigquery.ts`)) {
       const text = readFileSync(path, "utf8");
-      const stripped = text.replaceAll(/sm_store_id = @store_id( AND)?/g, "TRUE$1");
+      const stripped = text.replaceAll(
+        /sm_store_id (?:= @store_id|IN UNNEST\(JSON_VALUE_ARRAY\(@store_ids\)\))( AND)?/g,
+        "TRUE$1",
+      );
       expect(findStoreScopeGaps([{ path, text: stripped }]).length, path).toBeGreaterThan(0);
     }
   });

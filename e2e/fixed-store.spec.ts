@@ -8,16 +8,17 @@ test("the dictionary keeps the fixed store boundary", async ({ request }) => {
   expect((await request.get(`${path}&store=sample-store-b&store=sample-store-a`)).status()).toBe(403);
 });
 
-for (const item of appConfig.nav) {
+for (const item of appConfig.nav.filter((item) => item.scope !== "all-stores")) {
   test(`${item.href} defaults to the fixed store and rejects URL tampering`, async ({ page, request }) => {
     await page.goto(item.href);
     await expect(page.getByTestId("mode-chip")).toHaveText("Sample data");
     await expect(page.getByRole("status")).toHaveCount(0);
-    const picker = page.getByRole("combobox", { name: "Store", exact: true });
-    if (await picker.count()) {
+    const picker = page.getByRole("button", { name: /^Store:/ });
+    if (await page.locator("[data-agent-page]").count()) {
+      await expect(picker).toBeVisible();
       await expect(picker).toBeDisabled();
-      await expect(picker).toHaveValue("sample-store-b");
-      await expect(picker.locator("option")).toHaveCount(1);
+      await expect(picker).toHaveAttribute("data-store-id", "sample-store-b");
+      await expect(page.getByRole("link", { name: "All stores", exact: true })).toHaveCount(0);
       await page.getByRole("button", { name: "Vibe code" }).click();
       expect(await page.getByRole("dialog").getByLabel("Prompt", { exact: true }).inputValue()).toContain(
         'store="sample-store-b"',
@@ -65,7 +66,7 @@ test("RSC, prefetch, action POSTs and subrequest headers cannot select another s
 
 test("downloads use the fixed store and reject changed store parameters", async ({ page, request }) => {
   let downloads = 0;
-  for (const item of appConfig.nav) {
+  for (const item of appConfig.nav.filter((item) => item.scope !== "all-stores")) {
     await page.goto(item.href);
     await expect(page.getByRole("status")).toHaveCount(0);
     for (const link of await page.getByRole("link", { name: "Download CSV" }).all()) {
@@ -84,4 +85,16 @@ test("downloads use the fixed store and reject changed store parameters", async 
     }
   }
   test.skip(downloads === 0, "No download example remains in this app");
+});
+
+test("a fixed-store deployment redirects the portfolio to its permitted store", async ({ page, request }) => {
+  test.skip(!appConfig.nav.some((item) => item.scope === "all-stores"), "No portfolio view");
+  const destination = appConfig.nav.find((item) => item.scope !== "all-stores")?.href;
+  test.skip(!destination, "No individual store report");
+  await page.goto("/stores?from=2026-09-01&to=2026-09-07");
+  expect(new URL(page.url()).pathname).toBe(destination);
+  expect(new URL(page.url()).searchParams.get("store")).toBe("sample-store-b");
+  expect(new URL(page.url()).searchParams.get("from")).toBe("2026-09-01");
+  await expect(page.getByRole("button", { name: /^Store:/ })).toBeDisabled();
+  expect((await request.get("/stores?store=sample-store-a")).status()).toBe(403);
 });

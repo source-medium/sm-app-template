@@ -42,6 +42,7 @@ export async function ReportPage({
   comparisonLabel,
   dates = true,
   comparisons = false,
+  allStores = false,
   agentFilters = {},
   agentOmissions = [],
   sources = [],
@@ -58,6 +59,8 @@ export async function ReportPage({
   dates?: boolean;
   /** Opt in only after the feature queries and presents a comparison period. */
   comparisons?: boolean;
+  /** Compare stores separately; store remains the reference for default dates. */
+  allStores?: boolean;
   /** Only explicitly selected, parsed feature filters. Never raw searchParams or free-text/row identifiers. */
   agentFilters?: Record<string, string | null>;
   /** Names of active private context omitted from the agent prompt, without its values. */
@@ -76,7 +79,17 @@ export async function ReportPage({
   const fixedStore = access.storeId !== null;
 
   // Each header also gets the current params, which grow as date defaults and the comparison apply.
-  const header = { title, description, pathname, dates, agentFilters, agentOmissions, sources, mode: access.mode };
+  const header = {
+    title,
+    description,
+    pathname,
+    dates,
+    agentFilters,
+    agentOmissions,
+    sources,
+    allStores,
+    mode: access.mode,
+  };
 
   const store = await resolveReportStore(single(params, "store"));
   if (store.status === "no_store") {
@@ -112,6 +125,7 @@ export async function ReportPage({
           range={null}
           today={null}
           dates={false}
+          allStores={allStores}
           fixedStore={fixedStore}
         />
         {store.error && !rosterFailed && (
@@ -136,7 +150,7 @@ export async function ReportPage({
         {...header}
         params={params}
         storeId={storeId}
-        currency={currency}
+        currency={allStores ? null : currency}
         view={{ range, issue, comparison, derived }}
       />
       <ReportFilterBar
@@ -149,6 +163,7 @@ export async function ReportPage({
         comparisonLabel={comparisonLabel}
         dates={dates}
         comparison={comparison}
+        allStores={allStores}
         fixedStore={fixedStore}
       />
       {issue ? (
@@ -170,10 +185,17 @@ export async function ReportPage({
         {access.mode === "sample"
           ? "Synthetic sample data for demonstration; not from any warehouse."
           : "Data freshness unknown."}
-        {dates && ` Dates are calendar dates in the store's time zone, ${zoneLabel}.`}
+        {dates &&
+          (allStores
+            ? ` The same calendar dates are used in each store's local time. Default dates use ${zoneLabel}.`
+            : ` Dates are calendar dates in the store's time zone, ${zoneLabel}.`)}
         {dates && range.to === today && " Today may be incomplete."}
         <span className="mt-1 block">
-          {currency ? `Reporting currency: ${currency}.` : "Reporting currency unverified; amounts are unlabeled."}
+          {allStores
+            ? "Reporting currencies are shown per store. Amounts are never added across stores."
+            : currency
+              ? `Reporting currency: ${currency}.`
+              : "Reporting currency unverified; amounts are unlabeled."}
         </span>
       </footer>
     </div>

@@ -43,11 +43,12 @@ chosen coding agent need access to your repository.
 
 **[Follow the browser setup and preview-to-live guide →](docs/cloud.md)**
 
-## Six reports to make your own
+## Reports to make your own
 
 | Report             | Start with                                                      |
 | ------------------ | --------------------------------------------------------------- |
 | **Overview**       | Revenue, orders, ad spend, trends, and period comparisons       |
+| **All stores**     | Store-by-store performance, period changes, and drill-through   |
 | **Paid marketing** | Channel and campaign performance, spend, and return on ad spend |
 | **Creatives**      | Creative images and performance cards                           |
 | **Products**       | Product and variant rankings                                    |

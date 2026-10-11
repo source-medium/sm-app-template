@@ -73,6 +73,8 @@ export type AgentReportContext = {
   title: string;
   filters: Record<string, string | null>;
   currency: string | null;
+  /** In portfolio reports filters.store is only the date/navigation reference. */
+  storeScope?: "all";
   /** Warehouse relations the page's feature reads, from its ReportPage sources. */
   sources?: string[];
   status?: string;
@@ -95,6 +97,7 @@ export type AgentPageContext = AgentPageSnapshot & { mode: "sample" | "live"; bu
 const TARGET_KINDS = new Map([
   ["KpiCard", "KPI"],
   ["FilterBar", "Filters"],
+  ["StoreSwitcher", "Filter"],
   ["SelectFilter", "Filter"],
   ["RefreshReport", "Button"],
   ["CopyReportLink", "Button"],
@@ -158,7 +161,12 @@ export function composeAgentPrompt(
           `- Not included: ${context.omitted.join(", ")}. Ask for the relevant details if needed to reproduce the issue.`,
         ]
       : []),
-    `- Reporting currency: ${context.currency ?? "not configured; verify it before reconciling money"}`,
+    ...(context.storeScope === "all"
+      ? [
+          "- Store scope: all available stores, compared separately. The store filter is only the reference for default dates and navigation.",
+        ]
+      : []),
+    `- Reporting currency: ${context.storeScope === "all" ? "configured per store; unverified amounts are unlabeled; never total amounts across stores" : (context.currency ?? "not configured; verify it before reconciling money")}`,
     `- Data mode: ${context.mode === "sample" ? "sample data (synthetic; nothing from a warehouse)" : "live warehouse data"}`,
     `- App build: ${context.build}`,
     "",

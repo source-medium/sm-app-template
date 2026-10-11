@@ -8,7 +8,8 @@ import { decodeRows, toChartNumber } from "@/lib/data/decode";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { datesInRange } from "@/lib/filters";
 import { OVERVIEW_RELATION, OverviewRow, toOverviewData } from "./rows";
-import { aggregateOverviewWire, sampleOverview, sampleOverviewSource, type OverviewSourceRow } from "./sample";
+import { aggregateOverviewWire, sampleOverview } from "./sample";
+import { sampleSummarySource, type SummarySourceRow } from "@/lib/sample/executive-summary";
 import { overviewSummaryRows } from "./summary-rows";
 
 const RANGE = { from: "2026-09-01", to: "2026-09-28" };
@@ -23,7 +24,7 @@ function source(
   sub = "Paid",
   revenueCents = 0n,
   spendCents = 0n,
-): OverviewSourceRow {
+): SummarySourceRow {
   return {
     sm_store_id: store,
     sm_channel: "Online DTC",
@@ -48,7 +49,7 @@ describe("overview fixture contract", () => {
   it.each(["missing-store", "constructor", "__proto__"])(
     "does not generate spend, clicks, or totals for %s",
     async (storeId) => {
-      expect(sampleOverviewSource(storeId, RANGE, "2026-10-05")).toEqual([]);
+      expect(sampleSummarySource(storeId, RANGE, "2026-10-05")).toEqual([]);
       expect(await sampleOverview({ storeId, range: RANGE }, TODAY)).toEqual({
         days: [],
         summaries: [],
@@ -96,7 +97,7 @@ describe("overview fixture contract", () => {
   });
   it("every generated row decodes through the live row schema", () => {
     for (const store of ["sample-store-a", "sample-store-b"]) {
-      const wire = aggregateOverviewWire(sampleOverviewSource(store, RANGE, "2026-10-05"), store, RANGE);
+      const wire = aggregateOverviewWire(sampleSummarySource(store, RANGE, "2026-10-05"), store, RANGE);
       expect(wire.length).toBeGreaterThan(0);
       expect(() => decodeRows(OverviewRow, wire, OVERVIEW_RELATION)).not.toThrow();
     }
@@ -135,7 +136,7 @@ describe("overview fixture contract", () => {
     const store = "sample-store-b";
     const range = { from: "2026-06-01", to: "2026-08-29" };
     const dates = new Set(
-      aggregateOverviewWire(sampleOverviewSource(store, range, "2026-10-05"), store, range).map((row) => row.date),
+      aggregateOverviewWire(sampleSummarySource(store, range, "2026-10-05"), store, range).map((row) => row.date),
     );
     const all = datesInRange(range);
     expect(dates.size).toBeLessThan(all.length);
@@ -155,7 +156,7 @@ describe("overview fixture contract", () => {
   });
 
   it("models forward-dated target rows with zero actuals, as the relation does", () => {
-    const future = sampleOverviewSource("sample-store-a", { from: "2026-10-06", to: "2026-10-08" }, "2026-10-05");
+    const future = sampleSummarySource("sample-store-a", { from: "2026-10-06", to: "2026-10-08" }, "2026-10-05");
     expect(future.length).toBeGreaterThan(0);
     for (const row of future) {
       expect([

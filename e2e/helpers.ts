@@ -55,3 +55,10 @@ export async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
     serious.map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(" ")).join(", ")}`),
   ).toEqual([]);
 }
+
+/** Store selection uses applied report state, independently of editable date fields. */
+export async function switchStore(page: Page, id: string) {
+  await page.getByRole("button", { name: /^Store:/ }).click();
+  await page.getByRole("dialog", { name: "Switch store" }).locator(`[data-store-option="${id}"]`).click();
+  await expect(page.getByRole("button", { name: /^Store:/ })).toHaveAttribute("data-store-id", id);
+}

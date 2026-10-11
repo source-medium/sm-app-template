@@ -15,8 +15,11 @@ import ts from "typescript";
 import type { SourceFile } from "./auth-coverage";
 
 const STORE_SCOPE_EXEMPT: Record<string, string> = {};
-
 const PREDICATE = /\bsm_store_id\s*=\s*@store_id\b/g;
+// Only this loader may read a portfolio. Both exported boundaries deny fixed-store access,
+// and IDs come from loadStores(), never browser input. Keep its predicate checked too.
+const PORTFOLIO_FILE = "src/features/stores/bigquery.ts";
+const PORTFOLIO_PREDICATE = /\bsm_store_id\s+IN\s+UNNEST\(JSON_VALUE_ARRAY\(@store_ids\)\)/g;
 
 function isTableCall(node: ts.Node): boolean {
   return (
@@ -29,6 +32,9 @@ export function findStoreScopeGaps(files: SourceFile[]): string[] {
   const gaps: string[] = [];
   for (const file of files) {
     if (!/^src\/features\/.+\.tsx?$/.test(file.path) || STORE_SCOPE_EXEMPT[file.path]) continue;
+    const predicate = file.path === PORTFOLIO_FILE ? PORTFOLIO_PREDICATE : PREDICATE;
+    const required =
+      file.path === PORTFOLIO_FILE ? "sm_store_id IN UNNEST(JSON_VALUE_ARRAY(@store_ids))" : "sm_store_id = @store_id";
     const source = ts.createSourceFile(
       file.path,
       file.text,
@@ -56,10 +62,10 @@ export function findStoreScopeGaps(files: SourceFile[]): string[] {
             isTableCall(span.expression) || (ts.isIdentifier(span.expression) && tables.has(span.expression.text)),
         ).length;
         const text = [node.head.text, ...node.templateSpans.map((span) => span.literal.text)].join(" ");
-        if (reads > (text.match(PREDICATE)?.length ?? 0)) {
+        if (reads > (text.match(predicate)?.length ?? 0)) {
           const line = source.getLineAndCharacterOfPosition(node.getStart()).line + 1;
           gaps.push(
-            `\`${file.path}:${line}\` reads a warehouse relation without its own \`sm_store_id = @store_id\`; filter each relation in that SQL by the store parameter, or an APP_STORE_ID app can return other stores' rows.`,
+            `\`${file.path}:${line}\` reads a warehouse relation without its own \`${required}\`; filter each relation in that SQL by the store parameter, or an APP_STORE_ID app can return other stores' rows.`,
           );
         }
       }

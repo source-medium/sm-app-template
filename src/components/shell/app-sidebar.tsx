@@ -23,7 +23,7 @@ import { AppName } from "./app-name";
 /** Filters every view shares; carrying them keeps the same store and dates when switching views. */
 const SHARED_FILTERS = ["store", "from", "to", "compare"];
 
-export function AppSidebar() {
+export function AppSidebar({ fixedStore = false }: { fixedStore?: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const shared = new URLSearchParams();
@@ -41,19 +41,21 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {appConfig.nav.map((item) => {
-                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
-                      <Link href={`${item.href}${suffix}`} aria-current={active ? "page" : undefined}>
-                        <item.icon aria-hidden />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {appConfig.nav
+                .filter((item) => !fixedStore || item.scope !== "all-stores")
+                .map((item) => {
+                  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+                        <Link href={`${item.href}${suffix}`} aria-current={active ? "page" : undefined}>
+                          <item.icon aria-hidden />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

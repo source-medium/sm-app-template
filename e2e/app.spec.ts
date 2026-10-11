@@ -1,3 +1,4 @@
+import { switchStore } from "./helpers";
 /**
  * Checks that hold for every page in the navigation, so they keep working as
  * you add and remove views. View-specific tests live beside each view as
@@ -55,7 +56,7 @@ test("report documentation loads on demand and hands a field to the existing age
   await expect(panel.getByLabel("Search fields")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(about).toBeFocused();
-  await page.getByRole("combobox", { name: "Store", exact: true }).selectOption("sample-store-b");
+  await switchStore(page, "sample-store-b");
   await expect(page).toHaveURL(/store=sample-store-b/);
   await page.getByRole("button", { name: "Vibe code" }).click();
   await expect(composer.getByRole("button", { name: "Remove field" })).toHaveCount(0);
@@ -106,7 +107,9 @@ for (const item of appConfig.nav) {
     if (await report.count()) {
       const context = JSON.parse((await report.getAttribute("data-agent-page")) ?? "{}");
       expect(context.pathname).toBe(item.href);
-      expect(context.filters.store).toBe(await page.getByRole("combobox", { name: "Store", exact: true }).inputValue());
+      expect(context.storeScope === "all" ? "all" : context.filters.store).toBe(
+        await page.getByRole("button", { name: /^Store:/ }).getAttribute("data-store-id"),
+      );
       const targets = await page.locator("main [data-agent-target][data-agent-component]").count();
       await page.getByRole("button", { name: "Vibe code" }).click();
       const dialog = page.getByRole("dialog", { name: "Vibe code" });
@@ -132,10 +135,9 @@ test("the home page is the first navigation entry", async ({ page }) => {
 test("filters live in the URL and survive a reload", async ({ page }) => {
   await page.goto(home);
   // A home page without a store picker or date range (dates={false}) has nothing here to keep.
-  test.skip((await page.getByLabel("Store").count()) === 0, "the home page has no store filter");
-  await expect(page.getByLabel("Store").locator('optgroup[label="Sample Brand"]')).toHaveCount(1);
-  await expect(page.getByLabel("Store").locator('option[value="sample-store-b"]')).toHaveText("Sample Store B");
-  await page.getByLabel("Store").selectOption("sample-store-b");
+  test.skip((await page.locator("[data-agent-page]").count()) === 0, "the home page has no report filters");
+  await expect(page.getByRole("button", { name: /^Store:/ })).toBeVisible();
+  await switchStore(page, "sample-store-b");
   await expect(page).toHaveURL(/store=sample-store-b/);
   const preset = page.getByRole("link", { name: "Last 7 days" });
   test.skip((await preset.count()) === 0, "the home page has no date range");
@@ -144,7 +146,7 @@ test("filters live in the URL and survive a reload", async ({ page }) => {
   await preset.click();
   await expect(page).toHaveURL(href);
   await page.reload();
-  await expect(page.getByLabel("Store")).toHaveValue("sample-store-b");
+  await expect(page.getByRole("button", { name: /^Store:/ })).toHaveAttribute("data-store-id", "sample-store-b");
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("aria-current", "true");
 });
 
@@ -293,7 +295,7 @@ test("copy link freezes applied defaults and ignores unapplied filter edits", as
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto(`${home}?from=invalid&to=invalid`);
   test.skip((await page.getByLabel("From", { exact: true }).count()) === 0, "the home page has no date range");
-  const store = await page.getByLabel("Store", { exact: true }).inputValue();
+  const store = await page.getByRole("button", { name: /^Store:/ }).getAttribute("data-store-id");
   const from = await page.getByLabel("From", { exact: true }).inputValue();
   const to = await page.getByLabel("To", { exact: true }).inputValue();
   await page.getByLabel("From", { exact: true }).fill("2020-01-01");
@@ -313,7 +315,7 @@ test("copy link freezes applied defaults and ignores unapplied filter edits", as
     ...((await compare.count()) ? { compare: await compare.inputValue() } : {}),
   });
   await page.goto(copied.href);
-  await expect(page.getByLabel("Store", { exact: true })).toHaveValue(store);
+  await expect(page.getByRole("button", { name: /^Store:/ })).toHaveAttribute("data-store-id", store ?? "");
   await expect(page.getByLabel("From", { exact: true })).toHaveValue(from);
   await expect(page.getByLabel("To", { exact: true })).toHaveValue(to);
 });
@@ -346,10 +348,11 @@ test("agent context follows an applied store and ignores pending date edits", as
   await page.goto(home);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   test.skip((await page.locator("main [data-agent-page]").count()) === 0, "the home page has no report context");
-  const store = page.getByRole("combobox", { name: "Store", exact: true });
+  const store = page.getByRole("button", { name: /^Store:/ });
   await expect(store).toBeVisible();
-  const appliedStore = (await store.inputValue()) === "sample-store-a" ? "sample-store-b" : "sample-store-a";
-  await store.selectOption(appliedStore);
+  const appliedStore =
+    (await store.getAttribute("data-store-id")) === "sample-store-a" ? "sample-store-b" : "sample-store-a";
+  await switchStore(page, appliedStore);
   await expect(page).toHaveURL(new RegExp(`store=${appliedStore}`));
   await expect(page.locator("main [data-agent-page]")).toHaveAttribute(
     "data-agent-page",
@@ -372,8 +375,8 @@ test("agent context matches first-value URL parsing and excludes unrelated query
   await page.goto(`${home}?store=sample-store-a&store=sample-store-b&access_token=TOKEN_SENTINEL`);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   test.skip((await page.locator("main [data-agent-page]").count()) === 0, "the home page has no report context");
-  const store = page.getByRole("combobox", { name: "Store", exact: true });
-  await expect(store).toHaveValue("sample-store-a");
+  const store = page.getByRole("button", { name: /^Store:/ });
+  await expect(store).toHaveAttribute("data-store-id", "sample-store-a");
   await page.getByRole("button", { name: "Vibe code" }).click();
   const prompt = await page.getByRole("dialog").getByLabel("Prompt", { exact: true }).inputValue();
   expect(prompt).toContain('store="sample-store-a"');
@@ -393,7 +396,9 @@ test("copy failure offers the complete applied link for manual copying", async (
   await page.getByRole("button", { name: "Copy report link" }).click();
   await expect(page.getByText("Could not copy. Select and copy the link below.")).toBeVisible();
   const manual = new URL(await page.getByRole("textbox", { name: "Report link" }).inputValue());
-  expect(manual.searchParams.get("store")).toBe(await page.getByLabel("Store", { exact: true }).inputValue());
+  expect(manual.searchParams.get("store")).toBe(
+    await page.getByRole("button", { name: /^Store:/ }).getAttribute("data-store-id"),
+  );
   await expectNoSeriousA11yViolations(page);
 });
 
@@ -440,7 +445,7 @@ test("refresh re-reads the report, shows progress, and keeps applied filters", a
   await expect(refresh).toBeEnabled();
   await expect(timestamp).not.toHaveAttribute("datetime", before ?? "");
   await expect(page).toHaveURL(url);
-  await expect(page.getByLabel("Store", { exact: true })).toHaveValue("sample-store-b");
+  await expect(page.getByRole("button", { name: /^Store:/ })).toHaveAttribute("data-store-id", "sample-store-b");
   if (await from.count()) await expect(from).toHaveValue("2020-01-01");
   expect(refreshRequests).toBe(1);
   expect(problems).toEqual([]);
@@ -486,7 +491,7 @@ test("connection failures can be retried without leaving stale success on screen
 test("Vibe code follows browser history while open and copies current report context", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto(`${home}?store=sample-store-a&from=2026-09-01&to=2026-09-07`);
-  await page.getByRole("combobox", { name: "Store", exact: true }).selectOption("sample-store-b");
+  await switchStore(page, "sample-store-b");
   await expect(page.locator("main [data-agent-page]")).toHaveAttribute("data-agent-page", /"store":"sample-store-b"/);
   await page.getByRole("button", { name: "Vibe code" }).click();
   const dialog = page.getByRole("dialog", { name: "Vibe code" });

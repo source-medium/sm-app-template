@@ -56,12 +56,20 @@ export function AboutData({
               <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-xs">
                 {Object.entries(context.filters).map(([key, value]) => (
                   <div key={key} className="contents">
-                    <dt className="text-muted-foreground">{key.replaceAll("_", " ")}</dt>
+                    <dt className="text-muted-foreground">
+                      {key === "store" && context.storeScope === "all"
+                        ? "Date reference store"
+                        : key.replaceAll("_", " ")}
+                    </dt>
                     <dd className="break-words">{value ?? "All"}</dd>
                   </div>
                 ))}
                 <dt className="text-muted-foreground">Reporting currency</dt>
-                <dd>{context.currency ?? "Not configured; amounts shown as published."}</dd>
+                <dd>
+                  {context.storeScope === "all"
+                    ? "Shown per store; no combined totals."
+                    : (context.currency ?? "Not configured; amounts shown as published.")}
+                </dd>
               </dl>
               {context.status && <p className="mt-3 text-xs">{context.status}</p>}
               {!!context.omitted?.length && (

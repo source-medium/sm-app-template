@@ -32,6 +32,7 @@ export function ReportHeader({
   mode,
   storeId,
   currency = null,
+  allStores = false,
   view,
 }: {
   title: string;
@@ -47,6 +48,7 @@ export function ReportHeader({
   storeId?: string;
   /** The selected store's verified reporting currency, or null when unverified. */
   currency?: string | null;
+  allStores?: boolean;
   /** Absent when the store's date is unknown; then the report is not loaded. */
   view?: ReportView;
 }) {
@@ -63,6 +65,7 @@ export function ReportHeader({
       ...(view?.comparison && !view.issue ? { compare: view.comparison.mode } : {}),
     },
     currency,
+    ...(allStores ? { storeScope: "all" as const } : {}),
     sources: sources.map((source) => source.relation),
     status: view?.issue
       ? `Report not loaded: ${view.issue}`

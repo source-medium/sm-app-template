@@ -6,6 +6,7 @@
  */
 import { Suspense } from "react";
 import { ErrorState } from "@/components/patterns/data-states";
+import { StoreSwitcher } from "./store-switcher";
 import { FilterBar } from "@/components/shell/filter-bar";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { StoreOption } from "@/lib/data/stores.server";
@@ -25,6 +26,7 @@ export type ReportFilterBarProps = {
   dates: boolean;
   comparison?: Comparison;
   fixedStore: boolean;
+  allStores?: boolean;
 };
 
 export function ReportFilterBar(props: ReportFilterBarProps) {
@@ -71,6 +73,7 @@ function StoreFilterBar({
   dates,
   comparison,
   fixedStore,
+  allStores,
 }: Omit<ReportFilterBarProps, "roster"> & { stores: StoreOption[] }) {
   const presets =
     dates && today !== null && range !== null
@@ -81,20 +84,28 @@ function StoreFilterBar({
         }))
       : [];
   return (
-    <FilterBar
-      key={`${storeId}|${range?.from}|${range?.to}|${comparison?.mode}`}
-      pathname={pathname}
-      stores={stores}
-      storeId={storeId}
-      from={range?.from}
-      to={range?.to}
-      maxDate={today ?? undefined}
-      presets={presets}
-      carriedComparison={single(params, "compare")}
-      comparisonLabel={comparisonLabel}
-      dates={dates && today !== null}
-      comparison={comparison?.mode}
-      fixedStore={fixedStore}
-    />
+    <>
+      <StoreSwitcher
+        stores={stores}
+        storeId={storeId}
+        pathname={pathname}
+        params={{ ...params, store: storeId, ...range }}
+        fixedStore={fixedStore}
+        allStores={allStores}
+      />
+      <FilterBar
+        key={`${storeId}|${range?.from}|${range?.to}|${comparison?.mode}`}
+        pathname={pathname}
+        storeId={storeId}
+        from={range?.from}
+        to={range?.to}
+        maxDate={today ?? undefined}
+        presets={presets}
+        carriedComparison={single(params, "compare")}
+        comparisonLabel={comparisonLabel}
+        dates={dates && today !== null}
+        comparison={comparison?.mode}
+      />
+    </>
   );
 }

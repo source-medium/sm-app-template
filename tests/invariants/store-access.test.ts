@@ -30,6 +30,7 @@ it("the scoped warehouse rejects missing, mismatched and duplicate store paramet
   const warehouse = warehouseFor(config.live, "store-a");
   for (const params of [
     [],
+    [{ name: "store_ids", type: "STRING" as const, value: JSON.stringify(["store-a"]) }],
     [{ name: "store_id", type: "STRING" as const, value: "store-b" }],
     [{ name: "store_id", type: "INT64" as const, value: 1 }],
     [

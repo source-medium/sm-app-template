@@ -92,8 +92,9 @@ per day, while headline ratios continue to use full-period totals.
 
 ## Store scope
 
-Every data query filters one store with `sm_store_id = @store_id`. There are no
-cross-store totals. The store picker reads `dim_stores`: one row per active
+Individual report queries filter one store with `sm_store_id = @store_id`. The
+All stores report uses the explicitly bounded portfolio query described below.
+There are no cross-store totals. The store picker reads `dim_stores`: one row per active
 store, with `sm_store_id`, `store_name`, `brand_name`, `store_timezone`
 ([dates](#dates)), and `store_currency_code` ([money](#money-and-currency)).
 It groups stores by
@@ -102,6 +103,26 @@ The selected value and shareable URL remain `?store=<sm_store_id>`, so renaming
 a store does not break links. `app.config.ts` `storeLabels` is an optional
 name override, not a required setup step. The roster is bounded to 50 stores;
 overflow or duplicate IDs is an error rather than an incomplete picker.
+
+The persistent header picker searches names, brands and IDs. Switching stores
+preserves applied dates and presentation choices, ignoring unfinished date edits.
+It clears campaign/order identities, order search and pagination from the old store.
+**All stores** opens `/stores`, with one row per roster store, including stores
+without rows. Its `store` URL parameter is only the reference for default dates
+and return navigation; it does not narrow the portfolio. Explicit dates are the
+same calendar dates in each store's local time. Each row uses its verified reporting
+currency and its own period coverage; currencies are never inferred from nominal
+store metadata. Money is neither totaled nor ranked across stores.
+
+`src/features/stores/bigquery.ts` is the sole feature exception to the scalar
+store predicate. Both exported loaders reject `APP_STORE_ID` deployments before
+querying. The live loader obtains IDs from `loadStores()`, encodes them as a JSON
+STRING parameter, and filters using `sm_store_id IN UNNEST(JSON_VALUE_ARRAY(@store_ids))`.
+One summary query groups by store with `maxRows: MAX_STORES`; it never accepts
+browser-supplied ID lists. The warehouse's existing fixed-store scalar-parameter
+check provides a second boundary. Contract tests cover auth, fixed-store denial,
+parameterization, exact money, missing stores and truncation. Fixed-store apps hide
+All stores and redirect direct visits to an allowed individual report.
 
 Some warehouses have not received `dim_stores` yet. Only when the table is
 missing does the app use distinct IDs from `rpt_executive_summary_daily`, with

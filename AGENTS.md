@@ -93,7 +93,7 @@ to delete any of them.
 - SQL is written by developers, never built from browser input. Browser input
   becomes typed named parameters (`@store_id`), or picks from a fixed map in code.
 - Store names and brands come from `dim_stores` via `loadStores()`; keep IDs in URLs.
-- Keep `sm_store_id = @store_id` on every data source read (`pnpm check` enforces it); see `docs/data.md#store-scope`.
+- Keep `sm_store_id = @store_id` on every single-store data source read (`pnpm check` enforces it). The All stores feature is the sole reviewed exception: it rejects fixed-store deployments and filters a bounded canonical roster through `@store_ids`; see `docs/data.md#store-scope`.
 - Fully qualified names come from `warehouse.table("<relation>")`; your own
   datasets in the warehouse project: `warehouse.table("customized_views.my_table")`.
 - Aggregate in SQL. Every query has `maxRows`; more rows fail with

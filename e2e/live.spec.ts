@@ -249,3 +249,36 @@ test("advertising name filters query live names, comparisons, exports and creati
   }
   expect(problems).toEqual([]);
 });
+
+test("All stores agrees with an individual store's Overview for the same applied dates", async ({ page }) => {
+  test.skip(
+    !appConfig.nav.some((item) => item.scope === "all-stores") ||
+      !appConfig.nav.some((item) => item.href === "/overview"),
+    "Portfolio or Overview was removed",
+  );
+  await page.goto("/stores");
+  await expectLiveReport(page);
+  test.skip(new URL(page.url()).pathname !== "/stores", "This deployment is restricted to one store");
+  const table = page.getByRole("table", { name: "Store performance" });
+  await expect(table).toBeVisible();
+  const headings = await table.getByRole("columnheader").allTextContents();
+  const revenueIndex = headings.indexOf("Net revenue");
+  const spendIndex = headings.indexOf("Ad spend");
+  expect(revenueIndex).toBeGreaterThan(-1);
+  expect(spendIndex).toBeGreaterThan(-1);
+  const rows = table.locator("tbody tr");
+  let matched = false;
+  for (let index = 0; index < (await rows.count()); index++) {
+    const row = rows.nth(index);
+    const revenue = await row.getByRole("cell").nth(revenueIndex).innerText();
+    if (revenue === "—") continue;
+    const spend = await row.getByRole("cell").nth(spendIndex).innerText();
+    await row.getByRole("link").click();
+    await expectLiveReport(page);
+    await expect(page.locator('[data-agent-target="Net revenue"] [data-slot="kpi-value"]')).toHaveText(revenue);
+    await expect(page.locator('[data-agent-target="Ad spend"] [data-slot="kpi-value"]')).toHaveText(spend);
+    matched = true;
+    break;
+  }
+  test.skip(!matched, "No current-period rows in the visible stores to reconcile");
+});

@@ -13,7 +13,7 @@ The home page redirects to the first `nav` entry, so removing Overview just
 makes the next entry the home page. Keep at least one entry, or replace
 `src/app/(app)/page.tsx` with your own home page.
 
-To remove all six, repeat the steps for `overview`, `paid-marketing`,
+To remove all seven, repeat the steps for `overview`, `stores`, `paid-marketing`,
 `creatives`, `products`, `retention`, and `orders`, and add your own page first. Keep the shell
 (`src/components/shell`), the patterns (`src/components/patterns`,
 `src/components/charts`), and `src/lib`; they are what new pages use.
@@ -28,13 +28,15 @@ Then point the guidance that names example views at your own pages:
   "copy the closest example view".
 - `docs/data.md`: the relations table and the sections describing each example,
   such as comparisons copying Overview's `getOverviewReport`.
-- `README.md`: the "Six reports to make your own" table.
+- `README.md`: the "Reports to make your own" table.
 
 The store picker reads `dim_stores` (`src/lib/data/store-roster.server.ts`)
 and falls back to `rpt_executive_summary_daily` only while that dimension is
 missing, so it keeps working without Overview once the dimension exists.
 If your app has no store filter, remove the `FilterBar` from your pages, or
 replace `ReportPage` with your own frame.
+
+Removing `stores` also removes the All stores picker option when its `scope: "all-stores"` navigation entry is removed. Remove its dedicated store-scope predicate from `scripts/lib/store-scope.ts`. The shared executive-summary fixtures support Overview and All stores without either feature importing the other.
 
 Unused sample images live in `public/sample-creatives/`; delete them with
 Creatives.

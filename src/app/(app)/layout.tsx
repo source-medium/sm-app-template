@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <AppSidebar />
+        <AppSidebar fixedStore={access.storeId !== null} />
         <SidebarInset>
           <TopBar mode={access.mode} viewer={access.viewer} />
           <div className="mx-auto w-full max-w-7xl p-4 sm:p-6">{children}</div>

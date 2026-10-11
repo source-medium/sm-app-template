@@ -47,6 +47,9 @@ and currency. A feature passes its other **parsed, shareable values** through
 `agentFilters`, for example `agentFilters={{ sales_channel: channel, grain }}`.
 Never pass raw `searchParams`, free-text searches, credentials, or row IDs.
 Name active exclusions through `agentOmissions`, without their values.
+The All stores view passes `allStores`: its agent context marks the scope as all
+stores and describes `store` as the date/navigation reference, with currencies
+shown per store. The persistent header switcher is also an element-picker target.
 
 The shared `KpiCard`, `ChartCard`, `DataTable`, `CardGrid`, and `CohortMatrix`
 patterns expose their labels and component names automatically. For a custom

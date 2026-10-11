@@ -1,3 +1,4 @@
+import { switchStore } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
 test("overview: revenue detail is opt-in and preserves signed deductions and comparisons", async ({ page }) => {
   await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-28&compare=previous");
@@ -205,14 +206,14 @@ test("overview: chart labels and lines remain readable in both themes", async ({
 test("unknown stores remain unselected until the viewer chooses a valid store", async ({ page }) => {
   await page.goto("/overview?store=unknown-store");
   await expect(page.getByText("This store is not in the store list")).toBeVisible();
-  await expect(page.getByLabel("Store")).toHaveValue("unknown-store");
+  await expect(page.getByRole("button", { name: /^Store:/ })).toHaveAttribute("data-store-id", "unknown-store");
   await expect(page.locator('[data-slot="kpi-value"]')).toHaveCount(0);
   // Without a listed store there is no time zone, so no date to offer ranges from.
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveCount(0);
   await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/store=unknown-store/);
   await expect(page.getByText("This store is not in the store list")).toBeVisible();
-  await page.getByLabel("Store").selectOption("sample-store-b");
+  await switchStore(page, "sample-store-b");
   await expect(page).toHaveURL(/store=sample-store-b/);
   await expect(page.getByText("This store is not in the store list")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("href", /store=sample-store-b/);

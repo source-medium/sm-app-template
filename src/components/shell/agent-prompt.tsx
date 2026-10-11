@@ -247,7 +247,12 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
                 className="flex flex-col gap-1 border-t pt-3 text-sm break-words"
               >
                 <p className="font-medium">{page.title}</p>
-                {page.filters.store && <p className="text-muted-foreground">Store: {page.filters.store}</p>}
+                {page.filters.store && (
+                  <p className="text-muted-foreground">
+                    {page.storeScope === "all" ? "All stores · Date reference: " : "Store: "}
+                    {page.filters.store}
+                  </p>
+                )}
                 {page.filters.from && page.filters.to && (
                   <p className="text-muted-foreground">
                     {page.filters.from} to {page.filters.to}
