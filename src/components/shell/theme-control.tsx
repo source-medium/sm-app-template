@@ -1,12 +1,29 @@
 "use client";
 
-import { useId, useState } from "react";
-import { NativeSelect } from "@/components/ui/native-select";
+import { useState } from "react";
+import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { parseTheme, THEME_COOKIE, type Theme } from "@/lib/theme";
 
+const appearances = {
+  light: { label: "Light", icon: SunIcon },
+  dark: { label: "Dark", icon: MoonIcon },
+  system: { label: "System", icon: MonitorIcon },
+} satisfies Record<Theme, { label: string; icon: typeof SunIcon }>;
+
 export function ThemeControl({ initialTheme }: { initialTheme: Theme }) {
-  const id = useId();
+  const hydrated = useHydrated();
   const [theme, setTheme] = useState(initialTheme);
+  const { label, icon: Icon } = appearances[theme];
 
   function chooseTheme(value: string) {
     const next = parseTheme(value);
@@ -16,18 +33,33 @@ export function ThemeControl({ initialTheme }: { initialTheme: Theme }) {
   }
 
   return (
-    <label htmlFor={id} className="flex items-center gap-2 text-muted-foreground">
-      <span className="sr-only">Appearance</span>
-      <NativeSelect
-        id={id}
-        value={theme}
-        onChange={(event) => chooseTheme(event.currentTarget.value)}
-        className="w-auto"
-      >
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-        <option value="system">System</option>
-      </NativeSelect>
-    </label>
+    <DropdownMenu modal={false}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label={`Appearance: ${label}`}
+              disabled={!hydrated}
+            >
+              <Icon aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Appearance: {label}</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="end" aria-label="Appearance">
+        <DropdownMenuRadioGroup value={theme} onValueChange={chooseTheme}>
+          {Object.entries(appearances).map(([value, { label, icon: OptionIcon }]) => (
+            <DropdownMenuRadioItem key={value} value={value}>
+              <OptionIcon aria-hidden="true" />
+              {label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

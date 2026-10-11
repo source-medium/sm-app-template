@@ -21,7 +21,7 @@ function Table({
       <table
         data-slot="table"
         className={cn(
-          "w-full caption-bottom text-sm [&_tbody_tr>:first-child]:bg-card [&_tfoot_tr>:first-child]:bg-muted [&_thead_tr>:first-child]:bg-muted [&_tr>:first-child]:sticky [&_tr>:first-child]:left-0 [&_tr>:first-child]:z-1 [&_tr>:first-child]:max-w-48 [&_tr>:first-child]:break-words [&_tr>:first-child]:whitespace-normal",
+          "w-full caption-bottom text-sm [&_tbody_tr:focus-within>:first-child]:bg-muted [&_tbody_tr:hover>:first-child]:bg-muted [&_tbody_tr>:first-child]:bg-card [&_tfoot_tr>:first-child]:bg-muted [&_thead_tr>:first-child]:bg-muted [&_tr>:first-child]:sticky [&_tr>:first-child]:left-0 [&_tr>:first-child]:z-1 [&_tr>:first-child]:max-w-48 [&_tr>:first-child]:break-words [&_tr>:first-child]:whitespace-normal",
           className,
         )}
         {...props}
@@ -43,7 +43,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        "border-b transition-colors focus-within:bg-muted hover:bg-muted has-aria-expanded:bg-muted data-[state=selected]:bg-muted",
         className,
       )}
       {...props}

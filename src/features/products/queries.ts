@@ -1,9 +1,9 @@
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { parseChoice, type DateRange, type ReportFilters, type SearchParams } from "@/lib/filters";
-import { queryProductChannels, queryProducts } from "./bigquery";
-import type { Product } from "./rows";
-import { sampleProductSource, sampleProducts } from "./sample";
+import { queryProductChannels, queryProducts, queryProductCoverage } from "./bigquery";
+import type { Product, ProductCoverage } from "./rows";
+import { sampleProductSource, sampleProducts, aggregateProductCoverage } from "./sample";
 
 export const PRODUCT_DIMENSIONS = [
   { value: "product", label: "Product" },
@@ -13,6 +13,8 @@ export const PRODUCT_METRICS = [
   { value: "revenue", label: "Net revenue" },
   { value: "units", label: "Net units" },
   { value: "profit", label: "Product gross profit" },
+  { value: "refunds", label: "Refund amount" },
+  { value: "refunded_units", label: "Refunded units" },
 ] as const;
 export type ProductDimension = (typeof PRODUCT_DIMENSIONS)[number]["value"];
 export type ProductMetric = (typeof PRODUCT_METRICS)[number]["value"];
@@ -56,4 +58,13 @@ export async function getProductChannels(filters: ReportFilters): Promise<string
             .map((row) => row.channel ?? "(none)"),
         ),
       ].sort();
+}
+
+export async function getProductCoverage(
+  filters: ReportFilters & { channel?: string | null },
+): Promise<ProductCoverage> {
+  const access = await requireViewer({ storeId: filters.storeId });
+  return access.mode === "live"
+    ? queryProductCoverage(filters)
+    : aggregateProductCoverage(sampleProductSource(filters.storeId, filters.range), filters);
 }

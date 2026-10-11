@@ -2,7 +2,7 @@
  * The synthetic stores every sample view shares. Two stores, so the picker
  * and the "no cross-store totals" rule are exercised from the first run, in
  * different time zones, as dim_stores would publish them. Both use USD, the
- * same way store_currency_code labels every money column for a store.
+ * sample report currency independently of the live deployment's settings.
  */
 export const SAMPLE_STORES = [
   {

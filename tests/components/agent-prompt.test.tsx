@@ -38,11 +38,11 @@ it("uses declared applied filters, excludes arbitrary URL/row text, and targets 
     "/overview?store=sample-store-a&store=sample-store-b&access_token=TOKEN_SENTINEL&q=SEARCH_SENTINEL",
   );
   render(<Page />);
-  fireEvent.click(screen.getByRole("button", { name: "Ask a coding agent" }));
+  fireEvent.click(screen.getByRole("button", { name: "Vibe code" }));
   const secondTarget = screen.getByRole("option", { name: "Net revenue (KPI), occurrence 2" }) as HTMLOptionElement;
   fireEvent.change(screen.getByLabelText("Target"), { target: { value: secondTarget.value } });
   fireEvent.change(screen.getByLabelText("What do you need?"), { target: { value: "check" } });
-  fireEvent.change(screen.getByLabelText("Describe it"), { target: { value: "Net revenue looks too high." } });
+  fireEvent.change(screen.getByLabelText("Your request"), { target: { value: "Net revenue looks too high." } });
   const prompt = (screen.getByLabelText("Prompt") as HTMLTextAreaElement).value;
   expect(prompt).toContain('Target: "Net revenue (KPI), occurrence 2"');
   expect(prompt).toContain('Component: "KpiCard"');
@@ -59,7 +59,7 @@ it("uses declared applied filters, excludes arbitrary URL/row text, and targets 
   fireEvent.click(screen.getByRole("button", { name: "Copy prompt" }));
   await waitFor(() => expect(screen.getByText("Prompt copied.")).toBeInTheDocument());
   expect(writeText).toHaveBeenCalledWith(prompt);
-  fireEvent.change(screen.getByLabelText("Describe it"), { target: { value: "Updated request" } });
+  fireEvent.change(screen.getByLabelText("Your request"), { target: { value: "Updated request" } });
   expect(screen.getByRole("button", { name: "Copy prompt" })).toBeInTheDocument();
 });
 
@@ -67,7 +67,8 @@ it("keeps missing report context honest and provides manual copying on clipboard
   vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText: () => Promise.reject(new Error("denied")) } });
   window.history.replaceState(null, "", "/custom?token=TOKEN_SENTINEL");
   render(<AgentPrompt mode="live" build="abc123" />);
-  fireEvent.click(screen.getByRole("button", { name: "Ask a coding agent" }));
+  fireEvent.click(screen.getByRole("button", { name: "Vibe code" }));
+  fireEvent.change(screen.getByLabelText("Your request"), { target: { value: "Make this clearer." } });
   fireEvent.click(screen.getByRole("button", { name: "Copy prompt" }));
   await waitFor(() => expect(screen.getByText("Could not copy. Select the prompt above and copy it.")).toBeVisible());
   const prompt = (screen.getByLabelText("Prompt") as HTMLTextAreaElement).value;
@@ -77,17 +78,93 @@ it("keeps missing report context honest and provides manual copying on clipboard
 
 it("refreshes context on reopening and drops a previous page's request and target", async () => {
   const view = render(<Page />);
-  fireEvent.click(screen.getByRole("button", { name: "Ask a coding agent" }));
+  fireEvent.click(screen.getByRole("button", { name: "Vibe code" }));
   const option = screen.getByRole("option", { name: "Net revenue (KPI), occurrence 2" }) as HTMLOptionElement;
   fireEvent.change(screen.getByLabelText("Target"), { target: { value: option.value } });
-  fireEvent.change(screen.getByLabelText("Describe it"), { target: { value: "Old page request" } });
+  fireEvent.change(screen.getByLabelText("Your request"), { target: { value: "Old page request" } });
   fireEvent.click(screen.getByRole("button", { name: "Close" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   view.rerender(
     <Page context={{ ...report, pathname: "/orders", title: "Orders", filters: { store: "sample-store-b" } }} />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Ask a coding agent" }));
-  expect(screen.getByLabelText("Describe it")).toHaveValue("");
+  fireEvent.click(screen.getByRole("button", { name: "Vibe code" }));
+  expect(screen.getByLabelText("Your request")).toHaveValue("");
   expect(screen.getByLabelText("Target")).toHaveValue("");
   expect((screen.getByLabelText("Prompt") as HTMLTextAreaElement).value).toContain('store="sample-store-b"');
+});
+
+it("picks a repeated component without copying its row values and keeps the draft", async () => {
+  render(<Page />);
+  fireEvent.click(screen.getByRole("button", { name: "Vibe code" }));
+  fireEvent.change(screen.getByLabelText("Your request"), { target: { value: "Make this easier to read." } });
+  fireEvent.click(screen.getByRole("button", { name: "Pick an element" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  fireEvent.click(screen.getByText("OTHER_ROW_SENTINEL"));
+  expect(screen.getByLabelText("Your request")).toHaveValue("Make this easier to read.");
+  const prompt = (screen.getByLabelText("Prompt") as HTMLTextAreaElement).value;
+  expect(prompt).toContain('Target: "Net revenue (KPI), occurrence 2"');
+  expect(prompt).not.toContain("OTHER_ROW_SENTINEL");
+  fireEvent.click(screen.getByRole("button", { name: "Pick an element" }));
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(screen.getByLabelText("Your request")).toHaveValue("Make this easier to read.");
+  expect(screen.getByLabelText("Prompt")).toHaveValue(prompt);
+});
+
+it("starts with the request, defaults to changing the UI, and blocks empty copying", async () => {
+  render(<Page />);
+  fireEvent.click(screen.getByRole("button", { name: "Vibe code" }));
+  expect(screen.getByLabelText("Your request")).toHaveFocus();
+  expect(screen.getByLabelText("What do you need?")).toHaveValue("change");
+  expect(screen.getByRole("button", { name: "Copy prompt" })).toBeDisabled();
+  expect(screen.getByLabelText("Prompt").closest("details")).not.toHaveAttribute("open");
+  fireEvent.change(screen.getByLabelText("Your request"), { target: { value: "   " } });
+  expect(screen.getByRole("button", { name: "Copy prompt" })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Your request"), { target: { value: "Make the chart taller." } });
+  expect(screen.getByRole("button", { name: "Copy prompt" })).toBeEnabled();
+});
+
+it("updates an open composer's applied context and copied prompt without losing the draft", async () => {
+  const writeText = vi.fn(() => Promise.resolve());
+  vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+  const view = render(<Page />);
+  fireEvent.click(screen.getByRole("button", { name: "Vibe code" }));
+  fireEvent.change(screen.getByLabelText("Your request"), { target: { value: "Make this clearer." } });
+  view.rerender(<Page context={{ ...report, filters: { ...report.filters, store: "sample-store-b" } }} />);
+  await waitFor(() =>
+    expect((screen.getByLabelText("Prompt") as HTMLTextAreaElement).value).toContain('store="sample-store-b"'),
+  );
+  expect(screen.getByLabelText("Your request")).toHaveValue("Make this clearer.");
+  expect(screen.getByRole("region", { name: "Current report" })).toHaveTextContent("sample-store-b");
+  fireEvent.click(screen.getByRole("button", { name: "Copy prompt" }));
+  await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining('store="sample-store-b"')));
+});
+
+it("identifies a card metric by position and declared label, then drops it when filters change", async () => {
+  const cards = (
+    <section data-agent-target="Creative performance" data-agent-component="CardGrid">
+      <article data-agent-item="2">
+        <div data-agent-element="Spend">PRIVATE_ROW_SENTINEL</div>
+      </article>
+    </section>
+  );
+  const content = (context: AgentReportContext) => (
+    <>
+      <main>
+        <header data-agent-page={JSON.stringify(context)} />
+        {cards}
+      </main>
+      <AgentPrompt mode="sample" build="abc123" />
+    </>
+  );
+  const view = render(content(report));
+  fireEvent.click(screen.getByRole("button", { name: "Vibe code" }));
+  fireEvent.change(screen.getByLabelText("Your request"), { target: { value: "Increase the spacing." } });
+  fireEvent.click(screen.getByRole("button", { name: "Pick an element" }));
+  fireEvent.click(screen.getByText("PRIVATE_ROW_SENTINEL"));
+  const prompt = (screen.getByLabelText("Prompt") as HTMLTextAreaElement).value;
+  expect(prompt).toContain("Creative performance (Card grid) · Card 2 · Spend");
+  expect(prompt).not.toContain("PRIVATE_ROW_SENTINEL");
+  view.rerender(content({ ...report, filters: { ...report.filters, from: "2026-09-02" } }));
+  await waitFor(() => expect(screen.getByLabelText("Target")).toHaveValue(""));
+  expect(screen.getByLabelText("Your request")).toHaveValue("Increase the spacing.");
 });

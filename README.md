@@ -103,11 +103,12 @@ schema and live checks itself. Production keeps its own credential.
 An authorized SourceMedium MCP connection is another option for data inspection.
 
 **Point to a page or component. Describe the change. Copy the prompt.**
-The built-in **Ask agent** panel includes the current page, applied filters,
-and selected component so your agent starts with useful context. Paste the
+The built-in **Vibe code** panel includes the current page, applied filters,
+and selected component so your agent starts with useful context. Use **Pick an
+element** to point to a chart, KPI, table, or filter. Paste the
 prompt into Codex, Claude Code, or another agent working in your repository.
 
-![Ask agent panel composing a change request for an Overview chart, with the page and filters included automatically.](docs/images/ask-agent.png)
+![Vibe code panel composing a change request for an Overview chart, with the page and filters included automatically.](docs/images/ask-agent.png)
 
 More copyable starting points are in [docs/prompts.md](docs/prompts.md).
 

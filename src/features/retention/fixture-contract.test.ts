@@ -10,9 +10,30 @@ const row = {
   month_age: "0",
   cohort_size: "100",
   customers: "100",
+  second_orders: "12",
   cumulative_revenue: "1000.123456789",
   cumulative_profit: "200",
 };
+it("keeps cumulative second purchase separate from monthly retention and hides immature ages", () => {
+  const rows = decodeRetention([
+    row,
+    { ...row, month_age: "1", customers: "0", second_orders: "35" },
+    { ...row, month_age: "2", second_orders: null },
+  ]);
+  const january = retentionMatrix(rows, "online_dtc", "second", "2026-03").find(
+    (cohort) => cohort.id === row.cohort_month,
+  );
+  expect(january?.cells.slice(0, 4)).toMatchObject([
+    { display: "12%", state: "value" },
+    { display: "35%", state: "value" },
+    { display: "No data", state: "missing" },
+    { state: "immature" },
+  ]);
+  const second = rows[1];
+  if (!second) throw new Error("Missing cohort age");
+  expect(cohortValue(second, "retention")).toBe(0);
+  expect(cohortValue(second, "second")).toBe(0.35);
+});
 it("uses complete calendar months, year boundaries, and bounded URL choices", () => {
   const now = "2026-03-01";
   expect(retentionOptions({}, now).asOf).toBe("2026-02");

@@ -5,6 +5,7 @@ import { goLive, isStoreList, requestHeaders, rowsResponse, withStores } from ".
 import { MAX_SERIES_ROWS } from "./rows";
 
 const SERIES_FIELDS = [
+  { name: "platform_revenue", type: "FLOAT" },
   { name: "channel", type: "STRING" },
   { name: "date", type: "DATE" },
   { name: "spend", type: "NUMERIC" },
@@ -46,6 +47,43 @@ type Submitted = { query: string; queryParameters: unknown[]; labels: Record<str
 const queryName = (call: FakeCall) => (call.body as Submitted).labels.sm_query;
 
 describe("paid marketing, live", () => {
+  it("keeps name scope in the series, campaigns, both comparison periods, inspection, and CSV", async () => {
+    const fake = await goLive({ submit: withStores(() => rowsResponse([], [])) });
+    const { getPaidMarketing, getSpendBreakdown, getPaidNames } = await import("./queries");
+    const { GET } = await import("./download");
+    const names = [
+      { field: "ad_group" as const, operator: "starts_with" as const, values: ["US_%"] },
+      { field: "ad" as const, operator: "excludes" as const, values: ["test", "draft"] },
+    ];
+    const filters = { ...FILTERS, names };
+    await getPaidMarketing(filters);
+    await getSpendBreakdown(filters, "campaign", { from: "2026-08-01", to: "2026-08-02" });
+    await getPaidNames(filters);
+    const url = new URL("https://example.test/paid-marketing/export?store=store-1&from=2026-09-01&to=2026-09-02");
+    url.searchParams.set("names", JSON.stringify(names));
+    expect((await GET(new Request(url))).status).toBe(200);
+    const calls = fake.calls.filter((call) => call.kind === "submit" && !isStoreList(call));
+    expect(calls).toHaveLength(5);
+    for (const call of calls) {
+      const query = call.body as Submitted;
+      expect(query.query).toContain("STARTS_WITH(LOWER(ad_group_name), LOWER(@name_0_0))");
+      expect(query.query).toContain("NULLIF(TRIM(ad_name), '') IS NOT NULL AND NOT (");
+      expect(query.query).not.toContain("US_%");
+      expect(query.queryParameters).toContainEqual({
+        name: "name_0_0",
+        parameterType: { type: "STRING" },
+        parameterValue: { value: "US_%" },
+      });
+      if (query.query.includes("GROUP BY"))
+        expect(query.query.indexOf("@name_0_0")).toBeLessThan(query.query.indexOf("GROUP BY"));
+    }
+    const before = fake.calls.length;
+    url.searchParams.set("names", "invalid");
+    const invalid = await GET(new Request(url));
+    expect(invalid.status).toBe(400);
+    expect(await invalid.json()).toMatchObject({ title: "Check the name filters" });
+    expect(fake.calls.slice(before).filter((call) => call.kind === "submit" && !isStoreList(call))).toHaveLength(0);
+  });
   it("exports through the real guard, query, and decoders, without reading the chart", async () => {
     const fake = await goLive({
       submit: withStores(
@@ -66,7 +104,8 @@ describe("paid marketing, live", () => {
     expect(response.status).toBe(200);
     expect(csv).toContain('"123456789012345678.123456789","9007199254740993"');
     expect(csv).toContain('"\'=1+1"');
-    expect(csv).toContain('"live","store-1","2026-09-01","2026-09-02","USD","false"');
+    // Nominal USD metadata cannot label unverified published amounts.
+    expect(csv).toContain('"live","store-1","2026-09-01","2026-09-02","","false"');
     const queries = fake.calls.filter((call) => call.kind === "submit" && !isStoreList(call));
     expect(queries).toHaveLength(1);
     const submitted = queries[0];

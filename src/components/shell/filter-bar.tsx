@@ -64,6 +64,7 @@ export function FilterBar({
   const presetLink = (preset: FilterPreset) => (
     <Link
       key={preset.label}
+      data-agent-element={preset.label}
       href={preset.href}
       aria-current={preset.active ? "true" : undefined}
       className={cn(
@@ -79,7 +80,9 @@ export function FilterBar({
       id={REPORT_FILTER_FORM_ID}
       action={pathname}
       aria-label="Report filters"
-      className="grid grid-cols-2 items-end gap-3 rounded-xl border bg-card p-3 sm:flex sm:flex-wrap"
+      data-agent-target="Report filters"
+      data-agent-component="FilterBar"
+      className="grid grid-cols-1 items-end gap-3 rounded-xl border bg-card p-3 min-[24rem]:grid-cols-2 sm:flex sm:flex-wrap"
       onSubmit={(event) => {
         if (!dates || maxDate === undefined) return;
         const data = new FormData(event.currentTarget);
@@ -103,6 +106,7 @@ export function FilterBar({
           Store
         </label>
         <NativeSelect
+          data-agent-element="Store"
           id={`${id}-store`}
           name="store"
           defaultValue={storeId}
@@ -126,7 +130,13 @@ export function FilterBar({
           <label htmlFor={`${id}-compare`} className="text-xs font-medium text-muted-foreground">
             {comparisonLabel}
           </label>
-          <NativeSelect id={`${id}-compare`} name="compare" defaultValue={comparison} onChange={applyOnChange}>
+          <NativeSelect
+            data-agent-element="Compare with"
+            id={`${id}-compare`}
+            name="compare"
+            defaultValue={comparison}
+            onChange={applyOnChange}
+          >
             {COMPARISON_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -136,12 +146,13 @@ export function FilterBar({
         </div>
       )}
       {dates ? (
-        <div className="col-span-full grid min-w-0 grid-cols-2 gap-3 sm:order-1">
+        <div className="col-span-full grid min-w-0 grid-cols-1 gap-3 min-[24rem]:grid-cols-2 sm:order-1">
           <div className="flex min-w-0 flex-col gap-1.5 sm:w-36">
             <label htmlFor={`${id}-from`} className="text-xs font-medium text-muted-foreground">
               From
             </label>
             <Input
+              data-agent-element="From"
               id={`${id}-from`}
               type="date"
               name="from"
@@ -158,6 +169,7 @@ export function FilterBar({
               To
             </label>
             <Input
+              data-agent-element="To"
               id={`${id}-to`}
               type="date"
               name="to"
@@ -179,7 +191,7 @@ export function FilterBar({
           </>
         )
       )}
-      <Button type="submit" variant="secondary" className="sm:order-3">
+      <Button data-agent-element="Apply" type="submit" variant="secondary" className="sm:order-3">
         Apply
       </Button>
       {error && (

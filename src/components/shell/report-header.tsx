@@ -45,7 +45,7 @@ export function ReportHeader({
   mode: ViewerAccess["mode"];
   /** Absent when no store can be shown; then the report is not loaded. */
   storeId?: string;
-  /** The selected store's currency, once its dates are known. */
+  /** The selected store's verified reporting currency, or null when unverified. */
   currency?: string | null;
   /** Absent when the store's date is unknown; then the report is not loaded. */
   view?: ReportView;

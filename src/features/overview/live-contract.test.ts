@@ -5,6 +5,7 @@ import { datesInRange, rangeLength } from "@/lib/filters";
 import { goLive, rowsResponse } from "../../../tests/helpers/live";
 
 const FIELDS = [
+  ...["total_gross", "total_discounts", "total_refunds"].map((name) => ({ name, type: "NUMERIC" })),
   { name: "date", type: "DATE" },
   { name: "period_date", type: "DATE" },
   { name: "period_net_revenue", type: "NUMERIC" },
@@ -157,7 +158,14 @@ describe("overview, live", () => {
     const { getOverviewReport } = await import("./queries");
     const report = await getOverviewReport(FILTERS, { from: "2025-09-01", to: "2025-09-02" });
     expect(report.comparison).toEqual({
-      data: { days: [], summaries: [], totals: null, purchases: null, latestDate: null },
+      data: {
+        days: [],
+        summaries: [],
+        totals: null,
+        purchases: null,
+        revenue: null,
+        latestDate: null,
+      },
       error: null,
     });
     expect(report.coverage).toEqual({ latest_date: null, previous_latest_date: null });

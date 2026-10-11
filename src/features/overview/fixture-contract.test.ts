@@ -30,6 +30,9 @@ function source(
     sm_sub_channel: sub,
     date,
     order_net_revenue_cents: revenueCents,
+    order_gross_revenue_cents: revenueCents,
+    order_discounts_cents: 0n,
+    order_refunds_cents: 0n,
     order_count: orders,
     website_sessions: sessions,
     ad_clicks: clicks,
@@ -51,6 +54,7 @@ describe("overview fixture contract", () => {
         summaries: [],
         totals: null,
         purchases: null,
+        revenue: null,
         latestDate: null,
       });
     },
@@ -140,7 +144,14 @@ describe("overview fixture contract", () => {
 
   it("returns no days and no totals for an empty range", () => {
     const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire([], "s1", RANGE), OVERVIEW_RELATION));
-    expect(data).toEqual({ days: [], summaries: [], totals: null, purchases: null, latestDate: null });
+    expect(data).toEqual({
+      days: [],
+      summaries: [],
+      totals: null,
+      purchases: null,
+      revenue: null,
+      latestDate: null,
+    });
   });
 
   it("models forward-dated target rows with zero actuals, as the relation does", () => {

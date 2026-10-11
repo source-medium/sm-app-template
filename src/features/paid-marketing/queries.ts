@@ -6,17 +6,21 @@
  */
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
+import type { AdNameMatches, AdNameRule } from "@/lib/ad-name-filters";
+import { queryAdNameMatches } from "@/lib/data/ad-name-matches.server";
 import { parseChoice, single, type DateRange, type ReportFilters, type SearchParams } from "@/lib/filters";
 import type { z } from "zod";
 import type { SpendBreakdownRow } from "./rows";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { toChartNumber } from "@/lib/data/decode";
 import { queryPaidCampaigns, queryPaidMarketing, querySpendBreakdown } from "./bigquery";
-import { samplePaidMarketing, sampleSpendBreakdown } from "./sample";
+import { samplePaidMarketing, sampleSpendBreakdown, samplePaidNames } from "./sample";
 
 export const BREAKDOWN_DIMENSIONS = [
   { value: "channel", label: "Channel" },
   { value: "campaign", label: "Campaign" },
+  { value: "type", label: "Campaign type" },
+  { value: "tactic", label: "Campaign tactic" },
 ] as const;
 export type BreakdownDimension = (typeof BREAKDOWN_DIMENSIONS)[number]["value"];
 export type SpendBreakdown = { rows: z.output<typeof SpendBreakdownRow>[]; hasMore: boolean };
@@ -40,7 +44,7 @@ export async function getSpendBreakdown(
     : sampleSpendBreakdown(filters, dimension, baseline);
 }
 
-export const PAID_METRICS = ["spend", "impressions", "clicks", "conversions"] as const;
+export const PAID_METRICS = ["spend", "impressions", "clicks", "conversions", "revenue", "roas", "cpo"] as const;
 export type PaidMetric = (typeof PAID_METRICS)[number];
 
 export type AdMeasures = {
@@ -50,6 +54,8 @@ export type AdMeasures = {
   clicks: bigint | null;
   /** FLOAT64: platform-reported, can be fractional. */
   conversions: number | null;
+  /** FLOAT64, attributed by the ad platform. */
+  platformRevenue: number | null;
 };
 
 export type ChannelDay = AdMeasures & { channel: string; date: string };
@@ -57,11 +63,9 @@ export type CampaignRow = AdMeasures & {
   campaignId: string;
   campaignName: string | null;
   channel: string | null;
-  /** FLOAT64: revenue the ad platform attributes to itself. */
-  platformRevenue: number | null;
 };
 
-export type PaidMarketingFilters = ReportFilters & { channel: string | null };
+export type PaidMarketingFilters = ReportFilters & { channel: string | null; names?: AdNameRule[] };
 
 export type PaidMarketingData = {
   /** Every channel, so a channel filter never repaints the others. */
@@ -92,4 +96,9 @@ export async function getPaidMarketing(filters: PaidMarketingFilters): Promise<P
 export async function getPaidCampaigns(filters: PaidMarketingFilters): Promise<CampaignData> {
   const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live" ? queryPaidCampaigns(filters) : samplePaidMarketing(filters);
+}
+
+export async function getPaidNames(filters: PaidMarketingFilters): Promise<AdNameMatches> {
+  const access = await requireViewer({ storeId: filters.storeId });
+  return access.mode === "live" ? queryAdNameMatches(filters, false) : samplePaidNames(filters);
 }

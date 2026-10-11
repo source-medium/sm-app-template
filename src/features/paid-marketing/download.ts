@@ -1,12 +1,19 @@
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { csvExport, csvResponse } from "@/lib/csv.server";
 import { campaignRatios, getPaidCampaigns, paidChannel } from "./queries";
+import { parseAdNameFilters, serializeAdNameFilters } from "@/lib/ad-name-filters";
 
 /** Export the same filtered, bounded campaign set as the report, including all table pages. */
 export async function GET(request: Request): Promise<Response> {
   await requireViewer();
   return csvExport(request, async ({ params, storeId, range, mode, currency }) => {
-    const data = await getPaidCampaigns({ storeId, range, channel: paidChannel(params) });
+    const names = parseAdNameFilters(params);
+    if (names.error)
+      return Response.json(
+        { title: "Check the name filters", remedy: names.error },
+        { status: 400, headers: { "Cache-Control": "private, no-store" } },
+      );
+    const data = await getPaidCampaigns({ storeId, range, channel: paidChannel(params), names: names.rules });
     const rows = data.campaigns.map((row) => ({ ...row, ...campaignRatios(row) }));
     return csvResponse(
       `${mode}-campaigns${data.campaignsTruncated ? "-partial" : ""}-${range.from}-${range.to}.csv`,
@@ -28,6 +35,7 @@ export async function GET(request: Request): Promise<Response> {
         { header: "ctr_fraction", value: (row) => row.ctr, numeric: true },
         { header: "cpc", value: (row) => row.cpc, numeric: true },
         { header: "platform_roas", value: (row) => row.roas, numeric: true },
+        { header: "name_filters", value: () => serializeAdNameFilters(names.rules) },
       ],
       rows,
     );

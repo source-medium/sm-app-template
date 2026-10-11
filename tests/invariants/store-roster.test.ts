@@ -8,6 +8,8 @@ import { googleError } from "../fake-bigquery/fake-bigquery";
 import { goLive, ROSTER_FIELDS, rowsResponse, storeRow } from "../helpers/live";
 
 const originalLabels = appConfig.storeLabels;
+const originalCurrency = appConfig.currency;
+const originalReportingCurrencies = appConfig.reportingCurrencies;
 const offset = [{ name: "offset_minutes", type: "INTEGER" }];
 const firstStore = {
   sm_store_id: "store-us",
@@ -24,6 +26,8 @@ afterEach(() => {
   setLogEmitter(() => undefined);
   vi.restoreAllMocks();
   appConfig.storeLabels = originalLabels;
+  appConfig.currency = originalCurrency;
+  appConfig.reportingCurrencies = originalReportingCurrencies;
 });
 
 it("loads named stores and brands from the dimension without scanning a fact table", async () => {
@@ -243,7 +247,7 @@ describe("the store a report shows", () => {
     });
   });
 
-  it("labels the report with the store currency code, and falls back when that code is missing", async () => {
+  it("uses the verified reporting currency even when nominal store metadata differs", async () => {
     const original = appConfig.currency;
     appConfig.currency = "GBP";
     try {
@@ -260,7 +264,7 @@ describe("the store a report shows", () => {
       expect(await resolveReportStore("eur-store")).toMatchObject({
         status: "ready",
         timeZone: "Europe/Paris",
-        currency: "EUR",
+        currency: "GBP",
       });
       expect(await resolveReportStore("bad-store")).toMatchObject({ currency: "GBP" });
       expect(await resolveReportStore("blank-store")).toMatchObject({ currency: "GBP" });
@@ -278,6 +282,38 @@ describe("the store a report shows", () => {
       currency: null,
     });
     expect(fake.count("submit")).toBe(1);
+  });
+
+  it("leaves live money unlabeled until its reporting currency is verified", async () => {
+    appConfig.currency = null;
+    appConfig.reportingCurrencies = {};
+    await warehouse([storeRow("unverified-usd", "UTC", "USD")]);
+    expect(await resolveReportStore("unverified-usd")).toMatchObject({ currency: null });
+  });
+
+  it("applies per-store overrides, including explicit null, without inheriting prototype keys or caching labels", async () => {
+    appConfig.currency = "GBP";
+    appConfig.reportingCurrencies = {
+      "report-cad": " cad ",
+      "report-unknown": null,
+      "report-invalid": "not-money",
+    };
+    await warehouse(
+      ["report-cad", "report-unknown", "report-invalid", "constructor"].map((id) => storeRow(id, "UTC", "EUR")),
+    );
+    expect(await resolveReportStore("report-cad")).toMatchObject({ currency: "CAD" });
+    expect(await resolveReportStore("report-unknown")).toMatchObject({ currency: null });
+    expect(await resolveReportStore("report-invalid")).toMatchObject({ currency: null });
+    expect(await resolveReportStore("constructor")).toMatchObject({ currency: "GBP" });
+    appConfig.reportingCurrencies["report-cad"] = "AUD";
+    expect(await resolveReportStore("report-cad")).toMatchObject({ currency: "AUD" });
+  });
+
+  it("keeps synthetic sample money in USD independently of live reporting settings", async () => {
+    appConfig.currency = "GBP";
+    appConfig.reportingCurrencies = { "sample-store-a": "EUR" };
+    expect(await resolveReportStore("sample-store-a")).toMatchObject({ currency: "USD" });
+    expect(await resolveReportStore("sample-store-b")).toMatchObject({ currency: "USD" });
   });
 
   it("says when there is no store to show, and why", async () => {

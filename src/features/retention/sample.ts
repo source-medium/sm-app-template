@@ -22,6 +22,7 @@ function sampleRetentionWire(filters: RetentionFilters) {
           month_age: String(age),
           cohort_size: String(size),
           customers: String(customers),
+          second_orders: String(Math.round(size * (0.08 + 0.5 * (1 - Math.exp(-age / 4))))),
           cumulative_revenue: fromUnits(revenueCents * 10_000_000n),
           cumulative_profit: fromUnits((revenueCents * 10_000_000n * 42n) / 100n),
         };

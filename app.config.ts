@@ -23,12 +23,14 @@ export const appConfig = {
   /** Numbers and dates are formatted on the server in this locale. */
   locale: "en-US",
   /**
-   * Fallback ISO code, such as "USD", used only when the selected store has no
-   * dim_stores.store_currency_code. Money is labeled with the store's code.
-   * This setting formats amounts; it does not convert them. Null leaves a
-   * store with no code unlabeled.
+   * Verified reporting ISO code, such as "USD", shared by this deployment's
+   * monetary inputs. Confirm source alignment before setting it; nominal
+   * store currency is not evidence of reporting currency. This labels amounts
+   * without converting them. Null leaves live amounts unlabeled.
    */
   currency: null as string | null,
+  /** Per-store reporting currency overrides. Null explicitly leaves a store unlabeled. Sample data stays USD. */
+  reportingCurrencies: {} as Record<string, string | null>,
   /** The first entry is the home page. A page also needs a feature folder and a route; see the sm-add-page skill. */
   nav: [
     { href: "/overview", label: "Overview", icon: LayoutDashboard },

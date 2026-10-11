@@ -18,7 +18,7 @@ for (const item of appConfig.nav) {
       await expect(picker).toBeDisabled();
       await expect(picker).toHaveValue("sample-store-b");
       await expect(picker.locator("option")).toHaveCount(1);
-      await page.getByRole("button", { name: "Ask a coding agent" }).click();
+      await page.getByRole("button", { name: "Vibe code" }).click();
       expect(await page.getByRole("dialog").getByLabel("Prompt", { exact: true }).inputValue()).toContain(
         'store="sample-store-b"',
       );

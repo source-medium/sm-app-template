@@ -27,6 +27,7 @@ export const ChannelDayRow = z.object({
   impressions: bq.int64().nullable(),
   clicks: bq.int64().nullable(),
   conversions: bq.float64().nullable(),
+  platform_revenue: bq.float64().nullable(),
 });
 
 export const CampaignWireRow = z.object({
@@ -41,7 +42,8 @@ export const CampaignWireRow = z.object({
 });
 
 export function toChannelDay(row: z.output<typeof ChannelDayRow>): ChannelDay {
-  return row;
+  const { platform_revenue, ...measures } = row;
+  return { ...measures, platformRevenue: platform_revenue };
 }
 
 export function toCampaign(row: z.output<typeof CampaignWireRow>): CampaignRow {

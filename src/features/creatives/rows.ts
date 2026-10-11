@@ -20,12 +20,33 @@ export const CreativeRow = z.object({
   clicks: bq.int64().nullable(),
   conversions: bq.float64().nullable(),
   ctr: bq.float64().nullable(),
+  revenue: bq.float64().nullable(),
+  roas: bq.float64().nullable(),
+  cpo: bq.float64().nullable(),
+  ad_url: bq.string().nullable(),
 });
 
 /** Only https or same-origin images render; anything else becomes a text card. */
 function safeImageUrl(value: string | null): string | null {
   if (!value) return null;
   return /^https:\/\/[^\s"'<>]+$/i.test(value) || /^\/(?!\/)[A-Za-z0-9/_.-]+$/.test(value) ? value : null;
+}
+
+/** Only verified platform post URLs become external actions. */
+export function safeAdUrl(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    return url.protocol === "https:" &&
+      !url.username &&
+      !url.password &&
+      ["facebook.com", "instagram.com"].some((domain) => host === domain || host.endsWith(`.${domain}`))
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export function toCreative(row: z.output<typeof CreativeRow>): Creative {
@@ -41,5 +62,9 @@ export function toCreative(row: z.output<typeof CreativeRow>): Creative {
     clicks: row.clicks,
     conversions: row.conversions,
     ctr: row.ctr,
+    revenue: row.revenue,
+    roas: row.roas,
+    cpo: row.cpo,
+    adUrl: safeAdUrl(row.ad_url),
   };
 }

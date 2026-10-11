@@ -66,6 +66,23 @@ coverage varies by source, so the two groups are not forced to add up to the
 headline totals. Missing measures stay missing, and comparison uses the same
 published fields and filters. These are summary measures, not valid-order AOV.
 
+Overview's **Revenue and deductions** adds `order_gross_revenue`,
+`order_discounts`, and `order_refunds` to the same scoped query. Deductions retain
+their published signs. This detail is collapsed by default, with no additional
+query when expanded. The table keeps published net revenue and computes
+`net - gross - signed discounts - signed refunds` with exact decimal arithmetic.
+A nonzero result is an **Unreconciled difference**, not an invented adjustment
+category. Missing inputs prevent reconciliation. These summary dates do not
+establish when a refund was issued. Comparison follows the existing coverage gate.
+
+**Acquisition economics is deferred.** Before adding unique new-customer counts
+or acquisition ratios, verify customer additivity and comparable spend/customer
+coverage within the selected sales channel. A channel filter alone does not
+establish that alignment. The inspected published `new_customer_count` total
+did not reconcile to distinct first-valid-purchase customers; the cause remains
+unresolved. The app does not query that count or expose acquisition ratios.
+The existing new/repeat purchase table continues to report order measures.
+
 Overview's KPI trends reuse its daily rows with no additional queries. Each
 trend links to the existing **Business summary** in Daily mode, with the same
 store, dates, channel and comparison. This table includes revenue per summary
@@ -188,13 +205,19 @@ integer into a plausible-looking chart value.
 
 ## Money and currency
 
-`dim_stores.store_currency_code` is the currency of that store's published
-money columns. The roster loads it with the store's name, brand, and time
-zone. Reports, the footer, the agent prompt, and CSV `reporting_currency`
-label amounts with that code. A code Intl cannot format is treated as
-missing. `app.config.ts` `currency` is the fallback only when the store has
-no code; `null` leaves those amounts unlabeled. Either source formats
-amounts. Neither converts them, and neither changes a calculation.
+`dim_stores.store_currency_code` is nominal store metadata. It does not prove
+the currency of published money columns, so it never chooses a live report's
+money label. Verify the monetary inputs used by these views, then set
+`app.config.ts` `currency` to their reporting ISO code. For stores with different
+verified reporting currencies, override by exact store ID in `reportingCurrencies`,
+for example `{ "store-a": "CAD", "store-b": null }`. An explicit null override
+leaves a store unlabeled even when the deployment has a default code.
+
+Reports, the footer, the agent prompt, and CSV `reporting_currency` share this
+setting. Null or an unrecognized code leaves live amounts unlabeled; the footer
+says the currency is unverified. This is an operator-verified contract, not
+automatic currency detection. Synthetic sample amounts always use USD.
+These settings label amounts without converting them or changing calculations.
 
 `store_timezone` is the store's SourceMedium time zone, which sets the
 store's dates in the app (see [dates](#dates)); it is not every source's date
@@ -208,10 +231,15 @@ Pass the report store's currency into `formatMoney`. Chart axis ticks stay
 compact numbers without a currency symbol, because that formatter is shared
 with counts.
 
-Published report amounts for a store are in that store's currency.
-SourceMedium converts supported order and ad money when conversion is
-enabled. Resolve a source that still reports in an account currency before
-combining it with the rest of the store.
+When currency conversion is enabled, supported standard monetary fields use
+the configured reporting currency, which can differ from nominal store currency.
+Unsupported ad sources retain account currency. Amazon Ads uses the store's
+configured currency independently of workspace reporting currency. Manually
+configured costs are not automatically converted. Before labeling reports or
+combining inputs, verify order, ad, platform-reported revenue, and cost currencies
+for the selected store. Gross profit requires costs in the revenue currency.
+If inputs differ, align them upstream or narrow the affected view's scope;
+setting a label or leaving it blank cannot repair mixed-currency calculations.
 See SourceMedium's [reporting currency rules](https://sourcemedium.com/docs/help-center/core-concepts/data-definitions/reporting-currency).
 
 - Inspect each column's type. Order revenue and ad spend are NUMERIC: decode
@@ -219,7 +247,7 @@ See SourceMedium's [reporting currency rules](https://sourcemedium.com/docs/help
   is FLOAT64: decode with `bq.float64()`; it is approximate at the source.
 - Add NUMERIC values with `sumDecimals` (`src/lib/data/decimal.ts`), never as
   JavaScript numbers. Ratios use `decimalToNumber` and `ratio`.
-- Never add money across stores. Each store is labeled with its own currency
+- Never add money across stores. Each store is labeled with its verified reporting currency
   code. Use a separately scoped app when a deployment should show one store.
 
 For order reconciliation, inspect `order_original_currency_code`,
@@ -227,7 +255,7 @@ For order reconciliation, inspect `order_original_currency_code`,
 `order_original_*` / `order_converted_*` amounts. `order_currency_code` remains
 the source transaction currency; do not use it to label report money.
 The summary and advertising tables do not repeat a currency code on each
-row. The store's `store_currency_code` labels those published amounts.
+row. Verify their upstream currency contract instead of inferring it from store metadata.
 Discounts and refunds are normally signed negative amounts; read published
 net revenue rather than subtracting those signed amounts again.
 
@@ -318,14 +346,30 @@ grain, with exact raw amounts. `row_type=period` rows are followed by one
 `row_type=total` row. Filter on row type before summing the file to avoid double
 counting. The download re-runs one bounded Overview query and fails on truncation.
 
-Paid marketing's **Spend breakdown** ranks channels or campaigns with
-`?breakdown=channel|campaign`. It adds one bounded SQL query that reads the
+Paid marketing's **Spend breakdown** ranks channels, campaigns, published campaign types or tactics with
+`?breakdown=channel|campaign|type|tactic`. It adds one bounded SQL query that reads the
 selected and comparison periods with identical store/channel filters. Comparison
 Off excludes baseline rows. Shares use full-query spend before the top-10 limit;
 the caption identifies top-10 results. Zero totals and negative spend suppress
 shares; absent baseline values stay absent, not zero. The comparison control
 applies to this breakdown; the existing delivery chart and campaign table show
 the selected period.
+
+Paid marketing's trend also offers platform revenue, platform ROAS and cost per
+conversion, with `?grain=day|week|month`. The bounded SQL daily aggregates are
+summed before dividing, including channels folded into Other. Weeks start Monday;
+edge intervals include only selected dates. These are platform-attributed returns,
+not blended MER or incremental revenue. Classification values come directly from
+`ad_campaign_type` and `ad_campaign_tactic`; unclassified rows stay `(none)`.
+
+When Creatives is in the configured navigation, campaign links open it with
+`store`, dates, `channel` and `campaign` intact. Removing that view leaves plain campaign labels.
+Creatives' `?view=delivery|returns|table` keeps delivery cards as the default and
+adds return cards and a sortable return table. Revenue, ROAS and cost per conversion
+use period sums before the top-48 bound. Spend remains the default sort; conversions
+remain visible alongside returns. Platform attribution may overlap across channels.
+Only HTTPS Facebook/Instagram URLs published by the source become **Open ad**
+actions, with host and credential validation; URLs are never constructed from IDs.
 
 Reuse `RankedBreakdown` for another dimension: the feature owns SQL ranking,
 totals, shares and changes; the component owns the horizontal chart and table.
@@ -391,7 +435,27 @@ the share denominator are calculated before the top-10 limit. Negative members
 or a zero total suppress shares. Missing comparisons stay missing. The date
 predicate uses `order_processed_at_local_datetime` directly for partition pruning.
 
-**Retention** uses `?as_of=YYYY-MM&channel=online_dtc&measure=retention|revenue|profit`.
+Product rankings also offer refund amount and refunded units. Their published
+negative signs are reversed for positive deductions; positive source reversals
+remain negative. Refund rates use refunded units / original ordered units from
+`order_line_quantity`, not net units. These describe orders processed in the
+selected dates and can change when later refunds arrive.
+
+Cost coverage appears below the headline totals when ranking by product gross
+profit. Refund rates appear when ranking by refund amount or refunded units.
+Revenue and net-unit rankings do not load this extra aggregate.
+Cost coverage counts real valid-order product lines (`order_line_id IS NOT NULL`)
+whose final `order_line_product_cost` is null separately from lines with a
+published zero. Synthetic order-summary rows are excluded from these counts.
+Unit and refund sums retain all matching rows, including summary adjustments.
+Counts and refund denominators
+cover all matching products in a separate narrow aggregate, independent of the
+ranking limit. Its data region can fail without hiding the rankings. Splitting
+coverage from descriptive product fields reduces bytes per query, but adds a
+read when these diagnostics are used. Zero may be intentional or unconfigured and is never silently
+classified as missing or proof of complete costs.
+
+**Retention** uses `?as_of=YYYY-MM&channel=online_dtc&measure=retention|second|revenue|profit`.
 The cutoff defaults to the store's last completed calendar month and is frozen in
 shared links. It shows twelve acquisition months through that cutoff, at ages
 0–11. Month 0 means the acquisition calendar month, not a fixed 30-day window.
@@ -407,6 +471,9 @@ The published surface currently covers online DTC and Amazon separately.
 
 - Monthly retention = that month's purchasing customers / original cohort size.
   It can rise after a customer skips a month; it is not subscription survival.
+- Purchased a second time = `cumulative_second_order_count` / original cohort size.
+  This is cumulative through the age, including second orders during Month 0,
+  distinct from monthly retention and rolling 30/60/90-day windows.
 - LTR = cumulative net revenue / original cohort size.
 - LTV = cumulative gross profit / original cohort size. Missing warehouse cost
   inputs can overstate it; no CAC or payback claim is made.
@@ -420,7 +487,7 @@ tooltips make the units explicit. Both charts retain **View as table**.
 
 The curves and matrix reuse the same values, denominators and missing-age rules
 from `retentionMatrix`; they add no warehouse query. **Matrix measure** changes
-the twelve-cohort heatmap between retention, LTR and LTV independently of the two
+the twelve-cohort heatmap between monthly retention, second purchase, LTR and LTV independently of the two
 fixed charts.
 
 No averages across cohorts, stores or channels are shown. Unelapsed months are
@@ -474,7 +541,7 @@ with the same campaign query as the table. It includes all loaded campaigns
 across the table's pages, up to 200, in the query's spend order. It does not
 run the chart query or start a background export job. Unapplied filter edits
 are ignored. Each row includes the store, inclusive dates, sample/live mode,
-the selected store's currency (the `app.config.ts` fallback when the store has no code, blank when both are unset), and `export_truncated`.
+the selected store's verified reporting currency (blank when unverified), and `export_truncated`.
 A bounded partial result sets that flag to `true` and uses `-partial-` in the
 filename; it is not a complete campaign export.
 
@@ -521,7 +588,7 @@ For other existing explanations, add `data-metric-definition="Metric label"`
 to their text element. Streamed definitions appear as their regions load.
 These explain this app's calculations; published field descriptions can differ.
 **Use this field** passes its source, name, type, and documentation to the
-existing Ask agent composer. The prompt tells the agent to verify the schema;
+existing Vibe code composer. The prompt tells the agent to verify the schema;
 metadata is documentation, never executable SQL.
 
 ## Check your numbers
@@ -566,3 +633,25 @@ counts are scaled, while the number of order rows is not. Consequently, demo
 Summary orders need not match a count of valid order rows. Compare Overview
 with the catalog's summary metrics, using the same store and dates and every
 channel. Do not apply a demo-specific adjustment to customer queries.
+
+### Advertising name filters
+
+Paid marketing and Creatives support **Add name filter** for campaign, ad set /
+group, and ad names. Choose Contains, Does not contain, Equals, or Starts with,
+and enter values one per line. Matching ignores case and treats punctuation
+literally, including brackets, `%`, and `_`. Values within a rule use OR;
+separate rules use AND. Does not contain excludes every listed value. Missing
+or blank names do not match an active rule on that field.
+
+Rules are stored in the `names` URL parameter for sharing and bookmarking.
+The editor and URL parser share the same limits, including a 4,000-character
+encoded query budget that leaves room for other filters and navigation headers.
+Oversized drafts stay in the editor with a correction message.
+They apply to delivery rows before aggregation, using the names recorded in the
+selected dates. Reused creative metrics therefore include only matching delivery.
+Comparison periods, campaign CSVs, and campaign-to-creative links retain the same
+rules. Campaign labels come from matching rows; inspect matching names to see
+name variations within the period.
+**Matching names** shows up to 50 distinct combinations for inspection; its limit
+does not limit report totals. Invalid rules stop the report until cleared.
+No naming taxonomy is inferred, and filters never rewrite warehouse names.

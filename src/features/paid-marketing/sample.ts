@@ -8,22 +8,81 @@ import { fromUnits } from "@/lib/data/decimal";
 import { datesInRange, latestDate, type DateRange } from "@/lib/filters";
 import { randomInt, seededRandom } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
+import { sampleAdNames, SAMPLE_CAMPAIGN_NAMES } from "@/lib/sample/ad-names";
+import { matchesAdNames, sampleNameMatches, type AdNames } from "@/lib/ad-name-filters";
 import type { PaidMarketingData, PaidMarketingFilters } from "./queries";
 import { AD_RELATION, CampaignWireRow, ChannelDayRow, MAX_CAMPAIGNS, toCampaign, toChannelDay } from "./rows";
 import { SpendBreakdownRow, MAX_BREAKDOWN } from "./rows";
 import type { BreakdownDimension, SpendBreakdown } from "./queries";
 
 const CAMPAIGNS = [
-  { id: "cmp-1001", name: "Prospecting – Broad", channel: "Meta", reach: 1, cpm: 1180 },
-  { id: "cmp-1002", name: "Retargeting – Site Visitors", channel: "Meta", reach: 0.45, cpm: 1640 },
-  { id: "cmp-1003", name: "Advantage+ Shopping", channel: "Meta", reach: 0.8, cpm: 1320 },
-  { id: "cmp-2001", name: "Brand Search", channel: "Google", reach: 0.3, cpm: 2650 },
-  { id: "cmp-2002", name: "Performance Max", channel: "Google", reach: 0.9, cpm: 980 },
-  { id: "cmp-3001", name: "Spark Ads – Creators", channel: "TikTok", reach: 0.6, cpm: 760 },
-  { id: "cmp-4001", name: "Pinterest Shopping", channel: "Pinterest", reach: 0.25, cpm: 640 },
+  {
+    id: "cmp-1001",
+    type: "Social",
+    tactic: "Prospecting",
+    name: SAMPLE_CAMPAIGN_NAMES["cmp-1001"],
+    channel: "Meta",
+    reach: 1,
+    cpm: 1180,
+  },
+  {
+    id: "cmp-1002",
+    type: "Social",
+    tactic: "Retargeting",
+    name: SAMPLE_CAMPAIGN_NAMES["cmp-1002"],
+    channel: "Meta",
+    reach: 0.45,
+    cpm: 1640,
+  },
+  {
+    id: "cmp-1003",
+    type: "Social",
+    tactic: "Mixed",
+    name: SAMPLE_CAMPAIGN_NAMES["cmp-1003"],
+    channel: "Meta",
+    reach: 0.8,
+    cpm: 1320,
+  },
+  {
+    id: "cmp-2001",
+    type: "Search",
+    tactic: "Brand",
+    name: SAMPLE_CAMPAIGN_NAMES["cmp-2001"],
+    channel: "Google",
+    reach: 0.3,
+    cpm: 2650,
+  },
+  {
+    id: "cmp-2002",
+    type: "Cross-network",
+    tactic: "Mixed",
+    name: SAMPLE_CAMPAIGN_NAMES["cmp-2002"],
+    channel: "Google",
+    reach: 0.9,
+    cpm: 980,
+  },
+  {
+    id: "cmp-3001",
+    type: "Social",
+    tactic: "Prospecting",
+    name: SAMPLE_CAMPAIGN_NAMES["cmp-3001"],
+    channel: "TikTok",
+    reach: 0.6,
+    cpm: 760,
+  },
+  {
+    id: "cmp-4001",
+    type: "Shopping",
+    tactic: "Prospecting",
+    name: SAMPLE_CAMPAIGN_NAMES["cmp-4001"],
+    channel: "Pinterest",
+    reach: 0.25,
+    cpm: 640,
+  },
 ] as const;
 
 export type PaidSourceRow = {
+  names: AdNames;
   channel: string;
   campaign: (typeof CAMPAIGNS)[number];
   date: string;
@@ -45,7 +104,7 @@ export function samplePaidSource(storeId: string, range: DateRange): PaidSourceR
       const clicks = Math.round(impressions * (0.006 + random() * 0.012)) + randomInt(random, 0, 3);
       // Platforms report modeled conversions, so the value can be fractional.
       const conversions = Math.round(clicks * (0.02 + random() * 0.03) * 4) / 4;
-      rows.push({
+      const total = {
         channel: campaign.channel,
         campaign,
         date,
@@ -54,6 +113,24 @@ export function samplePaidSource(storeId: string, range: DateRange): PaidSourceR
         clicks: BigInt(clicks),
         conversions,
         platformRevenue: Math.round(conversions * 7100 * (0.8 + random() * 0.4)) / 100,
+      };
+      // Two ads per campaign, split before filtering; their sums retain the original daily totals.
+      const first = {
+        spendCents: total.spendCents / 2n,
+        impressions: total.impressions / 2n,
+        clicks: total.clicks / 2n,
+        conversions: total.conversions / 2,
+        platformRevenue: total.platformRevenue / 2,
+      };
+      rows.push({ ...total, ...first, names: sampleAdNames(campaign.id, 0) });
+      rows.push({
+        ...total,
+        spendCents: total.spendCents - first.spendCents,
+        impressions: total.impressions - first.impressions,
+        clicks: total.clicks - first.clicks,
+        conversions: total.conversions - first.conversions,
+        platformRevenue: total.platformRevenue - first.platformRevenue,
+        names: sampleAdNames(campaign.id, 1),
       });
     }
   }
@@ -76,9 +153,20 @@ export async function sampleSpendBreakdown(
     if (!range) continue;
     for (const row of samplePaidSource(filters.storeId, range)) {
       if (filters.channel && row.channel !== filters.channel) continue;
-      const key = dimension === "channel" ? row.channel : `${row.channel} / ${row.campaign.id}`;
+      if (!matchesAdNames(row.names, filters.names)) continue;
+      const key =
+        dimension === "channel"
+          ? row.channel
+          : dimension === "campaign"
+            ? `${row.channel} / ${row.campaign.id}`
+            : row.campaign[dimension];
       const sums = grouped.get(key) ?? {
-        label: dimension === "channel" ? row.channel : row.campaign.name,
+        label:
+          dimension === "channel"
+            ? row.channel
+            : dimension === "campaign"
+              ? row.campaign.name
+              : row.campaign[dimension],
         spend: null,
         previous: null,
       };
@@ -119,7 +207,9 @@ export async function sampleSpendBreakdown(
 }
 
 export async function samplePaidMarketing(filters: PaidMarketingFilters): Promise<PaidMarketingData> {
-  const source = samplePaidSource(filters.storeId, filters.range);
+  const source = samplePaidSource(filters.storeId, filters.range).filter((row) =>
+    matchesAdNames(row.names, filters.names),
+  );
 
   type Sums = { spend: bigint; impressions: bigint; clicks: bigint; conversions: number; revenue: number };
   const empty = (): Sums => ({ spend: 0n, impressions: 0n, clicks: 0n, conversions: 0, revenue: 0 });
@@ -147,6 +237,7 @@ export async function samplePaidMarketing(filters: PaidMarketingFilters): Promis
       impressions: String(sums.impressions),
       clicks: String(sums.clicks),
       conversions: String(sums.conversions),
+      platform_revenue: String(sums.revenue),
     }));
 
   const campaigns = new Map<string, Sums & { id: string; name: string; channel: string }>();
@@ -179,4 +270,14 @@ export async function samplePaidMarketing(filters: PaidMarketingFilters): Promis
     campaigns: decodeRows(CampaignWireRow, campaignWire.slice(0, MAX_CAMPAIGNS), AD_RELATION).map(toCampaign),
     campaignsTruncated: campaignWire.length > MAX_CAMPAIGNS,
   };
+}
+
+export function samplePaidNames(filters: PaidMarketingFilters) {
+  return sampleNameMatches(
+    samplePaidSource(filters.storeId, filters.range)
+      .filter(
+        (row) => (!filters.channel || row.channel === filters.channel) && matchesAdNames(row.names, filters.names),
+      )
+      .map((row) => row.names),
+  );
 }

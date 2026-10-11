@@ -33,7 +33,15 @@ export type OverviewDay = OverviewMeasures & { date: string };
 export type PurchaseMeasures = { netRevenue: string | null; orders: number | null };
 export type PurchaseMix = { first: PurchaseMeasures; repeat: PurchaseMeasures };
 
+export type RevenueDeductions = {
+  gross: string | null;
+  discounts: string | null;
+  refunds: string | null;
+  net: string | null;
+};
+
 export type OverviewData = {
+  revenue: RevenueDeductions | null;
   /** One entry per date that has rows; missing dates stay missing (gaps). */
   days: OverviewDay[];
   /** Period totals computed in the same query; null when the range is empty. */

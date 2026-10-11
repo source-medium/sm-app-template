@@ -1,4 +1,14 @@
 import { expect, test } from "@playwright/test";
+test("retention: second purchases have their own cumulative measure and mature ages", async ({ page }) => {
+  await page.goto("/retention?store=sample-store-a&as_of=2026-09");
+  await page.getByLabel("Matrix measure", { exact: true }).selectOption("second");
+  await expect(page).toHaveURL(/measure=second/);
+  const table = page.getByRole("table", { name: "Purchased a second time", exact: true });
+  await expect(table).toBeVisible();
+  await expect(table.locator('td[data-state="immature"]').first()).toHaveText("—");
+  await expect(table.locator('td[data-state="value"]').first()).not.toHaveText("100%");
+  await expect(page.getByText("Customers who have placed a second order", { exact: false })).toBeVisible();
+});
 import { expectNoSeriousA11yViolations } from "../../../e2e/helpers";
 
 test("retention: incomplete months, published gaps, and measure/channel selections remain explicit", async ({
@@ -56,7 +66,7 @@ test("retention: separate retention and LTV curves share channel/window controls
   const retention = page.getByRole("table", { name: "Retention by cohort age", exact: true });
   await expect(retention.getByRole("columnheader", { name: "Jan 2026", exact: true })).toBeVisible();
   await expect(retention.getByRole("rowheader", { name: "Month 11", exact: true })).toBeVisible();
-  await curves.getByRole("button", { name: "View as table", exact: true }).click();
+  await curves.getByRole("button", { name: "View as table", exact: true }).nth(1).click();
   const ltv = page.getByRole("table", { name: "Gross profit LTV by cohort age", exact: true });
   await expect(ltv).toBeVisible();
   await expect(page).toHaveTitle(/Retention/);

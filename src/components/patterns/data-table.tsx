@@ -73,7 +73,10 @@ export function DataTable({
   const columnDefs: ColumnDef<DataTableRow>[] = columns.map((column) => ({
     id: column.key,
     header: column.header,
-    accessorFn: (row) => row.cells[column.key]?.sort ?? row.cells[column.key]?.display ?? null,
+    accessorFn: (row) => {
+      const cell = row.cells[column.key];
+      return cell?.sort !== undefined ? (cell.sort ?? undefined) : cell?.display;
+    },
     enableSorting: column.sortable ?? true,
     sortUndefined: "last",
     cell: DataCell,
@@ -88,6 +91,10 @@ export function DataTable({
     getSortedRowModel: getSortedRowModel(),
     ...(paginate ? { getPaginationRowModel: getPaginationRowModel(), initialState: { pagination: { pageSize } } } : {}),
   });
+  const paginated = paginate && table.getPageCount() > 1;
+  const { pageIndex, pageSize: rowsPerPage } = table.getState().pagination;
+  const firstVisible = pageIndex * rowsPerPage + 1;
+  const lastVisible = Math.min(firstVisible + table.getRowModel().rows.length - 1, rows.length);
 
   return (
     <div data-agent-target={caption} data-agent-component="DataTable" className="flex flex-col gap-3">
@@ -112,14 +119,16 @@ export function DataTable({
                     {header.column.getCanSort() ? (
                       <button
                         type="button"
+                        data-agent-element={`Sort by ${column?.header}`}
                         onClick={header.column.getToggleSortingHandler()}
                         className={cn(
                           "inline-flex min-h-9 items-center gap-2 rounded-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11",
                           column?.align === "right" && "flex-row-reverse",
+                          sorted && "text-primary",
                         )}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
-                        <Icon className="size-3.5 text-muted-foreground" aria-hidden />
+                        <Icon className="size-3.5" aria-hidden />
                       </button>
                     ) : (
                       flexRender(header.column.columnDef.header, header.getContext())
@@ -169,16 +178,20 @@ export function DataTable({
         )}
       </Table>
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-        <span>
-          {truncated
-            ? `Showing the first ${rows.length} rows; more rows matched than this view loads.`
-            : `${rows.length} ${rows.length === 1 ? "row" : "rows"}`}
-        </span>
-        {paginate && table.getPageCount() > 1 ? (
+        <div className="flex flex-col gap-1">
+          <span aria-live="polite" aria-atomic="true">
+            {paginated
+              ? `${firstVisible}–${lastVisible} of ${rows.length} rows`
+              : `${rows.length} ${rows.length === 1 ? "row" : "rows"}`}
+          </span>
+          {truncated && <span>{`Showing the first ${rows.length} rows; more rows matched than this view loads.`}</span>}
+        </div>
+        {paginated ? (
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
+              data-agent-element="Previous page"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
@@ -187,7 +200,13 @@ export function DataTable({
             <span>
               Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
             </span>
-            <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+            <Button
+              variant="outline"
+              size="sm"
+              data-agent-element="Next page"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
               Next
             </Button>
           </div>

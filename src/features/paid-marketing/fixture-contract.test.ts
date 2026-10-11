@@ -1,10 +1,39 @@
 import { describe, expect, it } from "vitest";
 import { sumDecimals, toUnits } from "@/lib/data/decimal";
 import { samplePaidMarketing, samplePaidSource } from "./sample";
+import { samplePaidNames, sampleSpendBreakdown } from "./sample";
+import type { AdNameRule } from "@/lib/ad-name-filters";
 
 const FILTERS = { storeId: "sample-store-a", range: { from: "2026-09-01", to: "2026-09-14" }, channel: null };
 
 describe("paid marketing fixture contract", () => {
+  it("scopes every aggregate and comparison to matching ads before summing", async () => {
+    const names: AdNameRule[] = [
+      { field: "campaign", operator: "contains", values: ["[retargeting]"] },
+      { field: "ad", operator: "excludes", values: ["test"] },
+    ];
+    const filters = { ...FILTERS, names };
+    const selected = samplePaidSource(filters.storeId, filters.range).filter(
+      (row) => row.campaign.id === "cmp-1002" && row.names.ad === "UGC | evergreen",
+    );
+    const expected = selected.reduce((sum, row) => sum + row.spendCents, 0n) * 10_000_000n;
+    const data = await samplePaidMarketing(filters);
+    expect(data.campaigns.map((row) => row.campaignId)).toEqual(["cmp-1002"]);
+    expect(toUnits(sumDecimals(data.channelDays.map((row) => row.spend)) ?? "0")).toBe(expected);
+    expect(toUnits(sumDecimals(data.campaigns.map((row) => row.spend)) ?? "0")).toBe(expected);
+    const baseline = { from: "2026-08-01", to: "2026-08-14" };
+    const breakdown = await sampleSpendBreakdown(filters, "campaign", baseline);
+    const previous =
+      samplePaidSource(filters.storeId, baseline)
+        .filter((row) => row.campaign.id === "cmp-1002" && row.names.ad === "UGC | evergreen")
+        .reduce((sum, row) => sum + row.spendCents, 0n) * 10_000_000n;
+    expect(breakdown.rows).toHaveLength(1);
+    expect(toUnits(breakdown.rows[0]?.total_spend ?? "0")).toBe(expected);
+    expect(toUnits(breakdown.rows[0]?.previous_spend ?? "0")).toBe(previous);
+    expect(samplePaidNames(filters).rows).toEqual([
+      { campaign: "[retargeting] Site Visitors", ad_group: "Core audience | 30d", ad: "UGC | evergreen" },
+    ]);
+  });
   it.each(["missing-store", "constructor", "__proto__"])(
     "does not invent clicks or campaigns for %s",
     async (storeId) => {

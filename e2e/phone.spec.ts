@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { appConfig } from "../app.config";
-import { watchConsole } from "./helpers";
+import { watchConsole, expectNoSeriousA11yViolations } from "./helpers";
 
 test("the data dictionary and field handoff fit a small phone", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
@@ -16,7 +16,7 @@ test("the data dictionary and field handoff fit a small phone", async ({ page })
     .getByRole("button", { name: /^Use field / })
     .first()
     .click();
-  const composer = page.getByRole("dialog", { name: "Ask a coding agent" });
+  const composer = page.getByRole("dialog", { name: "Vibe code" });
   await expect(composer).toBeVisible();
   expect(await composer.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
 });
@@ -47,9 +47,9 @@ test("the top bar fits a small touch screen", async ({ page }) => {
   await expect(page.getByRole("status")).toHaveCount(0);
   const controls = [
     page.getByRole("button", { name: "Toggle navigation" }),
-    page.getByRole("button", { name: "Ask a coding agent" }),
+    page.getByRole("button", { name: "Vibe code" }),
     page.getByTestId("mode-chip"),
-    page.getByRole("combobox", { name: "Appearance" }),
+    page.getByRole("button", { name: /^Appearance:/ }),
   ];
   for (const control of controls) {
     const box = await control.boundingBox();
@@ -60,6 +60,18 @@ test("the top bar fits a small touch screen", async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(
     0,
   );
+});
+
+test("report fields have room for their values on the smallest phones", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto(appConfig.nav[0]?.href ?? "/");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const form = page.getByRole("form", { name: "Report filters" });
+  await expect(form).toBeVisible();
+  const controls = form.locator('select, input[type="date"]');
+  for (const control of await controls.all()) {
+    expect((await control.boundingBox())?.width).toBeGreaterThanOrEqual(240);
+  }
 });
 
 test("the navigation opens as a sheet", async ({ page }) => {
@@ -83,7 +95,7 @@ test("shared controls have touch-sized targets", async ({ page }) => {
   }
 });
 
-test("the navigation respects reduced motion", async ({ page }) => {
+test("the navigation and appearance menu respect reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(appConfig.nav[0]?.href ?? "/");
   await page.getByRole("button", { name: "Toggle navigation" }).click();
@@ -93,13 +105,33 @@ test("the navigation respects reduced motion", async ({ page }) => {
   expect(duration).toBeLessThanOrEqual(0.001);
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
+  await page.getByRole("button", { name: /^Appearance:/ }).click();
+  const menu = page.getByRole("menu", { name: "Appearance" });
+  await expect(menu).toBeVisible();
+  expect(await menu.evaluate((element) => parseFloat(getComputedStyle(element).animationDuration))).toBeLessThanOrEqual(
+    0.001,
+  );
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
 });
 
 test("the agent prompt composer fits a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
   await page.goto(appConfig.nav[0]?.href ?? "/");
-  await page.getByRole("button", { name: "Ask a coding agent" }).click();
-  const dialog = page.getByRole("dialog", { name: "Ask a coding agent" });
+  await page.getByRole("button", { name: "Vibe code" }).click();
+  const dialog = page.getByRole("dialog", { name: "Vibe code" });
   await expect(dialog.getByLabel("Prompt")).toHaveValue(/Context from the running app/);
+  await expect(dialog.getByLabel("Your request")).toBeFocused();
+  await expect(dialog.getByLabel("Prompt")).toBeHidden();
+  const copy = dialog.getByRole("button", { name: "Copy prompt" });
+  await expect(copy).toBeInViewport({ ratio: 1 });
+  await expect(copy).toBeDisabled();
+  await dialog.getByLabel("Your request").fill("Make the report easier to scan.");
+  await expect(copy).toBeEnabled();
+  await dialog.getByText("Preview prompt", { exact: true }).click();
+  await expect(dialog.getByLabel("Prompt")).toBeVisible();
+  await expect(copy).toBeInViewport({ ratio: 1 });
+  await expectNoSeriousA11yViolations(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(
     0,
   );
@@ -108,8 +140,20 @@ test("the agent prompt composer fits a phone", async ({ page }) => {
 });
 
 test("appearance can be changed on a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
   await page.goto(appConfig.nav[0]?.href ?? "/");
-  await page.getByRole("combobox", { name: "Appearance" }).selectOption("dark");
+  await page.getByRole("button", { name: /^Appearance:/ }).tap();
+  const menu = page.getByRole("menu", { name: "Appearance" });
+  const bounds = await menu.boundingBox();
+  if (!bounds) throw new Error("The appearance menu is not visible");
+  expect(bounds.x).toBeGreaterThanOrEqual(0);
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(320);
+  for (const item of await menu.getByRole("menuitemradio").all()) {
+    expect((await item.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  }
+  await page.getByRole("menuitemradio", { name: "Dark", exact: true }).tap();
+  await expect(menu).toBeHidden();
+  await expect(page.getByRole("button", { name: "Appearance: Dark", exact: true })).toBeVisible();
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
 });
 
@@ -137,4 +181,24 @@ test("connection report fits a small phone", async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(
     0,
   );
+});
+
+test("phone: name filters fit and the element picker selects by touch", async ({ page }) => {
+  test.skip(!appConfig.nav.some((item) => item.href === "/creatives"), "No Creatives view");
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  await page.getByRole("button", { name: "Add name filter" }).tap();
+  await page.getByLabel("Values, one per line").fill("[retargeting]");
+  await expectNoSeriousA11yViolations(page);
+  await page.getByRole("button", { name: "Apply name filter" }).tap();
+  await expect(page.getByRole("button", { name: /^Edit Campaign name/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByRole("button", { name: "Vibe code" }).tap();
+  const dialog = page.getByRole("dialog", { name: "Vibe code" });
+  await dialog.getByLabel("Your request").fill("Simplify this control.");
+  await dialog.getByRole("button", { name: "Pick an element" }).tap();
+  await page.getByRole("button", { name: "Add name filter" }).tap();
+  await expect(dialog.getByLabel("Prompt")).toContainText('Component: "AdNameFilter"');
+  await expect(dialog.getByLabel("Your request")).toHaveValue("Simplify this control.");
+  await expect(page.getByLabel("Values, one per line")).toHaveCount(0);
 });

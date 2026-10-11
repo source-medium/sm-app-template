@@ -10,7 +10,13 @@ export function cohortValue(row: RetentionRowData, metric: RetentionMetric): num
   if (size === null || size <= 0) return null;
   return ratio(
     decimalToNumber(
-      metric === "retention" ? row.customers : metric === "revenue" ? row.cumulative_revenue : row.cumulative_profit,
+      metric === "retention"
+        ? row.customers
+        : metric === "second"
+          ? row.second_orders
+          : metric === "revenue"
+            ? row.cumulative_revenue
+            : row.cumulative_profit,
     ),
     size,
   );
@@ -26,7 +32,10 @@ export function retentionMatrix(
   const selected = rows.filter((row) => row.channel === channel);
   const byKey = new Map(selected.map((row) => [`${row.cohort_month}|${row.month_age}`, row]));
   const maximum = Math.max(0, ...selected.map((row) => cohortValue(row, metric) ?? 0));
-  const format = metric === "retention" ? formatPercent : (value: number | null) => formatMoney(value, currency);
+  const format =
+    metric === "retention" || metric === "second"
+      ? formatPercent
+      : (value: number | null) => formatMoney(value, currency);
   return cohortMonths(asOf).map((cohort) => {
     const first = selected.find((row) => row.cohort_month === cohort);
     return {
@@ -50,7 +59,14 @@ export function retentionMatrix(
           value,
           display: format(value),
           description: format(value),
-          intensity: value < 0 ? null : metric === "retention" ? value : maximum > 0 ? value / maximum : 0,
+          intensity:
+            value < 0
+              ? null
+              : metric === "retention" || metric === "second"
+                ? value
+                : maximum > 0
+                  ? value / maximum
+                  : 0,
           state: "value",
         };
       }),

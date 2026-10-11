@@ -23,6 +23,9 @@ export const OverviewRow = z.object({
   period_website_sessions: bq.int64().nullable(),
   period_ad_clicks: bq.int64().nullable(),
   period_ad_spend: bq.numeric().nullable(),
+  total_gross: bq.numeric().nullable(),
+  total_discounts: bq.numeric().nullable(),
+  total_refunds: bq.numeric().nullable(),
   total_net_revenue: bq.numeric().nullable(),
   total_order_count: bq.float64().nullable(),
   total_website_sessions: bq.int64().nullable(),
@@ -41,6 +44,14 @@ export type OverviewRowData = z.output<typeof OverviewRow>;
 export function toOverviewData(rows: OverviewRowData[]): OverviewData {
   const first = rows[0];
   return {
+    revenue: first
+      ? {
+          gross: first.total_gross,
+          discounts: first.total_discounts,
+          refunds: first.total_refunds,
+          net: first.total_net_revenue,
+        }
+      : null,
     purchases: first
       ? {
           first: { netRevenue: first.total_first_revenue, orders: first.total_first_orders },

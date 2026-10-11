@@ -14,7 +14,15 @@ export function RankedBreakdown({
   title: string;
   description: string;
   valueLabel: string;
-  rows: { id: string; label: string; value: PointValue; share: string; change?: string; href?: string }[];
+  rows: {
+    id: string;
+    label: string;
+    chartLabel?: string;
+    value: PointValue;
+    share: string;
+    change?: string;
+    href?: string;
+  }[];
   hasMore?: boolean;
   comparisonLabel?: string;
 }) {
@@ -28,7 +36,7 @@ export function RankedBreakdown({
         horizontal
         categoryHeader="Name"
         series={[{ key: "value", label: valueLabel, color: "var(--chart-1)" }]}
-        data={chart.data}
+        data={chart.data.map((point, index) => ({ ...point, axisLabel: rows[index]?.chartLabel ?? point.label }))}
         plottable={chart.plottable}
       />
       <DataTable

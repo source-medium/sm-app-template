@@ -19,6 +19,7 @@ import { getOverviewReport, type OverviewFilters, type OverviewReport } from "./
 import { parseTimeGrain } from "@/lib/time-grain";
 import { OverviewControls } from "./controls";
 import { OverviewSummary } from "./summary";
+import { OverviewRevenue } from "./revenue";
 import { OverviewPurchases } from "./purchases";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -154,7 +155,7 @@ function OverviewView({
       key: "revenue",
       label: "Net revenue",
       description:
-        "Gross order revenue minus discounts and refunds, summed across the selected sales channels for this store and period. Amounts use the warehouse's reporting currency.",
+        "Published net order revenue across the selected sales channels for this store and period. See Revenue and deductions for the signed components and any unreconciled difference. Amounts use the warehouse's reporting currency.",
     },
     {
       key: "orders",
@@ -245,6 +246,12 @@ function OverviewView({
           );
         })}
       </section>
+      <OverviewRevenue
+        current={data.revenue}
+        previous={compared?.revenue ?? null}
+        compare={showDelta}
+        currency={currency}
+      />
       <OverviewPurchases
         current={data.purchases}
         previous={report.comparison?.data?.purchases ?? null}

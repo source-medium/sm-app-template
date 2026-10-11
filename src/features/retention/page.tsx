@@ -126,9 +126,11 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                       <p data-metric-definition={metricLabel} className="max-w-prose text-sm text-muted-foreground">
                         {options.metric === "retention"
                           ? "Monthly retention is customers who purchased in that month divided by the original cohort size. Month 0 includes the acquisition purchase. A customer may return after skipping a month."
-                          : options.metric === "revenue"
-                            ? "LTR is cumulative net revenue divided by the original cohort size. It includes the acquisition month and all subsequent months through the displayed age."
-                            : "LTV here is cumulative gross profit divided by the original cohort size. It includes published product, shipping, fulfillment and payment costs; missing cost inputs can overstate profit."}
+                          : options.metric === "second"
+                            ? "Customers who have placed a second order by this calendar month of age / original cohort size. Cumulative, including second orders in Month 0; this is different from purchasing again in a particular month. Ages are calendar months, not rolling 30-day windows."
+                            : options.metric === "revenue"
+                              ? "LTR is cumulative net revenue divided by the original cohort size. It includes the acquisition month and all subsequent months through the displayed age."
+                              : "LTV here is cumulative gross profit divided by the original cohort size. It includes published product, shipping, fulfillment and payment costs; missing cost inputs can overstate profit."}
                       </p>
                       {rows.some((row) => row.channel === options.channel) ? (
                         <CohortMatrix

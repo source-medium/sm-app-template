@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChartCard } from "@/components/charts/chart-card";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const DATA = [
   { label: "Oct 1", orders: 10, orders__display: "10" },
@@ -35,6 +36,7 @@ describe("ChartCard", () => {
         series={[{ key: "orders", label: "Orders", color: "red" }]}
         data={DATA}
       />,
+      { wrapper: TooltipProvider },
     );
     expect(screen.getByRole("img", { name: "Orders by day chart" })).toBeInTheDocument();
     expect(
@@ -45,7 +47,13 @@ describe("ChartCard", () => {
     fireEvent.click(toggle);
     expect(screen.getByRole("table", { name: "Orders by day" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "No rows" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "View as chart" })).toHaveAttribute("aria-pressed", "true");
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    const chart = screen.getByRole("button", { name: "View as chart" });
+    expect(chart).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(chart);
+    expect(chart).toHaveAttribute("aria-pressed", "true");
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("img", { name: "Orders by day chart" })).toBeInTheDocument();
   });
 
   it("opens on the table when a value cannot be plotted exactly", () => {
@@ -58,6 +66,7 @@ describe("ChartCard", () => {
         series={[{ key: "orders", label: "Orders", color: "red" }]}
         data={DATA}
       />,
+      { wrapper: TooltipProvider },
     );
     expect(screen.getByRole("table", { name: "Sessions" })).toBeInTheDocument();
     expect(screen.getByText(/too large to plot exactly/)).toBeInTheDocument();

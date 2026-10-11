@@ -1,6 +1,27 @@
 import { expect, test } from "@playwright/test";
+test("overview: revenue detail is opt-in and preserves signed deductions and comparisons", async ({ page }) => {
+  await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-28&compare=previous");
+  const revenue = page.getByRole("table", { name: "Revenue and deductions", exact: true });
+  await expect(revenue).toBeHidden();
+  await expect(page.getByRole("region", { name: "Acquisition economics", exact: true })).toHaveCount(0);
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Revenue and deductions$/ })
+    .click();
+  await expect(revenue).toBeVisible();
+  await expect(revenue.getByRole("row", { name: /Discounts/ })).toContainText("-");
+  await expect(revenue.getByRole("columnheader", { name: "Change vs comparison", exact: true })).toBeVisible();
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Revenue and deductions$/ })
+    .click();
+  await expect(revenue).toBeHidden();
+  await page.getByLabel("Sales channel", { exact: true }).selectOption("Online DTC");
+  await expect(page).toHaveURL(/sales_channel=Online/);
+  await expect(page.getByRole("region", { name: "Acquisition economics", exact: true })).toHaveCount(0);
+});
 import { appConfig } from "@/app.config";
-import { expectNoSeriousA11yViolations, expectTextContained } from "../../../e2e/helpers";
+import { expectNoSeriousA11yViolations, expectTextContained, watchConsole } from "../../../e2e/helpers";
 
 test("overview: full money values and comparison text stay inside their cards", async ({ page }) => {
   await page.goto("/overview");
@@ -150,7 +171,8 @@ test("overview: chart labels and lines remain readable in both themes", async ({
   const chart = page.getByRole("img", { name: "Net revenue by day chart", exact: true });
   await expect(chart.locator(".recharts-line-curve").first()).toBeVisible();
   for (const theme of ["light", "dark"]) {
-    await page.getByLabel("Appearance").selectOption(theme);
+    await page.getByRole("button", { name: /^Appearance:/ }).click();
+    await page.getByRole("menuitemradio", { name: theme === "light" ? "Light" : "Dark", exact: true }).click();
     const contrast = await chart.evaluate((element) => {
       function luminance(color: string) {
         const [r, g, b] = (color.match(/[\d.]+/g) ?? []).map((channel) => {
@@ -285,13 +307,13 @@ test("overview: the first KPI and full-width chart notes are readable on a phone
 test("overview: the agent prompt identifies a KPI and an invalid date state", async ({ page }) => {
   await page.goto("/overview");
   await page.locator('[data-agent-target="Net revenue"]').waitFor();
-  await page.getByRole("button", { name: "Ask a coding agent" }).click();
+  await page.getByRole("button", { name: "Vibe code" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Target", { exact: true }).selectOption({ label: "Net revenue (KPI)" });
   await expect(dialog.getByLabel("Prompt", { exact: true })).toHaveValue(/Component: "KpiCard"/);
   await page.keyboard.press("Escape");
   await page.goto("/overview?from=invalid&to=invalid");
-  await page.getByRole("button", { name: "Ask a coding agent" }).click();
+  await page.getByRole("button", { name: "Vibe code" }).click();
   const prompt = await page.getByRole("dialog").getByLabel("Prompt", { exact: true }).inputValue();
   expect(prompt).toContain("Report not loaded: Choose a valid start and end date.");
   expect(prompt).not.toContain("from=");
@@ -325,4 +347,50 @@ test("overview: the report form stays in place when the first filter applies", a
   await page.getByLabel("Summary rows", { exact: true }).selectOption("week");
   await expect(page).toHaveURL(/store=sample-store-a.*grain=week|grain=week.*store=sample-store-a/);
   expect(await form?.evaluate((node) => node.isConnected)).toBe(true);
+});
+
+test("overview: Vibe code picks an element without activating it and supports keyboard selection and cancellation", async ({
+  page,
+}) => {
+  const problems = watchConsole(page);
+  await page.goto("/overview");
+  const chart = page.locator('main [data-agent-component="ChartCard"]').first();
+  await expect(chart).toBeVisible();
+  const chartLabel = await chart.getAttribute("data-agent-target");
+  await page.getByRole("button", { name: "Vibe code" }).click();
+  const dialog = page.getByRole("dialog", { name: "Vibe code" });
+  await dialog.getByLabel("Your request").fill("Make this easier to read.");
+  await dialog.getByRole("button", { name: "Pick an element" }).click();
+  await expect(dialog).toBeHidden();
+  const banner = page.getByRole("region", { name: "Pick a report element" });
+  await expect(banner).toBeVisible();
+  await chart.getByRole("button", { name: "View as table" }).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel("Prompt")).toContainText(`Target: "${chartLabel} (Chart) · View as table"`);
+  await expect(dialog.getByLabel("Your request")).toHaveValue("Make this easier to read.");
+  await expect(dialog.getByLabel("Your request")).toBeFocused();
+  await expect(chart.getByRole("button", { name: "View as chart", includeHidden: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await dialog.getByRole("button", { name: "Pick an element" }).click();
+  await expect(banner.getByRole("button", { name: "Cancel" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: /^Select .+/ })).toBeFocused();
+  const focusedTarget = (await page.getByRole("button", { name: /^Select .+/ }).getAttribute("aria-label")) ?? "";
+  await page.mouse.move(1, 1);
+  await expect(page.getByRole("button", { name: focusedTarget })).toBeFocused();
+  await expect(page.getByRole("button", { name: focusedTarget })).toBeVisible();
+  await expectNoSeriousA11yViolations(page);
+  await page.keyboard.press("Enter");
+  await expect(dialog).toBeVisible();
+  const prompt = await dialog.getByLabel("Prompt").inputValue();
+  expect(prompt).toContain(`Target: ${JSON.stringify(focusedTarget.replace(/^Select /, ""))}`);
+  await dialog.getByRole("button", { name: "Pick an element" }).click();
+  await page.keyboard.press("Escape");
+  await expect(dialog.getByLabel("Prompt")).toHaveValue(prompt);
+  await expect(dialog.getByLabel("Your request")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Vibe code" })).toBeFocused();
+  expect(problems).toEqual([]);
 });

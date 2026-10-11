@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { appConfig } from "@/app.config";
 import { Download } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { ChartCard } from "@/components/charts/chart-card";
@@ -10,14 +11,19 @@ import { EmptyState, LoadingState } from "@/components/patterns/data-states";
 import { DataTable } from "@/components/patterns/data-table";
 import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
+import { AdNameFilter } from "@/components/patterns/ad-name-filter";
+import { AdNameMatches } from "@/components/patterns/ad-name-matches";
+import { parseAdNameFilters, serializeAdNameFilters } from "@/lib/ad-name-filters";
 import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber } from "@/lib/data/decimal";
+import { parseTimeGrain, periodStart, periodRange, TIME_GRAINS } from "@/lib/time-grain";
 import { datesInRange, parseChoice, withParams, type SearchParams } from "@/lib/filters";
 import {
   EMPTY_VALUE,
   formatCount,
   formatDay,
+  formatDate,
   formatMeasure,
   formatMoney,
   formatMoneyIn,
@@ -30,6 +36,7 @@ import {
   getSpendBreakdown,
   breakdownDimension,
   getPaidMarketing,
+  getPaidNames,
   paidChannel,
   campaignRatios,
   type PaidMarketingData,
@@ -47,12 +54,17 @@ const METRIC_LABELS: Record<PaidMetric, string> = {
   impressions: "Impressions",
   clicks: "Clicks",
   conversions: "Platform-reported conversions",
+  revenue: "Platform-reported revenue",
+  roas: "Platform ROAS",
+  cpo: "Cost / conversion",
 };
 
 export default async function PaidMarketingPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const metric = parseChoice(params, "metric", PAID_METRICS, "spend");
   const channel = paidChannel(params);
+  const names = parseAdNameFilters(params);
+  const nameKey = serializeAdNameFilters(names.rules);
 
   return (
     <ReportPage
@@ -67,57 +79,96 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
       description="Spend and delivery by channel and campaign for one store."
       pathname={PATHNAME}
       params={params}
-      agentFilters={{ channel, metric, breakdown: breakdownDimension(params) }}
+      agentFilters={{
+        channel,
+        metric,
+        grain: parseTimeGrain(params),
+        breakdown: breakdownDimension(params),
+        names: nameKey,
+      }}
       comparisons
+      agentOmissions={names.error ? ["Invalid name filters prevented this report from loading."] : []}
       comparisonLabel="Compare spend breakdown with"
     >
       {({ filters, comparison, params: applied, timeZone, currency }) => {
-        const paidFilters: PaidMarketingFilters = { ...filters, channel };
+        const paidFilters: PaidMarketingFilters = { ...filters, channel, names: names.rules };
         return (
           <>
-            <Suspense
-              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
-              fallback={<LoadingState variant="chart" label="Loading paid marketing" />}
-            >
-              <DataRegion
-                timestamp={timeZone}
-                load={() => getPaidMarketing(paidFilters)}
-                isEmpty={(data) => data.channelDays.length === 0}
-                emptyMessage="This store has no ad delivery in the selected dates."
-              >
-                {(data) => (
-                  <PaidMarketingView
-                    data={data}
-                    filters={paidFilters}
-                    metric={metric}
-                    params={applied}
-                    currency={currency}
-                  />
+            <AdNameFilter
+              pathname={PATHNAME}
+              params={{ ...applied, ...filters.range }}
+              rules={names.rules}
+              error={names.error}
+            />
+            {!names.error && (
+              <>
+                {names.rules.length > 0 && (
+                  <details>
+                    <summary className="min-h-9 w-fit cursor-pointer rounded-sm py-2 text-sm text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11">
+                      Matching names
+                    </summary>
+                    <div className="pt-3">
+                      <Suspense
+                        key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${nameKey}`}
+                        fallback={<LoadingState variant="control" label="Loading matching names" />}
+                      >
+                        <DataRegion
+                          timestamp={false}
+                          load={() => getPaidNames(paidFilters)}
+                          isEmpty={(data) => data.rows.length === 0}
+                          emptyMessage="No names match these filters. Edit or clear a name filter to try again."
+                        >
+                          {(data) => <AdNameMatches data={data} rules={names.rules} />}
+                        </DataRegion>
+                      </Suspense>
+                    </div>
+                  </details>
                 )}
-              </DataRegion>
-            </Suspense>
-            <Suspense
-              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${comparison?.mode}|${breakdownDimension(params)}`}
-              fallback={<LoadingState variant="chart" label="Loading spend breakdown" />}
-            >
-              <DataRegion
-                timestamp={timeZone}
-                load={() => getSpendBreakdown(paidFilters, breakdownDimension(params), comparison?.range ?? null)}
-                isEmpty={(data) => data.rows.length === 0}
-                emptyMessage="No spend rows match these filters."
-              >
-                {(data) => (
-                  <SpendBreakdownView
-                    data={data}
-                    filters={paidFilters}
-                    dimension={breakdownDimension(params)}
-                    comparison={comparison}
-                    params={applied}
-                    currency={currency}
-                  />
-                )}
-              </DataRegion>
-            </Suspense>
+                <Suspense
+                  key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${nameKey}`}
+                  fallback={<LoadingState variant="chart" label="Loading paid marketing" />}
+                >
+                  <DataRegion
+                    timestamp={timeZone}
+                    load={() => getPaidMarketing(paidFilters)}
+                    isEmpty={() => false}
+                    emptyMessage="This store has no ad delivery in the selected dates."
+                  >
+                    {(data) => (
+                      <PaidMarketingView
+                        data={data}
+                        filters={paidFilters}
+                        metric={metric}
+                        params={applied}
+                        currency={currency}
+                      />
+                    )}
+                  </DataRegion>
+                </Suspense>
+                <Suspense
+                  key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${comparison?.mode}|${breakdownDimension(params)}|${nameKey}`}
+                  fallback={<LoadingState variant="chart" label="Loading spend breakdown" />}
+                >
+                  <DataRegion
+                    timestamp={timeZone}
+                    load={() => getSpendBreakdown(paidFilters, breakdownDimension(params), comparison?.range ?? null)}
+                    isEmpty={(data) => data.rows.length === 0}
+                    emptyMessage="No spend rows match these filters."
+                  >
+                    {(data) => (
+                      <SpendBreakdownView
+                        data={data}
+                        filters={paidFilters}
+                        dimension={breakdownDimension(params)}
+                        comparison={comparison}
+                        params={applied}
+                        currency={currency}
+                      />
+                    )}
+                  </DataRegion>
+                </Suspense>
+              </>
+            )}
           </>
         );
       }}
@@ -125,7 +176,17 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
   );
 }
 
-function point(value: MetricValue, currency: string | null): PointValue {
+function point(value: MetricValue, currency: string | null, metric: PaidMetric): PointValue {
+  if (metric === "roas")
+    return {
+      value: typeof value === "number" ? value : null,
+      display: formatMultiple(typeof value === "number" ? value : null),
+    };
+  if (metric === "revenue" || metric === "cpo")
+    return {
+      value: typeof value === "number" ? value : null,
+      display: formatMoney(typeof value === "number" ? value : null, currency),
+    };
   if (typeof value === "string") return { value: decimalToNumber(value), display: formatMoney(value, currency) };
   if (typeof value === "number") return { value, display: formatMeasure(value) };
   return { value, display: value === null ? EMPTY_VALUE : formatCount(value) };
@@ -145,18 +206,25 @@ function PaidMarketingView({
   currency: string | null;
 }) {
   const money = formatMoneyIn(currency);
-  const { series, byDate, channels, folded } = channelChart(data.channelDays, metric, filters.channel);
+  const hasCreatives = appConfig.nav.some((item) => item.href === "/creatives");
+  const grain = parseTimeGrain(params);
+  const { series, byDate, channels, folded } = channelChart(data.channelDays, metric, filters.channel, grain);
   const chart = buildChartData(
-    datesInRange(filters.range).map((date) => {
+    [...new Set(datesInRange(filters.range).map((date) => periodStart(date, grain)))].map((date) => {
       const values: Record<string, PointValue> = {};
-      for (const item of series) values[item.key] = point(byDate.get(date)?.[item.key] ?? null, currency);
-      return { label: formatDay(date), values };
+      for (const item of series) values[item.key] = point(byDate.get(date)?.[item.key] ?? null, currency, metric);
+      const range = periodRange(date, grain, filters.range);
+      return {
+        label: grain === "day" ? formatDay(date) : `${formatDate(range.from)} – ${formatDate(range.to)}`,
+        values,
+      };
     }),
   );
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap gap-4">
+        <SelectFilter name="grain" label="Trend interval" value={grain} options={[...TIME_GRAINS]} />
         <SelectFilter
           name="metric"
           label="Measure"
@@ -171,9 +239,15 @@ function PaidMarketingView({
           channels={channels}
         />
       </div>
-      {filters.channel && !data.channelDays.some((day) => day.channel === filters.channel) ? (
+      {!data.channelDays.some((day) => !filters.channel || day.channel === filters.channel) ? (
         <div className="flex flex-col items-start gap-3">
-          <EmptyState message="No ad delivery matches this channel and date range." />
+          <EmptyState
+            message={
+              filters.names?.length
+                ? "No ad delivery matches these filters. Try editing or clearing a filter."
+                : "No ad delivery matches this channel and date range."
+            }
+          />
           <Link
             className={buttonVariants({ variant: "outline", size: "sm" })}
             href={withParams(PATHNAME, params, { channel: null })}
@@ -183,6 +257,19 @@ function PaidMarketingView({
         </div>
       ) : (
         <>
+          {(metric === "roas" || metric === "cpo" || metric === "revenue" || metric === "conversions") && (
+            <p className="max-w-prose text-sm text-muted-foreground">
+              Platform attribution can overlap across channels. ROAS is attributed revenue / spend; cost per conversion
+              is spend / platform conversions. Ratios use summed inputs within each interval, including Other. Missing
+              or zero denominators stay unavailable.
+            </p>
+          )}
+          {grain !== "day" && (
+            <p className="text-sm text-muted-foreground">
+              Calendar {grain === "week" ? "weeks start Monday" : "months"}. Boundary intervals include only the
+              selected dates; missing observations are not filled with zeros.
+            </p>
+          )}
           <ChartCard
             title={`${METRIC_LABELS[metric]} by channel over time`}
             description={
@@ -205,7 +292,12 @@ function PaidMarketingView({
                 href={withParams(
                   `${PATHNAME}/export`,
                   {},
-                  { store: filters.storeId, ...filters.range, channel: filters.channel },
+                  {
+                    store: filters.storeId,
+                    ...filters.range,
+                    channel: filters.channel,
+                    names: serializeAdNameFilters(filters.names ?? []),
+                  },
                 )}
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
@@ -214,7 +306,8 @@ function PaidMarketingView({
             </div>
             <p className="text-xs text-muted-foreground">
               CSV includes all loaded campaigns, up to {MAX_CAMPAIGNS}, with raw values and a partial-results flag.
-              Spend without a campaign ID appears as (none) in the spend breakdown by campaign.
+              {hasCreatives && " Select a campaign to inspect its creatives."} Spend without a campaign ID appears as
+              (none) in the spend breakdown by campaign.
             </p>
             <DataTable
               caption="Campaigns by spend"
@@ -238,7 +331,23 @@ function PaidMarketingView({
                 return {
                   id: JSON.stringify([campaign.channel, campaign.campaignId]),
                   cells: {
-                    campaign: { display: campaign.campaignName ?? campaign.campaignId },
+                    campaign: {
+                      display: campaign.campaignName ?? campaign.campaignId,
+                      href: hasCreatives
+                        ? withParams(
+                            "/creatives",
+                            {},
+                            {
+                              store: filters.storeId,
+                              ...filters.range,
+                              channel: campaign.channel ?? "(none)",
+                              campaign: campaign.campaignId,
+                              view: "returns",
+                              names: serializeAdNameFilters(filters.names ?? []),
+                            },
+                          )
+                        : undefined,
+                    },
                     channel: { display: campaign.channel ?? EMPTY_VALUE },
                     spend: { display: money(campaign.spend), sort: spend },
                     impressions: { display: formatCount(campaign.impressions), sort: impressions },

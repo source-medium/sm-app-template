@@ -27,6 +27,9 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
       WITH daily AS (
         SELECT
           date,
+          SUM(order_gross_revenue) AS gross,
+          SUM(order_discounts) AS discounts,
+          SUM(order_refunds) AS refunds,
           SUM(order_net_revenue) AS net_revenue,
           SUM(order_count) AS order_count,
           SUM(website_sessions) AS website_sessions,
@@ -55,6 +58,9 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
         SUM(website_sessions) OVER period AS period_website_sessions,
         SUM(ad_clicks) OVER period AS period_ad_clicks,
         SUM(ad_spend) OVER period AS period_ad_spend,
+        SUM(gross) OVER () AS total_gross,
+        SUM(discounts) OVER () AS total_discounts,
+        SUM(refunds) OVER () AS total_refunds,
         SUM(net_revenue) OVER () AS total_net_revenue,
         SUM(order_count) OVER () AS total_order_count,
         SUM(website_sessions) OVER () AS total_website_sessions,

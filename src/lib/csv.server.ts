@@ -40,7 +40,7 @@ export type ExportScope = {
   storeId: string;
   range: DateRange;
   mode: ViewerAccess["mode"];
-  /** The selected store's currency, or the app.config.ts fallback when the store has none. */
+  /** The verified reporting currency configured for this store, or null when unverified. */
   currency: string | null;
 };
 

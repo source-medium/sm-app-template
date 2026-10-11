@@ -26,6 +26,9 @@ export type OverviewSourceRow = {
   sm_sub_channel: string;
   date: string;
   order_net_revenue_cents: bigint;
+  order_gross_revenue_cents: bigint | null;
+  order_discounts_cents: bigint | null;
+  order_refunds_cents: bigint | null;
   order_count: number;
   website_sessions: bigint;
   ad_clicks: bigint;
@@ -98,6 +101,9 @@ export function sampleOverviewSource(storeId: string, range: DateRange, today?: 
         rows.push({
           ...base,
           order_net_revenue_cents: 0n,
+          order_gross_revenue_cents: 0n,
+          order_discounts_cents: 0n,
+          order_refunds_cents: 0n,
           order_count: 0,
           website_sessions: 0n,
           ad_clicks: 0n,
@@ -130,6 +136,10 @@ export function sampleOverviewSource(storeId: string, range: DateRange, today?: 
       const firstRevenue = (row.order_net_revenue_cents * BigInt(Math.round((0.4 + acquisition() * 0.2) * 100))) / 100n;
       rows.push({
         ...row,
+        order_gross_revenue_cents:
+          row.order_net_revenue_cents + row.order_net_revenue_cents / 10n + row.order_net_revenue_cents / 50n,
+        order_discounts_cents: -(row.order_net_revenue_cents / 10n),
+        order_refunds_cents: -(row.order_net_revenue_cents / 50n),
         new_customer_order_net_revenue_cents: firstRevenue,
         new_customer_order_count: firstOrders,
         repeat_customer_order_net_revenue_cents: row.order_net_revenue_cents - firstRevenue,
@@ -161,6 +171,9 @@ export function aggregateOverviewWire(
   channel: string | null = null,
 ) {
   const byDate = new Map<string, Sums>();
+  let gross: bigint | null = null;
+  let discounts: bigint | null = null;
+  let refunds: bigint | null = null;
   let firstRevenue: bigint | null = null;
   let firstOrders: number | null = null;
   let repeatRevenue: bigint | null = null;
@@ -173,6 +186,9 @@ export function aggregateOverviewWire(
       (channel && row.sm_channel !== channel)
     )
       continue;
+    if (row.order_gross_revenue_cents !== null) gross = (gross ?? 0n) + row.order_gross_revenue_cents;
+    if (row.order_discounts_cents !== null) discounts = (discounts ?? 0n) + row.order_discounts_cents;
+    if (row.order_refunds_cents !== null) refunds = (refunds ?? 0n) + row.order_refunds_cents;
     // Match SQL SUM: ignore nulls, but preserve an entirely missing measure.
     if (row.new_customer_order_net_revenue_cents !== null)
       firstRevenue = (firstRevenue ?? 0n) + row.new_customer_order_net_revenue_cents;
@@ -218,6 +234,9 @@ export function aggregateOverviewWire(
       period_website_sessions: String(total.sessions),
       period_ad_clicks: String(total.clicks),
       period_ad_spend: money(total.spend),
+      total_gross: gross === null ? null : money(gross),
+      total_discounts: discounts === null ? null : money(discounts),
+      total_refunds: refunds === null ? null : money(refunds),
       total_net_revenue: money(totals.revenue),
       total_order_count: String(totals.orders),
       total_website_sessions: String(totals.sessions),

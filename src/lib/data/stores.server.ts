@@ -1,7 +1,7 @@
 /**
  * The store picker's roster, shared by every view's filter bar, and the store
- * time zone, and currency each report or export uses. Labels come from dim_stores, with
- * optional app.config.ts overrides. There is no cross-store total anywhere in
+ * time zone each report or export uses. Names come from dim_stores; reporting
+ * currency comes from verified app.config.ts settings. There is no cross-store total anywhere in
  * the example.
  */
 import "server-only";
@@ -16,7 +16,8 @@ import { WarehouseError } from "./warehouse-error";
 /**
  * `timeZone` is dim_stores.store_timezone, when this runtime knows that zone.
  * `currency` is dim_stores.store_currency_code, trimmed and uppercased, when
- * Intl accepts it. A missing or unrecognized code is null.
+ * Intl accepts it. This is nominal store metadata, not a report currency.
+ * A missing or unrecognized code is null.
  */
 export type StoreOption = {
   id: string;
@@ -27,7 +28,7 @@ export type StoreOption = {
 };
 
 /** An ISO code this runtime can use to label money, or null. */
-function publishedCurrency(code: string | null): string | null {
+function currencyCode(code: string | null | undefined): string | null {
   const normalized = code?.trim().toUpperCase() ?? "";
   return normalized !== "" && isCurrency(normalized) ? normalized : null;
 }
@@ -47,7 +48,7 @@ export const loadStores = cache(async (): Promise<StoreOption[]> => {
       store.sm_store_id,
     brand: store.brand_name?.trim() || null,
     timeZone: store.store_timezone && isTimeZone(store.store_timezone) ? store.store_timezone : null,
-    currency: publishedCurrency(store.store_currency_code),
+    currency: currencyCode(store.store_currency_code),
   }));
 });
 
@@ -56,8 +57,8 @@ export const loadStores = cache(async (): Promise<StoreOption[]> => {
  * configuration, not viewer data. Reusing them for an hour lets a report whose
  * link names its store start its queries without waiting for the store list,
  * while a changed zone, currency, or daylight-saving change in an order offset
- * still applies within the hour. Currency stays null here when the store has
- * no code; the report applies the app.config.ts fallback when it reads the facts.
+ * still applies within the hour. The live report currency is resolved from
+ * app.config.ts separately, so nominal store metadata never chooses its label.
  */
 const knownStores = new Map<string, { zone: string; currency: string | null; until: number }>();
 const REMEMBER_MS = 60 * 60 * 1000;
@@ -138,7 +139,19 @@ export async function resolveReportStore(supplied: string | undefined): Promise<
     const facts = await storeFacts(storeId, stores ?? undefined);
     return facts === null
       ? { status: "no_date", storeId, error: null }
-      : { status: "ready", storeId, timeZone: facts.zone, currency: facts.currency ?? appConfig.currency };
+      : {
+          status: "ready",
+          storeId,
+          timeZone: facts.zone,
+          currency:
+            access.mode === "sample"
+              ? facts.currency
+              : currencyCode(
+                  Object.hasOwn(appConfig.reportingCurrencies, storeId)
+                    ? appConfig.reportingCurrencies[storeId]
+                    : appConfig.currency,
+                ),
+        };
   } catch (error) {
     if (!(error instanceof WarehouseError)) throw error;
     return { status: "no_date", storeId, error };

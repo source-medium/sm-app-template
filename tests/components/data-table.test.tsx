@@ -12,6 +12,38 @@ const columns = [
 ];
 
 describe("DataTable", () => {
+  it("shows the visible range as the reader moves between pages", () => {
+    render(<DataTable caption="Things" columns={columns} rows={rows} pageSize={1} />);
+    expect(screen.getByText("1–1 of 2 rows")).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Alpha" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("2–2 of 2 rows")).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Beta" })).toBeInTheDocument();
+    expect(screen.queryByRole("cell", { name: "Alpha" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+    expect(screen.getByText("1–1 of 2 rows")).toBeInTheDocument();
+  });
+
+  it("keeps missing numeric values last in either sort direction", () => {
+    render(
+      <DataTable
+        caption="Things"
+        columns={columns}
+        rows={[...rows, { id: "missing", cells: { name: { display: "Missing" }, n: { display: "—", sort: null } } }]}
+      />,
+    );
+    const names = () =>
+      screen
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => within(row).getAllByRole("cell")[0]?.textContent);
+    fireEvent.click(screen.getByRole("button", { name: /Count/ }));
+    expect(names()).toEqual(["Beta", "Alpha", "Missing"]);
+    fireEvent.click(screen.getByRole("button", { name: /Count/ }));
+    expect(names()).toEqual(["Alpha", "Beta", "Missing"]);
+  });
   it("says so when the query helper reported truncation", () => {
     render(<DataTable caption="Things" columns={columns} rows={rows} truncated />);
     expect(screen.getByText(/Showing the first 2 rows; more rows matched/)).toBeInTheDocument();

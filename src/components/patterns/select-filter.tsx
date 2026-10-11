@@ -22,7 +22,7 @@ export function SelectFilter({
 }) {
   const id = useId();
   return (
-    <div className="flex min-w-0 items-end gap-2">
+    <div data-agent-target={label} data-agent-component="SelectFilter" className="flex min-w-0 items-end gap-2">
       <div className="flex min-w-0 flex-col gap-1.5">
         <label htmlFor={id} className="text-xs font-medium text-muted-foreground">
           {label}

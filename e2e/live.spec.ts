@@ -110,6 +110,22 @@ test("Paid marketing can rank campaigns against the previous year", async ({ pag
   expect(problems).toEqual([]);
 });
 
+test("Products loads live cost coverage and refund denominators for the selected scope", async ({ page }) => {
+  test.skip(!appConfig.nav.some((item) => item.href === "/products"), "no Products view");
+  const problems = watchConsole(page);
+  await page.goto("/products?metric=profit");
+  await expectLiveReport(page);
+  await expect(page.getByRole("region", { name: "Product cost coverage", exact: true })).toContainText(
+    "valid-order product lines",
+  );
+  await page.getByLabel("Rank by", { exact: true }).selectOption("refunds");
+  await expectLiveReport(page);
+  await expect(page.getByRole("region", { name: "Product refund rate", exact: true })).toContainText(
+    "refunded units /",
+  );
+  expect(problems).toEqual([]);
+});
+
 test("Products variants and retention cohorts render data or an explicit empty state", async ({ page }) => {
   if (appConfig.nav.some((item) => item.href === "/products")) {
     await page.goto("/products?dimension=variant&metric=units&compare=year");
@@ -191,4 +207,45 @@ test("channel controls apply available channels and retention renders its publis
         .or(emptyRetention(page)),
     ).toBeVisible();
   }
+});
+
+test("advertising name filters query live names, comparisons, exports and creative scope", async ({
+  page,
+  request,
+}) => {
+  test.skip(!appConfig.nav.some((item) => item.href === "/paid-marketing"), "No Paid marketing view");
+  const problems = watchConsole(page);
+  await page.goto("/paid-marketing");
+  await expectLiveReport(page);
+  const campaignTable = page.getByRole("table", { name: "Campaigns by spend" });
+  test.skip(!(await campaignTable.isVisible()), "No campaign rows in the selected period");
+  const name = (await campaignTable.locator("tbody tr td").first().innerText()).trim();
+  if (!name || name === "(unnamed)") throw new Error("First campaign has no name to exercise the name filter");
+  const names = JSON.stringify([{ field: "campaign", operator: "equals", values: [name] }]);
+  const url = new URL(page.url());
+  url.searchParams.set("names", names);
+  url.searchParams.set("breakdown", "campaign");
+  url.searchParams.set("compare", "year");
+  await page.goto(url.href);
+  await expectLiveReport(page);
+  await page.getByText("Matching names", { exact: true }).click();
+  const inspection = page.getByRole("table", { name: "Matching campaign and ad names" });
+  await expect(inspection).toBeVisible();
+  // Check predicates against real returned names without retaining warehouse values in test output.
+  const matched = await inspection.locator("tbody tr td:first-child").allTextContents();
+  expect(matched.length > 0 && matched.every((value) => value.toLowerCase() === name.toLowerCase())).toBe(true);
+  const href = await page.getByRole("link", { name: "Download CSV" }).getAttribute("href");
+  if (!href) throw new Error("Missing filtered CSV");
+  const response = await request.get(href);
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toContain("text/csv");
+  expect((await response.text()).includes('"name_filters"')).toBe(true);
+  if (appConfig.nav.some((item) => item.href === "/creatives")) {
+    await campaignTable.getByRole("link").first().click();
+    await expectLiveReport(page);
+    expect(new URL(page.url()).searchParams.get("names") === names).toBe(true);
+    await page.getByText("Matching names", { exact: true }).click();
+    await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
+  }
+  expect(problems).toEqual([]);
 });

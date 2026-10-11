@@ -1,13 +1,17 @@
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits, sumDecimals, toUnits } from "@/lib/data/decimal";
-import { datesInRange, latestDate, type DateRange } from "@/lib/filters";
+import { datesInRange, latestDate, type ReportFilters, type DateRange } from "@/lib/filters";
 import { seededRandom, randomInt } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import type { ProductFilters, ProductsData } from "./queries";
-import { MAX_PRODUCTS, PRODUCTS_RELATION, ProductRow } from "./rows";
+import { MAX_PRODUCTS, PRODUCTS_RELATION, ProductRow, type ProductCoverage } from "./rows";
+
+const MEASURES = ["revenue", "units", "profit", "refunds", "refunded_units"] as const;
+type Measure = (typeof MEASURES)[number];
 
 export type ProductSource = {
   storeId: string;
+  orderLineId: string | null;
   date: string;
   valid: boolean;
   channel: string | null;
@@ -19,6 +23,10 @@ export type ProductSource = {
   revenue: string | null;
   units: string | null;
   profit: string | null;
+  refunds: string | null;
+  refunded_units: string | null;
+  ordered_units: string | null;
+  cost: string | null;
 };
 const TITLES = [
   "Daily blend",
@@ -47,6 +55,7 @@ export function sampleProductSource(storeId: string, range: DateRange): ProductS
         const revenue = Math.round(units * (1200 + index * 185 + v * 900));
         return {
           storeId,
+          orderLineId: `${storeId}|${date}|p${index + 1}-v${v + 1}`,
           date,
           valid: true,
           channel: index % 3 === 0 ? "Amazon" : "Online DTC",
@@ -57,7 +66,11 @@ export function sampleProductSource(storeId: string, range: DateRange): ProductS
           variant,
           revenue: money(revenue),
           units: String(units),
-          profit: money(Math.round(revenue * 0.58)),
+          profit: index === 5 ? null : index === 8 ? money(revenue) : money(Math.round(revenue * 0.58)),
+          refunds: money(index % 4 === 0 ? -1200 : 0),
+          refunded_units: index % 4 === 0 ? "-1" : "0",
+          ordered_units: String(units + (index % 4 === 0 ? 1 : 0)),
+          cost: index === 5 ? null : index === 8 ? "0" : money(Math.round(revenue * 0.42)),
         };
       }),
     ),
@@ -90,20 +103,30 @@ export function aggregateProducts(
     groups.set(key, group);
   }
   const rows = [...groups].map(([key, group]) => {
-    const first = group.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
+    const label = (row: ProductSource) =>
+      filters.dimension === "product" ? row.title : `${row.title} / ${row.variant}`;
+    const first = group.slice().sort((a, b) => b.date.localeCompare(a.date) || label(b).localeCompare(label(a)))[0];
     if (!first) throw new Error("Product group must contain a row");
-    const sum = (metric: "revenue" | "units" | "profit", range: DateRange | null) =>
-      sumDecimals(group.filter((row) => inRange(row.date, range)).map((row) => row[metric]));
+    const sum = (metric: Measure, range: DateRange | null) =>
+      sumDecimals(
+        group
+          .filter((row) => inRange(row.date, range))
+          .map((row) => {
+            if (metric === "refunds" || metric === "refunded_units")
+              return row[metric] === null ? null : fromUnits(-toUnits(row[metric]));
+            return row[metric];
+          }),
+      );
     return {
       product_key: key,
-      label: filters.dimension === "product" ? first.title : `${first.title} / ${first.variant}`,
+      label: label(first),
       reference: `${first.source} / ${filters.dimension === "product" ? first.productId : first.variantId}`,
-      revenue: sum("revenue", filters.range),
-      units: sum("units", filters.range),
-      profit: sum("profit", filters.range),
-      previous_revenue: sum("revenue", baseline),
-      previous_units: sum("units", baseline),
-      previous_profit: sum("profit", baseline),
+      ...(Object.fromEntries(
+        MEASURES.flatMap((metric) => [
+          [metric, sum(metric, filters.range)],
+          [`previous_${metric}`, sum(metric, baseline)],
+        ]),
+      ) as Record<Measure | `previous_${Measure}`, string | null>),
     };
   });
   const latest = (range: DateRange | null) =>
@@ -112,12 +135,12 @@ export function aggregateProducts(
   const amounts = rows.flatMap((row) => (row[filters.metric] === null ? [] : [toUnits(row[filters.metric] as string)]));
   const minimum = amounts.length ? fromUnits(amounts.reduce((a, b) => (a < b ? a : b))) : null;
   const totals = {
-    total_revenue: sumDecimals(rows.map((row) => row.revenue)),
-    total_units: sumDecimals(rows.map((row) => row.units)),
-    total_profit: sumDecimals(rows.map((row) => row.profit)),
-    total_previous_revenue: sumDecimals(rows.map((row) => row.previous_revenue)),
-    total_previous_units: sumDecimals(rows.map((row) => row.previous_units)),
-    total_previous_profit: sumDecimals(rows.map((row) => row.previous_profit)),
+    ...Object.fromEntries(
+      MEASURES.flatMap((metric) => [
+        [`total_${metric}`, sumDecimals(rows.map((row) => row[metric]))],
+        [`total_previous_${metric}`, sumDecimals(rows.map((row) => row[`previous_${metric}`]))],
+      ]),
+    ),
   };
   rows.sort((a, b) => {
     const left = a[filters.metric],
@@ -145,4 +168,28 @@ export function sampleProducts(filters: ProductFilters, baseline: DateRange | nu
     filters,
     baseline,
   );
+}
+
+export function aggregateProductCoverage(
+  source: ProductSource[],
+  filters: ReportFilters & { channel?: string | null },
+): ProductCoverage {
+  const rows = source.filter(
+    (row) =>
+      row.storeId === filters.storeId &&
+      row.valid &&
+      row.date >= filters.range.from &&
+      row.date <= filters.range.to &&
+      (!filters.channel || (row.channel ?? "(none)") === filters.channel),
+  );
+  const productLines = rows.filter((row) => row.orderLineId !== null);
+  return {
+    lines: BigInt(productLines.length),
+    missing_cost_lines: BigInt(productLines.filter((row) => row.cost === null).length),
+    zero_cost_lines: BigInt(productLines.filter((row) => row.cost !== null && toUnits(row.cost) === 0n).length),
+    ordered_units: sumDecimals(rows.map((row) => row.ordered_units)),
+    refunded_units: sumDecimals(
+      rows.map((row) => (row.refunded_units === null ? null : fromUnits(-toUnits(row.refunded_units)))),
+    ),
+  };
 }

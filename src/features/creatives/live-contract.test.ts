@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { goLive, rowsResponse } from "../../../tests/helpers/live";
 
 const FIELDS = [
+  ...["revenue", "roas", "cpo"].map((name) => ({ name, type: "FLOAT" })),
+  { name: "ad_url", type: "STRING" },
   { name: "creative_id", type: "STRING" },
   { name: "title", type: "STRING" },
   { name: "body", type: "STRING" },
@@ -35,11 +37,43 @@ const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-09-
 type Submitted = { query: string; queryParameters: { name: string }[] };
 
 describe("creatives, live", () => {
+  it("applies literal name predicates before creative aggregation, with the same inspection scope", async () => {
+    const fake = await goLive({ submit: () => rowsResponse([], []) });
+    const { getCreatives, getCreativeNames } = await import("./queries");
+    const value = "[retargeting]%_' OR TRUE --";
+    const filters = {
+      ...FILTERS,
+      sort: "spend" as const,
+      channel: "Meta",
+      campaign: "cmp-1002",
+      names: [{ field: "campaign" as const, operator: "contains" as const, values: [value] }],
+    };
+    await getCreatives(filters);
+    await getCreativeNames(filters);
+    const calls = fake.calls.filter((call) => call.kind === "submit");
+    expect(calls).toHaveLength(2);
+    for (const call of calls) {
+      const query = call.body as Submitted;
+      expect(query.query).toContain("sm_store_id = @store_id");
+      expect(query.query).toContain("ad_creative_id IS NOT NULL");
+      expect(query.query).toContain("ad_campaign_id = @campaign");
+      expect(query.query).toContain("STRPOS(LOWER(ad_campaign_name), LOWER(@name_0_0)) > 0");
+      expect(query.query).not.toContain(value);
+      expect(query.queryParameters).toContainEqual({
+        name: "name_0_0",
+        parameterType: { type: "STRING" },
+        parameterValue: { value },
+      });
+    }
+    const query = (calls[0]?.body as Submitted).query;
+    expect(query.indexOf("@name_0_0")).toBeLessThan(query.indexOf("GROUP BY creative_id"));
+  });
   it("sorts by a column from the fixed map and takes each creative's latest image", async () => {
     const fake = await goLive({ submit: () => rowsResponse(FIELDS, [ROW]) });
     const { getCreatives } = await import("./queries");
     const channel = "Meta' OR TRUE --";
-    const data = await getCreatives({ ...FILTERS, sort: "ctr", channel });
+    const campaign = "campaign' OR TRUE --";
+    const data = await getCreatives({ ...FILTERS, sort: "ctr", channel, campaign });
     expect(data.creatives[0]).toMatchObject({
       creativeId: "cr1",
       imageUrl: "https://cdn.example.com/t.jpg",
@@ -52,6 +86,14 @@ describe("creatives, live", () => {
     expect(submit.query).toContain("GROUP BY creative_id, channel");
     expect(submit.query).toContain("(@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)");
     expect(submit.query).not.toContain(channel);
+    expect(submit.query).not.toContain(campaign);
+    expect(submit.query).toContain("SAFE_DIVIDE(SUM(ad_platform_reported_revenue), SUM(ad_spend)) AS roas");
+    expect(submit.query).toContain("SAFE_DIVIDE(SUM(ad_spend), SUM(ad_platform_reported_conversions)) AS cpo");
+    expect(submit.queryParameters).toContainEqual({
+      name: "campaign",
+      parameterType: { type: "STRING" },
+      parameterValue: { value: campaign },
+    });
     expect(submit.queryParameters).toContainEqual({
       name: "channel",
       parameterType: { type: "STRING" },
@@ -63,6 +105,7 @@ describe("creatives, live", () => {
       "start_date",
       "end_date",
       "channel",
+      "campaign",
       "limit",
     ]);
   });
@@ -137,4 +180,23 @@ it("lists channels before the creative cap and rejects a truncated roster", asyn
   expect(body.query).not.toContain("@channel");
   truncate = true;
   await expect(getCreativeChannels(FILTERS)).rejects.toMatchObject({ kind: "result_too_large" });
+});
+
+it("bounds matching-name inspection and guards its shared live read", async () => {
+  const fake = await goLive({
+    submit: () =>
+      rowsResponse(
+        ["campaign", "ad_group", "ad"].map((name) => ({ name, type: "STRING" })),
+        Array.from({ length: 51 }, (_, i) => ({ campaign: `Campaign ${i}`, ad_group: null, ad: "Ad" })),
+      ),
+  });
+  const { queryAdNameMatches } = await import("@/lib/data/ad-name-matches.server");
+  const result = await queryAdNameMatches(FILTERS, true);
+  expect(result.rows).toHaveLength(50);
+  expect(result.truncated).toBe(true);
+  expect(result.rows[0]).toEqual({ campaign: "Campaign 0", ad_group: null, ad: "Ad" });
+  vi.stubEnv("APP_STORE_ID", "allowed-store");
+  const before = fake.calls.length;
+  await expect(queryAdNameMatches(FILTERS, true)).rejects.toThrow("This store is not available in this app.");
+  expect(fake.calls).toHaveLength(before);
 });

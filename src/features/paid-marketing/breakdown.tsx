@@ -45,8 +45,14 @@ export function SpendBreakdownView({
         />
         {comparison && <ComparisonCaption comparison={comparison} issue={issue} />}
       </div>
+      {(dimension === "type" || dimension === "tactic") && (
+        <p className="text-sm text-muted-foreground">
+          Published campaign classifications. Unclassified rows appear as (none); types and tactics are not inferred
+          from campaign names.
+        </p>
+      )}
       <RankedBreakdown
-        title={`Spend by ${dimension}`}
+        title={`Spend by ${dimension === "type" || dimension === "tactic" ? `campaign ${dimension}` : dimension}`}
         valueLabel="Spend"
         description={`Spend in the selected period: ${formatMoney(total, currency)}. ${data.hasMore ? "Top 10 by spend. " : ""}Shares use all matching rows for this store, date range, and channel. Zero totals and negative spend have no share.`}
         comparisonLabel={compare ? "Change vs comparison" : undefined}

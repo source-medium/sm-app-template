@@ -4,6 +4,9 @@ import { goLive, rowsResponse } from "../../../tests/helpers/live";
 import type { ProductFilters } from "./queries";
 
 const fields = [
+  ...["refunds", "refunded_units"].flatMap((name) =>
+    ["", "previous_", "total_", "total_previous_"].map((prefix) => ({ name: prefix + name, type: "NUMERIC" })),
+  ),
   ...["product_key", "label", "reference"].map((name) => ({ name, type: "STRING" })),
   ...[
     "revenue",
@@ -59,6 +62,8 @@ it("guards, parameterizes and aggregates valid product lines before the limit, r
     periodSql("DATE(order_processed_at_local_datetime)").dateTimeRows("order_processed_at_local_datetime"),
   );
   expect(body.query).toContain("sm_product_variant_key");
+  expect(body.query).toContain("ORDER BY order_processed_at_local_datetime DESC, CONCAT(COALESCE(product_title");
+  expect(body.query).not.toContain("sm_order_line_key");
   expect(body.query).toContain("SUM(revenue) OVER () AS total_revenue");
   expect(body.query).toContain("ORDER BY units DESC NULLS LAST");
   expect(body.query).not.toContain(filters.storeId);
@@ -90,8 +95,10 @@ it("rejects unexpected truncation instead of publishing uncertain totals", async
 it("denies another store before either loader can query", async () => {
   const fake = await goLive({ submit: () => rowsResponse(fields, []) });
   vi.stubEnv("APP_STORE_ID", "allowed");
-  const { getProductChannels, getProducts } = await import("./queries");
-  const { queryProductChannels, queryProducts } = await import("./bigquery");
+  const { getProductCoverage, getProductChannels, getProducts } = await import("./queries");
+  const { queryProductCoverage, queryProductChannels, queryProducts } = await import("./bigquery");
+  await expect(getProductCoverage(filters)).rejects.toThrow("This store is not available");
+  await expect(queryProductCoverage(filters)).rejects.toThrow("This store is not available");
   await expect(getProducts(filters, null)).rejects.toThrow("This store is not available");
   await expect(queryProducts(filters, null)).rejects.toThrow("This store is not available");
   await expect(getProductChannels(filters)).rejects.toThrow("This store is not available");
@@ -123,4 +130,49 @@ it("scopes the complete channel roster to store/date and refuses a truncated pic
   expect(body.query).toContain("is_order_sm_valid = TRUE");
   truncate = true;
   await expect(getProductChannels(filters)).rejects.toMatchObject({ kind: "result_too_large" });
+});
+
+it("aggregates exact cost coverage for the full selected scope in a narrow independent query", async () => {
+  const fake = await goLive({
+    submit: () =>
+      rowsResponse(
+        [
+          ...["lines", "missing_cost_lines", "zero_cost_lines"].map((name) => ({ name, type: "INTEGER" })),
+          ...["ordered_units", "refunded_units"].map((name) => ({ name, type: "NUMERIC" })),
+        ],
+        [
+          {
+            lines: "9007199254740993",
+            missing_cost_lines: "2",
+            zero_cost_lines: "3",
+            ordered_units: "100.5",
+            refunded_units: "1.5",
+          },
+        ],
+      ),
+  });
+  const { getProductCoverage } = await import("./queries");
+  expect(await getProductCoverage(filters)).toEqual({
+    lines: 9007199254740993n,
+    missing_cost_lines: 2n,
+    zero_cost_lines: 3n,
+    ordered_units: "100.5",
+    refunded_units: "1.5",
+  });
+  const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string; queryParameters: unknown[] };
+  expect(body.query).toContain("sm_store_id = @store_id AND is_order_sm_valid = TRUE");
+  expect(body.query).toContain("COUNTIF(order_line_id IS NOT NULL) AS lines");
+  expect(body.query).toContain("COUNTIF(order_line_id IS NOT NULL AND order_line_product_cost IS NULL)");
+  expect(body.query).toContain("COUNTIF(order_line_id IS NOT NULL AND order_line_product_cost = 0)");
+  expect(body.query).toContain("SUM(order_line_quantity) AS ordered_units");
+  expect(body.query).toContain("-SUM(order_line_refund_quantity) AS refunded_units");
+  expect(body.query).not.toContain("WHERE order_line_id IS NOT NULL");
+  expect(body.query).not.toContain("product_title");
+  expect(body.query).not.toContain("GROUP BY");
+  expect(body.query).not.toContain(filters.channel);
+  expect(body.queryParameters).toContainEqual({
+    name: "channel",
+    parameterType: { type: "STRING" },
+    parameterValue: { value: filters.channel },
+  });
 });

@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { sumDecimals } from "@/lib/data/decimal";
-import { aggregateProducts, sampleProducts, type ProductSource } from "./sample";
+import { aggregateProducts, aggregateProductCoverage, sampleProducts, type ProductSource } from "./sample";
 import type { ProductFilters } from "./queries";
 
 const filters: ProductFilters = {
@@ -11,6 +11,7 @@ const filters: ProductFilters = {
 };
 const line: ProductSource = {
   storeId: filters.storeId,
+  orderLineId: "line-1",
   date: "2026-09-01",
   valid: true,
   channel: "Online DTC",
@@ -22,7 +23,31 @@ const line: ProductSource = {
   revenue: "0.1",
   units: "1.5",
   profit: "0.05",
+  refunds: "0",
+  refunded_units: "0",
+  ordered_units: "1.5",
+  cost: "0.05",
 };
+it("reverses signed refunds without masking reversals or mixing comparison periods", () => {
+  const rows = aggregateProducts(
+    [
+      { ...line, refunds: "-4.01", refunded_units: "-1", cost: null },
+      { ...line, refunds: "0.01", refunded_units: "0.5", cost: "0" },
+      { ...line, productId: "p2", refunds: "-10", cost: "2" },
+      { ...line, valid: false, refunds: "-999", cost: null },
+      { ...line, date: "2026-08-31", refunds: "-2", cost: null },
+    ],
+    { ...filters, metric: "refunds" },
+    { from: "2026-08-31", to: "2026-08-31" },
+  ).rows;
+  expect(rows[0]).toMatchObject({
+    refunds: "10",
+    total_refunds: "14",
+    total_refunded_units: "0.5",
+    total_previous_refunds: "2",
+  });
+  expect(rows[1]).toMatchObject({ refunds: "4" });
+});
 
 it("sums exact valid-order lines without merging duplicate titles, platforms, or variants", () => {
   const source = [
@@ -101,4 +126,22 @@ it("returns each period's latest date with valid lines, for comparison coverage"
   const data = aggregateProducts(source, filters, { from: "2026-08-30", to: "2026-08-31" });
   expect(data.rows[0]).toMatchObject({ latest_date: line.date, previous_latest_date: "2026-08-31" });
   expect(aggregateProducts(source, filters, null).rows[0]).toMatchObject({ previous_latest_date: null });
+});
+
+it("counts costs only on real lines while retaining summary adjustments in unit totals", () => {
+  expect(
+    aggregateProductCoverage(
+      [
+        { ...line, cost: null, refunded_units: "-1" },
+        { ...line, cost: "0" },
+        { ...line, orderLineId: null, cost: "0", ordered_units: "0", refunded_units: "-0.5" },
+        { ...line, orderLineId: null, cost: null, ordered_units: "0", refunded_units: "0" },
+        { ...line, valid: false, cost: null },
+        { ...line, channel: "Amazon", cost: null },
+        { ...line, date: "2026-08-31", cost: null },
+        { ...line, storeId: "other", cost: null },
+      ],
+      { ...filters, channel: "Online DTC" },
+    ),
+  ).toEqual({ lines: 2n, missing_cost_lines: 1n, zero_cost_lines: 1n, ordered_units: "3", refunded_units: "1.5" });
 });

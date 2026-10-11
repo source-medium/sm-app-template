@@ -11,6 +11,7 @@ export const RetentionRow = z.object({
   month_age: bq.int64().refine((value) => value >= 0n && value < BigInt(COHORT_MONTHS)),
   cohort_size: bq.numeric().nullable(),
   customers: bq.numeric().nullable(),
+  second_orders: bq.numeric().nullable(),
   cumulative_revenue: bq.numeric().nullable(),
   cumulative_profit: bq.numeric().nullable(),
 });

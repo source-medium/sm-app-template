@@ -4,10 +4,15 @@
 [shared starter message](cloud.md#your-first-message-in-either-agent).
 Both agents follow the same [preview and publish loop](cloud.md#4-change-review-publish).
 
-For anything about a page you are looking at, use **Ask agent** in the app's
-top bar. Choose **This page** or a loaded KPI, chart, table, card grid, or
-cohort matrix; choose what you need; describe it; and copy the prompt into
-your coding agent. The panel prepares text locally and makes no agent API call.
+For anything about a page you are looking at, use **Vibe code** in the app's
+top bar. Start with **Your request**, then use **Pick an element** to reference a
+KPI, chart control, table, individual creative card or metric, or report filter.
+Tab browses elements, Enter selects, and Escape cancels. On touch screens, tap
+to select or scroll to reach another element. You can also choose a section
+from **Target**, or keep **This page**. Choose the kind of help you need, review
+**Preview prompt** if useful, and copy into your coding agent. Copy becomes
+available after you describe your request. The panel prepares text locally
+and makes no agent API call.
 
 The prompt includes the page, selected component, resolved store/dates and
 view filters, configured reporting currency, data mode, and build. It follows
@@ -18,10 +23,15 @@ knows to ask for relevant details. Text you enter in the request is copied as
 written. Sample-number checks trace fixtures and calculations; live-number
 checks require an independent authorized source. Both are read-only.
 
-Context and available targets are captured when the panel opens. Reopen after
-navigation or a report finishes loading to capture its current context. Close
-returns keyboard focus to **Ask agent**. If copying fails, select the generated
-prompt and copy it manually.
+Context and available targets update as navigation and report loading finish,
+including while the panel is open. The panel shows the current report, store,
+and dates. Changing filters preserves your draft; switching pages clears it.
+A selected card is identified by its displayed position and optional metric
+label, never its row contents. Changing filters clears a card selection because
+its position may now refer to something else. Picking keeps your draft and
+never activates the element. Moving the pointer preserves a keyboard selection.
+Close returns keyboard focus to **Vibe code**. If copying fails, the preview
+opens and focuses the prompt for manual copying.
 
 To extend a report with an available warehouse field, open **About this data**,
 search its source fields, and choose **Use this field**. This starts an
@@ -42,7 +52,9 @@ The shared `KpiCard`, `ChartCard`, `DataTable`, `CardGrid`, and `CohortMatrix`
 patterns expose their labels and component names automatically. For a custom
 report section, add `data-agent-target="Section label"` and
 `data-agent-component="YourComponent"` to its wrapper. Use a section label,
-not customer row contents. No central page/feature registry needs updating.
+not customer row contents. A child control can declare `data-agent-element="UI label"`;
+a card uses a one-based `data-agent-item` position. Only declare static UI labels,
+never row values or input contents. No central page/feature registry needs updating.
 The prompt directs the agent to follow the route's imports rather than guess
 a feature-folder name from the URL. A page without `ReportPage` reports that
 its filter context is unavailable.
@@ -78,11 +90,12 @@ run pnpm diagnose without reading that file. Never print environment values.
 Never ask for secrets in chat. If provisioning is unavailable, explain that prerequisite and
 keep sample mode; do not invent a configuration block. Confirm the workspace
 reporting currency and that every included store and money source reports in
-it, following docs/data.md. Label money with the selected store's
-dim_stores.store_currency_code. Set app.config.ts currency only as the
-fallback when that code is missing. Do not guess a code from the locale or
-from order_currency_code, and do not add client-side FX. Store names, brand
-groups, time zones, and currency codes come from dim_stores automatically;
+it, following docs/data.md. Set the verified reporting code in app.config.ts
+currency, with reportingCurrencies overrides if stores need different codes.
+Leave unverified live amounts unlabeled. Do not infer reporting currency from
+dim_stores.store_currency_code, the locale, or order_currency_code, and do not
+add client-side FX. Store names, brand groups, time zones, and nominal currency
+metadata come from dim_stores automatically;
 use storeLabels only for a deliberate display override.
 If sources differ, resolve that upstream before trusting combined totals or
 MER. Run pnpm check and report separately whether live connection was actually

@@ -10,9 +10,11 @@
  * are two or more series.
  */
 import { useId, useState } from "react";
+import { ChartNoAxesCombined, Table2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
-import { Table } from "@/components/ui/table";
+import { Table, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -76,15 +78,31 @@ export function ChartCard({
         {description && <CardDescription>{description}</CardDescription>}
         <CardAction>
           {plottable && (
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-pressed={showTable}
-              aria-controls={regionId}
-              onClick={() => setShowTable((value) => !value)}
-            >
-              {showTable ? "View as chart" : "View as table"}
-            </Button>
+            <div role="group" aria-label={`${title} display`} className="flex rounded-md bg-muted p-1">
+              {[
+                { label: "Chart", table: false, icon: ChartNoAxesCombined },
+                { label: "Table", table: true, icon: Table2 },
+              ].map(({ label, table, icon: Icon }) => (
+                <Tooltip key={label}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`View as ${label.toLowerCase()}`}
+                      data-agent-element={`View as ${label.toLowerCase()}`}
+                      aria-pressed={showTable === table}
+                      aria-controls={regionId}
+                      onClick={() => setShowTable(table)}
+                      className="min-w-8 px-2 aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-card"
+                    >
+                      <Icon aria-hidden />
+                      <span className="hidden @min-[28rem]/card-header:inline">{label}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{label} view</TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
           )}
         </CardAction>
       </CardHeader>
@@ -118,7 +136,11 @@ export function ChartCard({
                     tick={{ width: 116 }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(label: string) => (label.length > 22 ? `${label.slice(0, 21)}…` : label)}
+                    tickFormatter={(label: string, index: number) => {
+                      const axisLabel = data[index]?.axisLabel;
+                      const text = typeof axisLabel === "string" ? axisLabel : label;
+                      return text.length > 22 ? `${text.slice(0, 21)}…` : text;
+                    }}
                   />
                 </>
               ) : (
@@ -195,7 +217,7 @@ function ChartTable({
       </thead>
       <tbody>
         {data.map((datum) => (
-          <tr key={datum.label} className="border-t">
+          <TableRow key={datum.label} className="border-t border-b-0">
             <th scope="row" className="px-3 py-2 text-left font-normal">
               {datum.label}
             </th>
@@ -204,7 +226,7 @@ function ChartTable({
                 {String(datum[`${item.key}__display`] ?? "—")}
               </td>
             ))}
-          </tr>
+          </TableRow>
         ))}
       </tbody>
     </Table>

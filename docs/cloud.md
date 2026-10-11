@@ -129,7 +129,7 @@ Your agent checks `/healthz` against the PR's current commit and runs the
 hosted verification below when authenticated access is available. A successful
 build alone is not a working preview. If the agent cannot sign in, it gives
 you the exact check to finish privately. Keep feedback in the same agent conversation to update
-that pull request. The app's **Ask agent** button can compose the next request
+that pull request. The app's **Vibe code** button can compose the next request
 from a page or component.
 
 When it looks right, say:

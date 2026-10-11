@@ -5,7 +5,10 @@ const fields = [
   { name: "channel", type: "STRING" },
   { name: "cohort_month", type: "DATE" },
   { name: "month_age", type: "INTEGER" },
-  ...["cohort_size", "customers", "cumulative_revenue", "cumulative_profit"].map((name) => ({ name, type: "NUMERIC" })),
+  ...["cohort_size", "customers", "second_orders", "cumulative_revenue", "cumulative_profit"].map((name) => ({
+    name,
+    type: "NUMERIC",
+  })),
 ];
 const row = {
   channel: "online_dtc",
@@ -13,6 +16,7 @@ const row = {
   month_age: "0",
   cohort_size: "100.5",
   customers: "100.5",
+  second_orders: "10",
   cumulative_revenue: "9007199254740993.123456789",
   cumulative_profit: "1.5",
 };

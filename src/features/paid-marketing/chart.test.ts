@@ -14,9 +14,24 @@ const DAYS: ChannelDay[] = Array.from({ length: 9 }, (_, index) => ({
   impressions: BigInt(1000 - index * 100),
   clicks: BigInt(index + 1),
   conversions: index + 0.5,
+  platformRevenue: 10 * (index + 1),
 }));
 
 describe("paid marketing channel chart", () => {
+  it("divides summed inputs across calendar intervals and folded channels, never averaging ratios", () => {
+    const first = DAYS[0];
+    if (!first) throw new Error("Missing channel day");
+    const days = [
+      { ...first, date: "2026-09-01", spend: "10", platformRevenue: 100, conversions: 1 },
+      { ...first, date: "2026-09-02", spend: "90", platformRevenue: 90, conversions: 9 },
+    ];
+    expect(channelChart(days, "roas", null, "week").byDate.get("2026-08-31")?.channel0).toBe(1.9);
+    expect(channelChart(days, "cpo", null, "month").byDate.get("2026-09-01")?.channel0).toBe(10);
+    const folded = channelChart(DAYS, "roas", null).byDate.get("2026-09-01")?.other;
+    expect(folded).toBeCloseTo(170 / 17.2);
+    expect(channelChart([{ ...first, spend: "0" }], "roas", null).byDate.get("2026-09-01")?.channel0).toBeNull();
+    expect(channelChart([{ ...first, conversions: null }], "cpo", null).byDate.get("2026-09-01")?.channel0).toBeNull();
+  });
   it("names the seven largest channels in name order and folds the rest into Other", () => {
     const chart = channelChart(DAYS, "spend", null);
     expect(chart.folded).toBe(true);

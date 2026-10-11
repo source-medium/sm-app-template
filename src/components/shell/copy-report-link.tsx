@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCopy } from "@/lib/use-copy";
 
 /** href already contains the applied store and dates, including defaults. */
@@ -18,17 +19,30 @@ export function CopyReportLink({ href }: { href: string }) {
 
   return (
     <div className="flex max-w-full flex-col items-start gap-2">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => void copyLink()}
-        disabled={state === "copying"}
-        aria-label="Copy report link"
-      >
-        {state === "copied" ? <Check aria-hidden /> : <LinkIcon aria-hidden />}
-        {state === "copied" ? "Copied" : state === "copying" ? "Copying…" : "Copy link"}
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            onClick={() => void copyLink()}
+            disabled={state === "copying"}
+            aria-label="Copy report link"
+            data-agent-target="Copy report link"
+            data-agent-component="CopyReportLink"
+            className={state === "copied" ? "border-success/40 bg-success-soft text-success" : undefined}
+          >
+            {state === "copied" ? (
+              <Check aria-hidden className="motion-safe:animate-in motion-safe:duration-150 motion-safe:zoom-in-75" />
+            ) : (
+              <LinkIcon aria-hidden />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {state === "copied" ? "Link copied" : state === "copying" ? "Copying…" : "Copy report link"}
+        </TooltipContent>
+      </Tooltip>
       <span aria-live="polite" className={state === "failed" ? "text-xs text-muted-foreground" : "sr-only"}>
         {state === "copied"
           ? "Report link copied."

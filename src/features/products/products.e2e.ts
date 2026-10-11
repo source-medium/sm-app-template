@@ -1,4 +1,50 @@
 import { expect, test } from "@playwright/test";
+test("products: chart labels are readable while tooltips and tables retain product identity", async ({ page }) => {
+  await page.goto("/products?store=sample-store-a&from=2026-09-01&to=2026-09-28");
+  const chart = page.getByRole("img", { name: "Net revenue by product chart", exact: true });
+  await expect(chart.getByText("Sample pack", { exact: true })).toBeVisible();
+  await expect(chart).not.toContainText("shopify");
+  await chart.locator(".recharts-bar-rectangle").first().hover();
+  const tooltip = chart.locator('[data-slot="chart-tooltip"]');
+  await expect(tooltip).toContainText("Sample pack (shopify / p12)");
+  await page.getByRole("button", { name: "View as table", exact: true }).click();
+  await expect(page.getByRole("table", { name: "Net revenue by product", exact: true })).toContainText(
+    "Sample pack (shopify / p12)",
+  );
+  await expect(page.getByRole("button", { name: "View as table", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.getByRole("button", { name: "View as chart", exact: true }).click();
+  await expect(chart).toBeVisible();
+});
+
+test("products: diagnostics appear only for the relevant ranking", async ({ page }) => {
+  await page.goto("/products?store=sample-store-a&from=2026-09-01&to=2026-09-28");
+  const costs = page.getByRole("region", { name: "Product cost coverage", exact: true });
+  const refunds = page.getByRole("region", { name: "Product refund rate", exact: true });
+  await expect(page.getByRole("table", { name: "Net revenue by product details", exact: true })).toBeVisible();
+  await expect(costs).toHaveCount(0);
+  await expect(refunds).toHaveCount(0);
+  await page.getByLabel("Rank by", { exact: true }).selectOption("profit");
+  await expect(costs).toContainText("lines with missing published cost");
+  await expect(refunds).toHaveCount(0);
+  await page.getByLabel("Rank by", { exact: true }).selectOption("refunds");
+  await expect(page.getByRole("table", { name: "Refund amount by product details", exact: true })).toBeVisible();
+  await expect(costs).toHaveCount(0);
+  await expect(refunds).toContainText("refunded units /");
+  await page.getByLabel("Rank by", { exact: true }).selectOption("refunded_units");
+  await expect(page).toHaveURL(/metric=refunded_units/);
+  await expect(page.getByRole("table", { name: "Refunded units by product details", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "All product totals", exact: true }).locator('[data-slot="kpi-value"]'),
+  ).toHaveCount(3);
+  await expect(refunds).toBeVisible();
+  await page.getByLabel("Rank by", { exact: true }).selectOption("units");
+  await expect(page.getByRole("table", { name: "Net units by product details", exact: true })).toBeVisible();
+  await expect(costs).toHaveCount(0);
+  await expect(refunds).toHaveCount(0);
+});
 
 test("products: ranking and variant filters preserve comparison dates and full totals", async ({ page }) => {
   await page.goto("/products?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=year");

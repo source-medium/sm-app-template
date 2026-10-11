@@ -3,6 +3,7 @@ import { addDays, parseChoice, single, type SearchParams } from "@/lib/filters";
 export const COHORT_MONTHS = 12;
 export const RETENTION_METRICS = [
   { value: "retention", label: "Monthly retention" },
+  { value: "second", label: "Purchased a second time" },
   { value: "revenue", label: "Cumulative revenue / customer (LTR)" },
   { value: "profit", label: "Cumulative gross profit / customer (LTV)" },
 ] as const;

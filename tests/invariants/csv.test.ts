@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { appConfig } from "@/app.config";
 import { csvExport, csvResponse } from "@/lib/csv.server";
 import { googleError } from "../fake-bigquery/fake-bigquery";
 import { goLive, isStoreList, rowsResponse, withStores } from "../helpers/live";
@@ -52,6 +53,22 @@ describe("CSV downloads", () => {
 
 describe("CSV export scope", () => {
   const ok = async () => new Response("ok");
+
+  it("exports the verified reporting currency rather than nominal store currency", async () => {
+    const original = appConfig.reportingCurrencies;
+    appConfig.reportingCurrencies = { "csv-report-currency": "CAD" };
+    try {
+      await goLive({ submit: withStores(() => rowsResponse([], []), ["csv-report-currency"], "UTC", "EUR") });
+      const build = vi.fn(ok);
+      await csvExport(
+        new Request("https://example.test/x/export?store=csv-report-currency&from=2026-09-01&to=2026-09-02"),
+        build,
+      );
+      expect(build).toHaveBeenCalledWith(expect.objectContaining({ currency: "CAD" }));
+    } finally {
+      appConfig.reportingCurrencies = original;
+    }
+  });
 
   it.each([
     ["from=bad&to=2026-09-02", "valid start"],

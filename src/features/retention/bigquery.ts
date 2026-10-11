@@ -15,6 +15,7 @@ export async function queryRetention(filters: RetentionFilters): Promise<Retenti
     sql: `SELECT IFNULL(sm_channel, '(none)') AS channel, cohort_month, months_since_first_order AS month_age,
         CAST(cohort_size AS NUMERIC) AS cohort_size,
         CAST(customer_count AS NUMERIC) AS customers,
+        CAST(cumulative_second_order_count AS NUMERIC) AS second_orders,
         CAST(cumulative_order_net_revenue AS NUMERIC) AS cumulative_revenue,
         CAST(cumulative_order_gross_profit AS NUMERIC) AS cumulative_profit
       FROM ${warehouse.table(RETENTION_RELATION)}

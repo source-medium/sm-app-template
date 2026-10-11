@@ -7,6 +7,7 @@ import { LoadingState } from "@/components/patterns/data-states";
 import { KpiCard } from "@/components/patterns/kpi-card";
 import { ComparisonCaption, ComparisonIssue } from "@/components/patterns/comparison-caption";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
+import { ProductCosts } from "./costs";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { ChannelFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
@@ -14,13 +15,26 @@ import { periodChanges } from "@/lib/comparison";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatMeasure, formatMoneyIn, formatPercent } from "@/lib/format";
 import { parseSalesChannel, type SearchParams } from "@/lib/filters";
-import { getProductChannels, getProducts, productOptions, PRODUCT_DIMENSIONS, PRODUCT_METRICS } from "./queries";
+import {
+  getProductCoverage,
+  getProductChannels,
+  getProducts,
+  productOptions,
+  PRODUCT_DIMENSIONS,
+  PRODUCT_METRICS,
+} from "./queries";
 
 export const metadata: Metadata = { title: "Products" };
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const options = productOptions(params);
   const channel = parseSalesChannel(params);
+  const diagnostic =
+    options.metric === "profit"
+      ? "cost"
+      : options.metric === "refunds" || options.metric === "refunded_units"
+        ? "refunds"
+        : null;
   return (
     <ReportPage
       sources={[
@@ -40,7 +54,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       {({ filters, comparison, timeZone, currency }) => {
         const baseline = comparison?.range ?? null;
         const money = formatMoneyIn(currency);
-        const format = options.metric === "units" ? formatMeasure : money;
+        const format = options.metric === "units" || options.metric === "refunded_units" ? formatMeasure : money;
         const metricLabel = PRODUCT_METRICS.find((item) => item.value === options.metric)?.label ?? "Net revenue";
         return (
           <>
@@ -71,7 +85,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               <p data-metric-definition="Product metrics" className="mt-2 max-w-prose">
                 Valid orders only. Net units subtract refunded quantities. Product gross profit subtracts product cost
                 from net revenue; it excludes shipping, fulfillment and payment costs. Missing product costs can
-                overstate profit.
+                overstate profit. Refund amounts and quantities are shown as positive deductions (source signs
+                reversed); reversals stay negative. Refunds are associated with orders processed in this range, not the
+                dates refunds were issued.
               </p>
             </details>
             {comparison && <ComparisonCaption comparison={comparison} />}
@@ -92,7 +108,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                     <div className="flex flex-col gap-6">
                       <ComparisonIssue issue={issue} />
                       <section aria-label="All product totals" className="grid gap-4 sm:grid-cols-3">
-                        {PRODUCT_METRICS.map((item) => {
+                        {PRODUCT_METRICS.slice(0, 3).map((item) => {
                           const formatValue = item.value === "units" ? formatMeasure : money;
                           return (
                             <KpiCard
@@ -114,6 +130,21 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                           );
                         })}
                       </section>
+                      {diagnostic && (
+                        <Suspense
+                          key={`coverage|${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${diagnostic}`}
+                          fallback={<LoadingState variant="control" label="Loading product diagnostics" />}
+                        >
+                          <DataRegion
+                            timestamp={false}
+                            load={() => getProductCoverage({ ...filters, channel })}
+                            isEmpty={(data) => data.lines === 0n}
+                            emptyMessage="No valid-order lines for product diagnostics."
+                          >
+                            {(data) => <ProductCosts data={data} diagnostic={diagnostic} />}
+                          </DataRegion>
+                        </Suspense>
+                      )}
                       <RankedBreakdown
                         title={`${metricLabel} by ${options.dimension}`}
                         valueLabel={metricLabel}
@@ -123,6 +154,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         rows={data.rows.map((row) => ({
                           id: row.product_key,
                           label: `${row.label} (${row.reference})`,
+                          chartLabel: row.label,
                           value: { value: decimalToNumber(row[options.metric]), display: format(row[options.metric]) },
                           share: formatPercent(
                             nonnegativeShare(row[options.metric], row[`total_${options.metric}`], row.minimum_value),

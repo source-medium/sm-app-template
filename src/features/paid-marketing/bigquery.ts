@@ -4,6 +4,7 @@
  */
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
+import { adNamePredicate } from "@/lib/data/ad-name-sql";
 import { decodeRows } from "@/lib/data/decode";
 import type { DateRange } from "@/lib/filters";
 import type { BreakdownDimension, SpendBreakdown } from "./queries";
@@ -21,6 +22,14 @@ import {
 } from "./rows";
 
 const BREAKDOWN_SQL = {
+  type: {
+    key: "COALESCE(NULLIF(ad_campaign_type, ''), '(none)')",
+    label: "COALESCE(NULLIF(ad_campaign_type, ''), '(none)')",
+  },
+  tactic: {
+    key: "COALESCE(NULLIF(ad_campaign_tactic, ''), '(none)')",
+    label: "COALESCE(NULLIF(ad_campaign_tactic, ''), '(none)')",
+  },
   channel: { key: "IFNULL(sm_channel, '(none)')", label: "IFNULL(sm_channel, '(none)')" },
   // Campaign IDs are unique within an ad platform, so the key names both.
   campaign: {
@@ -38,6 +47,7 @@ export async function querySpendBreakdown(
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const selection = BREAKDOWN_SQL[dimension];
   const period = periodSql("date");
+  const names = adNamePredicate(filters.names);
   const result = await warehouse.query({
     name: "paid_spend_breakdown",
     maxRows: MAX_BREAKDOWN + 1,
@@ -49,6 +59,7 @@ export async function querySpendBreakdown(
       WHERE sm_store_id = @store_id
         AND ${period.rows}
         AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
+        AND ${names.sql}
       GROUP BY dimension_key
     )
     SELECT ${PERIOD_COVERAGE},
@@ -58,6 +69,7 @@ export async function querySpendBreakdown(
       { name: "store_id", type: "STRING", value: filters.storeId },
       { name: "channel", type: "STRING", value: filters.channel ?? "" },
       ...periodParams(filters.range, baseline),
+      ...names.params,
     ],
   });
   const rows = decodeRows(SpendBreakdownRow, result.rows, AD_RELATION);
@@ -67,6 +79,7 @@ export async function querySpendBreakdown(
 export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise<PaidMarketingData> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const table = warehouse.table(AD_RELATION);
+  const names = adNamePredicate(filters.names);
 
   const [series, campaigns] = await Promise.all([
     warehouse.query({
@@ -79,13 +92,15 @@ export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise
           SUM(ad_spend) AS spend,
           SUM(ad_impressions) AS impressions,
           SUM(ad_clicks) AS clicks,
-          SUM(ad_platform_reported_conversions) AS conversions
+          SUM(ad_platform_reported_conversions) AS conversions,
+          SUM(ad_platform_reported_revenue) AS platform_revenue
         FROM ${table}
         WHERE sm_store_id = @store_id
           AND date BETWEEN @start_date AND @end_date
+          AND ${names.sql}
         GROUP BY channel, date
         ORDER BY date, channel`,
-      params: queryScope(filters),
+      params: [...queryScope(filters), ...names.params],
     }),
     queryPaidCampaigns(filters),
   ]);
@@ -104,6 +119,7 @@ export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise
 export async function queryPaidCampaigns(filters: PaidMarketingFilters): Promise<CampaignData> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const table = warehouse.table(AD_RELATION);
+  const names = adNamePredicate(filters.names);
   const campaigns = await warehouse.query({
     name: "paid_campaigns",
     partial: true,
@@ -123,6 +139,7 @@ export async function queryPaidCampaigns(filters: PaidMarketingFilters): Promise
           AND date BETWEEN @start_date AND @end_date
           AND ad_campaign_id IS NOT NULL
           AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
+          AND ${names.sql}
         GROUP BY channel, campaign_id
         ORDER BY spend DESC, impressions DESC, campaign_id, channel
         LIMIT @limit`,
@@ -130,6 +147,7 @@ export async function queryPaidCampaigns(filters: PaidMarketingFilters): Promise
       ...queryScope(filters),
       { name: "channel", type: "STRING", value: filters.channel ?? "" },
       { name: "limit", type: "INT64", value: MAX_CAMPAIGNS + 1 },
+      ...names.params,
     ],
   });
   return {

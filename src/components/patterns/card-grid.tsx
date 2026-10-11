@@ -13,13 +13,14 @@ export type GridCard = {
   badge: string | null;
   imageUrl: string | null;
   metrics: { label: string; display: string }[];
+  action?: { href: string; label: string };
 };
 
 export function CardGrid({ cards, label }: { cards: GridCard[]; label: string }) {
   return (
     <ul data-agent-target={label} data-agent-component="CardGrid" aria-label={label} className={cardGridStyles}>
-      {cards.map((card) => (
-        <li key={card.id} className="min-w-0">
+      {cards.map((card, index) => (
+        <li key={card.id} data-agent-item={index + 1} className="min-w-0">
           <Card className="h-full gap-0 overflow-hidden py-0">
             {card.imageUrl ? (
               <CardImage src={card.imageUrl} alt={card.title} fallback={<TextPanel card={card} />} />
@@ -35,12 +36,23 @@ export function CardGrid({ cards, label }: { cards: GridCard[]; label: string })
               </div>
               <dl className="mt-auto grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 {card.metrics.map((metric) => (
-                  <div key={metric.label} className="flex min-w-0 flex-col">
+                  <div key={metric.label} data-agent-element={metric.label} className="flex min-w-0 flex-col">
                     <dt className="text-xs text-muted-foreground">{metric.label}</dt>
                     <dd className="font-medium tabular-nums">{metric.display}</dd>
                   </div>
                 ))}
               </dl>
+              {card.action && (
+                <a
+                  href={card.action.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm font-medium underline underline-offset-4"
+                >
+                  {card.action.label}
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </a>
+              )}
             </CardContent>
           </Card>
         </li>

@@ -5,8 +5,9 @@
  * it is too small to be named.
  */
 import type { ChartSeries } from "@/components/charts/chart-card";
-import { sumDecimals } from "@/lib/data/decimal";
-import type { ChannelDay, PaidMetric } from "./queries";
+import { decimalToNumber, ratio, sumDecimals } from "@/lib/data/decimal";
+import { periodStart, type TimeGrain } from "@/lib/time-grain";
+import type { AdMeasures, ChannelDay, PaidMetric } from "./queries";
 
 export const MAX_NAMED_CHANNELS = 7;
 
@@ -22,16 +23,12 @@ export type ChannelChart = {
   folded: boolean;
 };
 
-/** Sums one metric exactly: decimal text for money, bigint for counts, numbers for conversions. */
-function addValues(a: MetricValue, b: MetricValue): MetricValue {
-  if (a === null) return b;
-  if (b === null) return a;
-  if (typeof a === "string" && typeof b === "string") return sumDecimals([a, b]);
-  if (typeof a === "bigint" && typeof b === "bigint") return a + b;
-  return Number(a) + Number(b);
-}
-
-export function channelChart(days: readonly ChannelDay[], metric: PaidMetric, selected: string | null): ChannelChart {
+export function channelChart(
+  days: readonly ChannelDay[],
+  metric: PaidMetric,
+  selected: string | null,
+  grain: TimeGrain = "day",
+): ChannelChart {
   const impressions = new Map<string, bigint>();
   for (const day of days) impressions.set(day.channel, (impressions.get(day.channel) ?? 0n) + (day.impressions ?? 0n));
   const channels = [...impressions.keys()].sort((a, b) => a.localeCompare(b));
@@ -56,12 +53,46 @@ export function channelChart(days: readonly ChannelDay[], metric: PaidMetric, se
     : named.map((name) => ({ key: keyOf(name), label: name, color: colorOf(name) }));
   if (folded && !selected) series.push({ key: "other", label: "Other", color: "var(--chart-8)" });
 
-  const byDate = new Map<string, Record<string, MetricValue>>();
+  // Sum the inputs before dividing, including folded channels and calendar buckets.
+  const grouped = new Map<string, Map<string, AdMeasures>>();
+  const addCount = (a: bigint | null, b: bigint | null) => (a === null ? b : b === null ? a : a + b);
+  const addNumber = (a: number | null, b: number | null) => (a === null ? b : b === null ? a : a + b);
   for (const day of days) {
-    const values = byDate.get(day.date) ?? {};
+    const date = periodStart(day.date, grain);
+    const values = grouped.get(date) ?? new Map<string, AdMeasures>();
     const key = keyOf(day.channel);
-    values[key] = addValues(values[key] ?? null, day[metric]);
-    byDate.set(day.date, values);
+    const previous = values.get(key);
+    values.set(
+      key,
+      previous
+        ? {
+            spend: sumDecimals([previous.spend, day.spend]),
+            impressions: addCount(previous.impressions, day.impressions),
+            clicks: addCount(previous.clicks, day.clicks),
+            conversions: addNumber(previous.conversions, day.conversions),
+            platformRevenue: addNumber(previous.platformRevenue, day.platformRevenue),
+          }
+        : day,
+    );
+    grouped.set(date, values);
+  }
+  const byDate = new Map<string, Record<string, MetricValue>>();
+  for (const [date, groups] of grouped) {
+    byDate.set(
+      date,
+      Object.fromEntries(
+        [...groups].map(([key, row]) => [
+          key,
+          metric === "roas"
+            ? ratio(row.platformRevenue, decimalToNumber(row.spend))
+            : metric === "cpo"
+              ? ratio(decimalToNumber(row.spend), row.conversions)
+              : metric === "revenue"
+                ? row.platformRevenue
+                : row[metric],
+        ]),
+      ),
+    );
   }
   return { series, byDate, channels, folded };
 }

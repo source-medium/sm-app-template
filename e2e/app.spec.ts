@@ -39,25 +39,25 @@ test("report documentation loads on demand and hands a field to the existing age
   await expect(panel.getByText("No fields match your search.")).toBeVisible();
   await panel.getByLabel("Search fields").fill(name);
   await panel.getByRole("button", { name: `Use field ${name}`, exact: true }).click();
-  const composer = page.getByRole("dialog", { name: "Ask a coding agent" });
+  const composer = page.getByRole("dialog", { name: "Vibe code" });
   await expect(panel).toBeHidden();
   await expect(composer).toBeVisible();
   await expect(composer.getByLabel("What do you need?", { exact: true })).toHaveValue("add");
-  await composer.getByLabel("Describe it", { exact: true }).fill("Chart this field");
+  await composer.getByLabel("Your request", { exact: true }).fill("Chart this field");
   const prompt = await composer.getByLabel("Prompt", { exact: true }).inputValue();
   expect(prompt).toContain(`"relation":"${relation}"`);
   expect(prompt).toContain(`"name":"${name}"`);
   expect(prompt).toContain("Chart this field");
   await expectNoSeriousA11yViolations(page);
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Ask a coding agent" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Vibe code" })).toBeFocused();
   await about.click();
   await expect(panel.getByLabel("Search fields")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(about).toBeFocused();
   await page.getByRole("combobox", { name: "Store", exact: true }).selectOption("sample-store-b");
   await expect(page).toHaveURL(/store=sample-store-b/);
-  await page.getByRole("button", { name: "Ask a coding agent" }).click();
+  await page.getByRole("button", { name: "Vibe code" }).click();
   await expect(composer.getByRole("button", { name: "Remove field" })).toHaveCount(0);
   expect(await composer.getByLabel("Prompt", { exact: true }).inputValue()).not.toContain("Selected warehouse field");
   expect(problems).toEqual([]);
@@ -108,8 +108,8 @@ for (const item of appConfig.nav) {
       expect(context.pathname).toBe(item.href);
       expect(context.filters.store).toBe(await page.getByRole("combobox", { name: "Store", exact: true }).inputValue());
       const targets = await page.locator("main [data-agent-target][data-agent-component]").count();
-      await page.getByRole("button", { name: "Ask a coding agent" }).click();
-      const dialog = page.getByRole("dialog", { name: "Ask a coding agent" });
+      await page.getByRole("button", { name: "Vibe code" }).click();
+      const dialog = page.getByRole("dialog", { name: "Vibe code" });
       await expect(dialog.getByLabel("Target", { exact: true }).locator("option")).toHaveCount(targets + 1);
       if (targets) {
         const targetOption = dialog.getByLabel("Target", { exact: true }).locator("option").nth(1);
@@ -161,7 +161,7 @@ test("keyboard users can reach the navigation", async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(target?.href ?? ""));
 });
 
-test("selects wait for their change handlers when page scripts load slowly", async ({ page }) => {
+test("appearance waits for its handlers when page scripts load slowly", async ({ page }) => {
   let release: () => void = () => undefined;
   const scripts = new Promise<void>((resolve) => {
     release = resolve;
@@ -172,7 +172,7 @@ test("selects wait for their change handlers when page scripts load slowly", asy
   });
   try {
     await page.goto(`${home}?store=sample-store-b`, { waitUntil: "commit" });
-    await expect(page.getByLabel("Appearance")).toHaveAttribute("inert", "");
+    await expect(page.getByRole("button", { name: /^Appearance:/ })).toBeDisabled();
     const form = page.getByRole("form", { name: "Report filters" });
     if (await form.count()) {
       const navigation = page.waitForURL((url) => url.searchParams.has("from"), { waitUntil: "commit" });
@@ -183,8 +183,9 @@ test("selects wait for their change handlers when page scripts load slowly", asy
   } finally {
     release();
   }
-  await expect(page.getByLabel("Appearance")).not.toHaveAttribute("inert");
-  await page.getByLabel("Appearance").selectOption("dark");
+  await expect(page.getByRole("button", { name: /^Appearance:/ })).toBeEnabled();
+  await page.getByRole("button", { name: /^Appearance:/ }).click();
+  await page.getByRole("menuitemradio", { name: "Dark", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 
@@ -227,10 +228,19 @@ test("appearance overrides the system, survives reloads, and can follow the syst
   await page.goto(home);
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
 
-  const appearance = page.getByRole("combobox", { name: "Appearance" });
-  await expect(appearance).toHaveValue("system");
+  const appearance = page.getByRole("button", { name: /^Appearance:/ });
+  await expect(appearance).toHaveAccessibleName("Appearance: System");
+  await appearance.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menuitemradio", { name: "System", exact: true })).toBeChecked();
+  // The trigger tooltip fades out as the menu opens. Scan the settled menu, not its exiting tooltip.
+  await expect(page.getByRole("tooltip")).toBeHidden();
+  await expect(page.locator('[data-slot="dropdown-menu-content"]')).toHaveCSS("opacity", "1");
   await expectNoSeriousA11yViolations(page);
-  await appearance.selectOption("light");
+  await page.keyboard.press("Home");
+  await expect(page.getByRole("menuitemradio", { name: "Light", exact: true })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(appearance).toBeFocused();
   await expect(page.locator("html")).toHaveCSS("color-scheme", "light");
   const response = await page.reload();
   expect(await response?.text()).toContain('data-theme="light"');
@@ -242,15 +252,24 @@ test("appearance overrides the system, survives reloads, and can follow the syst
     await expect(page).toHaveURL(new RegExp(target.href));
     await expect(page.locator("html")).toHaveCSS("color-scheme", "light");
   }
-  await expect(appearance).toHaveValue("light");
-  await appearance.selectOption("dark");
+  await expect(appearance).toHaveAccessibleName("Appearance: Light");
+  await appearance.click();
+  await expect(page.getByRole("menuitemradio", { name: "Light", exact: true })).toBeChecked();
+  await page.getByRole("menuitemradio", { name: "Dark", exact: true }).click();
+  await expect(appearance).toHaveAccessibleName("Appearance: Dark");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
 
-  await appearance.selectOption("system");
+  await appearance.click();
+  await page.getByRole("menuitemradio", { name: "System", exact: true }).click();
+  await expect(appearance).toHaveAccessibleName("Appearance: System");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "light");
   await page.emulateMedia({ colorScheme: "dark" });
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+  await appearance.click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu", { name: "Appearance" })).toBeHidden();
+  await expect(appearance).toBeFocused();
   expect(problems).toEqual([]);
 });
 
@@ -278,8 +297,11 @@ test("copy link freezes applied defaults and ignores unapplied filter edits", as
   const from = await page.getByLabel("From", { exact: true }).inputValue();
   const to = await page.getByLabel("To", { exact: true }).inputValue();
   await page.getByLabel("From", { exact: true }).fill("2020-01-01");
-  await page.getByRole("button", { name: "Copy report link" }).click();
+  const copy = page.getByRole("button", { name: "Copy report link" });
+  const bounds = await copy.boundingBox();
+  await copy.click();
   await expect(page.getByText("Report link copied.", { exact: true })).toHaveCount(1);
+  await expect.poll(() => copy.boundingBox()).toEqual(bounds);
   const copied = new URL(await page.evaluate(() => navigator.clipboard.readText()));
   expect(copied.origin).toBe(new URL(page.url()).origin);
   expect(copied.pathname).toBe(home);
@@ -300,10 +322,10 @@ test("the agent prompt carries the page, its filters, and the request", async ({
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto(`${home}?from=2026-09-01&to=2026-09-07`);
   const title = await page.getByRole("heading", { level: 1 }).innerText();
-  await page.getByRole("button", { name: "Ask a coding agent" }).click();
-  const dialog = page.getByRole("dialog", { name: "Ask a coding agent" });
+  await page.getByRole("button", { name: "Vibe code" }).click();
+  const dialog = page.getByRole("dialog", { name: "Vibe code" });
   await dialog.getByLabel("What do you need?").selectOption("check");
-  await dialog.getByLabel("Describe it").fill("The first number looks too high.");
+  await dialog.getByLabel("Your request").fill("The first number looks too high.");
   await expectNoSeriousA11yViolations(page);
   await dialog.getByRole("button", { name: "Copy prompt" }).click();
   await expect(dialog.getByText("Prompt copied.", { exact: true })).toHaveCount(1);
@@ -317,7 +339,7 @@ test("the agent prompt carries the page, its filters, and the request", async ({
   expect(copied).toContain("Read AGENTS.md first");
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole("button", { name: "Ask a coding agent" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Vibe code" })).toBeFocused();
 });
 
 test("agent context follows an applied store and ignores pending date edits", async ({ page }) => {
@@ -336,14 +358,14 @@ test("agent context follows an applied store and ignores pending date edits", as
   const from = page.getByLabel("From", { exact: true });
   const appliedFrom = (await from.count()) ? await from.inputValue() : null;
   if (appliedFrom) await from.fill("2020-01-01");
-  await page.getByRole("button", { name: "Ask a coding agent" }).click();
-  const dialog = page.getByRole("dialog", { name: "Ask a coding agent" });
+  await page.getByRole("button", { name: "Vibe code" }).click();
+  const dialog = page.getByRole("dialog", { name: "Vibe code" });
   const prompt = await dialog.getByLabel("Prompt", { exact: true }).inputValue();
   expect(prompt).toContain(`store=${JSON.stringify(appliedStore)}`);
   if (appliedFrom) expect(prompt).toContain(`from=${JSON.stringify(appliedFrom)}`);
   expect(prompt).not.toContain("2020-01-01");
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Ask a coding agent" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Vibe code" })).toBeFocused();
 });
 
 test("agent context matches first-value URL parsing and excludes unrelated query values", async ({ page }) => {
@@ -352,7 +374,7 @@ test("agent context matches first-value URL parsing and excludes unrelated query
   test.skip((await page.locator("main [data-agent-page]").count()) === 0, "the home page has no report context");
   const store = page.getByRole("combobox", { name: "Store", exact: true });
   await expect(store).toHaveValue("sample-store-a");
-  await page.getByRole("button", { name: "Ask a coding agent" }).click();
+  await page.getByRole("button", { name: "Vibe code" }).click();
   const prompt = await page.getByRole("dialog").getByLabel("Prompt", { exact: true }).inputValue();
   expect(prompt).toContain('store="sample-store-a"');
   expect(prompt).not.toContain("sample-store-b");
@@ -408,7 +430,7 @@ test("refresh re-reads the report, shows progress, and keeps applied filters", a
   try {
     await refresh.click();
     await expect(refresh).toBeDisabled();
-    await expect(refresh).toHaveText("Refreshing…");
+    await expect(refresh).toHaveAttribute("aria-busy", "true");
     await expect(page.getByText("Refreshing report data.", { exact: true })).toHaveCount(1);
     await expect(timestamp).toHaveAttribute("datetime", before ?? "");
     await expect(page).toHaveURL(url);
@@ -459,4 +481,54 @@ test("connection failures can be retried without leaving stale success on screen
   await page.getByRole("button", { name: "Check connection", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Sample mode is ready.");
   await expect(page.getByRole("status")).not.toContainText("The check could not finish.");
+});
+
+test("Vibe code follows browser history while open and copies current report context", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto(`${home}?store=sample-store-a&from=2026-09-01&to=2026-09-07`);
+  await page.getByRole("combobox", { name: "Store", exact: true }).selectOption("sample-store-b");
+  await expect(page.locator("main [data-agent-page]")).toHaveAttribute("data-agent-page", /"store":"sample-store-b"/);
+  await page.getByRole("button", { name: "Vibe code" }).click();
+  const dialog = page.getByRole("dialog", { name: "Vibe code" });
+  await dialog.getByLabel("Your request").fill("Make this easier to scan.");
+  await page.goBack();
+  await expect(page.locator("main [data-agent-page]")).toHaveAttribute("data-agent-page", /"store":"sample-store-a"/);
+  await expect(dialog.getByLabel("Your request")).toHaveValue("Make this easier to scan.");
+  await expect(dialog.getByLabel("Prompt")).toHaveValue(/store="sample-store-a"/);
+  await expect(dialog.getByRole("region", { name: "Current report" })).toContainText("sample-store-a");
+  await dialog.getByRole("button", { name: "Copy prompt" }).click();
+  await expect(dialog.getByText("Prompt copied.", { exact: true })).toHaveCount(1);
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('store="sample-store-a"');
+});
+
+test("Vibe code explains unsupported picks and can select the Refresh control", async ({ page }) => {
+  await page.goto(home);
+  await page.getByRole("button", { name: "Vibe code" }).click();
+  const dialog = page.getByRole("dialog", { name: "Vibe code" });
+  await dialog.getByRole("button", { name: "Pick an element" }).click();
+  await page.getByRole("heading", { level: 1 }).click();
+  await expect(page.getByText("That area isn't selectable. Try a report control, chart, or card.")).toBeVisible();
+  await page.getByRole("button", { name: "Refresh data", exact: true }).click();
+  await expect(dialog.getByLabel("Prompt")).toHaveValue(/Target: "Refresh data \(Button\)"/);
+});
+
+test("Vibe code opens and focuses a manual preview when clipboard access fails", async ({ page }) => {
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: () => Promise.reject(new DOMException("Denied", "NotAllowedError")) },
+    }),
+  );
+  await page.goto(home);
+  await page.getByRole("button", { name: "Vibe code" }).click();
+  const dialog = page.getByRole("dialog", { name: "Vibe code" });
+  await dialog.getByLabel("Your request").fill("Make this easier to read.");
+  await dialog.getByRole("button", { name: "Copy prompt" }).click();
+  await expect(dialog.getByText("Could not copy. Select the prompt above and copy it.")).toBeVisible();
+  await expect(dialog.getByLabel("Prompt")).toBeVisible();
+  await expect(dialog.getByLabel("Prompt")).toBeFocused();
+  expect(
+    await dialog
+      .getByLabel("Prompt")
+      .evaluate((element: HTMLTextAreaElement) => element.selectionEnd - element.selectionStart),
+  ).toBeGreaterThan(100);
 });

@@ -74,11 +74,13 @@ list needs to be configured. Optional `storeLabels` in `app.config.ts` overrides
 individual names. See [store scope](data.md#store-scope) for warehouses awaiting
 the metadata table and stable links to each store.
 
-Money labels come from each store's `dim_stores.store_currency_code`. The
-report footer, agent prompt, and CSV `reporting_currency` column show that
-code. Set `currency` in `app.config.ts` only as the fallback for a store with
-no code, for example `"USD"`. Setting a code formats amounts; it does not
-convert them. Never add money across stores.
+Confirm the reporting currency and monetary source alignment, then set `currency`
+in `app.config.ts`, for example `"USD"`. Use `reportingCurrencies` only when stores
+need different verified codes; a null override leaves that store unlabeled.
+Nominal `dim_stores.store_currency_code` does not establish reporting currency.
+Reports, the footer, the agent prompt, and CSV exports use the configured code.
+Unset codes leave live amounts unlabeled. Setting a code does not convert amounts.
+Never add money across stores. Synthetic sample data stays in USD.
 See [money and currency](data.md#money-and-currency).
 
 Dates need no setting: each store's dates follow its SourceMedium time zone,
@@ -135,7 +137,7 @@ These steps work whether Codex, Claude, or a local agent prepared the app.
 You need an already issued [app-specific block](#2-get-your-configuration).
 
 1. Confirm the workspace reporting currency and [source alignment](data.md#money-and-currency).
-   Have your agent set `currency` in
+   Have your agent set `currency` (and per-store `reportingCurrencies` if needed) in
    `app.config.ts` on a task branch. Prepare the change now; review and publish
    it after the runtime settings below are ready.
    Store names come from `dim_stores`; no store roster setup is needed.

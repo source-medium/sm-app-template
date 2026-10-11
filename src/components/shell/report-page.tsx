@@ -23,7 +23,7 @@ import { ReportHeader } from "./report-header";
 
 /**
  * `timeZone` is the store's SourceMedium time zone; `today` is its current date there.
- * `currency` is that store's currency code, or the app.config.ts fallback when the store has none.
+ * `currency` is the verified reporting currency configured for this store, or null when unverified.
  */
 export type ReportContext = {
   filters: ReportFilters;
@@ -172,7 +172,9 @@ export async function ReportPage({
           : "Data freshness unknown."}
         {dates && ` Dates are calendar dates in the store's time zone, ${zoneLabel}.`}
         {dates && range.to === today && " Today may be incomplete."}
-        {currency && <span className="mt-1 block">Reporting currency: {currency}.</span>}
+        <span className="mt-1 block">
+          {currency ? `Reporting currency: ${currency}.` : "Reporting currency unverified; amounts are unlabeled."}
+        </span>
       </footer>
     </div>
   );

@@ -22,7 +22,24 @@ export const ProductRow = z.object({
   total_previous_revenue: amount,
   total_previous_units: amount,
   total_previous_profit: amount,
+  refunds: amount,
+  refunded_units: amount,
+  previous_refunds: amount,
+  previous_refunded_units: amount,
+  total_refunds: amount,
+  total_refunded_units: amount,
+  total_previous_refunds: amount,
+  total_previous_refunded_units: amount,
   minimum_value: amount,
   ...periodCoverageFields,
 });
 export type Product = z.output<typeof ProductRow>;
+
+export const ProductCoverageRow = z.object({
+  lines: bq.int64(),
+  missing_cost_lines: bq.int64(),
+  zero_cost_lines: bq.int64(),
+  ordered_units: amount,
+  refunded_units: amount,
+});
+export type ProductCoverage = z.output<typeof ProductCoverageRow>;
