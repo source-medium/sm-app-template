@@ -49,6 +49,7 @@ it("the scoped warehouse rejects missing, mismatched and duplicate store paramet
       {
         sm_store_id: "store-a",
         store_name: "Store A",
+        store_url: null,
         brand_name: "Brand",
         store_timezone: "Europe/Paris",
         store_currency_code: null,

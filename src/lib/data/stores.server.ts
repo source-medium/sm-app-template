@@ -1,6 +1,6 @@
 /**
  * The store picker's roster, shared by every view's filter bar, and the store
- * time zone each report or export uses. Names come from dim_stores; reporting
+ * time zone each report or export uses. Names and domains come from dim_stores; reporting
  * currency comes from verified app.config.ts settings. There is no cross-store total anywhere in
  * the example.
  */
@@ -33,6 +33,21 @@ function currencyCode(code: string | null | undefined): string | null {
   return normalized !== "" && isCurrency(normalized) ? normalized : null;
 }
 
+/** Optional website metadata is a display fallback, never a link or a network request. */
+function storeDomain(website: string | null): string | null {
+  const value = website?.trim();
+  if (!value) return null;
+  try {
+    const url = new URL(value.includes("://") ? value : `https://${value.replace(/^\/\//, "")}`);
+    if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) return null;
+    const domain = url.hostname.replace(/^www\./, "");
+    return domain.includes(".") ? domain : null;
+  } catch {
+    // A malformed optional website must not make a store unavailable.
+    return null;
+  }
+}
+
 /** Verified reporting currency, never inferred from nominal warehouse metadata. */
 export function reportingCurrency(storeId: string, mode: "sample" | "live"): string | null {
   return currencyCode(
@@ -56,6 +71,7 @@ export const loadStores = cache(async (): Promise<StoreOption[]> => {
     label:
       (Object.hasOwn(appConfig.storeLabels, store.sm_store_id) && appConfig.storeLabels[store.sm_store_id]?.trim()) ||
       store.store_name?.trim() ||
+      storeDomain(store.store_url) ||
       store.sm_store_id,
     brand: store.brand_name?.trim() || null,
     timeZone: store.store_timezone && isTimeZone(store.store_timezone) ? store.store_timezone : null,

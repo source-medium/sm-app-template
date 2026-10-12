@@ -128,7 +128,12 @@ describe("connection diagnostics", () => {
     });
     const fallback = await setup(fakeWarehouse({ missingDimension: true }));
     expect((await fallback.warehouse.checkConnection()).checks).toContainEqual(
-      expect.objectContaining({ name: "Store names", status: "warning" }),
+      expect.objectContaining({
+        name: "Store names",
+        status: "warning",
+        message:
+          "Using store IDs because dim_stores was not found in the configured report dataset. Store names and website domains are optional; they are used automatically when available.",
+      }),
     );
   });
 

@@ -74,7 +74,7 @@ export async function checkWarehouseConnection(
       name: "Store names",
       status: "warning",
       message:
-        "dim_stores is not published yet. Store IDs are available, and each store's time zone is read from its recent orders; names and brands will follow when it arrives.",
+        "Using store IDs because dim_stores was not found in the configured report dataset. Store names and website domains are optional; they are used automatically when available.",
     });
   const firstStore = stores.stores[0]?.sm_store_id;
   if (!firstStore) {

@@ -38,15 +38,21 @@ export function rowsResponse(
 }
 
 /** The store list's columns (dim_stores), and one unnamed store in `timeZone`. */
-export const ROSTER_FIELDS = ["sm_store_id", "store_name", "brand_name", "store_timezone", "store_currency_code"].map(
-  (name) => ({
-    name,
-    type: "STRING",
-  }),
-);
+export const ROSTER_FIELDS = [
+  "sm_store_id",
+  "store_name",
+  "brand_name",
+  "store_timezone",
+  "store_currency_code",
+  "store_url",
+].map((name) => ({
+  name,
+  type: "STRING",
+}));
 export const storeRow = (id: string, timeZone: string | null = "America/New_York", currency: string | null = null) => ({
   sm_store_id: id,
   store_name: null,
+  store_url: null,
   brand_name: null,
   store_timezone: timeZone,
   store_currency_code: currency,

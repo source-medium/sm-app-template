@@ -127,10 +127,12 @@ zero. Establish target-presence semantics before presenting attainment.
 Individual report queries filter one store with `sm_store_id = @store_id`. The
 All stores report uses the explicitly bounded portfolio query described below.
 There are no cross-store totals. The store picker reads `dim_stores`: one row per active
-store, with `sm_store_id`, `store_name`, `brand_name`, `store_timezone`
+store, with `sm_store_id`, `store_name`, `store_url`, `brand_name`, `store_timezone`
 ([dates](#dates)), and `store_currency_code` ([money](#money-and-currency)).
 It groups stores by
-brand, uses their names automatically, and appends the ID when names repeat.
+brand and labels each store with its name, then the domain from `store_url`,
+then its store ID. Blank names and missing or invalid website URLs fall through
+automatically; neither is required. Duplicate labels include the ID.
 The selected value and shareable URL remain `?store=<sm_store_id>`, so renaming
 a store does not break links. `app.config.ts` `storeLabels` is an optional
 name override, not a required setup step. The roster is bounded to 50 stores;

@@ -19,6 +19,7 @@ type RosterRelation = typeof ROSTER_RELATION | typeof LEGACY_ROSTER_RELATION;
 const StoreRow = z.object({
   sm_store_id: bq.string().min(1),
   store_name: bq.string().nullable(),
+  store_url: bq.string().nullable(),
   brand_name: bq.string().nullable(),
   store_timezone: bq.string().nullable(),
   store_currency_code: bq.string().nullable(),
@@ -38,8 +39,8 @@ export function storeRosterQuery(
     sql: `
       SELECT ${
         relation === ROSTER_RELATION
-          ? "sm_store_id, store_name, brand_name, store_timezone, store_currency_code"
-          : "DISTINCT sm_store_id, CAST(NULL AS STRING) AS store_name, CAST(NULL AS STRING) AS brand_name, CAST(NULL AS STRING) AS store_timezone, CAST(NULL AS STRING) AS store_currency_code"
+          ? "sm_store_id, store_name, store_url, brand_name, store_timezone, store_currency_code"
+          : "DISTINCT sm_store_id, CAST(NULL AS STRING) AS store_name, CAST(NULL AS STRING) AS store_url, CAST(NULL AS STRING) AS brand_name, CAST(NULL AS STRING) AS store_timezone, CAST(NULL AS STRING) AS store_currency_code"
       }
       FROM ${warehouse.table(relation)}
       WHERE sm_store_id IS NOT NULL

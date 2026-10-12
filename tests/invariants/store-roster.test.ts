@@ -14,6 +14,7 @@ const offset = [{ name: "offset_minutes", type: "INTEGER" }];
 const firstStore = {
   sm_store_id: "store-us",
   store_name: " US store ",
+  store_url: "https://us.example.com",
   brand_name: " First brand ",
   store_timezone: "America/New_York",
 };
@@ -40,6 +41,7 @@ it("loads named stores and brands from the dimension without scanning a fact tab
   const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string };
   expect(body.query).toContain("`sm-demotenant.sm_transformed_v2.dim_stores`");
   expect(body.query).toContain("store_currency_code");
+  expect(body.query).toContain("store_url");
   expect(body.query).not.toContain("rpt_executive_summary_daily");
 });
 
@@ -58,6 +60,38 @@ it("keeps display overrides and missing names safe, including object-prototype I
     { id: "constructor", label: "constructor", brand: null, timeZone: null, currency: null },
     { id: "__proto__", label: "__proto__", brand: null, timeZone: null, currency: null },
   ]);
+});
+
+it("uses a domain when the name is missing, and the ID when no usable website is available", async () => {
+  const websites: [string | null, string | null][] = [
+    [" https://www.Example.com/collections?utm_source=demo#shop ", "example.com"],
+    ["shop.example.com/products", "shop.example.com"],
+    ["//uk.example.com/", "uk.example.com"],
+    ["http://example.co.uk", "example.co.uk"],
+    [null, null],
+    [" ", null],
+    ["not a url", null],
+    ["https://", null],
+    ["javascript:alert(1)", null],
+    ["ftp://example.com", null],
+    ["mailto:owner@example.com", null],
+    ["https://viewer:password@example.com", null],
+  ];
+  const fake = await goLive({
+    submit: () =>
+      rowsResponse(
+        ROSTER_FIELDS,
+        websites.map(([store_url], i) => ({
+          ...storeRow(`store-${i}`),
+          store_name: i % 2 === 0 ? null : " ",
+          store_url,
+        })),
+      ),
+  });
+  expect((await loadStores()).map(({ id, label }) => ({ id, label }))).toEqual(
+    websites.map(([, domain], i) => ({ id: `store-${i}`, label: domain ?? `store-${i}` })),
+  );
+  expect(fake.count("submit")).toBe(1);
 });
 
 it("only a missing dimension uses the scoped ID-only roster, and the handled probe does not warn", async () => {
@@ -80,6 +114,7 @@ it("only a missing dimension uses the scoped ID-only roster, and the handled pro
   expect(submissions).toHaveLength(2);
   for (const { body } of submissions) {
     expect((body as { query: string }).query).toContain("store_currency_code");
+    expect((body as { query: string }).query).toContain("store_url");
     expect((body as { query: string }).query).toContain("AND sm_store_id = @store_id");
     expect((body as { queryParameters: unknown[] }).queryParameters).toContainEqual({
       name: "store_id",
