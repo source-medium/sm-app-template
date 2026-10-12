@@ -138,8 +138,12 @@ GitHub source, choose **Import a repository** instead. See [Cloudflare's Artifac
 Use the repository's Node version and pinned pnpm version from `package.json`;
 set the build variable `PNPM_VERSION` to that pnpm version if needed. The build
 command downloads the locked Chromium headless shell used by this app's
-browser tests. Do not use `--with-deps` in Workers
-Builds: it attempts a root-only system package install. Both deployment
+browser tests. Do not use `--with-deps` in Workers Builds: it attempts a
+root-only system package install. `pnpm test:browser` supplies missing Linux
+libraries automatically in Workers Builds, using the locked Playwright
+dependency list and Ubuntu's signed package repositories. Packages are extracted
+to a temporary directory for the test process, then removed; no root access,
+system changes, or extra build variables are needed. Both deployment
 commands then run **`pnpm check:deploy`**: format/lint/types/guardrails/unit
 checks, secret isolation, browser tests, the sanitized Cloudflare build, and
 Worker smoke tests. Browser tests reuse the fresh secret-isolation build;

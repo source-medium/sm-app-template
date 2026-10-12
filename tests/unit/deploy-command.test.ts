@@ -7,7 +7,7 @@ import pkg from "../../package.json";
 
 const directories: string[] = [];
 afterEach(() => directories.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true })));
-const checks = ["check", "test:secrets", "exec playwright test", "build:cloudflare", "smoke:worker"];
+const checks = ["check", "test:secrets", "test:browser", "build:cloudflare", "smoke:worker"];
 
 // Execute the actual package scripts. Replace only subprocess boundaries so
 // failures cannot contact Cloudflare and do not run five real builds per test.
@@ -79,12 +79,12 @@ describe("deployment release gate", () => {
   });
 
   it("uses the same gate for branch previews", () => {
-    const failed = deploy("deploy:preview", "exec playwright test");
+    const failed = deploy("deploy:preview", "test:browser");
     expect(failed.status, failed.stderr).toBe(37);
     expect(failed.calls).toEqual([
       ["pnpm", "check"],
       ["pnpm", "test:secrets"],
-      ["pnpm", "exec", "playwright", "test"],
+      ["pnpm", "test:browser"],
     ]);
     const passed = deploy("deploy:preview");
     expect(passed.status, passed.stderr).toBe(0);

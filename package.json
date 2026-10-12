@@ -21,7 +21,8 @@
     "lint": "eslint --cache --max-warnings 0 .",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest run",
-    "test:e2e": "next build && playwright test",
+    "test:browser": "node scripts/test-browser.mjs",
+    "test:e2e": "next build && pnpm test:browser",
     "test:secrets": "tsx scripts/check-secret-isolation.ts",
     "build": "next build",
     "build:cloudflare": "tsx scripts/build-cloudflare.ts",
@@ -32,7 +33,7 @@
     "smoke:worker": "tsx scripts/smoke-worker.ts",
     "test:live": "next build && SM_LIVE_E2E=1 playwright test",
     "test:hosted": "node scripts/test-hosted.mjs",
-    "check:deploy": "pnpm check && pnpm test:secrets && pnpm exec playwright test && pnpm build:cloudflare && pnpm smoke:worker"
+    "check:deploy": "pnpm check && pnpm test:secrets && pnpm test:browser && pnpm build:cloudflare && pnpm smoke:worker"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "1.20.8",
