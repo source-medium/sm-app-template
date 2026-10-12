@@ -10,11 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMonth } from "@/lib/format";
 import { REPORT_FILTER_FORM_ID, type SearchParams } from "@/lib/filters";
-import { getRetention, getRetentionSegments } from "./queries";
+import { getRetention } from "./queries";
 import { RetentionCurves } from "./curves";
 import { COHORT_WINDOWS, COHORT_MONTHS, RETENTION_METRICS, retentionOptions } from "./filters";
 import { retentionMatrix } from "./matrix";
-import { AcquisitionDimensionFilter, AcquisitionSegmentFilter } from "./segmentation-controls";
+import { AcquisitionDimensionFilter } from "./segmentation-controls";
+import { RetentionSegmentControls } from "./controls";
 
 export const metadata: Metadata = { title: "Retention" };
 export default async function RetentionPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -94,43 +95,16 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
               <AcquisitionDimensionFilter dimension={options.dimension} />
             </div>
             {options.dimension !== "no_filters" && (
-              <Suspense
-                key={`${filters.storeId}|${options.asOf}|${options.channel}|${options.dimension}|${options.segmentSearch}`}
-                fallback={<LoadingState variant="control" label="Loading acquisition segments" />}
-              >
-                <DataRegion
-                  timestamp={false}
-                  load={() =>
-                    getRetentionSegments({
-                      storeId: filters.storeId,
-                      asOf: options.asOf,
-                      dimension: options.dimension,
-                      channel: options.channel,
-                      search: options.segmentSearch,
-                    })
-                  }
-                  isEmpty={() => false}
-                  emptyMessage="No acquisition segments."
-                  errorContent={
-                    <AcquisitionSegmentFilter
-                      segment={options.segment}
-                      search={options.segmentSearch}
-                      values={[]}
-                      truncated={false}
-                      unavailable
-                    />
-                  }
-                >
-                  {(segments) => (
-                    <AcquisitionSegmentFilter
-                      segment={options.segment}
-                      search={options.segmentSearch}
-                      values={segments.values}
-                      truncated={segments.truncated}
-                    />
-                  )}
-                </DataRegion>
-              </Suspense>
+              <RetentionSegmentControls
+                filters={{
+                  storeId: filters.storeId,
+                  asOf: options.asOf,
+                  dimension: options.dimension,
+                  segment: options.segment,
+                  channel: options.channel,
+                  search: options.segmentSearch,
+                }}
+              />
             )}
             <div role="group" aria-label="Cohort presentation" className="flex flex-wrap items-end gap-4">
               <SelectFilter

@@ -63,12 +63,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         return (
           <>
             <div className="flex flex-wrap items-end gap-4">
-              <Suspense
-                key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${grain}`}
-                fallback={<LoadingState variant="control" label="Loading sales channels" />}
-              >
-                <OverviewControls filters={selected} />
-              </Suspense>
+              <OverviewControls filters={selected} />
               <SelectFilter name="trend" label="Trend values" value={trendMode} options={[...TREND_MODES]} />
             </div>
             <Suspense

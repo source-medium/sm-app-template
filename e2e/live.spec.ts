@@ -209,6 +209,27 @@ test("channel controls apply available channels and retention renders its publis
   }
 });
 
+test("retention acquisition segments load published options and one cohort slice", async ({ page }) => {
+  test.skip(!appConfig.nav.some((item) => item.href === "/retention"), "no Retention view");
+  const problems = watchConsole(page);
+  await page.goto("/retention?acquisition_dimension=campaign");
+  await expectLiveReport(page);
+  const segment = page.getByLabel("Acquisition segment", { exact: true });
+  await expect(segment).toBeVisible();
+  const options = segment.locator('option:not([value=""])');
+  test.skip((await options.count()) === 0, "No published campaign segments in this observation window");
+  const value = await options.first().getAttribute("value");
+  if (!value) throw new Error("A published segment option is missing its value");
+  await segment.selectOption(value);
+  await expectLiveReport(page);
+  await expect(page.getByRole("table", { name: "Monthly retention", exact: true })).toBeVisible();
+  await page.getByLabel("Matrix measure", { exact: true }).selectOption("revenue");
+  await expectLiveReport(page);
+  await expect(segment).toHaveValue(value);
+  await expect(page.getByRole("table", { name: "Cumulative revenue / customer (LTR)", exact: true })).toBeVisible();
+  expect(problems).toEqual([]);
+});
+
 test("advertising name filters query live names, comparisons, exports and creative scope", async ({
   page,
   request,
