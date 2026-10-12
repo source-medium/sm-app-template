@@ -1,23 +1,58 @@
 # SourceMedium App Starter
 
-**Your warehouse, your dashboard, your code.**
+## Start with a working dashboard. Make it yours.
 
-A Next.js app for exploring your SourceMedium data. Start with seven reports,
-then work with Codex or Claude Code to make them your own. Store switching,
-comparisons, ad-name filters, light and dark modes, and viewer sign-in are built in.
+Seven commerce reports for your SourceMedium warehouse, ready to run. Use
+Codex or Claude Code to change a metric, rework a view, or build your next report.
+The app and its source code are yours.
 
-**[Open the demo](https://sm-app-starter-demo.source-medium.workers.dev)** ·
-[Run locally](#run-it-locally) ·
-[Deploy on Cloudflare](docs/cloud.md)
+**[Run it locally](#run-it-locally)** ·
+[Explore the reports](#seven-reports-to-start-from) ·
+[Open the demo (sign-in required)](https://sm-app-starter-demo.source-medium.workers.dev)
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/images/overview-light.png">
-  <img alt="Overview in Store Insights: six headline metrics with sparklines, period comparisons, and the store switcher." src="docs/images/overview-light.png" width="1440">
-</picture>
+### A report should answer your question
 
-_All screenshots use synthetic sample data. The hosted demo reads SourceMedium's
-demo warehouse and requires sign-in: [request demo access](mailto:support@sourcemedium.com)._
+Say you want to compare creative efficiency. Open **Vibe code**, pick a card,
+and describe the change:
+
+> On Delivery cards, replace Impressions with Cost / conversion so I can compare spend efficiency.
+
+**Before: impressions. After: cost per conversion.**
+
+<p>
+  <img src="docs/images/customize-before.jpg" width="390" alt="Before: the default creative card shows $5,456.90 spend, 477,662 impressions, 1.24% CTR, and 249.5 conversions.">
+  <img src="docs/images/customize-after.jpg" width="390" alt="After customization: the same card shows $21.87 cost per conversion in place of impressions. The other metrics stay the same.">
+</p>
+
+Copy the prepared prompt into your coding agent. It includes the selected element,
+page, and applied filters. Your agent edits the repo; you review the result in a
+preview before publishing.
+
+_Real captures of a local customization using sample data. The starter keeps the
+default card; this example shows what you can change._
+
+<details>
+<summary><strong>See the prompt and the code change</strong></summary>
+
+<img src="docs/images/vibe-code.jpg" width="448" alt="Vibe code with the request written out and Ad creatives, Card 1 selected as its target.">
+
+The metric already exists in the Returns view. This customization reuses it in
+Delivery cards. In [`src/features/creatives/page.tsx`](src/features/creatives/page.tsx),
+replace the Impressions entry in the Delivery metrics:
+
+```diff
+- { label: "Impressions", display: formatCount(creative.impressions) },
++ { label: "Cost / conversion", display: formatMoney(creative.cpo, currency) },
+```
+
+Remove the now-unused `formatCount` import. The existing calculation uses period
+spend / platform-reported conversions and shows an empty value when there are no
+conversions. No query or schema change is needed.
+
+The Vibe code panel prepares context for an agent working in your repo. It does
+not run an agent inside the dashboard. See [more things to ask](docs/prompts.md).
+
+</details>
 
 ## Run it locally
 
@@ -31,69 +66,75 @@ pnpm dev
 ```
 
 Open **http://127.0.0.1:3000**. Sample data works immediately, with no credentials,
-database setup, or AI API key. To start with your coding agent instead, use the
-[setup prompt](docs/cloud.md#your-first-message-in-either-agent).
+database setup, or AI API key. Or give your agent the [setup prompt](docs/cloud.md#your-first-message-in-either-agent)
+and let it guide you through connecting your warehouse and hosting the app.
 
-## One store, or the whole portfolio
+## Seven reports to start from
+
+Store selection travels between reports, and report filters live in shareable
+URLs. Period comparisons, CSV exports where available, chart-to-table views,
+and light and dark modes are already in place.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.jpg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/overview-light.jpg">
+  <img alt="Overview: revenue, orders, ad spend, and other headline metrics with sparklines and period comparisons." src="docs/images/overview-light.jpg" width="1440">
+</picture>
+
+_All screenshots use synthetic sample data. The hosted demo reads SourceMedium's
+demo warehouse and requires sign-in: [request demo access](mailto:support@sourcemedium.com)._
+
+| Report             | Start with this question                             |
+| ------------------ | ---------------------------------------------------- |
+| **Overview**       | How did revenue, orders, and spend change?           |
+| **All stores**     | Which stores are growing, and which need a look?     |
+| **Paid marketing** | Where is spend going, and what returns are reported? |
+| **Creatives**      | Which ads are delivering, and at what cost?          |
+| **Products**       | Which products and variants drive sales?             |
+| **Retention**      | How do customers from each cohort return over time?  |
+| **Orders**         | What happened with a particular order?               |
+
+<details>
+<summary><strong>Compare stores, then drill into one</strong></summary>
 
 Search by store name, domain, brand, or ID. Names and available logos come from
-your warehouse; missing names fall back to a domain or store ID. Open **All stores**
-to compare performance, then select a store to investigate a change. Each store's
-currency stays visible, with no combined totals across currencies.
+your warehouse; missing names fall back to a domain or store ID. **All stores**
+keeps each store's currency visible and avoids combining totals across currencies.
 
-![All stores report with the searchable store picker open, showing brand groups, store domains, and separate performance rows.](docs/images/stores.png)
+![All stores with the searchable store picker open, brand groups, store domains, and separate performance rows.](docs/images/stores.jpg)
 
-## Put your naming conventions to work
+</details>
 
-In **Paid marketing** and **Creatives**, filter campaign, ad set, or ad names by
-text you already use, such as `[retargeting]`. Combine contains, does not contain,
-equals, and starts with rules. Inspect matching names before interpreting the
-results. The app treats your text literally; there is no tag taxonomy to configure.
+<details>
+<summary><strong>Use the naming conventions you already have</strong></summary>
 
-![Creative cards filtered to campaign names containing “[retargeting]”, with spend, impressions, click-through rate, and conversions.](docs/images/creatives.png)
+Filter campaign, ad set, or ad names by text such as `[retargeting]`. Combine
+contains, does not contain, equals, and starts with rules, then inspect matching
+names. Your text is treated literally, with no tag taxonomy to configure.
+
+![Creative cards filtered to campaign names containing “[retargeting]”.](docs/images/creatives.jpg)
 
 Filters travel with the report link. Creative metrics reflect the matching
 ad delivery, including when one creative appears in several campaigns.
 
-## Point. Describe. Vibe code.
-
-Open **Vibe code**, choose **Pick an element**, and describe what should change.
-The panel prepares a prompt with the current page, applied filters, and selected
-element. Copy it into Codex, Claude Code, or another agent working in your repo.
-Code changes happen in your coding agent; the dashboard prepares the context.
-
-![Vibe code panel with a creative card selected and a request to add cost per conversion, ready to copy into a coding agent.](docs/images/vibe-code.png)
-
-The repo includes shared [agent instructions](AGENTS.md), skills for adding pages,
-querying data and deploying, and [starter prompts](docs/prompts.md).
-
-## Reports to make your own
-
-| Report             | What you can explore                                       |
-| ------------------ | ---------------------------------------------------------- |
-| **Overview**       | Revenue, orders, ad spend, trends, and period comparisons  |
-| **All stores**     | Store-by-store performance, changes, and drill-through     |
-| **Paid marketing** | Channel and campaign performance, spend, and platform ROAS |
-| **Creatives**      | Ad images, delivery, and platform-reported returns         |
-| **Products**       | Product and variant rankings                               |
-| **Retention**      | Repeat purchases and lifetime value by acquisition cohort  |
-| **Orders**         | Order search, detail drawers, and pagination               |
+</details>
 
 <details>
-<summary><strong>See the retention report</strong></summary>
-
-![Retention report with monthly acquisition cohorts, retention curves, and a cohort matrix, using synthetic sample data.](docs/images/retention.png)
+<summary><strong>Follow retention and lifetime value by cohort</strong></summary>
 
 Compare cohorts at the same age, filter acquisition channels, and switch the
 matrix between retention, repeat purchase, revenue, and gross profit measures.
 
+![Retention curves and a cohort matrix, using synthetic sample data.](docs/images/retention.jpg)
+
 </details>
 
 Each view owns its queries, sample data, and presentation. Copy the closest one
-or [remove the examples](docs/removing-the-example.md). Rebrand in
-[`app.config.ts`](app.config.ts) and [`src/styles/tokens.css`](src/styles/tokens.css).
+or [remove the examples](docs/removing-the-example.md). Change your name, logo,
+and navigation in [`app.config.ts`](app.config.ts), and your colors and fonts in
+[`src/styles/tokens.css`](src/styles/tokens.css).
 
-## Connect once, preview each change
+## Put your version online
 
 Your agent follows the [Cloudflare guide](docs/cloud.md) to connect the app and
 set up automatic deployments:
@@ -102,31 +143,24 @@ set up automatic deployments:
    workspace's **Apps** page. Enter its configuration block privately.
 2. **Choose who can view it.** Use a shared password for a small trusted group,
    or Cloudflare Access for individual sign-in. Your agent helps you choose.
-3. **Review a preview.** Push a task branch to run the checks and build a protected
-   preview against your data. Approve the change, then push `main` to deploy.
+3. **Review, then publish.** Push a task branch for a protected preview against
+   your data. Approve the change, then push `main` to deploy.
 
 The default path uses **Cloudflare Artifacts + Workers Builds**. GitHub is
 optional. Workers Paid is required; see the guide for Artifacts availability and
 [current costs](docs/cloud.md).
 
-If Apps says credentials are still being enabled, keep working with sample data
-and contact [SourceMedium support](SUPPORT.md). Do not use an admin credential.
-
 Every viewer of a deployment sees the same data. For separate store audiences,
 use separate deployments with `APP_STORE_ID`. See [sign-in and store access](docs/auth.md).
+If Apps says credentials are still being enabled, use sample data and
+[contact support](SUPPORT.md). Do not use an admin credential.
 
-## Built to keep editing
+## Keep building
 
-Ordinary Next.js, React, and TypeScript. shadcn/ui components, Tailwind tokens,
-and Recharts are included in the repo. There is no proprietary dashboard editor.
-
-- **Shareable views:** store, dates, and report filters live in the URL.
-- **Readable data:** metric definitions, chart-to-table toggles, CSV exports where
-  available, and explicit loading, empty, and error states.
-- **Server-side queries:** typed SQL parameters, exact decimal handling, bounded
-  results, and viewer guards.
-- **Checks included:** lint, types, data contracts, store scope, Node and Worker
-  tests, and browser accessibility checks.
+The repo uses Next.js, React, TypeScript, shadcn/ui, Tailwind, and Recharts.
+It includes [agent instructions](AGENTS.md), skills for adding pages, querying
+data and deploying, and checks for auth, store scope, data contracts, and browser
+accessibility. Warehouse queries run on the server.
 
 ```sh
 pnpm check      # Format, lint, types, guardrails, and unit tests

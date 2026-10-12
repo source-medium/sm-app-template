@@ -42,9 +42,18 @@ store and dates; the current set uses Sample Store A, September 1–28, 2026,
 with the previous-period comparison.
 
 The other images show the All stores picker, Creatives filtered by campaign
-name containing `[retargeting]`, a Vibe code request with a selected card, and
-Retention through September 2026. Save captures in `docs/images/`, check the
-README image links and alt text, and remove any images no longer referenced.
+name containing `[retargeting]`, and Retention through September 2026.
+
+The README opens with an actual customization: replacing Impressions with
+Cost / conversion on Delivery cards. Capture the first creative on Sample
+Store A for the dates above, without a name filter. Use the same crop before
+and after applying the README's code change, and capture its request in Vibe
+code with Card 1 selected. Restore the default source after capturing the
+example; the screenshots must not imply that the customized card ships by default.
+
+Save captures in `docs/images/`, check the README image links and alt text,
+and remove any images no longer referenced. Keep close-ups readable at GitHub's
+README width and check that the before/after images stack on a narrow screen.
 
 ## Rules for changes
 
