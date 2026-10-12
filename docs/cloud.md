@@ -124,20 +124,21 @@ and repository. For an existing Worker, use **Settings → Builds → Connect**
 and select the Artifacts namespace in **Git connection**. With the optional
 GitHub source, choose **Import a repository** instead. See [Cloudflare's Artifacts integration](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/artifacts-integration/).
 
-| Setting           | Production Worker                       | Preview Worker                              |
-| ----------------- | --------------------------------------- | ------------------------------------------- |
-| Worker name       | `<app>` (initially `sm-app`)            | `<app>-preview`                             |
-| Production branch | `main`                                  | `main`                                      |
-| Build command     | `pnpm exec playwright install chromium` | `pnpm exec playwright install chromium`     |
-| Deploy command    | `pnpm run deploy`                       | `pnpm run deploy --env preview`             |
-| Preview command   | Unused                                  | `pnpm run deploy:preview`                   |
-| Preview builds    | Disabled                                | Enabled for trusted non-production branches |
-| Root directory    | Repository root                         | Repository root                             |
-| Runtime secrets   | Production app block                    | Development app block in **Previews Base**  |
+| Setting           | Production Worker                                    | Preview Worker                                       |
+| ----------------- | ---------------------------------------------------- | ---------------------------------------------------- |
+| Worker name       | `<app>` (initially `sm-app`)                         | `<app>-preview`                                      |
+| Production branch | `main`                                               | `main`                                               |
+| Build command     | `pnpm exec playwright install --only-shell chromium` | `pnpm exec playwright install --only-shell chromium` |
+| Deploy command    | `pnpm run deploy`                                    | `pnpm run deploy --env preview`                      |
+| Preview command   | Unused                                               | `pnpm run deploy:preview`                            |
+| Preview builds    | Disabled                                             | Enabled for trusted non-production branches          |
+| Root directory    | Repository root                                      | Repository root                                      |
+| Runtime secrets   | Production app block                                 | Development app block in **Previews Base**           |
 
 Use the repository's Node version and pinned pnpm version from `package.json`;
 set the build variable `PNPM_VERSION` to that pnpm version if needed. The build
-command downloads the locked browser. Do not use `--with-deps` in Workers
+command downloads the locked Chromium headless shell used by this app's
+browser tests. Do not use `--with-deps` in Workers
 Builds: it attempts a root-only system package install. Both deployment
 commands then run **`pnpm check:deploy`**: format/lint/types/guardrails/unit
 checks, secret isolation, browser tests, the sanitized Cloudflare build, and
