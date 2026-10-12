@@ -149,9 +149,12 @@ Missing browser dependencies or failed checks stop the deploy; fix the cause
 instead of bypassing the command. No live warehouse credentials belong in Builds.
 When upgrading an existing connection, set the browser-install command in
 **Builds → Production** on both Workers and **Builds → Previews Base** on the
-Preview Worker. Save those settings before pushing the next change. A failed
-build's **Retry build** can reuse its original commands; inspect the new build's
-settings to confirm it picked up the correction.
+Preview Worker. Save before pushing the next change, then inspect that build's
+commands. If it still executes an old command despite a saved setting, reconnect
+that Worker to the same repository with the corrected commands. Restore its
+branch filters, pinned pnpm variable and existing build token, and enable Worker
+Previews again on the Preview Worker. Keep runtime secrets in place. Verify a
+new push before calling the connection repaired.
 
 Cloudflare supplies its deployment credentials through Workers Builds. Keep
 app credentials in runtime settings only. See [Builds settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/).
