@@ -146,6 +146,13 @@ the browser-install command above before pushing this deployment change.
 
 Cloudflare supplies its deployment credentials through Workers Builds. Keep
 app credentials in runtime settings only. See [Builds settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/).
+For Artifacts, check **Advanced settings → API token** before connecting. An
+older build token may lack Artifacts permissions; choose **Create new token**
+and confirm its deployment access instead of reusing that incompatible token.
+Wrangler's local login is separate and does not update the hosted build token.
+If the form reports an internal error, check the actual failure before retrying:
+`The Workers Builds token cannot authenticate with Cloudflare Artifacts` means
+the selected build token needs Artifacts access.
 Leave production secrets empty only for the initial sample app. A preview
 without live configuration deliberately returns a setup error, not sample
 numbers. Complete [Connect your data](#connect-your-data) and
