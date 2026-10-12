@@ -13,6 +13,19 @@ beforeEach(() => {
 afterEach(() => rmSync(directory, { recursive: true, force: true }));
 
 describe("build scan credential sources", () => {
+  it("scans connection bundles and their embedded key in injected and local settings", () => {
+    const key = "synthetic-connection-key-".repeat(12);
+    const bundle = Buffer.from(JSON.stringify({ version: 1, values: { SM_APP_KEY: key } })).toString("base64");
+    for (const local of [false, true]) {
+      if (local) writeFileSync(join(directory, ".env.local"), `SM_CONNECTION=${bundle}\n`);
+      const values = configuredSecretValues(directory, local ? {} : { SM_CONNECTION: bundle });
+      expect(values).toEqual([bundle, bundle.slice(40, 120), key, key.slice(40, 120)]);
+    }
+    expect(configuredSecretValues(directory, { SM_CONNECTION: "malformed-connection-value" })).toContain(
+      "malformed-connection-value",
+    );
+  });
+
   it("scans injected credentials even without a local env file", () => {
     const key = "synthetic-environment-key-".repeat(12);
     const password = "synthetic-password-0123456789";

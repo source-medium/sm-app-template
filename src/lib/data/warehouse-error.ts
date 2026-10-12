@@ -27,7 +27,7 @@ const COPY: Record<WarehouseErrorKind, { title: string; remedy: string }> = {
   credential_invalid: {
     title: "The app key was rejected",
     remedy:
-      "Google rejected SM_APP_KEY: it may have been replaced, paused, or revoked. Ask your SourceMedium admin for an app-specific replacement key.",
+      "Google rejected the app data credential: it may have been replaced, paused, or revoked. Ask your SourceMedium admin for an app-specific replacement key.",
   },
   permission_denied: {
     title: "The app cannot read this data",

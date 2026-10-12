@@ -19,6 +19,87 @@ function problemsOf(config: AppConfig): string[] {
 }
 
 describe("configuration matrix", () => {
+  function connection(values = liveEnv(key)): string {
+    return btoa(
+      JSON.stringify({ version: 1, values: Object.fromEntries(LIVE_VARIABLES.map((name) => [name, values[name]])) }),
+    );
+  }
+
+  it.each(["basic", "access"])("a connection bundle preserves the complete %s configuration", (guard) => {
+    const viewer = guard === "basic" ? { APP_BASIC_AUTH: `viewer:${TEST_PASSWORD}` } : ACCESS;
+    const settings = {
+      ...viewer,
+      APP_STORE_ID: "store_1",
+      BIGQUERY_MAX_BYTES_BILLED: "5000000",
+      APP_REQUIRE_LIVE: "true",
+    };
+    expect(parseConfig({ SM_CONNECTION: connection(), ...settings })).toEqual(
+      parseConfig({ ...liveEnv(key, { APP_BASIC_AUTH: undefined }), ...settings }),
+    );
+  });
+
+  it("a connection bundle cannot omit, supply, or bypass a viewer guard", () => {
+    expect(problemsOf(parseConfig({ SM_CONNECTION: connection() }))).toEqual(["APP_BASIC_AUTH"]);
+    expect(
+      parseConfig({ SM_CONNECTION: connection(), APP_BASIC_AUTH: `viewer:${TEST_PASSWORD}`, ...ACCESS }).status,
+    ).toBe("error");
+    for (const injected of [{ APP_BASIC_AUTH: `viewer:${TEST_PASSWORD}` }, { APP_STORE_ID: "another-store" }]) {
+      const values = Object.fromEntries(LIVE_VARIABLES.map((name) => [name, liveEnv(key)[name]]));
+      expect(
+        problemsOf(
+          parseConfig({ SM_CONNECTION: btoa(JSON.stringify({ version: 1, values: { ...values, ...injected } })) }),
+        ),
+      ).toEqual(["SM_CONNECTION"]);
+    }
+  });
+
+  it.each(LIVE_VARIABLES)("rejects missing bundle field %s without echoing its contents", (name) => {
+    const encoded = connection(liveEnv(key, { [name]: undefined }));
+    const config = parseConfig({ SM_CONNECTION: encoded });
+    expect(problemsOf(config)).toEqual(["SM_CONNECTION"]);
+    expect(JSON.stringify(config)).not.toContain(key.base64);
+    expect(JSON.stringify(config)).not.toContain(encoded);
+  });
+
+  it.each(["not-base64!", btoa("not json"), btoa("null"), btoa('{"version":2,"values":{}}'), "a".repeat(32_769)])(
+    "a malformed bundle fails closed",
+    (encoded) => {
+      expect(problemsOf(parseConfig({ SM_CONNECTION: encoded }))).toEqual(["SM_CONNECTION"]);
+    },
+  );
+
+  it("applies key and metadata validation to bundles without leaking values", () => {
+    for (const values of [
+      liveEnv(key, { BIGQUERY_JOB_PROJECT_ID: "sm-other-project" }),
+      liveEnv(key, { BIGQUERY_LOCATION: "private-invalid-location" }),
+      liveEnv(key, { SM_APP_KEY: "private-invalid-key" }),
+    ]) {
+      const config = parseConfig({ SM_CONNECTION: connection(values), APP_BASIC_AUTH: `viewer:${TEST_PASSWORD}` });
+      expect(problemsOf(config)).toEqual(["SM_CONNECTION"]);
+      expect(JSON.stringify(config)).not.toMatch(/private-invalid|BEGIN PRIVATE KEY/);
+    }
+  });
+
+  it("rejects mixed connection formats instead of choosing stale credentials", () => {
+    for (const name of LIVE_VARIABLES) {
+      expect(problemsOf(parseConfig({ SM_CONNECTION: connection(), [name]: liveEnv(key)[name] }))).toEqual([
+        "SM_CONNECTION",
+      ]);
+    }
+  });
+
+  it("replacing the connection changes the key but preserves viewer access and store scope", async () => {
+    const replacement = await makeServiceAccountKey(undefined, "replacement");
+    const guard = { APP_BASIC_AUTH: `viewer:${TEST_PASSWORD}`, APP_STORE_ID: "store_1" };
+    const before = parseConfig({ SM_CONNECTION: connection(), ...guard });
+    const after = parseConfig({ SM_CONNECTION: connection(liveEnv(replacement)), ...guard });
+    if (before.status !== "ok" || before.mode !== "live" || after.status !== "ok" || after.mode !== "live")
+      throw new Error("expected live");
+    expect(after.guard).toEqual(before.guard);
+    expect(after.storeId).toBe(before.storeId);
+    expect(after.live.key.privateKeyPem).not.toBe(before.live.key.privateKeyPem);
+  });
+
   it("no live values and no guard is a public sample", () => {
     expect(parseConfig({})).toEqual({ status: "ok", mode: "sample", guard: null, storeId: null });
   });

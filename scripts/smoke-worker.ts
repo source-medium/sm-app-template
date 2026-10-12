@@ -21,9 +21,14 @@ const LAST = appConfig.nav.at(-1)?.href ?? FIRST;
 const dir = mkdtempSync(join(tmpdir(), "sm-smoke-"));
 
 const access = "CF_ACCESS_TEAM_DOMAIN=example.cloudflareaccess.com\nCF_ACCESS_AUD=" + "a".repeat(64) + "\n";
+const dataValues = Object.fromEntries(
+  Object.entries(liveEnv(await makeServiceAccountKey(), { APP_BASIC_AUTH: undefined })).filter(
+    (entry) => entry[1] !== undefined,
+  ),
+);
+const connection = `SM_CONNECTION=${btoa(JSON.stringify({ version: 1, values: dataValues }))}\n`;
 const live =
-  Object.entries(liveEnv(await makeServiceAccountKey(), { APP_BASIC_AUTH: undefined }))
-    .filter((entry) => entry[1] !== undefined)
+  Object.entries(dataValues)
     .map(([name, value]) => `${name}=${value}`)
     .join("\n") + "\n";
 
@@ -99,6 +104,38 @@ const modes: Mode[] = [
     workerEnv: "preview",
     env: live,
     checks: [[FIRST, {}, 503, "APP_BASIC_AUTH"]],
+  },
+  {
+    name: "connection Basic",
+    env: connection + `APP_BASIC_AUTH=viewer:${PASSWORD}\n`,
+    checks: [
+      [FIRST, {}, 401],
+      ["/connection", {}, 401],
+      ["/paid-marketing/export", {}, 401],
+      ["/connection", { headers: { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` } }, 200, "Live data"],
+    ],
+  },
+  { name: "connection Access", env: connection + access, checks: [[FIRST, {}, 403]] },
+  {
+    name: "preview connection Basic",
+    workerEnv: "preview",
+    env: connection + `APP_BASIC_AUTH=viewer:${PASSWORD}\n`,
+    checks: [[FIRST, {}, 401]],
+  },
+  {
+    name: "connection without guard",
+    env: connection,
+    checks: [[FIRST, {}, 503, "APP_BASIC_AUTH"]],
+  },
+  {
+    name: "malformed connection",
+    env: `SM_CONNECTION=invalid\nAPP_BASIC_AUTH=viewer:${PASSWORD}\n`,
+    checks: [[FIRST, {}, 503, "SM_CONNECTION"]],
+  },
+  {
+    name: "mixed connection formats",
+    env: connection + live + `APP_BASIC_AUTH=viewer:${PASSWORD}\n`,
+    checks: [[FIRST, {}, 503, "not both"]],
   },
   { name: "both guards", env: access + `APP_BASIC_AUTH=viewer:${PASSWORD}\n`, checks: [[FIRST, {}, 503]] },
   {

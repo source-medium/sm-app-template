@@ -50,7 +50,6 @@ function files(dir: string, pattern: RegExp): string[] {
 }
 
 const key = await sentinelKey();
-const sentinels = [PASSWORD, key.base64.slice(40, 120), key.pemFragment, ...configuredSecretValues()];
 const liveEnv = {
   SM_APPLICATION_ID: APP_ID,
   SM_APP_KEY: key.base64,
@@ -61,6 +60,17 @@ const liveEnv = {
   SM_METADATA_DATASET_ID: "sm_metadata",
   APP_BASIC_AUTH: `viewer:${PASSWORD}`,
 };
+const { APP_BASIC_AUTH, ...dataValues } = liveEnv;
+const connection = Buffer.from(JSON.stringify({ version: 1, values: dataValues })).toString("base64");
+const connectionEnv = { SM_CONNECTION: connection, APP_BASIC_AUTH };
+const sentinels = [
+  PASSWORD,
+  key.base64.slice(40, 120),
+  key.pemFragment,
+  connection,
+  connection.slice(40, 120),
+  ...configuredSecretValues(),
+];
 const leaks: string[] = [];
 const scan = (label: string, text: string) => {
   for (const sentinel of sentinels) if (text.includes(sentinel)) leaks.push(label);
@@ -69,7 +79,7 @@ const scan = (label: string, text: string) => {
 console.log("Building with sentinel credentials in the build environment...");
 const build = spawnSync(process.execPath, [nextCli, "build"], {
   cwd: root,
-  env: { ...process.env, ...cleared, ...liveEnv },
+  env: { ...process.env, ...cleared, ...connectionEnv },
   stdio: "inherit",
 });
 if (build.error) throw build.error;
@@ -93,6 +103,7 @@ const auth = { Authorization: `Basic ${Buffer.from(`viewer:${PASSWORD}`).toStrin
  */
 
 const modes = [
+  { name: "live (connection bundle)", env: connectionEnv, expect: "Live data" },
   { name: "live (sentinel key)", env: liveEnv, expect: "Live data" },
   { name: "protected sample", env: { APP_BASIC_AUTH: `viewer:${PASSWORD}` }, expect: "Sample data" },
 ];

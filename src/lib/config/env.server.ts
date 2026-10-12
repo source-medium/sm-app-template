@@ -10,7 +10,7 @@
  *   no live values,  no guard          -> public sample
  *   no live values,  one valid guard   -> protected sample
  *   APP_REQUIRE_LIVE=true, no live values -> error (hosted previews)
- *   all seven live,  one valid guard   -> live, protected
+ *   connection or seven live values, one valid guard -> live, protected
  *   some live values, or a bad value   -> error (no query, no sample fallback)
  *   all seven live,  no guard          -> error, including on localhost
  *   partial Access pair, bad Basic, or both guards -> error
@@ -74,6 +74,7 @@ const SERVICE_ACCOUNT_EMAIL =
   /^[a-z][a-z0-9-]{4,28}[a-z0-9]@([a-z][a-z0-9-]{4,28}[a-z0-9])\.iam\.gserviceaccount\.com$/;
 const PRIVATE_KEY_ID = /^[a-f0-9]{40}$/;
 const MAX_KEY_LENGTH = 16_384;
+const MAX_CONNECTION_LENGTH = 32_768;
 
 const RECOPY = "check the issued configuration block with your SourceMedium admin (docs/connect.md)";
 
@@ -85,9 +86,11 @@ function read(env: Env, name: string): string | undefined {
 
 export function parseConfig(env: Env): AppConfig {
   const problems: ConfigProblem[] = [];
+  const dataEnv = readLiveValues(env, problems);
+  if (!dataEnv) return { status: "error", problems };
   const guard = parseGuard(env, problems);
   const guardProblems = problems.length;
-  const present = LIVE_VARIABLES.filter((name) => read(env, name) !== undefined);
+  const present = LIVE_VARIABLES.filter((name) => read(dataEnv, name) !== undefined);
   const maxBytesBilled = parseMaxBytesBilled(env, problems);
   const storeId = parseStoreId(env, problems);
   const requireLive = read(env, "APP_REQUIRE_LIVE");
@@ -118,7 +121,13 @@ export function parseConfig(env: Env): AppConfig {
     return { status: "error", problems };
   }
 
-  const live = parseLive(env, maxBytesBilled, problems);
+  const liveProblems: ConfigProblem[] = [];
+  const live = parseLive(dataEnv, maxBytesBilled, liveProblems);
+  if (read(env, "SM_CONNECTION") && liveProblems.length > 0) {
+    problems.push(connectionProblem());
+  } else {
+    problems.push(...liveProblems);
+  }
   if (!guard && guardProblems === 0) {
     problems.push({
       variable: "APP_BASIC_AUTH",
@@ -128,6 +137,52 @@ export function parseConfig(env: Env): AppConfig {
   }
   if (problems.length > 0 || !live || !guard) return { status: "error", problems };
   return { status: "ok", mode: "live", guard, live, storeId };
+}
+
+function connectionProblem(): ConfigProblem {
+  return {
+    variable: "SM_CONNECTION",
+    message: `SM_CONNECTION is incomplete, invalid, or uses an unsupported format; ${RECOPY}.`,
+  };
+}
+
+/** v1 bundles contain only data settings. Viewer guards and store scope stay independent. */
+function readLiveValues(env: Env, problems: ConfigProblem[]): Env | null {
+  const encoded = read(env, "SM_CONNECTION");
+  if (encoded === undefined) return env;
+  if (LIVE_VARIABLES.some((name) => read(env, name) !== undefined)) {
+    problems.push({
+      variable: "SM_CONNECTION",
+      message:
+        "Use SM_CONNECTION or the seven separate data settings, not both. Remove the old data settings when switching to SM_CONNECTION; keep your viewer guard and store restriction.",
+    });
+    return null;
+  }
+  try {
+    if (encoded.length > MAX_CONNECTION_LENGTH || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) throw new Error();
+    const bytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
+    const bundle: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    if (
+      !bundle ||
+      typeof bundle !== "object" ||
+      !("version" in bundle) ||
+      bundle.version !== 1 ||
+      !("values" in bundle)
+    )
+      throw new Error();
+    const values = bundle.values;
+    if (!values || typeof values !== "object" || Array.isArray(values)) throw new Error();
+    const fields = values as Record<string, unknown>;
+    if (
+      Object.keys(fields).length !== LIVE_VARIABLES.length ||
+      LIVE_VARIABLES.some((name) => typeof fields[name] !== "string" || !fields[name].trim())
+    )
+      throw new Error();
+    return Object.fromEntries(LIVE_VARIABLES.map((name) => [name, fields[name] as string]));
+  } catch {
+    problems.push(connectionProblem());
+    return null;
+  }
 }
 
 function parseStoreId(env: Env, problems: ConfigProblem[]): string | null {

@@ -47,7 +47,11 @@ if (hosted && (!liveUser || !livePassword.join(":"))) {
     "Hosted checks need APP_BASIC_AUTH entered privately in the agent environment. No warehouse key or .env file is needed. For Cloudflare Access, use the manual checks in docs/cloud.md#verify-a-hosted-build.",
   );
 }
-if (live && !hosted && (!process.env.SM_APP_KEY || !liveUser || !livePassword.join(":"))) {
+if (
+  live &&
+  !hosted &&
+  ((!process.env.SM_CONNECTION && !process.env.SM_APP_KEY) || !liveUser || !livePassword.join(":"))
+) {
   throw new Error(
     "Live browser checks need a complete Development app block with APP_BASIC_AUTH in environment settings or .env.local. Run pnpm diagnose first; see docs/cloud.md#debug-with-live-data.",
   );

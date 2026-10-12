@@ -8,15 +8,16 @@ agent-run warehouse debugging, reuse the previews' [Development credential](clou
 This is a preview. Live data needs an app configuration block from the **Apps**
 page of your SourceMedium workspace. If that page says credentials are still
 being enabled, stay on sample data and ask SourceMedium support.
-Start with the shared password and Cloudflare Workers Paid. Use the issued
-app credential; never substitute an admin credential.
+Have your agent [help you choose sign-in](auth.md#choose-sign-in-with-your-agent)
+before entering live settings. Use Cloudflare Workers Paid and the issued app
+credential; never substitute an admin credential.
 
 The app has three states, always shown in the top bar:
 
 | State                   | When                                                     | What you see                                     |
 | ----------------------- | -------------------------------------------------------- | ------------------------------------------------ |
 | **Sample data**         | No live values are set                                   | Synthetic stores and numbers, labeled as such    |
-| **Live data**           | All seven live values and one viewer guard are set       | Your warehouse, behind a password or Access      |
+| **Live data**           | A valid connection and one viewer guard are set          | Your warehouse, behind a password or Access      |
 | **Configuration error** | Some values are missing or malformed, or no viewer guard | A list of what to fix (HTTP 503); no data at all |
 
 There is no partial mode and no fallback: a broken live configuration never
@@ -49,19 +50,18 @@ The page states what the app will be able to read, then shows one
 configuration block **once**:
 
 ```text
-SM_APPLICATION_ID=…
-BIGQUERY_JOB_PROJECT_ID=…
-BIGQUERY_LOCATION=…
-SM_DATA_PROJECT_ID=…
-SM_TRANSFORMED_DATASET_ID=…
-SM_METADATA_DATASET_ID=…
-SM_APP_KEY=…
+SM_CONNECTION=…
 APP_BASIC_AUTH=…
 ```
 
-`SM_APP_KEY` (the app's data credential) and `APP_BASIC_AUTH` (the shared
+`SM_CONNECTION` (the app's data connection) and `APP_BASIC_AUTH` (the shared
 viewer password) are secrets. Treat the block like a password: keep it out of
 chat, email, tickets, and git.
+
+Your agent helps you choose sign-in. With a shared password, save both values;
+with Cloudflare Access, save only `SM_CONNECTION` and let the agent configure
+[Access](auth.md#cloudflare-access). You do not need to manage project, region,
+or dataset settings separately.
 
 The credential can read everything the app's grants allow. Every viewer of a
 deployment sees the same data. For separate store audiences, set `APP_STORE_ID`
@@ -86,7 +86,10 @@ See [money and currency](data.md#money-and-currency).
 Dates need no setting: each store's dates follow its SourceMedium time zone,
 which each dated report's footer names. See [dates](data.md#dates).
 
-Paste the block into `.env.local` at the repository root (git ignores it), then:
+For direct localhost testing, use the shared password in the block; Cloudflare
+Access protects hosted hostnames. This local setup does not change your hosted
+sign-in choice. Paste the block privately into `.env.local` at the repository
+root (git ignores it), then:
 
 ```sh
 pnpm diagnose   # checks the key, datasets, locations, and a bounded example query
@@ -132,8 +135,8 @@ runtime setting from the Worker explicitly when you intend to remove it.
 For automatic deployments, use [the shared Git workflow](cloud.md#3-connect-cloudflare-once).
 Runtime secrets belong to the Worker, not the build environment.
 
-Use `pnpm run deploy`, not `pnpm deploy` (a pnpm built-in). The shared password
-protects the `workers.dev` URL; production Version URLs are off. Branch
+Use `pnpm run deploy`, not `pnpm deploy` (a pnpm built-in). The chosen viewer guard
+must protect the `workers.dev` URL; production Version URLs are off. Branch
 Previews use the Development credential for the same warehouse and require live
 data; follow [preview setup](cloud.md#connect-preview-data). With Cloudflare Access,
 follow [auth.md](auth.md#cloudflare-access) to protect every hostname.
@@ -142,6 +145,9 @@ follow [auth.md](auth.md#cloudflare-access) to protect every hostname.
 
 These steps work whether Codex, Claude, or a local agent prepared the app.
 You need an already issued [app-specific block](#2-get-your-configuration).
+Your agent reuses your [sign-in choice](auth.md#choose-sign-in-with-your-agent)
+and handles the steps below within its authorization and account access.
+You only need to complete private entry and account steps it cannot perform.
 
 1. Confirm the workspace reporting currency and [source alignment](data.md#money-and-currency).
    Have your agent set `currency` (and per-store `reportingCurrencies` if needed) in
@@ -152,9 +158,9 @@ You need an already issued [app-specific block](#2-get-your-configuration).
    **Settings > Variables and Secrets**, select **Production** if an environment
    selector is shown.
    For a single-store app, add `APP_STORE_ID` using its exact `sm_store_id`;
-   omit it to keep the multi-store picker. Add all eight issued values as
-   **Secrets**, including `APP_BASIC_AUTH`. Set `APP_REQUIRE_LIVE=true` as a
-   runtime variable, then save and deploy the settings.
+   omit it to keep the multi-store picker. Add `SM_CONNECTION` as one
+   **Secret**, then [configure the chosen sign-in](auth.md#configure-the-chosen-sign-in).
+   Set `APP_REQUIRE_LIVE=true` as a runtime variable, then save and deploy the settings.
    Enter the values privately yourself. Do not put the block in agent chat, the
    agent's environment, build variables, or Previews Base settings. Viewer-only
    `APP_BASIC_AUTH` may be entered privately for [hosted verification](cloud.md#verify-a-hosted-build); the production warehouse key stays in the Worker. A separate
@@ -191,8 +197,9 @@ no `.dev.vars` shows **Sample data** here on purpose. Paste the block into
 Treat the configuration block as shown once. An organization admin can return
 to **Apps** to recover access without sending anyone the old key or password:
 
-- **Replace key** returns a new `SM_APP_KEY`. The old key stops
-  working; update every host and `.env.local`.
+- **Replace key** returns a new `SM_CONNECTION` (or `SM_APP_KEY` for older
+  separate settings). The old key stops working; update every use. Viewer
+  sign-in stays unchanged.
 - **Generate new viewer password** returns a new `APP_BASIC_AUTH`. It takes effect when you
   update your hosts.
 - The non-secret values can be copied again at any time.
@@ -202,3 +209,22 @@ and grants. It does not delete your hosted code or change its viewer password.
 Removing a person from SourceMedium does not revoke keys or app passwords
 they already hold; replace those separately or remove their Cloudflare Access
 access. See `docs/operations.md` for what each replacement interrupts.
+
+## Existing deployments
+
+The original seven data settings remain supported: `SM_APPLICATION_ID`,
+`SM_APP_KEY`, `BIGQUERY_JOB_PROJECT_ID`, `BIGQUERY_LOCATION`,
+`SM_DATA_PROJECT_ID`, `SM_TRANSFORMED_DATASET_ID`, and `SM_METADATA_DATASET_ID`.
+Keep them for an existing deployment; no migration or key replacement is
+needed just to update the starter. Apps offers **Using an older starter? →
+Copy separate settings** when issuing or replacing a key.
+
+To switch formats, first deploy a starter that supports `SM_CONNECTION`. Then
+save the connection secret and remove the seven separate data settings in the
+same settings update. Keep sign-in, `APP_STORE_ID`, and query limits intact.
+Mixing the two data formats is a configuration error. Roll back with separate
+settings for the current key; a retired key cannot restore access.
+
+`SM_CONNECTION` is a versioned base64 JSON bundle of those same data settings,
+not encryption. Keep it in the host's Secret field. The app validates its
+contents locally; it adds no runtime dependency on a SourceMedium API.

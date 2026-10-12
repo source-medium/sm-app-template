@@ -12,8 +12,9 @@ admin in an authorized demo organization, using the
 Local synthetic issuer tests and an existing demo credential do not prove new IAM
 issuance or a new customer account's Git and Cloudflare setup.
 
-1. Create an app through **Apps** and place its one-time eight-value block privately
-   in a guarded demo deployment. Verify its project and dataset coordinates match
+1. Create an app through **Apps** and place its `SM_CONNECTION` privately
+   in a demo deployment with the [chosen sign-in](auth.md#configure-the-chosen-sign-in).
+   Verify its project and dataset coordinates match
    that organization's delivery configuration. Confirm reporting currency and
    source alignment before labeling amounts.
 2. From a fresh customer Git/Cloudflare account, follow [cloud onboarding](cloud.md).
@@ -35,11 +36,11 @@ the local checks do not authorize that rollout.
 
 ## Replacing secrets
 
-| Action (Apps page)               | What changes                               | What it interrupts                                                                 |
-| -------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------- |
-| **Replace key**                  | A new `SM_APP_KEY`; the old key is deleted | Every deployment stops reading data until you update its `SM_APP_KEY` and redeploy |
-| **Generate new viewer password** | A new `APP_BASIC_AUTH`                     | Nothing until you update your hosts; then viewers need the new password            |
-| **Copy settings (no secrets)**   | The app's recorded non-secret values       | Nothing; update the values and redeploy                                            |
+| Action (Apps page)               | What changes                             | What it interrupts                                                               |
+| -------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
+| **Replace key**                  | A new connection; the old key is deleted | Every deployment stops reading data until you update its connection and redeploy |
+| **Generate new viewer password** | A new `APP_BASIC_AUTH`                   | Nothing until you update your hosts; then viewers need the new password          |
+| **Copy settings (no secrets)**   | The app's recorded non-secret values     | Nothing; update the values and redeploy                                          |
 
 There is no overlap window in this version: plan a key replacement for a quiet
 moment and update every host right away. Google may honor access tokens issued
@@ -150,5 +151,5 @@ revert the Git change so the next build does not restore the broken code.
 After either recovery, verify the current sign-in works, replaced passwords
 are rejected, and a restricted deployment denies another `?store=` with 403.
 Run **Live data → Check connection**. A rollback cannot undo key deletion or
-access revocation in SourceMedium/Google; restoring an old `SM_APP_KEY` can
+access revocation in SourceMedium/Google; restoring an old connection or `SM_APP_KEY` can
 instead break warehouse reads.

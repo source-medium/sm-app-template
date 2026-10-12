@@ -9,6 +9,8 @@ GitHub Actions and pull requests are not required to publish.
 Use your coding agent to handle setup and changes. You sign into accounts,
 accept billing, enter warehouse credentials privately, and review the result.
 Samples are for the first look; after connection, previews use your actual data.
+Choose [how viewers sign in](auth.md#choose-sign-in-with-your-agent) once;
+the agent carries that choice through production and preview setup.
 
 Artifacts is in **open beta** and requires Workers Paid, as does this app.
 Check current [Artifacts pricing](https://developers.cloudflare.com/artifacts/platform/pricing/)
@@ -71,6 +73,7 @@ initial sample deployment, committing my requested changes, and pushing task
 branches for previews. Reuse my existing app if present.
 Sample data is for initial setup only; help me connect production and protected
 previews to my warehouse before iteration.
+Recommend sign-in once, then handle setup; reuse any choice I already made.
 Give me the hosted link, build id, and verified data mode. After initial setup,
 do not push to main or publish changes until I approve the reviewed change. Ask only for
 account connections or decisions you cannot complete yourself.
@@ -269,6 +272,9 @@ not proof that authenticated data works. Do not remove Access to automate this.
 
 ## Connect your data
 
+Your agent carries the [agreed sign-in](auth.md#choose-sign-in-with-your-agent)
+through these steps; there is no new sign-in decision when replacing a key.
+
 Use two app credentials for the same warehouse:
 
 | SourceMedium app | Where its configuration goes                                                                                 |
@@ -303,18 +309,22 @@ contains no credentials, configured values, SQL, or warehouse rows.
 
 ## Connect preview data
 
-Do this once before the first branch preview. The agent handles code and
-deployment settings; you enter credentials privately.
+Do this once before the first branch preview. The agent handles code,
+deployment settings and the agreed [preview sign-in](auth.md#preview-sign-in);
+you enter credentials privately.
 
 1. Use the **Development** block from [Connect your data](#connect-your-data).
    If it does not exist yet, an organization admin creates that app in
    **SourceMedium → Apps** for the same warehouse. Keep the complete block
    privately so it can also be entered in your coding environment later.
 2. In Cloudflare, open **`<app>-preview` → Settings → Variables and Secrets →
-   Previews Base**. Add all eight values as **Secrets**, including
-   `APP_BASIC_AUTH`. Use the issued Development password. Do not put this block in
-   build settings or the preview Worker's **Production** tab. Production and
-   Previews Base are different settings even on the preview Worker.
+   Previews Base**. Add `SM_CONNECTION` as one **Secret**, then
+   [configure the chosen sign-in](auth.md#configure-the-chosen-sign-in) there.
+   For a shared password, use the issued Development `APP_BASIC_AUTH`. For
+   Access, use the preview application's settings and omit `APP_BASIC_AUTH`.
+   Do not put this block in build settings or the preview Worker's
+   **Production** tab. Production and Previews Base are different settings
+   even on the preview Worker.
 3. If production restricts a store, add the same `APP_STORE_ID` as a secret in
    Previews Base. Match any custom `BIGQUERY_MAX_BYTES_BILLED` limit too.
    These settings are not inherited from production. The repository already
@@ -323,8 +333,9 @@ deployment settings; you enter credentials privately.
 4. Push the task branch after saving those settings. Open its actual Preview
    URL, sign in, confirm **Live data** and the correct store, then run
    **Live data → Check connection**. In a private window, opening a report
-   without credentials must ask for the password. For Cloudflare Access,
-   follow [preview sign-in](auth.md#preview-sign-in) instead.
+   without credentials must require the chosen sign-in. For Cloudflare Access,
+   also verify allowed and denied reviewers on branch and immutable URLs as
+   described in [preview sign-in](auth.md#preview-sign-in).
 
 New previews receive the saved secrets automatically. Cloudflare copies Base
 secrets **when a preview is created**; changing Base later does not update
@@ -349,7 +360,9 @@ a data error, or test changed queries. Sample development needs no credential.
 1. Reuse the **Development** block already used by hosted previews. If you
    start with debugging, create Development once as described in
    [Connect your data](#connect-your-data), then reuse it for previews later.
-   Use the complete eight-value block, including `APP_BASIC_AUTH`. Keep the
+   Local browser tests use `SM_CONNECTION` and `APP_BASIC_AUTH`, even when
+   hosted previews use Access. This is a separate
+   local viewer guard, not a change to hosted sign-in. Keep the
    Production credential out of the agent environment. If the one-time secret
    was not saved, [replace it](operations.md#replacing-secrets) and update every
    Development use; do not inspect deployed or local secret files to recover it.
@@ -438,7 +451,7 @@ a limited visual smoke check.
 | Preview says it requires live data       | Follow [Connect preview data](#connect-preview-data). If the preview existed before Base was configured, update that preview's own settings too. Do not switch it to sample mode.                                          |
 | Agent cannot open the preview            | Allow that specific hostname in its network settings; you can still open the link yourself.                                                                                                                                |
 | MCP asks for login                       | Skip it for sample work. Use bundled `pnpm schema` output. Live metadata access is optional and separately authorized.                                                                                                     |
-| Agent still sees sample data after setup | Put all eight Development values in environment variables, start a new task/session, and run `pnpm diagnose`. A network-secret placeholder cannot sign Google requests.                                                    |
+| Agent still sees sample data after setup | Put the Development connection and viewer password in environment variables, start a new task/session, and run `pnpm diagnose`. A network-secret placeholder cannot sign Google requests.                                  |
 | Google requests cannot connect           | Allow `oauth2.googleapis.com` and `bigquery.googleapis.com`. Keep TLS verification enabled; do not change the key or disable the guard to fix a network policy.                                                            |
 | Live app shows a configuration error     | Fix the named production runtime settings using [operations.md](operations.md); never paste secret values into chat.                                                                                                       |
 

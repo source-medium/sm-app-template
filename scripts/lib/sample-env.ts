@@ -1,6 +1,7 @@
 /** Blank values also override Next's dotenv loading. Tests never inherit a live warehouse. */
 export const sampleEnvironment = Object.fromEntries(
   [
+    "SM_CONNECTION",
     "SM_APPLICATION_ID",
     "SM_APP_KEY",
     "BIGQUERY_JOB_PROJECT_ID",

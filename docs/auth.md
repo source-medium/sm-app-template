@@ -47,18 +47,50 @@ The guard covers every page, data request, and file in `public/`, on every
 host. Only `/healthz` (the build id), `/favicon.ico`, and the build's hashed
 scripts and styles under `/_next/static` are open; they carry no data.
 
-## The options, with their real costs
+## Choose sign-in with your agent
 
-1. **Shared password (default).** In your configuration block as
-   `APP_BASIC_AUTH`. Right for a handful of trusted people and read-only
-   numbers.
-2. **Cloudflare Access.** When someone leaving must lose access on their own,
-   when you want to know who looked, or past roughly ten viewers. No code: host
-   configuration plus two variables.
-3. **Sign-in inside the app.** When the app grows actions tied to a person. `requireViewer()` in `src/lib/auth/require-viewer.ts` is the seam:
-   it can read a Clerk or Auth.js session instead of a header. The identity
-   integration, session handling, and tests are your work, not a few lines.
-4. **Sign in with SourceMedium.** Not available yet.
+Make this one short choice before live setup, not a separate interview. Reuse
+known preferences. Otherwise recommend a fit and explain the tradeoff:
+
+- **Individual sign-in:** recommend for ongoing team use or existing company
+  SSO. People sign in separately; removing someone does not affect everyone
+  else. Cloudflare Access needs initial policy setup, which the agent handles
+  within its authorization and available account access.
+- **Shared password:** offer for a small trusted demo. Faster setup, but
+  removing someone means changing the password for everyone.
+
+For a team, for example: “I recommend individual email sign-in. Who should
+have access? List emails or a company domain, or choose a shared password for
+this demo.” Adapt to the audience; do not make the user choose protocol names
+or configuration fields. Establish the allowed viewers before creating an
+Access policy; never infer a company-wide allowlist.
+
+Explain once that the choice covers new production and preview setup; keep
+preview access within the agreed reviewers. Ask again only for a real
+difference in audience or requirements. The agent handles authorized setup
+and verification, showing only the exact private entry or account step it
+cannot complete. Keep existing sign-in during redeploys and key replacement;
+never switch methods to bypass a setup or verification failure.
+
+### Configure the chosen sign-in
+
+Every live deployment needs the `SM_CONNECTION` secret plus exactly one of
+these viewer guards. Existing separate data settings also remain supported.
+
+| Choice            | Runtime settings                                                                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared password   | Add the issued `APP_BASIC_AUTH` as a **Secret**. Leave both `CF_ACCESS_*` settings unset.                                                                                             |
+| Cloudflare Access | Configure the Access application and allowed viewers, then set `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD`. Omit or remove `APP_BASIC_AUTH`. These two identifiers are not passwords. |
+
+Both guards at once, or neither with live data, are configuration errors.
+Cloudflare hosting alone does not enable Access; an issued password does not
+select Basic. **Replace key** leaves viewer settings unchanged and does not
+include `APP_BASIC_AUTH`.
+
+Neither method provides different data permissions for different viewers.
+Sign in with SourceMedium is not available. If the app grows actions tied to a
+person, it needs a separate authorization design; `requireViewer()` in
+`src/lib/auth/require-viewer.ts` is the integration seam.
 
 ## The shared password
 
@@ -133,9 +165,13 @@ already issued; the one-hour session duration bounds how long one lasts.
 ## Preview sign-in
 
 Hosted previews read actual data and need the same level of protection as
-production. The simplest setup is the shared password issued with the
-Development app block. It protects every branch and immutable preview URL without
-configuring each hostname individually. Keep its audience limited to reviewers.
+production. Carry the chosen sign-in method into preview setup; do not silently
+substitute a shared password. If a different method fits the review audience,
+explain the tradeoff and agree on it first. Keep access limited to reviewers.
+
+When a shared password is chosen, use the password issued with the Development
+app block. It protects every branch and immutable preview URL without
+configuring each hostname individually.
 
 For Cloudflare Access, create an Access application covering **all** of the
 preview Worker's branch and immutable hostnames (and any preview custom domains).

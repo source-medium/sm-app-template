@@ -140,7 +140,7 @@ starter does not include. See [docs/auth.md](docs/auth.md).
 ## Conventions you can build on
 
 - **Connect once:** one app-specific configuration block; warehouse queries
-  stay on the server and the shared password protects every view.
+  stay on the server and the chosen viewer guard protects every view.
 - **Copy a view:** each feature owns its query, row schema, sample data and UI.
   Store and date filters stay in the URL; Retention uses a completed-month window.
 - **Multiple stores:** names and brand groups load from `dim_stores`; each store

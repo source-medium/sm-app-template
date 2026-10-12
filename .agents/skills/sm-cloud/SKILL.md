@@ -24,6 +24,12 @@ keep that limitation and its pricing visible during first setup.
   credentials, an AI API key, a Cloudflare token, or MCP login to get started.
 - Keep the default app name unless the person supplies one. Ask only for
   missing account access or a decision that changes the result.
+- Resolve sign-in once before live setup: follow
+  `docs/auth.md#choose-sign-in-with-your-agent`. Reuse known preferences;
+  otherwise give one short recommendation and choice, collecting allowed
+  viewers in the same exchange when possible. Carry it through new production
+  and preview setup. Handle authorized configuration yourself; hand off only
+  private entry or account steps you cannot complete. Preserve existing guards.
 - For a local browser check, use `pnpm dev` with the environment's managed
   service facility and check `/healthz` and a report. A VM's localhost URL is
   not a hosted preview link. Stop services when finished unless the person

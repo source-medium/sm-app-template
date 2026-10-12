@@ -23,6 +23,7 @@ describe("browser checks in a cloud agent environment", () => {
   it("keeps every sample server isolated from injected live credentials", async () => {
     vi.stubEnv("SM_LIVE_E2E", "");
     vi.stubEnv("SM_APP_KEY", "synthetic-live-key");
+    vi.stubEnv("SM_CONNECTION", "synthetic-live-connection");
     vi.stubEnv("APP_BASIC_AUTH", "viewer:synthetic-live-password-0123456789");
     vi.stubEnv("APP_REQUIRE_LIVE", "true");
     const { default: config } = await import("../../playwright.config");
@@ -33,6 +34,7 @@ describe("browser checks in a cloud agent environment", () => {
     expect(servers).toHaveLength(3);
     for (const server of servers) {
       expect(server?.env?.SM_APP_KEY).toBe("");
+      expect(server?.env?.SM_CONNECTION).toBe("");
       expect(server?.env?.APP_BASIC_AUTH).not.toBe(process.env.APP_BASIC_AUTH);
       for (const name of Object.keys(sampleEnvironment).filter(
         (name) => !["APP_BASIC_AUTH", "APP_STORE_ID"].includes(name),

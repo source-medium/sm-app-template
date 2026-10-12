@@ -40,10 +40,19 @@ export function configuredSecretValues(
   const values: string[] = [];
   const add = (name: string, value: string | undefined) => {
     if (!value) return;
-    if (name === "SM_APP_KEY") values.push(value, value.slice(40, 120));
+    if (name === "SM_APP_KEY" || name === "SM_CONNECTION") values.push(value, value.slice(40, 120));
+    if (name === "SM_CONNECTION") {
+      try {
+        const bundle = JSON.parse(Buffer.from(value, "base64").toString("utf8"));
+        if (typeof bundle?.values?.SM_APP_KEY === "string") add("SM_APP_KEY", bundle.values.SM_APP_KEY);
+      } catch {
+        // Malformed configuration is still scanned verbatim above; runtime validation reports it.
+      }
+    }
     if (name === "APP_BASIC_AUTH") values.push(value, value.slice(value.indexOf(":") + 1));
   };
   add("SM_APP_KEY", env.SM_APP_KEY);
+  add("SM_CONNECTION", env.SM_CONNECTION);
   add("APP_BASIC_AUTH", env.APP_BASIC_AUTH);
   for (const file of readdirSync(directory).filter((name) => name.startsWith(".env") && name !== ".env.example")) {
     for (const [name, value] of Object.entries(parseDotenv(readFileSync(join(directory, file), "utf8")))) {
