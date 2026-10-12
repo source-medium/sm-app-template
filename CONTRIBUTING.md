@@ -11,7 +11,7 @@ The release checks below are maintainer work, not customer onboarding steps.
 
 ## Development
 
-Follow [local setup](README.md#prefer-local-development) for Node.js and pnpm prerequisites.
+Follow [local setup](README.md#run-it-locally) for Node.js and pnpm prerequisites.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -33,6 +33,18 @@ Both deployment commands run it before uploading, so Cloudflare Builds owns
 release validation even without GitHub. The GitHub workflow provides optional
 maintainer feedback and Windows coverage. Live checks are opt-in and
 never run in CI; use only SourceMedium's demo tenant for template validation.
+
+## README screenshots
+
+Capture the running app with **Sample data** visible. Never use warehouse data
+in public screenshots. Keep the light and dark Overview images on the same
+store and dates; the current set uses Sample Store A, September 1–28, 2026,
+with the previous-period comparison.
+
+The other images show the All stores picker, Creatives filtered by campaign
+name containing `[retargeting]`, a Vibe code request with a selected card, and
+Retention through September 2026. Save captures in `docs/images/`, check the
+README image links and alt text, and remove any images no longer referenced.
 
 ## Rules for changes
 

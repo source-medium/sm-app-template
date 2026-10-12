@@ -11,7 +11,7 @@ require the maintainer's explicit authorization.
 
 ## Permanent hosted demo (2026-10-09)
 
-The [hosted demo](https://sm-app-starter-demo.source-medium.workers.dev) runs
+The [hosted demo](https://sm-app-starter-demo.source-medium.workers.dev) was verified at
 application commit `1298eace39bd9c3e0d585d24778e23651d3ab1c6` against the
 `sm-democo` warehouse, behind the existing demo viewer password. Its runtime
 configuration is encrypted, `APP_REQUIRE_LIVE=true` prevents sample fallback,

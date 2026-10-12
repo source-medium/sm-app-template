@@ -1,175 +1,149 @@
 # SourceMedium App Starter
 
-**Your SourceMedium data. An app you own. Built with your coding agent.**
+**Your warehouse, your dashboard, your code.**
 
-Start with six working reports, connect your warehouse, then tell Codex or
-Claude Code what to change. The starter handles the connection, sign-in,
-store and date filters, charts, tables, and loading and error states.
-You get a normal Next.js app with editable code throughout.
+A Next.js app for exploring your SourceMedium data. Start with seven reports,
+then work with Codex or Claude Code to make them your own. Store switching,
+comparisons, ad-name filters, light and dark modes, and viewer sign-in are built in.
 
-**[Try the demo](https://sm-app-starter-demo.source-medium.workers.dev)** ·
-[Deploy on Cloudflare](docs/cloud.md) ·
-[Browser agent setup](docs/cloud.md#optional-browser-coding-agents)
+**[Open the demo](https://sm-app-starter-demo.source-medium.workers.dev)** ·
+[Run locally](#run-it-locally) ·
+[Deploy on Cloudflare](docs/cloud.md)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.png">
   <source media="(prefers-color-scheme: light)" srcset="docs/images/overview-light.png">
-  <img alt="Overview dashboard with store and date filters, period comparisons, revenue and order KPIs, and trend charts." src="docs/images/overview-light.png" width="1440">
+  <img alt="Overview in Store Insights: six headline metrics with sparklines, period comparisons, and the store switcher." src="docs/images/overview-light.png" width="1440">
 </picture>
 
-_The hosted demo uses SourceMedium's demo warehouse and requires sign-in ([request access](mailto:support@sourcemedium.com)). These screenshots use synthetic sample data. Light and dark modes are built in._
+_All screenshots use synthetic sample data. The hosted demo reads SourceMedium's
+demo warehouse and requires sign-in: [request demo access](mailto:support@sourcemedium.com)._
 
-## Start with your coding agent
+## Run it locally
 
-Ask local Codex or Claude Code to follow the [starter message](docs/cloud.md#your-first-message-in-either-agent).
-Your agent prepares the app and connects it once:
-
-1. **Cloudflare Artifacts** stores your app's Git repository.
-2. **Workers Builds** checks each push and creates protected branch previews.
-3. Approve a reviewed change; pushing it to `main` checks and deploys it automatically.
-
-GitHub and GitHub Actions are not required for this path. Artifacts is in open
-beta on Workers Paid, with [usage allowances](https://developers.cloudflare.com/artifacts/platform/pricing/).
-An existing GitHub repository can also connect directly to Workers Builds.
-[Browser-based Codex or Claude](docs/cloud.md#optional-browser-coding-agents)
-can use that optional source-hosting path with the same Cloudflare release gate.
-
-The first look uses labeled **sample data** without warehouse credentials.
-Connect your warehouse and protected previews once, then review changes on
-your actual data. Your agent handles setup and checks; you sign in, enter
-credentials privately and approve publication.
-
-**[Follow the setup and preview-to-live guide →](docs/cloud.md)**
-
-## Reports to make your own
-
-| Report             | Start with                                                      |
-| ------------------ | --------------------------------------------------------------- |
-| **Overview**       | Revenue, orders, ad spend, trends, and period comparisons       |
-| **All stores**     | Store-by-store performance, period changes, and drill-through   |
-| **Paid marketing** | Channel and campaign performance, spend, and return on ad spend |
-| **Creatives**      | Creative images and performance cards                           |
-| **Products**       | Product and variant rankings                                    |
-| **Retention**      | Retention and lifetime value by acquisition cohort              |
-| **Orders**         | Searchable orders with detail drawers and pagination            |
-
-Copy the closest view, change its query and presentation, or
-[remove the examples](docs/removing-the-example.md). Each view owns its code.
-
-<details>
-<summary><strong>See the retention report</strong></summary>
-
-![Retention report showing monthly acquisition cohorts and lifetime value, using synthetic sample data.](docs/images/retention.png)
-
-Completed-month windows, acquisition-channel filters, and explicit missing-data
-states keep cohort comparisons readable.
-
-</details>
-
-## Prefer local development?
-
-Install Node.js 22.22.1 or newer (CI uses 24) and pnpm 10.34.5 first. Create your
-project by cloning this public starter, then open a terminal in that folder.
-No GitHub account is needed to clone it. Connect your own remote using the
-[Cloudflare setup](docs/cloud.md#1-make-your-copy) before publishing.
+Use Node.js 22.22.1 or newer and pnpm 10.34.5. CI uses Node 24.
 
 ```sh
+git clone https://github.com/source-medium/sm-app-template.git my-data-app
+cd my-data-app
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open http://127.0.0.1:3000. It runs on clearly labeled **sample data**: no
-account, credential, database, or AI service needed.
+Open **http://127.0.0.1:3000**. Sample data works immediately, with no credentials,
+database setup, or AI API key. To start with your coding agent instead, use the
+[setup prompt](docs/cloud.md#your-first-message-in-either-agent).
 
-## Use your data
+## One store, or the whole portfolio
 
-Live data needs an app configuration block from the **Apps** page of your
-SourceMedium workspace. Apps appears in the workspace menu once your data has
-been delivered, and an organization admin creates the app. If the page says
-credentials are still being enabled, stay on sample data and ask
-[SourceMedium support](SUPPORT.md). Do not substitute an admin credential.
+Search by store name, domain, brand, or ID. Names and available logos come from
+your warehouse; missing names fall back to a domain or store ID. Open **All stores**
+to compare performance, then select a store to investigate a change. Each store's
+currency stays visible, with no combined totals across currencies.
 
-For an already provisioned app, follow [docs/connect.md](docs/connect.md).
-Cloudflare Workers is the tested runtime.
+![All stores report with the searchable store picker open, showing brand groups, store domains, and separate performance rows.](docs/images/stores.png)
 
-## Build with your coding agent
+## Put your naming conventions to work
 
-Codex and Claude Code share [AGENTS.md](AGENTS.md) and the same repository
-skills. Cursor and Copilot can follow those instructions too. Sample work
-uses bundled schemas without an MCP login. To let the agent debug real queries,
-reuse the [Development credential](docs/cloud.md#debug-with-live-data) from your
-hosted previews in its private environment settings. It can run connection,
-schema and live checks itself. Production keeps its own credential.
-An authorized SourceMedium MCP connection is another option for data inspection.
+In **Paid marketing** and **Creatives**, filter campaign, ad set, or ad names by
+text you already use, such as `[retargeting]`. Combine contains, does not contain,
+equals, and starts with rules. Inspect matching names before interpreting the
+results. The app treats your text literally; there is no tag taxonomy to configure.
 
-**Point to a page or component. Describe the change. Copy the prompt.**
-The built-in **Vibe code** panel includes the current page, applied filters,
-and selected component so your agent starts with useful context. Use **Pick an
-element** to point to a chart, KPI, table, or filter. Paste the
-prompt into Codex, Claude Code, or another agent working in your repository.
+![Creative cards filtered to campaign names containing “[retargeting]”, with spend, impressions, click-through rate, and conversions.](docs/images/creatives.png)
 
-![Vibe code panel composing a change request for an Overview chart, with the page and filters included automatically.](docs/images/ask-agent.png)
+Filters travel with the report link. Creative metrics reflect the matching
+ad delivery, including when one creative appears in several campaigns.
 
-More copyable starting points are in [docs/prompts.md](docs/prompts.md).
+## Point. Describe. Vibe code.
 
-Before calling a change done, run:
+Open **Vibe code**, choose **Pick an element**, and describe what should change.
+The panel prepares a prompt with the current page, applied filters, and selected
+element. Copy it into Codex, Claude Code, or another agent working in your repo.
+Code changes happen in your coding agent; the dashboard prepares the context.
+
+![Vibe code panel with a creative card selected and a request to add cost per conversion, ready to copy into a coding agent.](docs/images/vibe-code.png)
+
+The repo includes shared [agent instructions](AGENTS.md), skills for adding pages,
+querying data and deploying, and [starter prompts](docs/prompts.md).
+
+## Reports to make your own
+
+| Report             | What you can explore                                       |
+| ------------------ | ---------------------------------------------------------- |
+| **Overview**       | Revenue, orders, ad spend, trends, and period comparisons  |
+| **All stores**     | Store-by-store performance, changes, and drill-through     |
+| **Paid marketing** | Channel and campaign performance, spend, and platform ROAS |
+| **Creatives**      | Ad images, delivery, and platform-reported returns         |
+| **Products**       | Product and variant rankings                               |
+| **Retention**      | Repeat purchases and lifetime value by acquisition cohort  |
+| **Orders**         | Order search, detail drawers, and pagination               |
+
+<details>
+<summary><strong>See the retention report</strong></summary>
+
+![Retention report with monthly acquisition cohorts, retention curves, and a cohort matrix, using synthetic sample data.](docs/images/retention.png)
+
+Compare cohorts at the same age, filter acquisition channels, and switch the
+matrix between retention, repeat purchase, revenue, and gross profit measures.
+
+</details>
+
+Each view owns its queries, sample data, and presentation. Copy the closest one
+or [remove the examples](docs/removing-the-example.md). Rebrand in
+[`app.config.ts`](app.config.ts) and [`src/styles/tokens.css`](src/styles/tokens.css).
+
+## Connect once, preview each change
+
+Your agent follows the [Cloudflare guide](docs/cloud.md) to connect the app and
+set up automatic deployments:
+
+1. **Connect your data.** An organization admin creates an app in your SourceMedium
+   workspace's **Apps** page. Enter its configuration block privately.
+2. **Choose who can view it.** Use a shared password for a small trusted group,
+   or Cloudflare Access for individual sign-in. Your agent helps you choose.
+3. **Review a preview.** Push a task branch to run the checks and build a protected
+   preview against your data. Approve the change, then push `main` to deploy.
+
+The default path uses **Cloudflare Artifacts + Workers Builds**. GitHub is
+optional. Workers Paid is required; see the guide for Artifacts availability and
+[current costs](docs/cloud.md).
+
+If Apps says credentials are still being enabled, keep working with sample data
+and contact [SourceMedium support](SUPPORT.md). Do not use an admin credential.
+
+Every viewer of a deployment sees the same data. For separate store audiences,
+use separate deployments with `APP_STORE_ID`. See [sign-in and store access](docs/auth.md).
+
+## Built to keep editing
+
+Ordinary Next.js, React, and TypeScript. shadcn/ui components, Tailwind tokens,
+and Recharts are included in the repo. There is no proprietary dashboard editor.
+
+- **Shareable views:** store, dates, and report filters live in the URL.
+- **Readable data:** metric definitions, chart-to-table toggles, CSV exports where
+  available, and explicit loading, empty, and error states.
+- **Server-side queries:** typed SQL parameters, exact decimal handling, bounded
+  results, and viewer guards.
+- **Checks included:** lint, types, data contracts, store scope, Node and Worker
+  tests, and browser accessibility checks.
 
 ```sh
-pnpm check   # format, lint, types, guardrails, and tests; under a minute
+pnpm check      # Format, lint, types, guardrails, and unit tests
+pnpm test:e2e   # Production build and browser tests
 ```
 
-## Who can see what
+| Guide                               | Read it when you need to…                                   |
+| ----------------------------------- | ----------------------------------------------------------- |
+| [Cloud setup](docs/cloud.md)        | Set up source hosting, previews, and automatic deploys      |
+| [Data connection](docs/connect.md)  | Connect a warehouse or replace a configuration block        |
+| [Queries and metrics](docs/data.md) | Work with schemas, SQL, money, dates, and freshness         |
+| [Sign-in and access](docs/auth.md)  | Choose a viewer guard or restrict a deployment to one store |
+| [Operations](docs/operations.md)    | Diagnose errors, rotate secrets, or roll back a release     |
+| [Agent prompts](docs/prompts.md)    | Add a report, change a component, or check a number         |
 
-Every viewer of a deployment sees the same data. Use `APP_STORE_ID` and
-separate deployments for stores with different audiences. Different permissions
-for individual viewers within one deployment need an authorization design this
-starter does not include. See [docs/auth.md](docs/auth.md).
+**0.1.0 preview.** The tested hosting target is Cloudflare Workers. Fresh-account
+onboarding and self-service credential issuance still need end-to-end verification.
+See [release evidence and remaining checks](docs/release-readiness.md).
 
-## Guides
-
-| Guide                                                   | For                                                           |
-| ------------------------------------------------------- | ------------------------------------------------------------- |
-| [cloud.md](docs/cloud.md)                               | Cloudflare source, automatic deploys, previews, coding agents |
-| [connect.md](docs/connect.md)                           | Going live, deploying, replacing lost secrets                 |
-| [data.md](docs/data.md)                                 | Schemas, SQL rules, exact decoding, money, freshness          |
-| [auth.md](docs/auth.md)                                 | The shared password, Cloudflare Access, sign-in               |
-| [operations.md](docs/operations.md)                     | Rotation, query allowances, errors and remedies               |
-| [removing-the-example.md](docs/removing-the-example.md) | Deleting one example view or all six                          |
-| [prompts.md](docs/prompts.md)                           | Starter prompts for your agent                                |
-
-## Conventions you can build on
-
-- **Connect once:** one app-specific configuration block; warehouse queries
-  stay on the server and the chosen viewer guard protects every view.
-- **Copy a view:** each feature owns its query, row schema, sample data and UI.
-  Store and date filters stay in the URL; Retention uses a completed-month window.
-- **Multiple stores:** names and brand groups load from `dim_stores`; each store
-  keeps a shareable `?store=<sm_store_id>` URL. No manual store list required.
-- **Separate store audiences:** optional `APP_STORE_ID` locks a deployment to
-  one store. Give it its own URL and viewer guard; see [the setup](docs/auth.md#one-deployment-per-store).
-- **Keep data trustworthy:** typed SQL parameters, exact money values, bounded
-  queries and clear errors are built in.
-- **Make it yours:** edit `app.config.ts` and `src/styles/tokens.css` to rebrand;
-  reuse the chart, table and card patterns when adding pages.
-
-Viewers can choose Light, Dark, or System in the top bar. **Copy link** shares
-the applied store, date range, and view filters with another authorized viewer;
-it does not freeze the underlying data. Overview's info icons explain each KPI.
-**Refresh data** reloads the current report with its applied filters. Each
-successfully loaded section shows its query time; warehouse freshness remains
-unknown. Reports do not refresh automatically.
-
-SourceMedium maintains the connection and integration patterns. Your agent
-works with ordinary feature code when extending your copy.
-
-## Stack
-
-Next.js (App Router) on Cloudflare Workers through OpenNext ·
-React · strict TypeScript · shadcn/ui on Tailwind CSS · Recharts · Zod ·
-jose · Vitest (Node and workerd) · Playwright with axe.
-
-This is the 0.1.0 preview. Cloudflare Workers Paid is the deployment target.
-No stable release has been tagged yet. The fresh-account cloud journey and
-Apps credential issuance have not been verified end to end.
-
-[License](LICENSE) · [Security](SECURITY.md) · [Support](SUPPORT.md) · [Contributing](CONTRIBUTING.md)
+[MIT license](LICENSE) · [Security](SECURITY.md) · [Support](SUPPORT.md) · [Contributing](CONTRIBUTING.md)
