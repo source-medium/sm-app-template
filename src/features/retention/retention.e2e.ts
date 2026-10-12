@@ -10,14 +10,14 @@ test("retention: long segment values and search controls stay usable on a small 
     acquisition_segment: "Long campaign ".repeat(30),
   });
   await page.goto(`/retention?${params}`);
-  await expect(page.getByLabel("Acquisition segment", { exact: true })).toHaveValue(
+  await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveValue(
     params.get("acquisition_segment") ?? "",
   );
   await expect(page.getByLabel("Matrix measure", { exact: true })).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth))
     .toBe(0);
-  await page.getByLabel("Acquisition segment", { exact: true }).selectOption("Prospecting");
+  await page.getByRole("combobox", { name: "Acquisition segment", exact: true }).selectOption("Prospecting");
   await expect(page.getByRole("table", { name: "Monthly retention", exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("foundation-retention-phone.png"), fullPage: true });
 });
@@ -44,26 +44,26 @@ test("retention: acquisition segments are explicit, searchable, shareable and re
   await page.goto("/retention?store=sample-store-a&as_of=2026-09&measure=second");
   await page.getByLabel("Segment cohorts by", { exact: true }).selectOption("campaign");
   await expect(page.getByText("Choose an acquisition segment to load its cohorts.")).toBeVisible();
-  await page.getByLabel("Acquisition segment", { exact: true }).selectOption("Prospecting");
+  await page.getByRole("combobox", { name: "Acquisition segment", exact: true }).selectOption("Prospecting");
   await expect(page.getByRole("table", { name: "Purchased a second time", exact: true })).toBeVisible();
-  await page.getByLabel("Find segment options").fill("brand");
+  await page.getByRole("textbox", { name: "Find segment options", exact: true }).fill("brand");
   await page.getByRole("button", { name: "Find segments", exact: true }).click();
-  await expect(page.getByLabel("Acquisition segment", { exact: true })).toHaveValue("Prospecting");
-  await page.getByLabel("Acquisition segment", { exact: true }).selectOption("Brand search");
+  await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveValue("Prospecting");
+  await page.getByRole("combobox", { name: "Acquisition segment", exact: true }).selectOption("Brand search");
   await expect(page).toHaveURL(/acquisition_segment=Brand(?:\+|%20)search/);
   await page.reload();
-  await expect(page.getByLabel("Acquisition segment", { exact: true })).toHaveValue("Brand search");
+  await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveValue("Brand search");
   const context = JSON.parse((await page.locator("main [data-agent-page]").getAttribute("data-agent-page")) ?? "{}");
   expect(context.filters.acquisition_dimension).toBe("campaign");
   expect(context.filters.acquisition_segment).toBeUndefined();
   expect(context.omitted).toContain("acquisition segment");
   await page.getByLabel("Segment cohorts by", { exact: true }).selectOption("discount_code");
-  await expect(page.getByLabel("Acquisition segment", { exact: true })).toHaveValue("");
-  await expect(page.getByLabel("Find segment options")).toHaveValue("");
+  await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "Find segment options", exact: true })).toHaveValue("");
   await expect(page.getByText("Choose an acquisition segment to load its cohorts.")).toBeVisible();
-  await page.getByLabel("Acquisition segment", { exact: true }).selectOption("WELCOME10");
+  await page.getByRole("combobox", { name: "Acquisition segment", exact: true }).selectOption("WELCOME10");
   await page.getByLabel("Segment cohorts by", { exact: true }).selectOption("no_filters");
-  await expect(page.getByLabel("Acquisition segment", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveCount(0);
   await expect(page.getByRole("table", { name: "Purchased a second time", exact: true })).toBeVisible();
 });
 
@@ -72,8 +72,8 @@ test("retention: an unavailable segment remains explicit and can be changed", as
     "/retention?store=sample-store-a&as_of=2026-09&acquisition_dimension=campaign&acquisition_segment=unavailable",
   );
   await expect(page.getByText(/No published cohorts match this acquisition segment/)).toBeVisible();
-  await expect(page.getByLabel("Acquisition segment", { exact: true })).toHaveValue("unavailable");
-  await page.getByLabel("Acquisition segment", { exact: true }).selectOption("Prospecting");
+  await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveValue("unavailable");
+  await page.getByRole("combobox", { name: "Acquisition segment", exact: true }).selectOption("Prospecting");
   await expect(page.getByRole("table", { name: "Monthly retention", exact: true })).toBeVisible();
 });
 test("retention: second purchases have their own cumulative measure and mature ages", async ({ page }) => {

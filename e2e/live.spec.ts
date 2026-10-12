@@ -214,7 +214,7 @@ test("retention acquisition segments load published options and one cohort slice
   const problems = watchConsole(page);
   await page.goto("/retention?acquisition_dimension=campaign");
   await expectLiveReport(page);
-  const segment = page.getByLabel("Acquisition segment", { exact: true });
+  const segment = page.getByRole("combobox", { name: "Acquisition segment", exact: true });
   await expect(segment).toBeVisible();
   const options = segment.locator('option:not([value=""])');
   test.skip((await options.count()) === 0, "No published campaign segments in this observation window");
