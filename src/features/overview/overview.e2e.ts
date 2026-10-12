@@ -1,5 +1,35 @@
 import { switchStore } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
+
+test("overview: cumulative trends and revenue highlights preserve scope and exact accessible values", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=previous");
+  const totals = await page.locator('[data-slot="kpi-value"]').allTextContents();
+  await page.getByLabel("Trend values", { exact: true }).selectOption("cumulative");
+  await expect(page).toHaveURL(/trend=cumulative/);
+  expect(new URL(page.url()).searchParams.get("store")).toBe("sample-store-a");
+  expect(new URL(page.url()).searchParams.get("compare")).toBe("previous");
+  expect(await page.locator('[data-slot="kpi-value"]').allTextContents()).toEqual(totals);
+  const card = page.locator('[data-slot="card"]', { hasText: "Cumulative net revenue" });
+  await card.getByRole("button", { name: "View as table", exact: true }).click();
+  const table = card.getByRole("table", { name: "Cumulative net revenue", exact: true });
+  await expect(table).toBeVisible();
+  const last = table.getByRole("row").last();
+  await expect(last).toContainText(totals[0] ?? "missing revenue");
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Largest daily revenue changes$/ })
+    .click();
+  await expect(page.getByRole("table", { name: "Largest daily revenue changes", exact: true })).toBeVisible();
+  await card.getByRole("button", { name: "View as chart", exact: true }).click();
+  await expect(page.getByRole("img", { name: "Cumulative net revenue chart", exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("foundation-overview.png"), fullPage: true });
+  await page.reload();
+  await expect(page.getByLabel("Trend values", { exact: true })).toHaveValue("cumulative");
+  await page.getByLabel("Compare with").selectOption("off");
+  await expect(page.locator("summary").filter({ hasText: /^Largest daily revenue changes$/ })).toHaveCount(0);
+});
 test("overview: revenue detail is opt-in and preserves signed deductions and comparisons", async ({ page }) => {
   await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-28&compare=previous");
   const revenue = page.getByRole("table", { name: "Revenue and deductions", exact: true });

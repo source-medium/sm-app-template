@@ -5,6 +5,7 @@ import { WarehouseError } from "@/lib/data/warehouse-error";
 import { COHORT_MONTHS } from "./filters";
 
 export const RETENTION_RELATION = "rpt_cohort_ltv_by_first_valid_purchase_attribute_no_product_filters";
+export const RetentionSegmentRow = z.object({ segment: bq.string() });
 export const RetentionRow = z.object({
   channel: bq.string(),
   cohort_month: bq.date(),

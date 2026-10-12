@@ -7,7 +7,15 @@ export const storeReportPath = () => appConfig.nav.find((item) => item.scope !==
 
 /** Applied report state only. Row identities and searches belong to the old store. */
 export function switchStoreHref(pathname: string, params: SearchParams, storeId: string): string {
-  return withParams(pathname, params, { store: storeId, campaign: null, order: null, cursor: null, q: null });
+  return withParams(pathname, params, {
+    store: storeId,
+    campaign: null,
+    order: null,
+    cursor: null,
+    q: null,
+    acquisition_segment: null,
+    segment_search: null,
+  });
 }
 
 /** A portfolio compares the same dates across stores, independent of report-specific filters. */

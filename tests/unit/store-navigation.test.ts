@@ -15,6 +15,10 @@ it("preserves dates and presentation while removing store-specific identities an
       cursor: "page2",
       q: "a-customer",
       name: "[retargeting]",
+      acquisition_dimension: "campaign",
+      acquisition_segment: "old-store-campaign",
+      segment_search: "old-store-search",
+      trend: "cumulative",
     },
     "b",
   );
@@ -26,6 +30,8 @@ it("preserves dates and presentation while removing store-specific identities an
     compare: "year",
     sort: "spend",
     name: "[retargeting]",
+    acquisition_dimension: "campaign",
+    trend: "cumulative",
   });
 });
 it("only carries a shared date reference and comparison into the portfolio", () => {

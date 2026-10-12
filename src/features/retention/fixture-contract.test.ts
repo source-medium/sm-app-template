@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { cohortMonths, monthIsElapsed, retentionOptions, shiftMonth } from "./filters";
 import { decodeRetention } from "./rows";
 import { cohortValue, retentionMatrix } from "./matrix";
-import { sampleRetention } from "./sample";
+import { sampleRetention, sampleRetentionSegments } from "./sample";
 
 const row = {
   channel: "online_dtc",
@@ -88,6 +88,25 @@ it("has deterministic store-specific sample cohorts, no future months, and a del
   ).toBe(false);
   expect(sampleRetention({ ...filters, storeId: "sample-store-b" })[0]?.cohort_size).not.toBe(rows[0]?.cohort_size);
   expect(sampleRetention({ ...filters, storeId: "unknown" })).toEqual([]);
+});
+
+it("keeps acquisition segment populations separate and leaves unknown values empty", () => {
+  const filters = { storeId: "sample-store-a", asOf: "2026-09", dimension: "campaign" as const };
+  const first = sampleRetention({ ...filters, segment: "Prospecting" });
+  expect(first).toEqual(sampleRetention({ ...filters, segment: "Prospecting" }));
+  expect(first[0]?.cohort_size).not.toBe(sampleRetention({ ...filters, segment: "Brand search" })[0]?.cohort_size);
+  expect(sampleRetention(filters)).toEqual([]);
+  expect(sampleRetention({ ...filters, segment: "unknown" })).toEqual([]);
+  expect(sampleRetentionSegments({ ...filters, channel: "online_dtc", search: "brand" }).values).toEqual([
+    "Brand search",
+  ]);
+  expect(
+    retentionOptions({ acquisition_dimension: "campaign", acquisition_segment: "Prospecting" }, "2026-10-12"),
+  ).toMatchObject({ dimension: "campaign", segment: "Prospecting" });
+  expect(
+    retentionOptions({ acquisition_dimension: "no_filters", acquisition_segment: "Prospecting" }, "2026-10-12").segment,
+  ).toBeNull();
+  expect(retentionOptions({ acquisition_dimension: "product" }, "2026-10-12").dimension).toBe("no_filters");
 });
 
 it("plots the same values as the matrix, preserving missing and unelapsed ages and separate channels", async () => {

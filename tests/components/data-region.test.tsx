@@ -25,6 +25,33 @@ async function renderRegion(load: () => Promise<string[]>) {
 }
 
 describe("DataRegion", () => {
+  it.each([
+    new WarehouseError("quota_exceeded", { status: 403, reason: "quotaExceeded" }),
+    WarehouseError.incompatible("cohorts", "segment"),
+  ])("keeps applied form controls when an options query fails, while still showing its error", async (error) => {
+    const element = await DataRegion({
+      load: async () => {
+        throw error;
+      },
+      isEmpty: () => false,
+      emptyMessage: "",
+      timestamp: false,
+      errorContent: (
+        <select name="segment" aria-label="Applied segment" defaultValue="existing">
+          <option value="existing">Existing segment</option>
+        </select>
+      ),
+      children: () => <p>Loaded options</p>,
+    });
+    const { container } = render(<form>{element}</form>);
+    expect(screen.getByRole("alert")).toBeVisible();
+    expect(screen.getByLabelText("Applied segment")).toHaveValue("existing");
+    const form = container.querySelector("form");
+    if (!form) throw new Error("Missing filter form");
+    expect(new FormData(form).get("segment")).toBe("existing");
+    expect(screen.queryByText("Loaded options")).not.toBeInTheDocument();
+  });
+
   it("renders the data", async () => {
     await renderRegion(async () => ["a", "b"]);
     expect(screen.getByText("a,b")).toBeInTheDocument();

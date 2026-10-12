@@ -9,6 +9,7 @@ export function OverviewControls({ filters }: { filters: OverviewFilters }) {
       load={() => getOverviewChannels(filters)}
       isEmpty={() => false}
       emptyMessage="No sales channels in this range."
+      errorContent={<ChannelFilter value={filters.channel} channels={[]} />}
     >
       {(channels) => <ChannelFilter value={filters.channel} channels={channels} />}
     </DataRegion>

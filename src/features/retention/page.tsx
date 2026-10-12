@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMonth } from "@/lib/format";
 import { REPORT_FILTER_FORM_ID, type SearchParams } from "@/lib/filters";
-import { getRetention } from "./queries";
+import { getRetention, getRetentionSegments } from "./queries";
 import { RetentionCurves } from "./curves";
 import { COHORT_WINDOWS, COHORT_MONTHS, RETENTION_METRICS, retentionOptions } from "./filters";
 import { retentionMatrix } from "./matrix";
+import { AcquisitionDimensionFilter, AcquisitionSegmentFilter } from "./segmentation-controls";
 
 export const metadata: Metadata = { title: "Retention" };
 export default async function RetentionPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -24,7 +25,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
         {
           relation: RETENTION_RELATION,
           scope:
-            "Monthly acquisition cohorts at each month of age, using the unsegmented slice and one acquisition sales channel. Incomplete months are hidden.",
+            "Monthly acquisition cohorts at each month of age, using exactly one acquisition dimension/value slice and one acquisition sales channel. Incomplete months are hidden.",
         },
       ]}
       title="Retention"
@@ -34,8 +35,18 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
       // The latest complete month depends on the store's date, so the shell applies these once it knows it.
       defaults={(today) => {
         const options = retentionOptions(params, today);
-        return { as_of: options.asOf, channel: options.channel, measure: options.metric, cohorts: options.curveWindow };
+        return {
+          as_of: options.asOf,
+          channel: options.channel,
+          measure: options.metric,
+          cohorts: options.curveWindow,
+          acquisition_dimension: options.dimension,
+        };
       }}
+      agentOmissions={[
+        ...(params.acquisition_segment ? ["acquisition segment"] : []),
+        ...(params.segment_search ? ["segment search"] : []),
+      ]}
       dates={false}
     >
       {({ filters, today, timeZone, currency }) => {
@@ -70,45 +81,107 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                 </Button>
               </div>
             </div>
+            <div className="flex flex-wrap items-end gap-4">
+              <SelectFilter
+                name="channel"
+                label="Acquisition sales channel"
+                value={options.channel}
+                options={[...new Set(["online_dtc", "amazon", options.channel])].map((value) => ({
+                  value,
+                  label: value === "online_dtc" ? "Online DTC" : value === "amazon" ? "Amazon" : value,
+                }))}
+              />
+              <AcquisitionDimensionFilter dimension={options.dimension} />
+            </div>
+            {options.dimension !== "no_filters" && (
+              <Suspense
+                key={`${filters.storeId}|${options.asOf}|${options.channel}|${options.dimension}|${options.segmentSearch}`}
+                fallback={<LoadingState variant="control" label="Loading acquisition segments" />}
+              >
+                <DataRegion
+                  timestamp={false}
+                  load={() =>
+                    getRetentionSegments({
+                      storeId: filters.storeId,
+                      asOf: options.asOf,
+                      dimension: options.dimension,
+                      channel: options.channel,
+                      search: options.segmentSearch,
+                    })
+                  }
+                  isEmpty={() => false}
+                  emptyMessage="No acquisition segments."
+                  errorContent={
+                    <AcquisitionSegmentFilter
+                      segment={options.segment}
+                      search={options.segmentSearch}
+                      values={[]}
+                      truncated={false}
+                      unavailable
+                    />
+                  }
+                >
+                  {(segments) => (
+                    <AcquisitionSegmentFilter
+                      segment={options.segment}
+                      search={options.segmentSearch}
+                      values={segments.values}
+                      truncated={segments.truncated}
+                    />
+                  )}
+                </DataRegion>
+              </Suspense>
+            )}
+            <div role="group" aria-label="Cohort presentation" className="flex flex-wrap items-end gap-4">
+              <SelectFilter
+                name="cohorts"
+                label="Chart cohorts"
+                value={options.curveWindow}
+                options={[...COHORT_WINDOWS]}
+              />
+              <SelectFilter
+                name="measure"
+                label="Matrix measure"
+                value={options.metric}
+                options={[...RETENTION_METRICS]}
+              />
+            </div>
             <details className="text-sm text-muted-foreground">
               <summary className="cursor-pointer font-medium">About these cohorts</summary>
               <p className="mt-2 max-w-prose">
                 Twelve acquisition cohorts through {formatMonth(`${options.asOf}-01`)}. Month 0 is the acquisition
                 calendar month, followed by calendar months 1–11. Only fully elapsed months are shown; elapsed time does
-                not prove the warehouse is complete.
+                not prove the warehouse is complete. Segments describe the first valid acquisition order, not subsequent
+                orders. Only one dimension and one segment are read at a time; overlapping segment populations are never
+                added together. Product and SKU segments are not published in this report.
               </p>
             </details>
             <Suspense
-              key={`${filters.storeId}|${options.asOf}|${options.channel}|${options.metric}|${options.curveWindow}`}
+              key={`${filters.storeId}|${options.asOf}|${options.channel}|${options.metric}|${options.curveWindow}|${options.dimension}|${options.segment}`}
               fallback={<LoadingState variant="table" label="Loading retention cohorts" />}
             >
               <DataRegion
                 timestamp={timeZone}
-                load={() => getRetention({ storeId: filters.storeId, asOf: options.asOf })}
+                load={() =>
+                  getRetention({
+                    storeId: filters.storeId,
+                    asOf: options.asOf,
+                    dimension: options.dimension,
+                    segment: options.segment,
+                  })
+                }
                 isEmpty={(rows) => rows.length === 0}
-                emptyMessage="No published acquisition cohorts for this store and observation window."
+                emptyMessage={
+                  options.dimension === "no_filters"
+                    ? "No published acquisition cohorts for this store and observation window."
+                    : options.segment
+                      ? "No published cohorts match this acquisition segment and observation window. Choose another segment."
+                      : "Choose an acquisition segment to load its cohorts."
+                }
               >
                 {(rows) => {
-                  const channels = [...new Set([options.channel, ...rows.map((row) => row.channel)])].sort();
                   return (
                     <div className="flex flex-col gap-4">
-                      <div className="flex flex-wrap gap-4">
-                        <SelectFilter
-                          name="channel"
-                          label="Acquisition sales channel"
-                          value={options.channel}
-                          options={channels.map((value) => ({
-                            value,
-                            label: value === "online_dtc" ? "Online DTC" : value === "amazon" ? "Amazon" : value,
-                          }))}
-                        />
-                        <SelectFilter
-                          name="cohorts"
-                          label="Chart cohorts"
-                          value={options.curveWindow}
-                          options={[...COHORT_WINDOWS]}
-                        />
-                      </div>
                       {rows.some((row) => row.channel === options.channel) && (
                         <RetentionCurves
                           rows={rows}
@@ -120,12 +193,6 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                       )}
                       <div className="flex flex-wrap items-end justify-between gap-4 border-t pt-6">
                         <h2 className="text-lg font-semibold">All twelve cohorts</h2>
-                        <SelectFilter
-                          name="measure"
-                          label="Matrix measure"
-                          value={options.metric}
-                          options={[...RETENTION_METRICS]}
-                        />
                       </div>
                       <p data-metric-definition={metricLabel} className="max-w-prose text-sm text-muted-foreground">
                         {options.metric === "retention"

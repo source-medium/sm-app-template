@@ -16,6 +16,7 @@ export async function DataRegion<T>({
   isEmpty,
   emptyMessage,
   timestamp,
+  errorContent,
   children,
 }: {
   load: () => Promise<T>;
@@ -26,6 +27,8 @@ export async function DataRegion<T>({
    * or false for a region that loads filter options, not the report.
    */
   timestamp: string | false;
+  /** Keep applied form controls available when their options query fails. The error still renders. */
+  errorContent?: React.ReactNode;
   children: (data: T) => React.ReactNode;
 }) {
   const access = await requireViewer();
@@ -35,9 +38,19 @@ export async function DataRegion<T>({
   } catch (error) {
     if (!(error instanceof WarehouseError)) throw error;
     if (error.kind === "incompatible_schema" && error.relation && error.column) {
-      return <IncompatibleState relation={error.relation} column={error.column} />;
+      return (
+        <>
+          <IncompatibleState relation={error.relation} column={error.column} />
+          {errorContent}
+        </>
+      );
     }
-    return <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} />;
+    return (
+      <>
+        <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} />
+        {errorContent}
+      </>
+    );
   }
   // Stamp only successful loads, including empty results, after every query and decoder finishes.
   const completedAt = new Date().toISOString();

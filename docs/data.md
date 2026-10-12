@@ -26,14 +26,14 @@ command against your warehouse. MCP is not required for that path.
 
 ## The example's relations
 
-| View           | Relation                                                              | Grain                                                               | Columns used                                                                                                                                                           |
-| -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Overview       | `rpt_executive_summary_daily`                                         | store, channel, sub-channel, date                                   | `order_net_revenue`, `ad_spend` (NUMERIC), `order_count` (FLOAT64), `website_sessions`, `ad_clicks` (INT64)                                                            |
-| Paid marketing | `rpt_ad_performance_daily`                                            | ad by day                                                           | `sm_channel`, `ad_campaign_id`, `ad_campaign_name`, `ad_spend`, `ad_impressions`, `ad_clicks`, `ad_platform_reported_conversions`, `ad_platform_reported_revenue`      |
-| Creatives      | `rpt_ad_performance_daily`                                            | ad by day, aggregated to creative                                   | `ad_creative_*` text and image URLs, the same measures                                                                                                                 |
-| Orders         | `obt_orders`                                                          | one row per order                                                   | `sm_order_key`, `order_name`, `order_processed_at_local_datetime`, channel, type, status, quantities, and the order's revenue columns                                  |
-| Products       | `obt_order_lines`                                                     | one row per order line, aggregated to product or variant            | `source_system`, product/variant ids and titles, `is_order_sm_valid`, `order_line_net_revenue`, `order_line_net_quantity`, `order_line_product_gross_profit` (NUMERIC) |
-| Retention      | `rpt_cohort_ltv_by_first_valid_purchase_attribute_no_product_filters` | channel, acquisition cohort month, month age, one unsegmented slice | `cohort_size`, `customer_count`, `cumulative_order_net_revenue`, `cumulative_order_gross_profit` (FLOAT64, cast to NUMERIC)                                            |
+| View           | Relation                                                              | Grain                                                                               | Columns used                                                                                                                                                           |
+| -------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Overview       | `rpt_executive_summary_daily`                                         | store, channel, sub-channel, date                                                   | `order_net_revenue`, `ad_spend` (NUMERIC), `order_count` (FLOAT64), `website_sessions`, `ad_clicks` (INT64)                                                            |
+| Paid marketing | `rpt_ad_performance_daily`                                            | ad by day                                                                           | `sm_channel`, `ad_campaign_id`, `ad_campaign_name`, `ad_spend`, `ad_impressions`, `ad_clicks`, `ad_platform_reported_conversions`, `ad_platform_reported_revenue`      |
+| Creatives      | `rpt_ad_performance_daily`                                            | ad by day, aggregated to creative                                                   | `ad_creative_*` text and image URLs, the same measures                                                                                                                 |
+| Orders         | `obt_orders`                                                          | one row per order                                                                   | `sm_order_key`, `order_name`, `order_processed_at_local_datetime`, channel, type, status, quantities, and the order's revenue columns                                  |
+| Products       | `obt_order_lines`                                                     | one row per order line, aggregated to product or variant                            | `source_system`, product/variant ids and titles, `is_order_sm_valid`, `order_line_net_revenue`, `order_line_net_quantity`, `order_line_product_gross_profit` (NUMERIC) |
+| Retention      | `rpt_cohort_ltv_by_first_valid_purchase_attribute_no_product_filters` | channel, acquisition cohort month, month age, one acquisition dimension/value slice | `cohort_size`, `customer_count`, `cumulative_order_net_revenue`, `cumulative_order_gross_profit` (FLOAT64, cast to NUMERIC)                                            |
 
 The example uses these formulas: net revenue is
 `SUM(order_net_revenue)`, revenue per summary order is net revenue ÷ summary
@@ -89,6 +89,38 @@ store, dates, channel and comparison. This table includes revenue per summary
 order alongside the other KPI measures. Missing dates remain gaps; unsafe
 INT64 values use the table only. Daily ratios are computed
 per day, while headline ratios continue to use full-period totals.
+
+Overview's **Performance trends** offers Daily and Cumulative values for net
+revenue, summary orders and ad spend, using the same bounded daily query.
+Cumulative money adds exact decimals before chart conversion. Each period
+starts at its own first date; a missing date or measure makes the affected
+cumulative series unknown from then on. Calendar comparisons accumulate their
+own complete period before aligning dates, including leap days. KPI cards,
+sparklines, summary rows and CSV remain period or daily values.
+
+**Largest daily revenue changes** is optional comparison detail, ranked by
+exact absolute change across matched dates. It reuses daily rows and the
+existing period-coverage gate. Missing values and unmatched leap days are
+excluded; the detail disappears when comparison is off or unavailable. These
+are descriptive date contributions, not an attribution or causal explanation.
+
+Retention defaults to the existing unsegmented cohorts. **Segment cohorts by**
+selects one published first-order attribute, then one **Acquisition segment**:
+order type, discount code, source/medium, campaign, survey attribution or
+sub-channel. The report explicitly excludes product and SKU slices. Values
+are scoped to the selected store, channel and twelve-cohort window. A bounded,
+searchable options query runs only when segmentation is selected, using age-zero
+rows and returning at most 200 values with a visible partial-list notice.
+The cohort query reads exactly one dimension/value slice, never a sum of
+potentially overlapping segments. Missing or unknown choices stay empty.
+Changing dimension clears its old segment and search. Options-query errors
+keep the applied controls available and still show their remedy. Switching
+stores clears segment values and search while keeping the selected dimension. The selection is kept
+in report URLs; segment values and search text are excluded from agent prompts.
+
+Target pacing remains deferred: published targets coalesce missing values to
+zero, so the report alone cannot distinguish an absent target from a configured
+zero. Establish target-presence semantics before presenting attainment.
 
 ## Store scope
 
