@@ -139,8 +139,9 @@ Use the repository's Node version and pinned pnpm version from `package.json`;
 set the build variable `PNPM_VERSION` to that pnpm version if needed. The build
 command installs the locked browser and its Linux libraries. Both deployment
 commands then run **`pnpm check:deploy`**: format/lint/types/guardrails/unit
-checks, browser tests, secret isolation, the sanitized Cloudflare build, and
-Worker smoke tests. Only a passing gate uploads that built artifact. The
+checks, secret isolation, browser tests, the sanitized Cloudflare build, and
+Worker smoke tests. Browser tests reuse the fresh secret-isolation build;
+Cloudflare gets a separate sanitized build. Only a passing gate uploads that artifact. The
 same gate runs for local deployment, so GitHub CI is never the release gate.
 Missing browser dependencies or failed checks stop the deploy; fix the cause
 instead of bypassing the command. No live warehouse credentials belong in Builds.

@@ -7,7 +7,7 @@ import pkg from "../../package.json";
 
 const directories: string[] = [];
 afterEach(() => directories.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true })));
-const checks = ["check", "test:e2e", "test:secrets", "build:cloudflare", "smoke:worker"];
+const checks = ["check", "test:secrets", "exec playwright test", "build:cloudflare", "smoke:worker"];
 
 // Execute the actual package scripts. Replace only subprocess boundaries so
 // failures cannot contact Cloudflare and do not run five real builds per test.
@@ -28,7 +28,7 @@ function deploy(script: "deploy" | "deploy:preview", failure = "", args = "") {
       process.exit(result.status ?? 1);
     }
     appendFileSync(${JSON.stringify(log)}, JSON.stringify([command, ...args]) + String.fromCharCode(10));
-    process.exit(command === 'pnpm' && args[0] === ${JSON.stringify(failure)} ? 37 : 0);
+    process.exit(command === 'pnpm' && args.join(' ') === ${JSON.stringify(failure)} ? 37 : 0);
   `,
   );
   for (const command of ["pnpm", "opennextjs-cloudflare", "wrangler"]) {
@@ -64,29 +64,32 @@ describe("deployment release gate", () => {
     const result = deploy("deploy", failure);
     expect(result.error).toBeUndefined();
     expect(result.status, result.stderr).toBe(37);
-    expect(result.calls).toEqual(checks.slice(0, checks.indexOf(failure) + 1).map((step) => ["pnpm", step]));
+    expect(result.calls).toEqual(
+      checks.slice(0, checks.indexOf(failure) + 1).map((step) => ["pnpm", ...step.split(" ")]),
+    );
   });
 
   it("publishes the checked artifact and forwards the persistent environment after all checks", () => {
     const result = deploy("deploy", "", " --env preview");
     expect(result.status, result.stderr).toBe(0);
     expect(result.calls).toEqual([
-      ...checks.map((step) => ["pnpm", step]),
+      ...checks.map((step) => ["pnpm", ...step.split(" ")]),
       ["opennextjs-cloudflare", "deploy", "--env", "preview"],
     ]);
   });
 
   it("uses the same gate for branch previews", () => {
-    const failed = deploy("deploy:preview", "test:e2e");
+    const failed = deploy("deploy:preview", "exec playwright test");
     expect(failed.status, failed.stderr).toBe(37);
     expect(failed.calls).toEqual([
       ["pnpm", "check"],
-      ["pnpm", "test:e2e"],
+      ["pnpm", "test:secrets"],
+      ["pnpm", "exec", "playwright", "test"],
     ]);
     const passed = deploy("deploy:preview");
     expect(passed.status, passed.stderr).toBe(0);
     expect(passed.calls).toEqual([
-      ...checks.map((step) => ["pnpm", step]),
+      ...checks.map((step) => ["pnpm", ...step.split(" ")]),
       ["wrangler", "preview", "--env", "preview"],
     ]);
   });
