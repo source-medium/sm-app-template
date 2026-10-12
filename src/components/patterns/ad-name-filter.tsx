@@ -6,6 +6,7 @@ import { ListFilter, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { REPORT_FILTER_FORM_ID, single, withParams, type SearchParams } from "@/lib/filters";
 import {
   AD_NAME_FIELDS,
@@ -35,6 +36,7 @@ export function AdNameFilter({
   const id = useId();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const disabled = !useHydrated() || pending;
   const [editor, setEditor] = useState<{
     index: number;
     field: AdNameRule["field"];
@@ -115,7 +117,7 @@ export function AdNameFilter({
               type="button"
               variant="ghost"
               size="sm"
-              disabled={pending}
+              disabled={disabled}
               aria-label={`Edit ${nameRuleLabel(rule)}`}
               data-agent-element={`Edit name filter ${index + 1}`}
               className="h-auto min-w-0 shrink gap-1.5 py-1.5 text-left break-words whitespace-normal"
@@ -127,7 +129,7 @@ export function AdNameFilter({
               type="button"
               variant="ghost"
               size="icon-sm"
-              disabled={pending}
+              disabled={disabled}
               aria-label={`Remove ${nameRuleLabel(rule)}`}
               data-agent-element={`Remove name filter ${index + 1}`}
               className="h-auto min-h-8"
@@ -141,7 +143,7 @@ export function AdNameFilter({
           type="button"
           variant="outline"
           size="sm"
-          disabled={pending || !!error || rules.length >= MAX_NAME_RULES}
+          disabled={disabled || !!error || rules.length >= MAX_NAME_RULES}
           data-agent-element="Add name filter"
           onClick={(event) => edit(rules.length, event.currentTarget)}
         >
@@ -153,7 +155,7 @@ export function AdNameFilter({
             type="button"
             variant="ghost"
             size="sm"
-            disabled={pending}
+            disabled={disabled}
             onClick={() => apply([])}
           >
             Clear name filters

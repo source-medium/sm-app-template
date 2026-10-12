@@ -41,6 +41,29 @@ test("creatives: ad-channel filtering survives sorting and unknown selections ca
   await expect(page.getByRole("heading", { name: "Meet the everyday tote", exact: true })).toBeVisible();
 });
 
+test("creatives: name filters wait for their handlers when scripts load slowly", async ({ page }) => {
+  let release: () => void = () => undefined;
+  const scripts = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/_next/static/**/*.js", async (route) => {
+    await scripts;
+    await route.continue();
+  });
+  const names = JSON.stringify([{ field: "campaign", operator: "contains", values: ["[retargeting]"] }]);
+  const filters = page.getByRole("region", { name: "Name filters", exact: true });
+  try {
+    await page.goto(`/creatives?names=${encodeURIComponent(names)}`, { waitUntil: "commit" });
+    for (const name of ["Add name filter", /^Edit Campaign/, /^Remove Campaign/, "Clear name filters"]) {
+      await expect(filters.getByRole("button", { name })).toBeDisabled();
+    }
+  } finally {
+    release();
+  }
+  await filters.getByRole("button", { name: /^Remove Campaign/ }).click();
+  await expect(page).toHaveURL((url) => !url.searchParams.has("names"));
+});
+
 test("creatives: literal name rules combine, inspect, edit, survive sorting and clear", async ({ page }) => {
   await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-07");
   await page.getByRole("button", { name: "Add name filter" }).click();
