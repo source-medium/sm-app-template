@@ -240,7 +240,7 @@ test("unknown stores remain unselected until the viewer chooses a valid store", 
   await expect(page.locator('[data-slot="kpi-value"]')).toHaveCount(0);
   // Without a listed store there is no time zone, so no date to offer ranges from.
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveCount(0);
-  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(page.getByRole("form", { name: "Report filters" })).toBeHidden();
   await expect(page).toHaveURL(/store=unknown-store/);
   await expect(page.getByText("This store is not in the store list")).toBeVisible();
   await switchStore(page, "sample-store-b");

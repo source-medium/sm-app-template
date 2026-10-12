@@ -44,6 +44,8 @@ test("retention: acquisition segments are explicit, searchable, shareable and re
   await page.goto("/retention?store=sample-store-a&as_of=2026-09&measure=second");
   await page.getByLabel("Segment cohorts by", { exact: true }).selectOption("campaign");
   await expect(page.getByText("Choose an acquisition segment to load its cohorts.")).toBeVisible();
+  // selectOption can change a streamed select while inert still blocks real user input.
+  await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).not.toHaveAttribute("inert");
   await page.getByRole("combobox", { name: "Acquisition segment", exact: true }).selectOption("Prospecting");
   await expect(page.getByRole("table", { name: "Purchased a second time", exact: true })).toBeVisible();
   await page.getByRole("textbox", { name: "Find segment options", exact: true }).fill("brand");
@@ -94,6 +96,8 @@ test("retention: incomplete months, published gaps, and measure/channel selectio
   await page.goto("/retention?store=sample-store-a&as_of=2026-09&channel=online_dtc");
   const table = page.getByRole("table", { name: "Monthly retention", exact: true });
   await expect(table).toBeVisible();
+  await expect(page.getByRole("form", { name: "Report filters", exact: true })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Apply", exact: true })).toBeHidden();
   await expect(table.locator('td[data-state="immature"]').first()).toHaveText("—");
   await expect(table.locator('td[data-state="missing"]').first()).toHaveText("No data");
   await expect(
@@ -115,6 +119,7 @@ test("retention: incomplete months, published gaps, and measure/channel selectio
   await page.getByLabel("Through completed month").fill("2026-08");
   await page.getByRole("button", { name: "Apply month", exact: true }).click();
   await expect(page).toHaveURL(/as_of=2026-08/);
+  expect(new URL(page.url()).searchParams.get("store")).toBe("sample-store-a");
   await expect(profit.getByRole("rowheader", { name: "Sep 2026", exact: true })).toHaveCount(0);
   await expect(page).toHaveTitle(/Retention/);
   await expectNoSeriousA11yViolations(page);

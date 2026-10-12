@@ -40,6 +40,8 @@ export function FilterBar({
 }) {
   const id = useId();
   const [error, setError] = useState<string | null>(null);
+  // Keep the form for controls rendered by the report, even when it has no visible fields of its own.
+  const hasControls = dates || comparison !== undefined;
   /** Choices apply on change; typed dates wait for Apply. The form's own submit handler still validates dates. */
   const applyOnChange = (event: React.ChangeEvent<HTMLSelectElement>) => event.currentTarget.form?.requestSubmit();
   const frequent = new Set(["Last 7 days", "Last 28 days"]);
@@ -64,7 +66,11 @@ export function FilterBar({
       aria-label="Report filters"
       data-agent-target="Report filters"
       data-agent-component="FilterBar"
-      className="grid grid-cols-1 items-end gap-3 rounded-xl border bg-card p-3 min-[24rem]:grid-cols-2 sm:flex sm:flex-wrap"
+      className={
+        hasControls
+          ? "grid grid-cols-1 items-end gap-3 rounded-xl border bg-card p-3 min-[24rem]:grid-cols-2 sm:flex sm:flex-wrap"
+          : "hidden"
+      }
       onSubmit={(event) => {
         if (!dates || maxDate === undefined) return;
         const data = new FormData(event.currentTarget);
