@@ -9,7 +9,7 @@ const baseline = { from: "2026-08-25", to: "2026-08-31" };
 const now = new Date("2026-10-01T12:00:00Z");
 function store(id: string, currency: string | null, latest = range.to): StoreComparison {
   return {
-    store: { id, label: id, brand: null, timeZone: "America/New_York", currency: "CAD" },
+    store: { id, label: id, domain: null, logoUrl: null, brand: null, timeZone: "America/New_York", currency: "CAD" },
     currency,
     summary: {
       sm_store_id: id,

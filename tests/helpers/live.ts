@@ -45,6 +45,7 @@ export const ROSTER_FIELDS = [
   "store_timezone",
   "store_currency_code",
   "store_url",
+  "store_logo_url",
 ].map((name) => ({
   name,
   type: "STRING",
@@ -53,6 +54,7 @@ export const storeRow = (id: string, timeZone: string | null = "America/New_York
   sm_store_id: id,
   store_name: null,
   store_url: null,
+  store_logo_url: null,
   brand_name: null,
   store_timezone: timeZone,
   store_currency_code: currency,

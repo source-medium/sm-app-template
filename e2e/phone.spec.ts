@@ -27,8 +27,8 @@ for (const item of appConfig.nav) {
     await page.goto(item.href);
     await expect(page.getByTestId("mode-chip")).toBeVisible();
     await expect(page.getByRole("status")).toHaveCount(0);
-    // Exercise both a small phone and the point where the persistent sidebar appears.
-    for (const width of [320, 768]) {
+    // Cover small phones, sidebar appearance, and the header's single-row breakpoint.
+    for (const width of [320, 640, 768, 1024]) {
       await page.setViewportSize({ width, height: 740 });
       // Recharts updates its SVG width on ResizeObserver's next frame.
       await expect
@@ -60,6 +60,34 @@ test("the top bar fits a small touch screen", async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(
     0,
   );
+});
+
+test("store switching is visible and usable on a small touch screen", async ({ page }) => {
+  const report = appConfig.nav.find((item) => item.scope !== "all-stores");
+  test.skip(!report, "No single-store view");
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto(`${report?.href ?? "/"}?store=sample-store-a&from=2026-09-01&to=2026-09-07`);
+  const trigger = page.getByRole("button", { name: "Store: Sample Store A" });
+  await expect(trigger.getByText("Switch store", { exact: true })).toBeVisible();
+  expect((await trigger.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  await trigger.tap();
+  const dialog = page.getByRole("dialog", { name: "Switch store" });
+  // Opening the picker should show stores, not summon the on-screen keyboard.
+  const search = dialog.getByRole("searchbox", { name: "Search stores" });
+  await expect(search).not.toBeFocused();
+  await expect(dialog).toBeFocused();
+  const option = dialog.getByRole("button", { name: "Sample Store B", exact: true });
+  await expect(option).toContainText("b.example.com");
+  expect((await option.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  await expectNoSeriousA11yViolations(page);
+  await search.tap();
+  await search.fill("b.example.com");
+  await option.tap();
+  await expect(page.getByRole("button", { name: "Store: Sample Store B" })).toBeVisible();
+  await expect(page).toHaveURL(/store=sample-store-b/);
+  expect(new URL(page.url()).searchParams.get("from")).toBe("2026-09-01");
+  await page.getByRole("button", { name: "Store: Sample Store B" }).press("Enter");
+  await expect(search).toBeFocused();
 });
 
 test("report fields have room for their values on the smallest phones", async ({ page }) => {

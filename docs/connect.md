@@ -69,11 +69,12 @@ before sharing each deployment; see [one deployment per store](auth.md#one-deplo
 
 ## 3. Go live locally
 
-Store names and brand groups load automatically from `dim_stores`. A missing
-name falls back to the website domain, then the store ID. No store
-list needs to be configured. Optional `storeLabels` in `app.config.ts` overrides
-individual names. See [store scope](data.md#store-scope) for warehouses awaiting
-the metadata table and stable links to each store.
+Use **Switch store** in the top bar to find a store, or **All stores** to compare them.
+Names, logos, websites and brand groups load from `dim_stores`; no manual store list
+is needed. Missing names fall back to the website domain, then the store ID.
+Missing or broken logos use initials. You can override names with `storeLabels`
+in `app.config.ts`. See [store scope](data.md#store-scope) for metadata availability
+and stable links to each store.
 
 Confirm the reporting currency and monetary source alignment, then set `currency`
 in `app.config.ts`, for example `"USD"`. Use `reportingCurrencies` only when stores

@@ -18,4 +18,11 @@ describe("CardImage", () => {
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(screen.getByText("Fresh shades for longer days.")).toBeInTheDocument();
   });
+
+  it("attempts a new source after a previous image failed", () => {
+    const { rerender } = render(<CardImage src="https://example.com/expired.png" alt="Store" fallback="S" />);
+    fireEvent.error(screen.getByRole("img", { name: "Store" }));
+    rerender(<CardImage src="https://example.com/current.png" alt="Store" fallback="S" />);
+    expect(screen.getByRole("img", { name: "Store" })).toHaveAttribute("src", "https://example.com/current.png");
+  });
 });

@@ -26,7 +26,7 @@ it("aggregates each store and period independently with exact money and fraction
 });
 it("keeps missing values null and disables comparisons when off", () => {
   const rows = sampleStoreComparison(
-    [{ id: "no-rows", label: "No rows", brand: null, timeZone: null, currency: null }],
+    [{ id: "no-rows", label: "No rows", domain: null, logoUrl: null, brand: null, timeZone: null, currency: null }],
     range,
     null,
     "2026-10-01",

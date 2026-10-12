@@ -8,6 +8,8 @@ export const SAMPLE_STORES = [
   {
     id: "sample-store-a",
     label: "Sample Store A",
+    domain: "a.example.com",
+    logoUrl: null,
     brand: "Sample Brand",
     timeZone: "America/New_York",
     currency: "USD",
@@ -15,6 +17,8 @@ export const SAMPLE_STORES = [
   {
     id: "sample-store-b",
     label: "Sample Store B",
+    domain: "b.example.com",
+    logoUrl: null,
     brand: "Sample Brand",
     timeZone: "America/Los_Angeles",
     currency: "USD",

@@ -127,18 +127,23 @@ zero. Establish target-presence semantics before presenting attainment.
 Individual report queries filter one store with `sm_store_id = @store_id`. The
 All stores report uses the explicitly bounded portfolio query described below.
 There are no cross-store totals. The store picker reads `dim_stores`: one row per active
-store, with `sm_store_id`, `store_name`, `store_url`, `brand_name`, `store_timezone`
+store, with `sm_store_id`, `store_name`, `store_url`, `store_logo_url`, `brand_name`, `store_timezone`
 ([dates](#dates)), and `store_currency_code` ([money](#money-and-currency)).
 It groups stores by
 brand and labels each store with its name, then the domain from `store_url`,
 then its store ID. Blank names and missing or invalid website URLs fall through
 automatically; neither is required. Duplicate labels include the ID.
+Website domains also appear beneath named stores. Configured HTTPS logos appear
+in the header and picker; missing, invalid, or broken logos fall back to initials.
+The browser loads logos without sending the report URL as a referrer.
 The selected value and shareable URL remain `?store=<sm_store_id>`, so renaming
 a store does not break links. `app.config.ts` `storeLabels` is an optional
 name override, not a required setup step. The roster is bounded to 50 stores;
 overflow or duplicate IDs is an error rather than an incomplete picker.
 
-The persistent header picker searches names, brands and IDs. Switching stores
+The persistent **Switch store** picker searches names, domains, brands and IDs.
+Use arrow keys or Tab to move through results, Enter to select, and Escape to close.
+**All stores** stays available below the results, including during search. Switching stores
 preserves applied dates and presentation choices, ignoring unfinished date edits.
 It clears campaign/order identities, order search and pagination from the old store.
 **All stores** opens `/stores`, with one row per roster store, including stores

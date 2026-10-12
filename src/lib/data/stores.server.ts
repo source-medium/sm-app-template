@@ -22,6 +22,8 @@ import { WarehouseError } from "./warehouse-error";
 export type StoreOption = {
   id: string;
   label: string;
+  domain: string | null;
+  logoUrl: string | null;
   brand: string | null;
   timeZone: string | null;
   currency: string | null;
@@ -48,6 +50,17 @@ function storeDomain(website: string | null): string | null {
   }
 }
 
+/** Only load configured HTTPS logos, without credentials or a report referrer. */
+function storeLogo(logo: string | null): string | null {
+  if (!logo?.trim()) return null;
+  try {
+    const url = new URL(logo.trim());
+    return url.protocol === "https:" && !url.username && !url.password ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Verified reporting currency, never inferred from nominal warehouse metadata. */
 export function reportingCurrency(storeId: string, mode: "sample" | "live"): string | null {
   return currencyCode(
@@ -66,17 +79,22 @@ export const loadStores = cache(async (): Promise<StoreOption[]> => {
       ...store,
     }));
   const { stores } = await queryStoreRoster(access.warehouse, access.storeId);
-  return stores.map((store) => ({
-    id: store.sm_store_id,
-    label:
-      (Object.hasOwn(appConfig.storeLabels, store.sm_store_id) && appConfig.storeLabels[store.sm_store_id]?.trim()) ||
-      store.store_name?.trim() ||
-      storeDomain(store.store_url) ||
-      store.sm_store_id,
-    brand: store.brand_name?.trim() || null,
-    timeZone: store.store_timezone && isTimeZone(store.store_timezone) ? store.store_timezone : null,
-    currency: currencyCode(store.store_currency_code),
-  }));
+  return stores.map((store) => {
+    const domain = storeDomain(store.store_url);
+    return {
+      id: store.sm_store_id,
+      label:
+        (Object.hasOwn(appConfig.storeLabels, store.sm_store_id) && appConfig.storeLabels[store.sm_store_id]?.trim()) ||
+        store.store_name?.trim() ||
+        domain ||
+        store.sm_store_id,
+      domain,
+      logoUrl: storeLogo(store.store_logo_url),
+      brand: store.brand_name?.trim() || null,
+      timeZone: store.store_timezone && isTimeZone(store.store_timezone) ? store.store_timezone : null,
+      currency: currencyCode(store.store_currency_code),
+    };
+  });
 });
 
 /**

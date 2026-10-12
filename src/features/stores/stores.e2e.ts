@@ -59,8 +59,14 @@ test("the persistent picker supports search, keyboard recovery, and narrow scree
   const search = page.getByRole("searchbox", { name: "Search stores" });
   await expect(search).toBeFocused();
   await search.fill("no-such-store");
-  await expect(page.getByRole("status")).toContainText("No stores match");
-  await search.fill("sample-store-b");
+  await expect(page.getByRole("status")).toContainText("No matching stores");
+  await expect(
+    page.getByRole("dialog", { name: "Switch store" }).getByRole("button", { name: "All stores", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Clear search" }).click();
+  await expect(search).toBeFocused();
+  await expect(search).toHaveValue("");
+  await search.fill("b.example.com");
   const option = page.getByRole("dialog", { name: "Switch store" }).getByRole("button", { name: "Sample Store B" });
   await expect(option).toBeVisible();
   await expectNoSeriousA11yViolations(page);
@@ -69,7 +75,7 @@ test("the persistent picker supports search, keyboard recovery, and narrow scree
   await expect(trigger).toBeFocused();
   await trigger.press("Enter");
   await search.fill("Sample Store B");
-  await search.press("Tab");
+  await search.press("ArrowDown");
   await expect(option).toBeFocused();
   await option.press("Enter");
   await expect(page.getByRole("button", { name: "Store: Sample Store B" })).toHaveAttribute(
