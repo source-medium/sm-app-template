@@ -374,8 +374,13 @@ test("overview: hides period changes only when the selected period's last days h
 test("overview: the report form stays in place when the first filter applies", async ({ page }) => {
   // The first visit names no store; the filter adds one. Replacing the form then would drop a choice made meanwhile.
   await page.goto("/overview");
+  // selectOption can change an inert select before hydration. This assertion
+  // covers client navigation, so wait for the form and its streamed control.
+  await expect(page.getByLabel("Compare with", { exact: true })).not.toHaveAttribute("inert");
+  const summaryRows = page.getByLabel("Summary rows", { exact: true });
+  await expect(summaryRows).not.toHaveAttribute("inert");
   const form = await page.locator("#report-filters").elementHandle();
-  await page.getByLabel("Summary rows", { exact: true }).selectOption("week");
+  await summaryRows.selectOption("week");
   await expect(page).toHaveURL(/store=sample-store-a.*grain=week|grain=week.*store=sample-store-a/);
   expect(await form?.evaluate((node) => node.isConnected)).toBe(true);
 });
