@@ -76,7 +76,7 @@ README width and check that the before/after images stack on a narrow screen.
 ## Releases
 
 No stable tag or GitHub release has been published yet. Follow the open gates
-in [release readiness](docs/release-readiness.md) before claiming v1 readiness.
+in [release readiness](docs/maintainers/release-readiness.md) before claiming v1 readiness.
 Releases will be GitHub releases with semantic version tags. The release notes
 list every changed file that carries a "Template version" header, any change
 to configuration or the deploy flow, and the tested versions of Node.js,

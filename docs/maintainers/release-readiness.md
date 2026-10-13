@@ -1,13 +1,43 @@
 # Release readiness
 
 Maintainer release evidence for this template, not setup instructions. To set
-up an app, start with the [README](../README.md).
+up an app, start with the [README](../../README.md).
 
 Status: 0.1.0 preview, suitable for public source distribution. The tested
 path is local setup and Cloudflare Workers with a shared password. A fresh
 Cloudflare account, real Access offboarding and self-service Apps provisioning
 remain separate checks; do not advertise those journeys as verified. Publication, tags, deployments, IAM and account changes
 require the maintainer's explicit authorization.
+
+## Maintainer release verification
+
+Before calling fresh self-service onboarding verified, rehearse with an accepted
+admin in an authorized demo organization, using the
+[Urchin issuer prerequisites](https://github.com/source-medium/urchin/blob/main/docs/customer-apps.md#deployment-prerequisites).
+Local synthetic issuer tests and an existing demo credential do not prove new IAM
+issuance or a new customer account's Git and Cloudflare setup.
+
+1. Create an app through **Apps** and place its `SM_CONNECTION` privately
+   in a demo deployment with the [chosen sign-in](../auth.md#configure-the-chosen-sign-in).
+   Verify its project and dataset coordinates match
+   that organization's delivery configuration. Confirm reporting currency and
+   source alignment before labeling amounts.
+2. From a fresh customer Git/Cloudflare account, follow [cloud onboarding](../cloud.md).
+   Check the expected commit at `/healthz`, anonymous access denial, **Check
+   connection**, every report and a CSV export. Use
+   `pnpm test:hosted <https-origin> <full-commit>` for the automated portion.
+   Verify member and other-organization
+   denials in Urchin and another tenant's data denial for shared warehouses.
+3. Replace the app key and viewer password, update the runtime settings, and
+   verify access with the new values. Revoke the app and confirm warehouse access
+   stops after any already-issued Google token expires. Follow the preview URL
+   retirement checks in [Replacing secrets](../operations.md#replacing-secrets) if previews were created.
+4. Record the non-secret results and revoke any temporary app credentials; remove
+   only the approved temporary demo deployments. Do not mark a skipped account,
+   provider or hosting step as verified.
+
+Creating credentials and publishing these deployments require operator approval;
+the local checks do not authorize that rollout.
 
 ## Permanent hosted demo (2026-10-09)
 
@@ -74,13 +104,13 @@ POST, public assets, path/header probes and cache headers. Redeploying without
 resupplying secrets retained the password. This does not establish the
 fresh-account button flow or a real Access identity policy. The source and
 all eight original commits were scanned; the only secret-scanner finding was
-a synthetic test password. See [SECURITY.md](../SECURITY.md) for the dependency
+a synthetic test password. See [SECURITY.md](../../SECURITY.md) for the dependency
 review and the remaining development-only advisory.
 
 ## Cloud agent onboarding (2026-10-08)
 
 Codex Cloud and Claude Code in the cloud share `scripts/setup-agent.mjs`,
-the `sm-cloud` skill, and [one browser guide](cloud.md). Local validation in a
+the `sm-cloud` skill, and [one browser guide](../cloud.md). Local validation in a
 fresh checkout passed setup, all 84 browser tests, secret isolation, the
 Cloudflare build, and the Worker smoke suite. Cold setup passed on macOS and
 in a clean Debian 12 container with Node 24.7.0 and `NODE_ENV=production`,
@@ -366,7 +396,7 @@ publishing tenant data in fixtures.
 ## Other limits to keep explicit
 
 - Ad image requests expose viewer network information to the image host. The
-  privacy tradeoff and text-only alternative are in [data.md](data.md#creative-images).
+  privacy tradeoff and text-only alternative are in [data.md](../data.md#creative-images).
   Expired-image fallback is tested; ad-platform URL lifetime is not guaranteed.
 - Worker CPU measurements are observations from the demo, not a capacity
   guarantee. Re-measure after major runtime or view changes; Workers Paid is

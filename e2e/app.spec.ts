@@ -150,6 +150,18 @@ test("filters live in the URL and survive a reload", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("aria-current", "true");
 });
 
+test("the first Tab reaches a skip link that moves focus to the report", async ({ page }) => {
+  await page.goto(home);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page.keyboard.press("Tab");
+  const skip = page.getByRole("link", { name: "Skip to report", exact: true });
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeInViewport();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#report")).toBeFocused();
+  await expect(page).toHaveURL(/#report$/);
+});
+
 test("keyboard users can reach the navigation", async ({ page }) => {
   const target = appConfig.nav.at(-1);
   test.skip(!target || appConfig.nav.length < 2, "needs two pages");
@@ -462,6 +474,10 @@ test("connection checks run on demand and produce a safe, accessible sample repo
   await page.getByTestId("mode-chip").click();
   await expect(page.getByRole("heading", { name: "Connection", exact: true })).toBeVisible();
   await expect(page).toHaveTitle(/^Connection · /);
+  // The currency note describes the contract the code implements: labels come from app.config.ts, never dim_stores.
+  const currencyNote = page.getByRole("heading", { name: "Reporting currency", exact: true }).locator("..");
+  await expect(currencyNote).toContainText("app.config.ts");
+  await expect(currencyNote).toContainText("never chooses that label");
   expect(checks).toBe(0);
   await page.getByRole("button", { name: "Check connection", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Sample mode is ready.");

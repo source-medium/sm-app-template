@@ -157,6 +157,7 @@ acts for a person needs a real per-person authorization design first.
 - `docs/connect.md`: configuration/deploying; `docs/auth.md`: sign-in and store access.
 - `docs/data.md`: schemas/SQL/money; `docs/operations.md`: quotas/errors/secrets.
 - `docs/removing-the-example.md`: deleting views; `docs/prompts.md`: composer context and starter prompts.
+- `docs/maintainers/`: template release evidence and rehearsal steps; not customer setup.
 
 Publishing live data, production deploys, and destructive actions need the person's explicit go-ahead. Never ask for a SourceMedium admin credential.
 

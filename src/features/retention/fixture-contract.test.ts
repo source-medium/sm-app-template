@@ -42,6 +42,19 @@ it("uses complete calendar months, year boundaries, and bounded URL choices", ()
     metric: "retention",
   });
   expect(retentionOptions({ as_of: "2026-99" }, now).asOf).toBe("2026-02");
+  // A supplied month the report cannot show is reported, never silently replaced; absent or empty is not an issue.
+  expect(retentionOptions({}, now).asOfIssue).toBeNull();
+  expect(retentionOptions({ as_of: "" }, now)).toMatchObject({ asOf: "2026-02", asOfIssue: null });
+  expect(retentionOptions({ as_of: "2026-02" }, now).asOfIssue).toBeNull();
+  expect(retentionOptions({ as_of: "2026-03" }, now).asOfIssue).toMatch(/already ended/);
+  expect(retentionOptions({ as_of: "2030-01" }, now).asOfIssue).toMatch(/already ended/);
+  expect(retentionOptions({ as_of: "2026-99" }, now).asOfIssue).toBe("Choose a valid month.");
+  expect(retentionOptions({ as_of: "nonsense" }, now).asOfIssue).toBe("Choose a valid month.");
+  expect(retentionOptions({ as_of: "0001-12" }, now)).toMatchObject({
+    asOf: "2026-02",
+    asOfIssue: "Choose a valid month.",
+  });
+  expect(retentionOptions({ as_of: ["2030-01", "2026-02"] }, now).asOfIssue).toMatch(/already ended/);
   expect(shiftMonth("2026-01", -1)).toBe("2025-12");
   expect(shiftMonth("0002-01", -11)).toBe("0001-02");
   expect(cohortMonths("2026-02")).toHaveLength(12);

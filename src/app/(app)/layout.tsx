@@ -21,10 +21,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <TooltipProvider>
       <SidebarProvider>
+        {/* The first focusable element: keyboard users skip the navigation and top bar. */}
+        <a
+          href="#report"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:border focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:outline-2 focus:outline-ring"
+        >
+          Skip to report
+        </a>
         <AppSidebar fixedStore={access.storeId !== null} />
         <SidebarInset>
           <TopBar mode={access.mode} viewer={access.viewer} />
-          <div className="mx-auto w-full max-w-7xl p-4 sm:p-6">{children}</div>
+          {/* scroll-mt keeps the report title below the sticky top bar when the skip link scrolls to it. */}
+          <div id="report" tabIndex={-1} className="mx-auto w-full max-w-7xl scroll-mt-16 p-4 outline-none sm:p-6">
+            {children}
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>

@@ -21,13 +21,14 @@ export default async function ConnectionPage() {
       <div className="space-y-2 rounded-lg border bg-card p-4 text-sm">
         <h2 className="font-semibold">Reporting currency</h2>
         <p>
-          Each report labels money with the selected store&apos;s currency from dim_stores (store_currency_code). Sample
-          stores use USD.
+          Live reports label money with the verified reporting currency set in app.config.ts: <code>currency</code> for
+          the deployment, with per-store overrides in <code>reportingCurrencies</code>. The nominal store currency in
+          dim_stores never chooses that label. Sample stores use USD.
         </p>
         <p className="text-muted-foreground">
           {appConfig.currency
-            ? `When a store has no currency code, amounts use ${appConfig.currency} from app.config.ts.`
-            : "When a store has no currency code, amounts stay unlabeled. Set currency in app.config.ts only as that fallback."}{" "}
+            ? `Live amounts are currently labeled ${appConfig.currency} unless a store has its own override.`
+            : "No reporting currency is configured, so live amounts stay unlabeled until you verify the warehouse's reporting currency and set it in app.config.ts (docs/data.md#money-and-currency)."}{" "}
           This labels amounts. It does not convert them, and amounts are never added across stores.
         </p>
       </div>

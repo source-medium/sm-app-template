@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ReportPage } from "@/components/shell/report-page";
 import { DataRegion } from "@/components/patterns/data-region";
-import { EmptyState, LoadingState } from "@/components/patterns/data-states";
+import { EmptyState, ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { CohortMatrix } from "@/components/patterns/cohort-matrix";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { formatMonth } from "@/lib/format";
 import { REPORT_FILTER_FORM_ID, type SearchParams } from "@/lib/filters";
 import { getRetention } from "./queries";
 import { RetentionCurves } from "./curves";
-import { COHORT_WINDOWS, COHORT_MONTHS, RETENTION_METRICS, retentionOptions } from "./filters";
+import { COHORT_WINDOWS, COHORT_MONTHS, MIN_COHORT_MONTH, RETENTION_METRICS, retentionOptions } from "./filters";
 import { retentionMatrix } from "./matrix";
 import { AcquisitionDimensionFilter } from "./segmentation-controls";
 import { RetentionSegmentControls } from "./controls";
@@ -72,7 +72,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                     name="as_of"
                     form={REPORT_FILTER_FORM_ID}
                     defaultValue={options.asOf}
-                    min="0002-01"
+                    min={MIN_COHORT_MONTH}
                     max={options.maxMonth}
                     required
                   />
@@ -94,7 +94,8 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
               />
               <AcquisitionDimensionFilter dimension={options.dimension} />
             </div>
-            {options.dimension !== "no_filters" && (
+            {/* Segment options are scoped to the month, so an unusable month runs no options query either. */}
+            {options.dimension !== "no_filters" && !options.asOfIssue && (
               <RetentionSegmentControls
                 filters={{
                   storeId: filters.storeId,
@@ -130,72 +131,81 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                 added together. Product and SKU segments are not published in this report.
               </p>
             </details>
-            <Suspense
-              key={`${filters.storeId}|${options.asOf}|${options.channel}|${options.metric}|${options.curveWindow}|${options.dimension}|${options.segment}`}
-              fallback={<LoadingState variant="table" label="Loading retention cohorts" />}
-            >
-              <DataRegion
-                timestamp={timeZone}
-                load={() =>
-                  getRetention({
-                    storeId: filters.storeId,
-                    asOf: options.asOf,
-                    dimension: options.dimension,
-                    segment: options.segment,
-                  })
-                }
-                isEmpty={(rows) => rows.length === 0}
-                emptyMessage={
-                  options.dimension === "no_filters"
-                    ? "No published acquisition cohorts for this store and observation window."
-                    : options.segment
-                      ? "No published cohorts match this acquisition segment and observation window. Choose another segment."
-                      : "Choose an acquisition segment to load its cohorts."
-                }
+            {options.asOfIssue ? (
+              // A supplied month the report cannot show: say so instead of quietly showing another month.
+              <ErrorState
+                title="Check the month"
+                remedy={`${options.asOfIssue} The control shows the latest complete month, ${formatMonth(`${options.asOf}-01`)}. Apply it or choose another month to load the report.`}
+              />
+            ) : options.dimension !== "no_filters" && !options.segment ? (
+              // A choice the report still needs, not an empty query result.
+              <EmptyState title="Choose a segment" message="Choose an acquisition segment to load its cohorts." />
+            ) : (
+              <Suspense
+                key={`${filters.storeId}|${options.asOf}|${options.channel}|${options.metric}|${options.curveWindow}|${options.dimension}|${options.segment}`}
+                fallback={<LoadingState variant="table" label="Loading retention cohorts" />}
               >
-                {(rows) => {
-                  return (
-                    <div className="flex flex-col gap-4">
-                      {rows.some((row) => row.channel === options.channel) && (
-                        <RetentionCurves
-                          rows={rows}
-                          channel={options.channel}
-                          asOf={options.asOf}
-                          window={options.curveWindow}
-                          currency={currency}
-                        />
-                      )}
-                      <div className="flex flex-wrap items-end justify-between gap-4 border-t pt-6">
-                        <h2 className="text-lg font-semibold">All twelve cohorts</h2>
+                <DataRegion
+                  timestamp={timeZone}
+                  load={() =>
+                    getRetention({
+                      storeId: filters.storeId,
+                      asOf: options.asOf,
+                      dimension: options.dimension,
+                      segment: options.segment,
+                    })
+                  }
+                  isEmpty={(rows) => rows.length === 0}
+                  emptyMessage={
+                    options.dimension === "no_filters"
+                      ? "No published acquisition cohorts for this store and observation window."
+                      : "No published cohorts match this acquisition segment and observation window. Choose another segment."
+                  }
+                >
+                  {(rows) => {
+                    return (
+                      <div className="flex flex-col gap-4">
+                        {rows.some((row) => row.channel === options.channel) && (
+                          <RetentionCurves
+                            rows={rows}
+                            channel={options.channel}
+                            asOf={options.asOf}
+                            window={options.curveWindow}
+                            currency={currency}
+                          />
+                        )}
+                        <div className="flex flex-wrap items-end justify-between gap-4 border-t pt-6">
+                          <h2 className="text-lg font-semibold">All twelve cohorts</h2>
+                        </div>
+                        <p data-metric-definition={metricLabel} className="max-w-prose text-sm text-muted-foreground">
+                          {options.metric === "retention"
+                            ? "Monthly retention is customers who purchased in that month divided by the original cohort size. Month 0 includes the acquisition purchase. A customer may return after skipping a month."
+                            : options.metric === "second"
+                              ? "Customers who have placed a second order by this calendar month of age / original cohort size. Cumulative, including second orders in Month 0; this is different from purchasing again in a particular month. Ages are calendar months, not rolling 30-day windows."
+                              : options.metric === "revenue"
+                                ? "LTR is cumulative net revenue divided by the original cohort size. It includes the acquisition month and all subsequent months through the displayed age."
+                                : "LTV here is cumulative gross profit divided by the original cohort size. It includes published product, shipping, fulfillment and payment costs; missing cost inputs can overstate profit."}
+                        </p>
+                        {rows.some((row) => row.channel === options.channel) ? (
+                          <CohortMatrix
+                            caption={metricLabel}
+                            columns={Array.from({ length: COHORT_MONTHS }, (_, index) => `Month ${index}`)}
+                            rows={retentionMatrix(rows, options.channel, options.metric, options.asOf, currency)}
+                          />
+                        ) : (
+                          <EmptyState message="No cohorts for this channel. Choose another acquisition sales channel." />
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Stronger shading means higher values within this measure. “No data” means a published value is
+                          missing; “—” means the month has not elapsed. Published cohorts cover online DTC and Amazon
+                          separately. There is no cross-channel or cross-store total.
+                        </p>
                       </div>
-                      <p data-metric-definition={metricLabel} className="max-w-prose text-sm text-muted-foreground">
-                        {options.metric === "retention"
-                          ? "Monthly retention is customers who purchased in that month divided by the original cohort size. Month 0 includes the acquisition purchase. A customer may return after skipping a month."
-                          : options.metric === "second"
-                            ? "Customers who have placed a second order by this calendar month of age / original cohort size. Cumulative, including second orders in Month 0; this is different from purchasing again in a particular month. Ages are calendar months, not rolling 30-day windows."
-                            : options.metric === "revenue"
-                              ? "LTR is cumulative net revenue divided by the original cohort size. It includes the acquisition month and all subsequent months through the displayed age."
-                              : "LTV here is cumulative gross profit divided by the original cohort size. It includes published product, shipping, fulfillment and payment costs; missing cost inputs can overstate profit."}
-                      </p>
-                      {rows.some((row) => row.channel === options.channel) ? (
-                        <CohortMatrix
-                          caption={metricLabel}
-                          columns={Array.from({ length: COHORT_MONTHS }, (_, index) => `Month ${index}`)}
-                          rows={retentionMatrix(rows, options.channel, options.metric, options.asOf, currency)}
-                        />
-                      ) : (
-                        <EmptyState message="No cohorts for this channel. Choose another acquisition sales channel." />
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Stronger shading means higher values within this measure. “No data” means a published value is
-                        missing; “—” means the month has not elapsed. Published cohorts cover online DTC and Amazon
-                        separately. There is no cross-channel or cross-store total.
-                      </p>
-                    </div>
-                  );
-                }}
-              </DataRegion>
-            </Suspense>
+                    );
+                  }}
+                </DataRegion>
+              </Suspense>
+            )}
           </>
         );
       }}

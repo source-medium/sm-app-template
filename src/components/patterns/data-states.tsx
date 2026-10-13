@@ -72,9 +72,10 @@ function StateFrame({
   );
 }
 
-export function EmptyState({ message }: { message: string }) {
+/** `title` names a state that is not an empty result, such as a choice the report still needs. */
+export function EmptyState({ message, title = "No data" }: { message: string; title?: string }) {
   return (
-    <StateFrame icon={<Inbox className="size-4" aria-hidden />} title="No data" tone="neutral">
+    <StateFrame icon={<Inbox className="size-4" aria-hidden />} title={title} tone="neutral">
       {message}
     </StateFrame>
   );

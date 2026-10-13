@@ -1,6 +1,8 @@
 import { addDays, parseChoice, single, type SearchParams } from "@/lib/filters";
 
 export const COHORT_MONTHS = 12;
+/** The earliest cohort month the URL and the month control accept (Date.UTC would reinterpret years below 100). */
+export const MIN_COHORT_MONTH = "0002-01";
 /** Published order-level acquisition attributes; this report excludes product and SKU slices. */
 export const ACQUISITION_DIMENSIONS = [
   { value: "no_filters", label: "All acquisition orders" },
@@ -31,12 +33,24 @@ export function shiftMonth(month: string, offset: number): string {
   date.setUTCMonth(date.getUTCMonth() + offset);
   return date.toISOString().slice(0, 7);
 }
-/** `today` is the store's date; the latest selectable cohort month is the last complete one. */
+/**
+ * `today` is the store's date; the latest selectable cohort month is the last complete one.
+ * A supplied `as_of` that cannot be used sets `asOfIssue`, so a shared link never
+ * silently shows a different month; the controls then suggest the latest complete one.
+ */
 export function retentionOptions(params: SearchParams, today: string) {
   const maxMonth = addDays(`${today.slice(0, 7)}-01`, -1).slice(0, 7);
-  const value = single(params, "as_of");
-  const asOf =
-    value && /^\d{4}-(0[1-9]|1[0-2])$/.test(value) && value >= "0002-01" && value <= maxMonth ? value : maxMonth;
+  // An absent or empty as_of means "the latest complete month", like a missing date range.
+  const value = single(params, "as_of") || undefined;
+  const wellFormed = value !== undefined && /^\d{4}-(0[1-9]|1[0-2])$/.test(value) && value >= MIN_COHORT_MONTH;
+  const usable = wellFormed && value <= maxMonth;
+  const asOf = usable ? value : maxMonth;
+  const asOfIssue =
+    value === undefined || usable
+      ? null
+      : wellFormed
+        ? "Choose a month that has already ended in the store's time zone."
+        : "Choose a valid month.";
   const dimension = parseChoice(
     params,
     "acquisition_dimension",
@@ -45,6 +59,7 @@ export function retentionOptions(params: SearchParams, today: string) {
   );
   return {
     asOf,
+    asOfIssue,
     maxMonth,
     channel: single(params, "channel")?.slice(0, 100) || "online_dtc",
     dimension,

@@ -4,36 +4,6 @@ App credentials are managed in your SourceMedium workspace's **Apps** page,
 separately from this template. If that page says credentials are still being
 enabled, keep sample data and ask SourceMedium support.
 
-## Maintainer release verification
-
-Before calling fresh self-service onboarding verified, rehearse with an accepted
-admin in an authorized demo organization, using the
-[Urchin issuer prerequisites](https://github.com/source-medium/urchin/blob/main/docs/customer-apps.md#deployment-prerequisites).
-Local synthetic issuer tests and an existing demo credential do not prove new IAM
-issuance or a new customer account's Git and Cloudflare setup.
-
-1. Create an app through **Apps** and place its `SM_CONNECTION` privately
-   in a demo deployment with the [chosen sign-in](auth.md#configure-the-chosen-sign-in).
-   Verify its project and dataset coordinates match
-   that organization's delivery configuration. Confirm reporting currency and
-   source alignment before labeling amounts.
-2. From a fresh customer Git/Cloudflare account, follow [cloud onboarding](cloud.md).
-   Check the expected commit at `/healthz`, anonymous access denial, **Check
-   connection**, every report and a CSV export. Use
-   `pnpm test:hosted <https-origin> <full-commit>` for the automated portion.
-   Verify member and other-organization
-   denials in Urchin and another tenant's data denial for shared warehouses.
-3. Replace the app key and viewer password, update the runtime settings, and
-   verify access with the new values. Revoke the app and confirm warehouse access
-   stops after any already-issued Google token expires. Follow the preview URL
-   retirement checks below if previews were created.
-4. Record the non-secret results and revoke any temporary app credentials; remove
-   only the approved temporary demo deployments. Do not mark a skipped account,
-   provider or hosting step as verified.
-
-Creating credentials and publishing these deployments require operator approval;
-the local checks do not authorize that rollout.
-
 ## Replacing secrets
 
 | Action (Apps page)               | What changes                             | What it interrupts                                                               |

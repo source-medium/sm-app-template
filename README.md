@@ -178,6 +178,6 @@ pnpm test:e2e   # Production build and browser tests
 
 **0.1.0 preview.** The tested hosting target is Cloudflare Workers. Fresh-account
 onboarding and self-service credential issuance still need end-to-end verification.
-See [release evidence and remaining checks](docs/release-readiness.md).
+See [release evidence and remaining checks](docs/maintainers/release-readiness.md).
 
 [MIT license](LICENSE) · [Security](SECURITY.md) · [Support](SUPPORT.md) · [Contributing](CONTRIBUTING.md)

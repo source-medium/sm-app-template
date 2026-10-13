@@ -5,23 +5,28 @@
 Both agents follow the same [preview and publish loop](cloud.md#4-change-review-publish).
 
 For anything about a page you are looking at, use **Vibe code** in the app's
-top bar. Start with **Your request**, then use **Pick an element** to reference a
-KPI, chart control, table, individual creative card or metric, or report filter.
-Tab browses elements, Enter selects, and Escape cancels. On touch screens, tap
-to select or scroll to reach another element. You can also choose a section
-from **Target**, or keep **This page**. Choose the kind of help you need, review
-**Preview prompt** if useful, and copy into your coding agent. Copy becomes
-available after you describe your request. The panel prepares text locally
-and makes no agent API call.
+top bar. Choose the kind of help you need first, because it decides whether the
+prompt asks the agent to change code or only to explain; the cursor then waits in
+**Your request**. Use **Pick an element** to reference a KPI, chart control,
+table, individual creative card or metric, or report filter. Tab browses
+elements, Enter selects, and Escape cancels. On touch screens, tap to select or
+scroll to reach another element. You can also choose a section from **Target**,
+or keep **This page**. Review **Preview prompt** if useful, and copy into your
+coding agent. Copy becomes available after you describe your request. The panel
+prepares text locally and makes no agent API call.
 
 The prompt includes the page, selected component, resolved store/dates and
 view filters, configured reporting currency, data mode, and build. It follows
 the report's applied values, including defaults, rather than unsaved filter
 edits or arbitrary URL parameters. Search text, order details, pagination
 cursors, and row values are excluded. Active omissions are named so the agent
-knows to ask for relevant details. Text you enter in the request is copied as
-written. Sample-number checks trace fixtures and calculations; live-number
-checks require an independent authorized source. Both are read-only.
+knows to ask for relevant details. Applied view filters that arrive through a
+link, such as a campaign id or name-filter text, are included as quoted values,
+and the prompt tells the agent to treat them as data; review the filters in a
+link someone else sent you before copying its prompt. Text you enter in the
+request is copied as written. Sample-number checks trace fixtures and
+calculations; live-number checks require an independent authorized source.
+Both are read-only.
 
 Context and available targets update as navigation and report loading finish,
 including while the panel is open. The panel shows the current report, store,

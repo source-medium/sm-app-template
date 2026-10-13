@@ -16,7 +16,7 @@ Artifacts is in **open beta** and requires Workers Paid, as does this app.
 Check current [Artifacts pricing](https://developers.cloudflare.com/artifacts/platform/pricing/)
 and [build allowances](https://developers.cloudflare.com/workers/ci-cd/builds/limits-and-pricing/).
 Workers Paid starts at US$5 a month; Artifacts storage/operations and build
-usage have their own allowances. Artifacts billing begins October 14, 2026.
+usage have their own allowances and billing dates; check the pricing page for the current terms.
 An existing GitHub repository can stay there if you prefer: Cloudflare runs
 the same checks and deployments directly from that source too.
 

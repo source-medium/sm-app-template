@@ -168,6 +168,23 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
               <SheetDescription>Prepare a request for Codex, Claude Code, or your coding agent.</SheetDescription>
             </SheetHeader>
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+              {/* The kind of help comes first: it decides whether the prompt asks the agent to change code or only explain. */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor={`${id}-intent`} className="text-sm font-medium">
+                  What do you need?
+                </label>
+                <NativeSelect
+                  id={`${id}-intent`}
+                  value={intentId}
+                  onChange={(event) => setIntentId(event.currentTarget.value as AgentIntentId)}
+                >
+                  {AGENT_INTENTS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={`${id}-request`} className="text-sm font-medium">
                   Your request
@@ -210,22 +227,6 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
                   {menuTargets.map((item) => (
                     <option key={targetKey(item)} value={targetKey(item)}>
                       {agentTargetLabel(item)}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor={`${id}-intent`} className="text-sm font-medium">
-                  What do you need?
-                </label>
-                <NativeSelect
-                  id={`${id}-intent`}
-                  value={intentId}
-                  onChange={(event) => setIntentId(event.currentTarget.value as AgentIntentId)}
-                >
-                  {AGENT_INTENTS.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
                     </option>
                   ))}
                 </NativeSelect>

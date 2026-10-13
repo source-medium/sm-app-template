@@ -213,7 +213,10 @@ test("retention acquisition segments load published options and one cohort slice
   test.skip(!appConfig.nav.some((item) => item.href === "/retention"), "no Retention view");
   const problems = watchConsole(page);
   await page.goto("/retention?acquisition_dimension=campaign");
-  await expectLiveReport(page);
+  // Until a segment is chosen no cohort query runs, so there is no "Queried at" yet; the options query must still succeed.
+  await expect(page.getByTestId("mode-chip")).toHaveText("Live data");
+  await expect(page.getByRole("status")).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
   const segment = page.getByRole("combobox", { name: "Acquisition segment", exact: true });
   await expect(segment).toBeVisible();
   const options = segment.locator('option:not([value=""])');

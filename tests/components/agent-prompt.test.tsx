@@ -110,11 +110,16 @@ it("picks a repeated component without copying its row values and keeps the draf
   expect(screen.getByLabelText("Prompt")).toHaveValue(prompt);
 });
 
-it("starts with the request, defaults to changing the UI, and blocks empty copying", async () => {
+it("asks what is needed before the request, defaults to changing the UI, and blocks empty copying", async () => {
   render(<Page />);
   fireEvent.click(screen.getByRole("button", { name: "Vibe code" }));
   expect(screen.getByLabelText("Your request")).toHaveFocus();
-  expect(screen.getByLabelText("What do you need?")).toHaveValue("change");
+  const intent = screen.getByLabelText("What do you need?");
+  expect(intent).toHaveValue("change");
+  // The kind of help decides whether the prompt asks for code changes, so it comes before the request text.
+  expect(
+    intent.compareDocumentPosition(screen.getByLabelText("Your request")) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
   expect(screen.getByRole("button", { name: "Copy prompt" })).toBeDisabled();
   expect(screen.getByLabelText("Prompt").closest("details")).not.toHaveAttribute("open");
   fireEvent.change(screen.getByLabelText("Your request"), { target: { value: "   " } });

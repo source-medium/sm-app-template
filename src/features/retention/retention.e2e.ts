@@ -185,3 +185,25 @@ test("retention: without a month, the store's last complete month applies and is
   const context = JSON.parse((await page.locator("main [data-agent-page]").getAttribute("data-agent-page")) ?? "{}");
   expect(context.filters).toMatchObject({ store: "sample-store-a", as_of: latest, channel: "online_dtc" });
 });
+
+test("retention: a month the report cannot show is reported, not silently replaced", async ({ page }) => {
+  // 9999-12 stays in the future for every store; a segment dimension must not start an options query either.
+  await page.goto("/retention?store=sample-store-a&as_of=9999-12&acquisition_dimension=campaign");
+  const error = page.locator('[data-slot="data-error"]');
+  await expect(error).toContainText("Check the month");
+  await expect(error).toContainText("already ended");
+  await expect(page.getByRole("table", { name: "Monthly retention", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Segment cohorts by", { exact: true })).toHaveValue("campaign");
+  // The control suggests the latest complete month; applying it loads the report.
+  const month = page.getByLabel("Through completed month", { exact: true });
+  await expect(month).toHaveValue(/^\d{4}-\d{2}$/);
+  await page.getByRole("button", { name: "Apply month", exact: true }).click();
+  await expect(page).toHaveURL(/as_of=\d{4}-\d{2}/);
+  await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toBeVisible();
+  await page.getByLabel("Segment cohorts by", { exact: true }).selectOption("no_filters");
+  await expect(page.getByRole("table", { name: "Monthly retention", exact: true })).toBeVisible();
+  await page.goto("/retention?store=sample-store-a&as_of=nonsense");
+  await expect(page.locator('[data-slot="data-error"]')).toContainText("Choose a valid month.");
+});
