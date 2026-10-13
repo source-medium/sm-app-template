@@ -125,7 +125,9 @@ Reuse `lib/comparison.ts`, `lib/time-grain.ts`, and `patterns/kpi-delta.ts`;
 build one-query comparisons with `lib/data/period-sql.ts`, and show period changes
 only when `periodChanges()` allows.
 Copy Products for simple pages and rankings, Overview for multi-measure summaries,
-Retention for `CohortMatrix`.
+Retention for `CohortMatrix`. Collapsible explanations use `components/ui/disclosure`.
+A notice the viewer can fix in the controls (a bad link) is `ErrorState tone="warning"`;
+a failed load keeps the default tone.
 
 ## Route handlers and downloads
 

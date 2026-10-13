@@ -517,7 +517,8 @@ classified as missing or proof of complete costs.
 
 **Retention** uses `?as_of=YYYY-MM&channel=online_dtc&measure=retention|second|revenue|profit`.
 The cutoff defaults to the store's last completed calendar month and is frozen in
-shared links. It shows twelve acquisition months through that cutoff, at ages
+shared links. A link naming a month the report cannot show (not yet complete, or
+malformed) gets a correction notice, never a silently different month. It shows twelve acquisition months through that cutoff, at ages
 0–11. Month 0 means the acquisition calendar month, not a fixed 30-day window.
 Ordinary `from`/`to` filters do not define this report's observation window.
 

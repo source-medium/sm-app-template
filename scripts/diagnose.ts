@@ -59,7 +59,11 @@ async function main(): Promise<void> {
       "No .dev.vars file, so the Worker preview serves sample data. Paste the configuration block into .dev.vars to preview live data.",
     );
   }
-  if (offline) return;
+  if (offline) {
+    if (!devVars && config.mode === "sample")
+      ok("Sample data needs no setup. To connect your warehouse, see docs/connect.md.");
+    return;
+  }
 
   if (tracked) ok("No secrets tracked in git");
   if (config.mode === "sample") {

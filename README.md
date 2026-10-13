@@ -56,7 +56,7 @@ not run an agent inside the dashboard. See [more things to ask](docs/prompts.md)
 
 ## Run it locally
 
-Use Node.js 22.22.1 or newer and pnpm 10.34.5. CI uses Node 24.
+Use Node.js 24 (22.22.1 or newer works) and pnpm 10.34.5.
 
 ```sh
 git clone https://github.com/source-medium/sm-app-template.git my-data-app
