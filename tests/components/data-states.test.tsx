@@ -21,3 +21,10 @@ it("names a state that is not an empty result when asked to", () => {
   expect(screen.queryByText("No data")).toBeNull();
   expect(screen.getByText("Choose a segment to load its cohorts")).toBeInTheDocument();
 });
+
+it("offers the way out of an empty result as a link", () => {
+  render(
+    <EmptyState message="No rows match." action={{ href: "/overview?store=a", label: "Show all sales channels" }} />,
+  );
+  expect(screen.getByRole("link", { name: "Show all sales channels" })).toHaveAttribute("href", "/overview?store=a");
+});

@@ -1,15 +1,17 @@
 import { formatCount, formatMeasure, formatPercent } from "@/lib/format";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import type { ProductCoverage } from "./rows";
+import { SectionHeader } from "@/components/patterns/section-header";
 
 export function ProductCosts({ data, diagnostic }: { data: ProductCoverage; diagnostic: "cost" | "refunds" }) {
   const ordered = decimalToNumber(data.ordered_units);
   const rate = ordered !== null && ordered > 0 ? ratio(decimalToNumber(data.refunded_units), ordered) : null;
   return (
     <section aria-labelledby="product-coverage-heading" className="flex flex-col gap-2">
-      <h2 id="product-coverage-heading" className="text-lg font-semibold">
-        {diagnostic === "cost" ? "Product cost coverage" : "Product refund rate"}
-      </h2>
+      <SectionHeader
+        id="product-coverage-heading"
+        title={diagnostic === "cost" ? "Product cost coverage" : "Product refund rate"}
+      />
       {diagnostic === "cost" ? (
         <>
           <p className="text-sm">

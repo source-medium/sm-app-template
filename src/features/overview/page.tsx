@@ -19,7 +19,7 @@ import {
   type SearchParams,
 } from "@/lib/filters";
 import { decimalToNumber } from "@/lib/data/decimal";
-import { formatDate } from "@/lib/format";
+import { formatDateRange } from "@/lib/format";
 import { presentOverviewMeasures, type OverviewMeasureKey } from "./measures";
 import { getOverviewReport, type OverviewFilters, type OverviewReport } from "./queries";
 import { parseTimeGrain } from "@/lib/time-grain";
@@ -30,6 +30,8 @@ import { OverviewPurchases } from "./purchases";
 import { OverviewHighlights } from "./highlights";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { overviewTrends, TREND_MODES } from "./trends";
+import { SectionHeader } from "@/components/patterns/section-header";
+import { overviewHeadline } from "./headline";
 
 export const metadata: Metadata = { title: "Overview" };
 
@@ -75,6 +77,14 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                 load={() => getOverviewReport(selected, comparison?.range ?? null)}
                 isEmpty={(report) => report.current.days.length === 0}
                 emptyMessage="No rows match this store, sales channel, and date range."
+                emptyAction={
+                  channel
+                    ? {
+                        href: withParams("/overview", params, { sales_channel: null }),
+                        label: "Show all sales channels",
+                      }
+                    : undefined
+                }
               >
                 {(report) => (
                   <OverviewView
@@ -113,7 +123,8 @@ function OverviewView({
   const { show: showDelta, issue } = periodChanges(filters.range, baseline, report.coverage);
   // Daily lines align date by date, so they still show; period totals change only when coverage allows.
   const showLines = Boolean(baseline && compared);
-  const period = `${formatDate(filters.range.from)} – ${formatDate(filters.range.to)}`;
+  const period = formatDateRange(filters.range);
+  const headline = overviewHeadline(report, filters, comparison, currency);
   const presentedDays = new Map(data.days.map((day) => [day.date, presentOverviewMeasures(day, currency)]));
   const currentMeasures = presentOverviewMeasures(data.totals, currency);
   const previousMeasures = presentOverviewMeasures(compared?.totals ?? null, currency);
@@ -180,26 +191,38 @@ function OverviewView({
 
   return (
     <div className="flex flex-col gap-6">
-      {baseline && comparison && (
-        <ComparisonCaption comparison={comparison} issue={issue}>
-          <p>
-            {rangeLength(filters.range)} selected days vs {rangeLength(baseline)} comparison days.
+      {/* The sentence and the caption that qualifies its comparison read as one block. */}
+      <div className="flex flex-col gap-2">
+        {headline && (
+          <p
+            data-agent-target="Summary"
+            data-agent-component="Headline"
+            className="max-w-prose font-display text-lg leading-snug text-balance sm:text-xl"
+          >
+            {headline}
           </p>
-          {report.comparison?.data && (
+        )}
+        {baseline && comparison && (
+          <ComparisonCaption comparison={comparison} issue={issue}>
             <p>
-              Days with rows: {data.days.length}/{rangeLength(filters.range)} selected;{" "}
-              {report.comparison.data.days.length}/{rangeLength(baseline)} comparison. Missing days are not zeros; a day
-              with rows can still be incomplete.
+              {rangeLength(filters.range)} selected days vs {rangeLength(baseline)} comparison days.
             </p>
-          )}
-          {comparison?.mode === "year" && (
-            <p>
-              Calendar dates, not matched weekdays. Period boundaries use Feb 28 when needed; unmatched leap days are
-              gaps in comparison lines.
-            </p>
-          )}
-        </ComparisonCaption>
-      )}
+            {report.comparison?.data && (
+              <p>
+                Days with rows: {data.days.length}/{rangeLength(filters.range)} selected;{" "}
+                {report.comparison.data.days.length}/{rangeLength(baseline)} comparison. Missing days are not zeros; a
+                day with rows can still be incomplete.
+              </p>
+            )}
+            {comparison?.mode === "year" && (
+              <p>
+                Calendar dates, not matched weekdays. Period boundaries use Feb 28 when needed; unmatched leap days are
+                gaps in comparison lines.
+              </p>
+            )}
+          </ComparisonCaption>
+        )}
+      </div>
       {showDelta &&
         report.comparison?.data &&
         (data.days.length < rangeLength(filters.range) ||
@@ -245,21 +268,19 @@ function OverviewView({
       <OverviewPurchases
         current={data.purchases}
         previous={report.comparison?.data?.purchases ?? null}
-        comparedTo={showDelta && baseline ? `${formatDate(baseline.from)} – ${formatDate(baseline.to)}` : undefined}
+        comparedTo={showDelta && baseline ? formatDateRange(baseline) : undefined}
         currency={currency}
       />
       <section aria-labelledby="trends-heading" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 id="trends-heading" className="text-lg font-semibold">
-            Performance trends
-          </h2>
-        </div>
-        {trendMode === "cumulative" && (
-          <p className="max-w-prose text-sm text-muted-foreground">
-            Each line starts at its own period's first day. A missing date or measure stops its cumulative line; missing
-            values are never treated as zeros. KPI cards and the business summary remain period totals.
-          </p>
-        )}
+        <SectionHeader
+          id="trends-heading"
+          title="Performance trends"
+          description={
+            trendMode === "cumulative"
+              ? "Each line starts at its own period's first day. A missing date or measure stops its cumulative line; missing values are never treated as zeros. KPI cards and the business summary remain period totals."
+              : undefined
+          }
+        />
         <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
           {charts.map((chart) => (
             <ChartCard

@@ -60,6 +60,7 @@ it("searches names, brands and IDs, disambiguates duplicate names and keeps the 
   fireEvent.click(within(dialog).getByRole("button", { name: "US (b)" }));
   expect(push).toHaveBeenLastCalledWith("/overview?from=2026-09-01&to=2026-09-07&store=b", { scroll: false });
   expect(screen.getByRole("button", { name: "Store: US (a)" })).toHaveAttribute("data-store-id", "a");
+  expect(screen.getByRole("button", { name: "Store: US (a)" })).toHaveAttribute("data-store-name", "US");
 });
 it("keeps fixed stores visible but not switchable", () => {
   setup(true);

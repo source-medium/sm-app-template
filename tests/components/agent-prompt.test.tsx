@@ -11,7 +11,13 @@ const report: AgentReportContext = {
   filters: { store: "sample-store-a", from: "2026-09-01", to: "2026-09-07" },
 };
 
-function Page({ context = report }: { context?: AgentReportContext }) {
+function Page({
+  context = report,
+  storeName = "Sample Store A",
+}: {
+  context?: AgentReportContext;
+  storeName?: string;
+}) {
   return (
     <>
       <main>
@@ -22,6 +28,15 @@ function Page({ context = report }: { context?: AgentReportContext }) {
         <KpiCard label="Net revenue" value="OTHER_ROW_SENTINEL" period="Previous" />
         <h3>UNDECLARED_ROW_HEADING</h3>
       </main>
+      {/* The top bar's store switcher slot, which names the selected store for people. */}
+      <div id="report-store-switcher">
+        <button
+          type="button"
+          data-store-id={context.filters.store}
+          data-store-name={storeName}
+          aria-label={`Store: ${storeName}`}
+        />
+      </div>
       <AgentPrompt mode="sample" build="abc123" />
     </>
   );
@@ -172,4 +187,22 @@ it("identifies a card metric by position and declared label, then drops it when 
   view.rerender(content({ ...report, filters: { ...report.filters, from: "2026-09-02" } }));
   await waitFor(() => expect(screen.getByLabelText("Target")).toHaveValue(""));
   expect(screen.getByLabelText("Your request")).toHaveValue("Increase the spacing.");
+});
+
+it("shows the store's name beside its id for people, while the prompt keeps the id", () => {
+  render(<Page />);
+  fireEvent.click(screen.getByRole("button", { name: "Vibe code" }));
+  expect(screen.getByRole("region", { name: "Current report" })).toHaveTextContent(
+    "Store: Sample Store A (sample-store-a)",
+  );
+  const prompt = (screen.getByLabelText("Prompt") as HTMLTextAreaElement).value;
+  expect(prompt).toContain('store="sample-store-a"');
+  expect(prompt).not.toContain("Sample Store A");
+});
+
+it("shows only the id when the store is named by its id", () => {
+  render(<Page storeName="sample-store-a" />);
+  fireEvent.click(screen.getByRole("button", { name: "Vibe code" }));
+  expect(screen.getByRole("region", { name: "Current report" })).toHaveTextContent("Store: sample-store-a");
+  expect(screen.getByRole("region", { name: "Current report" })).not.toHaveTextContent("(sample-store-a)");
 });

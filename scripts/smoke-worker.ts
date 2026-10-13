@@ -78,6 +78,10 @@ const modes: Mode[] = [
       // Files from public/ (and the build id) pass the guard too (run_worker_first in wrangler.jsonc).
       ["/BUILD_ID", {}, 401],
       ["/healthz", {}, 200],
+      // The app icon carries no data and loads before a viewer signs in.
+      ["/icon.svg", {}, 200, "<svg"],
+      ["/ICON.SVG", {}, 401],
+      ["/x/icon.svg", {}, 401],
     ],
   },
   { name: "sample Access", env: access, checks: [[FIRST, {}, 403]] },

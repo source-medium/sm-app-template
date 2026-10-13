@@ -20,6 +20,7 @@ import { useCopy } from "@/lib/use-copy";
 import { USE_AGENT_FIELD, type AgentField } from "@/lib/report-data";
 import { AgentTargetPicker, readAgentTargets } from "./agent-target-picker";
 import { Disclosure } from "@/components/ui/disclosure";
+import { STORE_SWITCHER_SLOT } from "@/lib/store-navigation";
 
 const EMPTY_PAGE: AgentPageSnapshot = { pathname: "/", title: "Page", filters: {}, currency: null, targets: [] };
 const targetKey = (target: AgentTarget) => JSON.stringify(target);
@@ -252,7 +253,9 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
                 {page.filters.store && (
                   <p className="text-muted-foreground">
                     {page.storeScope === "all" ? "All stores · Date reference: " : "Store: "}
-                    {page.filters.store}
+                    {page.storeLabel && page.storeScope !== "all" && page.storeLabel !== page.filters.store
+                      ? `${page.storeLabel} (${page.filters.store})`
+                      : page.filters.store}
                   </p>
                 )}
                 {page.filters.from && page.filters.to && (
@@ -335,5 +338,7 @@ function readPage(): AgentPageSnapshot {
         currency: null,
         status: "Report context is unavailable. Ask for the store and dates before reproducing a data issue.",
       };
-  return { ...report, targets: readAgentTargets().map(({ target }) => target) };
+  // The switcher declares the selected store's name (data-store-name); only it knows the roster.
+  const storeLabel = document.querySelector(`#${STORE_SWITCHER_SLOT} [data-store-id]`)?.getAttribute("data-store-name");
+  return { ...report, targets: readAgentTargets().map(({ target }) => target), ...(storeLabel ? { storeLabel } : {}) };
 }

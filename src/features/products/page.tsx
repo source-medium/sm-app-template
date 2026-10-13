@@ -14,7 +14,7 @@ import { SelectFilter } from "@/components/patterns/select-filter";
 import { periodChanges } from "@/lib/comparison";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatMeasure, formatMoneyIn, formatPercent } from "@/lib/format";
-import { parseSalesChannel, type SearchParams } from "@/lib/filters";
+import { parseSalesChannel, withParams, type SearchParams } from "@/lib/filters";
 import { Disclosure } from "@/components/ui/disclosure";
 import {
   getProductCoverage,
@@ -100,6 +100,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 load={() => getProducts({ ...filters, ...options, channel }, baseline)}
                 isEmpty={(data) => data.rows.length === 0}
                 emptyMessage="No valid-order product lines match this store, sales channel, and date range."
+                emptyAction={
+                  channel
+                    ? {
+                        href: withParams("/products", params, { sales_channel: null }),
+                        label: "Show all sales channels",
+                      }
+                    : undefined
+                }
               >
                 {(data) => {
                   const first = data.rows[0];

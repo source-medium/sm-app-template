@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { appConfig } from "@/app.config";
@@ -23,7 +22,7 @@ import {
   EMPTY_VALUE,
   formatCount,
   formatDay,
-  formatDate,
+  formatDateRange,
   formatMeasure,
   formatMoney,
   formatMoneyIn,
@@ -46,6 +45,7 @@ import {
 import { SpendBreakdownView } from "./breakdown";
 import { AD_RELATION, MAX_CAMPAIGNS } from "./rows";
 import { Disclosure } from "@/components/ui/disclosure";
+import { SectionHeader } from "@/components/patterns/section-header";
 
 export const metadata: Metadata = { title: "Paid marketing" };
 
@@ -211,7 +211,7 @@ function PaidMarketingView({
       for (const item of series) values[item.key] = point(byDate.get(date)?.[item.key] ?? null, currency, metric);
       const range = periodRange(date, grain, filters.range);
       return {
-        label: grain === "day" ? formatDay(date) : `${formatDate(range.from)} – ${formatDate(range.to)}`,
+        label: grain === "day" ? formatDay(date) : formatDateRange(range),
         values,
       };
     }),
@@ -236,36 +236,35 @@ function PaidMarketingView({
         />
       </div>
       {!data.channelDays.some((day) => !filters.channel || day.channel === filters.channel) ? (
-        <div className="flex flex-col items-start gap-3">
-          <EmptyState
-            message={
-              filters.names?.length
-                ? "No ad delivery matches these filters. Try editing or clearing a filter."
-                : "No ad delivery matches this channel and date range."
-            }
-          />
-          <Link
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-            href={withParams(PATHNAME, params, { channel: null })}
-          >
-            Show all channels
-          </Link>
-        </div>
+        <EmptyState
+          message={
+            filters.names?.length
+              ? "No ad delivery matches these filters. Try editing or clearing a filter."
+              : "No ad delivery matches this channel and date range."
+          }
+          action={
+            filters.names?.length
+              ? { href: withParams(PATHNAME, params, { names: null }), label: "Clear name filters" }
+              : filters.channel
+                ? { href: withParams(PATHNAME, params, { channel: null }), label: "Show all channels" }
+                : undefined
+          }
+        />
       ) : (
         <>
-          {(metric === "roas" || metric === "cpo" || metric === "revenue" || metric === "conversions") && (
-            <p className="max-w-prose text-sm text-muted-foreground">
-              Platform attribution can overlap across channels. ROAS is attributed revenue / spend; cost per conversion
-              is spend / platform conversions. Ratios use summed inputs within each interval, including Other. Missing
-              or zero denominators stay unavailable.
-            </p>
-          )}
-          {grain !== "day" && (
-            <p className="text-sm text-muted-foreground">
-              Calendar {grain === "week" ? "weeks start Monday" : "months"}. Boundary intervals include only the
-              selected dates; missing observations are not filled with zeros.
-            </p>
-          )}
+          <Disclosure summary="About these numbers" className="text-sm text-muted-foreground">
+            <div data-metric-definition="Paid marketing metrics" className="max-w-prose space-y-2">
+              <p>
+                Platform attribution can overlap across channels. ROAS is attributed revenue / spend; cost per
+                conversion is spend / platform conversions. Ratios use summed inputs within each interval, including
+                Other. Missing or zero denominators stay unavailable.
+              </p>
+              <p>
+                Weekly intervals start on Monday and monthly intervals follow the calendar. Boundary intervals include
+                only the selected dates; missing observations are not filled with zeros.
+              </p>
+            </div>
+          </Disclosure>
           <ChartCard
             title={`${METRIC_LABELS[metric]} by channel over time`}
             description={
@@ -280,26 +279,27 @@ function PaidMarketingView({
             plottable={chart.plottable}
           />
           <section aria-labelledby="campaigns-heading" className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 id="campaigns-heading" className="text-lg font-semibold">
-                Campaigns{filters.channel ? ` in ${filters.channel}` : ""}
-              </h2>
-              <a
-                href={withParams(
-                  `${PATHNAME}/export`,
-                  {},
-                  {
-                    store: filters.storeId,
-                    ...filters.range,
-                    channel: filters.channel,
-                    names: serializeAdNameFilters(filters.names ?? []),
-                  },
-                )}
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
-                <Download aria-hidden /> Download CSV
-              </a>
-            </div>
+            <SectionHeader
+              id="campaigns-heading"
+              title={`Campaigns${filters.channel ? ` in ${filters.channel}` : ""}`}
+              actions={
+                <a
+                  href={withParams(
+                    `${PATHNAME}/export`,
+                    {},
+                    {
+                      store: filters.storeId,
+                      ...filters.range,
+                      channel: filters.channel,
+                      names: serializeAdNameFilters(filters.names ?? []),
+                    },
+                  )}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  <Download aria-hidden /> Download CSV
+                </a>
+              }
+            />
             <p className="text-xs text-muted-foreground">
               CSV includes all loaded campaigns, up to {MAX_CAMPAIGNS}, with raw values and a partial-results flag.
               {hasCreatives && " Select a campaign to inspect its creatives."} Spend without a campaign ID appears as

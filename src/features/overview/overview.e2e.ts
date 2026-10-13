@@ -322,13 +322,14 @@ test("overview: date and channel drafts apply together, and invalid ranges never
   await expect(page.locator('[data-slot="kpi-value"]')).toHaveCount(6);
 });
 
-test("overview: the first KPI and full-width chart notes are readable on a phone", async ({ page }) => {
+test("overview: the first answer and full-width chart notes are readable on a phone", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/overview");
-  const value = page.locator('[data-slot="kpi-value"]').first();
-  await expect(value).toBeVisible();
-  const bounds = await value.boundingBox();
-  expect(bounds?.y).toBeLessThan(844);
+  await expect(page.locator('[data-slot="kpi-value"]').first()).toBeVisible();
+  // The headline sentence answers first; without a comparison the first KPI does.
+  const answer = page.locator('[data-agent-target="Summary"], [data-slot="kpi-value"]').first();
+  const bounds = await answer.boundingBox();
+  expect((bounds?.y ?? 0) + (bounds?.height ?? 0)).toBeLessThan(844);
   const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
   const description = await card.locator('[data-slot="card-description"]:visible').boundingBox();
   const header = await card.locator('[data-slot="card-header"]:visible').boundingBox();

@@ -44,8 +44,9 @@ live values, a guard is optional for the initial sample app. Hosted previews
 require live data and a guard.
 
 The guard covers every page, data request, and file in `public/`, on every
-host. Only `/healthz` (the build id), `/favicon.ico`, and the build's hashed
-scripts and styles under `/_next/static` are open; they carry no data.
+host. Only `/healthz` (the build id), the app icon (`/icon.svg`, `/favicon.ico`),
+and the build's hashed scripts and styles under `/_next/static` are open; they
+carry no data.
 
 ## Choose sign-in with your agent
 

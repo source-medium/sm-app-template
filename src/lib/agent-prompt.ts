@@ -91,7 +91,8 @@ export type AgentTarget = {
   /** Position in the currently displayed card grid, never a customer row ID. */
   item?: number;
 };
-export type AgentPageSnapshot = AgentReportContext & { targets: AgentTarget[] };
+/** `storeLabel` is the selected store's name from the switcher, for people; the prompt keeps the id. */
+export type AgentPageSnapshot = AgentReportContext & { targets: AgentTarget[]; storeLabel?: string };
 export type AgentPageContext = AgentPageSnapshot & { mode: "sample" | "live"; build: string };
 
 const TARGET_KINDS = new Map([

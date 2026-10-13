@@ -147,6 +147,18 @@ test("paid marketing: an unmatched channel has a clear empty result and recovery
   await expect(page.getByRole("table", { name: "Campaigns by spend", exact: true })).toBeVisible();
 });
 
+test("paid marketing: name filters that match nothing offer to be cleared", async ({ page }) => {
+  const names = JSON.stringify([{ field: "campaign", operator: "contains", values: ["no-such-campaign"] }]);
+  await page.goto(
+    `/paid-marketing?store=sample-store-a&from=2026-09-01&to=2026-09-07&names=${encodeURIComponent(names)}`,
+  );
+  await expect(page.getByText("No ad delivery matches these filters.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Show all channels", exact: true })).toHaveCount(0);
+  await page.getByRole("link", { name: "Clear name filters", exact: true }).click();
+  await expect(page).not.toHaveURL(/names=/);
+  await expect(page.getByRole("table", { name: "Campaigns by spend", exact: true })).toBeVisible();
+});
+
 test("paid marketing: name scope carries through comparisons, CSV, and creative drillthrough", async ({
   page,
   request,

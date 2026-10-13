@@ -96,6 +96,12 @@ test("report fields have room for their values on the smallest phones", async ({
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   const form = page.getByRole("form", { name: "Report filters" });
   await expect(form).toBeVisible();
+  // On phones the date fields sit behind the applied range until someone wants to change them.
+  const change = form.getByRole("button", { name: /^Change dates/ });
+  if (await change.count()) {
+    await expect(change).toContainText("Sep");
+    await change.click();
+  }
   const controls = form.locator('select, input[type="date"]');
   for (const control of await controls.all()) {
     expect((await control.boundingBox())?.width).toBeGreaterThanOrEqual(240);

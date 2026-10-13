@@ -119,6 +119,7 @@ export function StoreSwitcher({
             aria-description={fixedStore ? "Only this store is available." : "Choose a store."}
             aria-busy={pending}
             data-store-id={allStores ? "all" : storeId}
+            data-store-name={allStores ? undefined : selected?.label}
             onPointerDown={(event) => {
               openedByTouch.current = event.pointerType === "touch";
             }}

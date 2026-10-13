@@ -5,6 +5,7 @@ import {
   EMPTY_VALUE,
   isCurrency,
   formatCount,
+  formatDateRange,
   formatDay,
   formatLabel,
   formatMeasure,
@@ -56,6 +57,11 @@ describe("server formatting", () => {
   it("compacts axis ticks without locale APIs", () => {
     expect([950, 1200, 45_000, 3_400_000, -2500].map(compactNumber)).toEqual(["950", "1.2K", "45K", "3.4M", "-2.5K"]);
   });
+});
+
+it("formatDateRange writes a range once and a single day without a dash", () => {
+  expect(formatDateRange({ from: "2026-09-01", to: "2026-09-28" })).toBe("Sep 1, 2026 – Sep 28, 2026");
+  expect(formatDateRange({ from: "2026-09-01", to: "2026-09-01" })).toBe("Sep 1, 2026");
 });
 
 it("formatLabel turns warehouse codes into readable labels", () => {

@@ -7,6 +7,8 @@ import { AlertTriangle, FileWarning, Inbox } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cardGridStyles } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 
 export function LoadingState({
   variant,
@@ -81,10 +83,24 @@ function StateFrame({
 }
 
 /** `title` names a state that is not an empty result, such as a choice the report still needs. */
-export function EmptyState({ message, title = "No data" }: { message: string; title?: string }) {
+export function EmptyState({
+  message,
+  title = "No data",
+  action,
+}: {
+  message: string;
+  title?: string;
+  /** The way out: a link that widens or clears the filter that produced the empty result. */
+  action?: { href: string; label: string };
+}) {
   return (
     <StateFrame icon={<Inbox className="size-4" aria-hidden />} title={title} tone="neutral">
-      {message}
+      <p>{message}</p>
+      {action && (
+        <Link href={action.href} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-3")}>
+          {action.label}
+        </Link>
+      )}
     </StateFrame>
   );
 }

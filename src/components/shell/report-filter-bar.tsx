@@ -13,6 +13,7 @@ import type { StoreOption } from "@/lib/data/stores.server";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import type { Comparison } from "@/lib/comparison";
 import { datePresets, single, withParams, type DateRange, type SearchParams } from "@/lib/filters";
+import { formatDateRange } from "@/lib/format";
 
 export type ReportFilterBarProps = {
   roster: Promise<StoreOption[]>;
@@ -105,6 +106,7 @@ function StoreFilterBar({
         comparisonLabel={comparisonLabel}
         dates={dates && today !== null}
         comparison={comparison?.mode}
+        rangeLabel={range ? formatDateRange(range) : undefined}
       />
     </>
   );

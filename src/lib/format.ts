@@ -103,6 +103,11 @@ export function formatDate(date: string): string {
   return longDate.format(new Date(`${date}T00:00:00Z`));
 }
 
+/** "Sep 1, 2026 – Sep 28, 2026", or one date when the range is a single day. */
+export function formatDateRange(range: { from: string; to: string }): string {
+  return range.from === range.to ? formatDate(range.from) : `${formatDate(range.from)} – ${formatDate(range.to)}`;
+}
+
 export function formatMonth(date: string): string {
   return monthDate.format(new Date(`${date}T00:00:00Z`));
 }

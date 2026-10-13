@@ -23,6 +23,7 @@ import {
   type OrdersFilters,
   type OrdersPage,
 } from "./queries";
+import { SectionHeader } from "@/components/patterns/section-header";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -75,13 +76,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               </Suspense>
               <OrderSearchForm search={search ?? ""} />
             </div>
-            <h2
-              id="orders-heading"
-              tabIndex={-1}
-              className="text-lg font-semibold focus-visible:outline-2 focus-visible:outline-ring"
-            >
-              Orders, newest first
-            </h2>
+            <SectionHeader id="orders-heading" title="Orders, newest first" headingProps={{ tabIndex: -1 }} />
             <Suspense
               key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${search}|${single(params, "cursor")}`}
               fallback={<LoadingState variant="table" label="Loading orders" />}
@@ -94,6 +89,16 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                   search
                     ? "No orders match that search, sales channel, and date range."
                     : "No orders match this store, sales channel, and date range."
+                }
+                emptyAction={
+                  search
+                    ? { href: withParams(PATHNAME, linkParams, { q: null, cursor: null }), label: "Clear search" }
+                    : channel
+                      ? {
+                          href: withParams(PATHNAME, linkParams, { sales_channel: null, cursor: null }),
+                          label: "Show all sales channels",
+                        }
+                      : undefined
                 }
               >
                 {(data) => <OrdersList data={data} params={linkParams} paged={cursor !== null} currency={currency} />}

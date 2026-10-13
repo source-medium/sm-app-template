@@ -17,6 +17,7 @@ import { retentionMatrix } from "./matrix";
 import { AcquisitionDimensionFilter } from "./segmentation-controls";
 import { RetentionSegmentControls } from "./controls";
 import { Disclosure } from "@/components/ui/disclosure";
+import { SectionHeader } from "@/components/patterns/section-header";
 
 export const metadata: Metadata = { title: "Retention" };
 export default async function RetentionPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -178,18 +179,27 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                             currency={currency}
                           />
                         )}
-                        <div className="flex flex-wrap items-end justify-between gap-4 border-t pt-6">
-                          <h2 className="text-lg font-semibold">All twelve cohorts</h2>
+                        <div className="border-t pt-6">
+                          <SectionHeader title="All twelve cohorts" />
                         </div>
-                        <p data-metric-definition={metricLabel} className="max-w-prose text-sm text-muted-foreground">
-                          {options.metric === "retention"
-                            ? "Monthly retention is customers who purchased in that month divided by the original cohort size. Month 0 includes the acquisition purchase. A customer may return after skipping a month."
-                            : options.metric === "second"
-                              ? "Customers who have placed a second order by this calendar month of age / original cohort size. Cumulative, including second orders in Month 0; this is different from purchasing again in a particular month. Ages are calendar months, not rolling 30-day windows."
-                              : options.metric === "revenue"
-                                ? "LTR is cumulative net revenue divided by the original cohort size. It includes the acquisition month and all subsequent months through the displayed age."
-                                : "LTV here is cumulative gross profit divided by the original cohort size. It includes published product, shipping, fulfillment and payment costs; missing cost inputs can overstate profit."}
-                        </p>
+                        <Disclosure summary="About this measure" className="text-sm text-muted-foreground">
+                          <div className="max-w-prose space-y-2">
+                            <p data-metric-definition={metricLabel}>
+                              {options.metric === "retention"
+                                ? "Monthly retention is customers who purchased in that month divided by the original cohort size. Month 0 includes the acquisition purchase. A customer may return after skipping a month."
+                                : options.metric === "second"
+                                  ? "Customers who have placed a second order by this calendar month of age / original cohort size. Cumulative, including second orders in Month 0; this is different from purchasing again in a particular month. Ages are calendar months, not rolling 30-day windows."
+                                  : options.metric === "revenue"
+                                    ? "LTR is cumulative net revenue divided by the original cohort size. It includes the acquisition month and all subsequent months through the displayed age."
+                                    : "LTV here is cumulative gross profit divided by the original cohort size. It includes published product, shipping, fulfillment and payment costs; missing cost inputs can overstate profit."}
+                            </p>
+                            <p>
+                              Stronger shading means higher values within this measure. “No data” means a published
+                              value is missing; “—” means the month has not elapsed. Published cohorts cover online DTC
+                              and Amazon separately. There is no cross-channel or cross-store total.
+                            </p>
+                          </div>
+                        </Disclosure>
                         {rows.some((row) => row.channel === options.channel) ? (
                           <CohortMatrix
                             caption={metricLabel}
@@ -199,11 +209,6 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                         ) : (
                           <EmptyState message="No cohorts for this channel. Choose another acquisition sales channel." />
                         )}
-                        <p className="text-xs text-muted-foreground">
-                          Stronger shading means higher values within this measure. “No data” means a published value is
-                          missing; “—” means the month has not elapsed. Published cohorts cover online DTC and Amazon
-                          separately. There is no cross-channel or cross-store total.
-                        </p>
                       </div>
                     );
                   }}

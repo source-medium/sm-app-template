@@ -4,7 +4,7 @@
  * they are runtime values (see .env.example).
  *
  * Rebranding is this file (name, logo) plus src/styles/tokens.css (colors,
- * fonts, radius).
+ * fonts, radius) and the app icon at src/app/icon.svg.
  */
 import {
   ImageIcon,

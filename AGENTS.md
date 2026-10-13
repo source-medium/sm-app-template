@@ -33,7 +33,7 @@ src/components/shell/         Sidebar, top bar, mode chip, agent prompt composer
 src/components/patterns/      KPI card, data table, card grid, data states, DataRegion
 src/components/charts/        Recharts chart card with a table view
 src/components/ui/            shadcn/ui primitives, copied and editable
-src/styles/tokens.css         Colors, fonts, radius, chart palette (the rebrand file)
+src/styles/tokens.css         Colors, fonts, radius, chart palette (the rebrand file; the icon is src/app/icon.svg)
 src/lib/auth/                 requireViewer(), Basic and Cloudflare Access guards
 src/lib/config/env.server.ts  The only configuration parser
 src/lib/data/                 BigQuery client, decoders, errors, catalog, store roster
@@ -125,7 +125,8 @@ Reuse `lib/comparison.ts`, `lib/time-grain.ts`, and `patterns/kpi-delta.ts`;
 build one-query comparisons with `lib/data/period-sql.ts`, and show period changes
 only when `periodChanges()` allows.
 Copy Products for simple pages and rankings, Overview for multi-measure summaries,
-Retention for `CohortMatrix`. Collapsible explanations use `components/ui/disclosure`.
+Retention for `CohortMatrix`. Section titles use `patterns/section-header`; an empty region offers its way
+out through `DataRegion emptyAction`. Collapsible explanations use `components/ui/disclosure`.
 A notice the viewer can fix in the controls (a bad link) is `ErrorState tone="warning"`;
 a failed load keeps the default tone.
 

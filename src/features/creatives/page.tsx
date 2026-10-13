@@ -151,6 +151,13 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                       ? "No ad creatives match these filters. Try editing or clearing a filter."
                       : "No ad creatives match this store, ad channel, and date range."
                   }
+                  emptyAction={
+                    names.rules.length
+                      ? { href: withParams(PATHNAME, params, { names: null }), label: "Clear name filters" }
+                      : channel
+                        ? { href: withParams(PATHNAME, params, { channel: null }), label: "Show all ad channels" }
+                        : undefined
+                  }
                 >
                   {(data) => <CreativesView data={data} currency={currency} view={view} />}
                 </DataRegion>
@@ -174,13 +181,13 @@ function CreativesView({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      {view !== "delivery" && (
-        <p className="max-w-prose text-sm text-muted-foreground">
-          Revenue and conversions use each platform's attribution and may overlap across channels. ROAS is revenue /
-          spend; cost per conversion is spend / conversions. Both use period totals. Compare spend and conversion volume
-          before interpreting a high return.
+      <Disclosure summary="About these numbers" className="text-sm text-muted-foreground">
+        <p data-metric-definition="Creative metrics" className="max-w-prose">
+          CTR is clicks divided by impressions. Revenue and conversions use each platform&apos;s attribution and may
+          overlap across channels. ROAS is revenue / spend; cost per conversion is spend / conversions. Both use period
+          totals. Compare spend and conversion volume before interpreting a high return.
         </p>
-      )}
+      </Disclosure>
       {view === "table" ? (
         <DataTable
           caption="Creative returns"

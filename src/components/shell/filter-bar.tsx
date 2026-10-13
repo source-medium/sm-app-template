@@ -2,7 +2,7 @@
 
 import Form from "next/form";
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ export function FilterBar({
   comparison,
   comparisonLabel = "Compare with",
   carriedComparison,
+  rangeLabel,
 }: {
   pathname: string;
   storeId: string;
@@ -37,9 +38,19 @@ export function FilterBar({
   comparison?: ComparisonMode;
   comparisonLabel?: string;
   carriedComparison?: string;
+  /** The applied range as text; on phones the date fields collapse behind it. */
+  rangeLabel?: string;
 }) {
   const id = useId();
   const [error, setError] = useState<string | null>(null);
+  const [datesOpen, setDatesOpen] = useState(false);
+  // The From field takes focus once it is in the layout: after Change reveals it, or after an invalid submit.
+  const focusFrom = useRef(false);
+  useEffect(() => {
+    if (!focusFrom.current) return;
+    focusFrom.current = false;
+    document.getElementById(`${id}-from`)?.focus();
+  });
   // Keep the form for controls rendered by the report, even when it has no visible fields of its own.
   const hasControls = dates || comparison !== undefined;
   /** Choices apply on change; typed dates wait for Apply. The form's own submit handler still validates dates. */
@@ -81,7 +92,8 @@ export function FilterBar({
         setError(issue);
         if (issue) {
           event.preventDefault();
-          (event.currentTarget.elements.namedItem("from") as HTMLInputElement)?.focus();
+          setDatesOpen(true);
+          focusFrom.current = true;
         }
       }}
     >
@@ -109,8 +121,32 @@ export function FilterBar({
           </NativeSelect>
         </div>
       )}
+      {dates && rangeLabel && !datesOpen && (
+        // Phones: the applied range reads as text until someone wants to change it; wider screens show the fields.
+        <button
+          type="button"
+          aria-label={`Change dates, ${rangeLabel}`}
+          data-agent-element="Change dates"
+          onClick={() => {
+            setDatesOpen(true);
+            focusFrom.current = true;
+          }}
+          className="col-span-full flex min-h-11 items-center justify-between gap-3 rounded-md border border-input bg-background px-3 text-left text-sm sm:hidden"
+        >
+          <span className="min-w-0">
+            <span className="block text-xs font-medium text-muted-foreground">Dates</span>
+            <span className="block truncate">{rangeLabel}</span>
+          </span>
+          <span className="shrink-0 text-xs font-medium text-primary">Change</span>
+        </button>
+      )}
       {dates ? (
-        <div className="col-span-full grid min-w-0 grid-cols-1 gap-3 min-[24rem]:grid-cols-2 sm:order-1">
+        <div
+          className={cn(
+            "col-span-full grid min-w-0 grid-cols-1 gap-3 min-[24rem]:grid-cols-2 sm:order-1",
+            rangeLabel && !datesOpen && "max-sm:hidden",
+          )}
+        >
           <div className="flex min-w-0 flex-col gap-1.5 sm:w-36">
             <label htmlFor={`${id}-from`} className="text-xs font-medium text-muted-foreground">
               From
@@ -155,7 +191,12 @@ export function FilterBar({
           </>
         )
       )}
-      <Button data-agent-element="Apply" type="submit" variant="secondary" className="sm:order-3">
+      <Button
+        data-agent-element="Apply"
+        type="submit"
+        variant="secondary"
+        className={cn("sm:order-3", dates && rangeLabel && !datesOpen && "max-sm:hidden")}
+      >
         Apply
       </Button>
       {error && (

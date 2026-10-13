@@ -15,6 +15,7 @@ export async function DataRegion<T>({
   load,
   isEmpty,
   emptyMessage,
+  emptyAction,
   timestamp,
   errorContent,
   children,
@@ -22,6 +23,8 @@ export async function DataRegion<T>({
   load: () => Promise<T>;
   isEmpty: (data: T) => boolean;
   emptyMessage: string;
+  /** A link that widens or clears the filter behind an empty result. */
+  emptyAction?: { href: string; label: string };
   /**
    * The store's time zone (ReportContext.timeZone) to show the load time in,
    * or false for a region that loads filter options, not the report.
@@ -56,7 +59,7 @@ export async function DataRegion<T>({
   const completedAt = new Date().toISOString();
   return (
     <div className="flex flex-col gap-3">
-      {isEmpty(data) ? <EmptyState message={emptyMessage} /> : children(data)}
+      {isEmpty(data) ? <EmptyState message={emptyMessage} action={emptyAction} /> : children(data)}
       {timestamp !== false && (
         <p className="text-xs text-muted-foreground">
           {access.mode === "live" ? "Queried at " : "Sample loaded at "}

@@ -1,5 +1,5 @@
 import { COMPARISON_OPTIONS, type Comparison } from "@/lib/comparison";
-import { formatDate } from "@/lib/format";
+import { formatDateRange } from "@/lib/format";
 import { Disclosure } from "@/components/ui/disclosure";
 
 /**
@@ -18,7 +18,7 @@ export function ComparisonCaption({
 }) {
   if (!comparison.range) return null;
   const mode = COMPARISON_OPTIONS.find((option) => option.value === comparison.mode)?.label.toLowerCase();
-  const text = `Compared with ${formatDate(comparison.range.from)} – ${formatDate(comparison.range.to)}${mode ? ` (${mode})` : ""}`;
+  const text = `Compared with ${formatDateRange(comparison.range)}${mode ? ` (${mode})` : ""}`;
   return (
     <div className="flex flex-col gap-1">
       {children ? (

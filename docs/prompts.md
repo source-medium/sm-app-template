@@ -117,8 +117,8 @@ verified.
 
 ```text
 Rebrand this app for <company>: name "<app name>", primary color <hex>, and
-the logo at public/logo.svg. Change only src/styles/tokens.css and
-app.config.ts, keep text contrast accessible in light and dark mode, then run
+the logo at public/logo.svg. Change only src/styles/tokens.css,
+app.config.ts, and the app icon src/app/icon.svg, keep text contrast accessible in light and dark mode, then run
 pnpm check.
 ```
 

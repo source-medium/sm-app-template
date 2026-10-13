@@ -5,6 +5,7 @@ import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { formatMeasure, formatMoney, formatMoneyIn } from "@/lib/format";
 import type { PurchaseMix } from "./queries";
+import { SectionHeader } from "@/components/patterns/section-header";
 
 export function OverviewPurchases({
   current,
@@ -36,17 +37,11 @@ export function OverviewPurchases({
   });
   return (
     <section aria-labelledby="purchases-heading" className="flex flex-col gap-3">
-      <div>
-        <h2 id="purchases-heading" className="text-lg font-semibold">
-          New vs repeat purchases
-        </h2>
-        <p className="max-w-prose text-sm text-muted-foreground">
-          Published new- and repeat-customer order measures for the selected store, dates and sales channel. Counts are
-          orders, not unique people. Classification coverage varies by source, so these rows may not add up to the
-          headline totals.
-        </p>
-        {comparedTo && <p className="mt-1 text-sm text-muted-foreground">Revenue change vs {comparedTo}.</p>}
-      </div>
+      <SectionHeader
+        id="purchases-heading"
+        title="New vs repeat purchases"
+        description={`Published new- and repeat-customer order measures for the selected store, dates and sales channel. Counts are orders, not unique people. Classification coverage varies by source, so these rows may not add up to the headline totals.${comparedTo ? ` Revenue change vs ${comparedTo}.` : ""}`}
+      />
       <DataTable
         caption="New vs repeat purchases"
         paginate={false}

@@ -4,7 +4,7 @@
  * every data read. Runs in the standard (edge) middleware runtime, the one
  * both Cloudflare's OpenNext adapter and Vercel support.
  *
- * Public without a guard: built static assets, the favicon, and /healthz.
+ * Public without a guard: built static assets, the app icon, and /healthz.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { authenticateRequest } from "@/lib/auth/authenticate";
@@ -62,5 +62,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static/|favicon\\.ico$|healthz$).*)"],
+  matcher: ["/((?!_next/static/|favicon\\.ico$|icon\\.svg$|healthz$).*)"],
 };

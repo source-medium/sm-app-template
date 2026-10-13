@@ -86,6 +86,8 @@ test("retention: second purchases have their own cumulative measure and mature a
   await expect(table).toBeVisible();
   await expect(table.locator('td[data-state="immature"]').first()).toHaveText("—");
   await expect(table.locator('td[data-state="value"]').first()).not.toHaveText("100%");
+  // The measure's definition sits behind "About this measure" above the matrix.
+  await page.locator("summary").filter({ hasText: "About this measure" }).click();
   await expect(page.getByText("Customers who have placed a second order", { exact: false })).toBeVisible();
 });
 import { expectNoSeriousA11yViolations } from "../../../e2e/helpers";
