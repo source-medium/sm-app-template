@@ -218,6 +218,18 @@ test("collapsed navigation keeps its labels available through tooltips", async (
   expect(problems).toEqual([]);
 });
 
+test("a verified reporting currency is stated once, under the title", async ({ page }) => {
+  await page.goto(home);
+  test.skip((await page.locator("main [data-agent-page]").count()) === 0, "the home page has no report header");
+  await expect(page.locator("main [data-agent-page]")).toContainText("Reporting currency: USD");
+  await expect(page.locator("main footer")).not.toContainText("Reporting currency");
+  const portfolio = appConfig.nav.find((item) => item.scope === "all-stores");
+  if (portfolio) {
+    await page.goto(portfolio.href);
+    await expect(page.locator("main footer")).toContainText("Reporting currencies are shown per store");
+  }
+});
+
 test("responses carry the private-app headers", async ({ request }) => {
   const response = await request.get(home);
   expect(response.headers()["x-robots-tag"]).toBe("noindex, nofollow");

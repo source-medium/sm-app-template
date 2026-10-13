@@ -4,6 +4,7 @@ import { calendarDate, formatChangePercent, formatDate, formatMeasure, formatMon
 import type { DateRange, SearchParams } from "@/lib/filters";
 import { storeReportPath, switchStoreHref } from "@/lib/store-navigation";
 import type { StoreComparison } from "./queries";
+import { Disclosure } from "@/components/ui/disclosure";
 
 export function StoreComparisonTable({
   data,
@@ -84,16 +85,15 @@ export function StoreComparisonTable({
         ]}
       />
       {!!notes.length && (
-        <details className="text-sm text-muted-foreground">
-          <summary className="w-fit cursor-pointer font-medium">Why some changes are hidden</summary>
-          <ul className="mt-2 flex max-w-prose flex-col gap-2">
+        <Disclosure summary="Why some changes are hidden" className="text-sm text-muted-foreground">
+          <ul className="flex max-w-prose flex-col gap-2">
             {notes.map((note) => (
               <li key={note.id}>
                 <span className="font-medium">{note.label}:</span> {note.issue}
               </li>
             ))}
           </ul>
-        </details>
+        </Disclosure>
       )}
       <p className="text-xs text-muted-foreground">
         Period coverage describes rows in the selected dates, not warehouse freshness.{" "}

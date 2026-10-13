@@ -173,7 +173,7 @@ export function AdNameFilter({
         </p>
       )}
       {editor && (
-        <fieldset className="flex max-w-3xl min-w-0 flex-col gap-3 rounded-lg border bg-card p-4" disabled={pending}>
+        <fieldset className="flex max-w-3xl min-w-0 flex-col gap-3 rounded-xl border bg-card p-4" disabled={pending}>
           <legend className="px-1 text-sm font-medium">
             {editor.index < rules.length ? "Edit name filter" : "New name filter"}
           </legend>

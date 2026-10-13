@@ -31,7 +31,7 @@ export function ConnectionCheck({ mode }: { mode: "sample" | "live" }) {
   }
 
   return (
-    <section className="space-y-4 rounded-lg border bg-card p-4" aria-label="Connection check">
+    <section className="space-y-4 rounded-xl border bg-card p-4" aria-label="Connection check">
       <p className="text-sm text-muted-foreground">
         {mode === "live"
           ? "Checks the credential, dataset access, store roster and query allowance. Runs small warehouse queries with a 30-second limit."

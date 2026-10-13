@@ -15,6 +15,7 @@ import { periodChanges } from "@/lib/comparison";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatMeasure, formatMoneyIn, formatPercent } from "@/lib/format";
 import { parseSalesChannel, type SearchParams } from "@/lib/filters";
+import { Disclosure } from "@/components/ui/disclosure";
 import {
   getProductCoverage,
   getProductChannels,
@@ -80,16 +81,15 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               />
               <SelectFilter name="metric" label="Rank by" value={options.metric} options={[...PRODUCT_METRICS]} />
             </div>
-            <details className="text-sm text-muted-foreground">
-              <summary className="cursor-pointer font-medium">About product metrics</summary>
-              <p data-metric-definition="Product metrics" className="mt-2 max-w-prose">
+            <Disclosure summary="About product metrics" className="text-sm text-muted-foreground">
+              <p data-metric-definition="Product metrics" className="max-w-prose">
                 Valid orders only. Net units subtract refunded quantities. Product gross profit subtracts product cost
                 from net revenue; it excludes shipping, fulfillment and payment costs. Missing product costs can
                 overstate profit. Refund amounts and quantities are shown as positive deductions (source signs
                 reversed); reversals stay negative. Refunds are associated with orders processed in this range, not the
                 dates refunds were issued.
               </p>
-            </details>
+            </Disclosure>
             {comparison && <ComparisonCaption comparison={comparison} />}
             <Suspense
               key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${options.dimension}|${options.metric}|${comparison?.mode}|${channel}`}

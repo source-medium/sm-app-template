@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { AgentReportContext } from "@/lib/agent-prompt";
+import { Disclosure } from "@/components/ui/disclosure";
 import {
   USE_AGENT_FIELD,
   DICTIONARY_FIELD_LIMIT,
@@ -51,9 +52,8 @@ export function AboutData({
         </SheetHeader>
         {open && (
           <div className="flex min-w-0 flex-col gap-5 px-4 pb-6">
-            <details className="rounded-md border p-3 text-sm">
-              <summary className="cursor-pointer font-medium">Report context</summary>
-              <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-xs">
+            <Disclosure summary="Report context" className="rounded-md border p-3 text-sm">
+              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-xs">
                 {Object.entries(context.filters).map(([key, value]) => (
                   <div key={key} className="contents">
                     <dt className="text-muted-foreground">
@@ -77,7 +77,7 @@ export function AboutData({
                   Private context omitted: {context.omitted.join(", ")}.
                 </p>
               )}
-            </details>
+            </Disclosure>
             <p className="text-xs text-muted-foreground">
               {mode === "live"
                 ? "Data freshness unknown. Each report section shows when its query completed. Query time does not tell us when the warehouse last refreshed."
@@ -118,9 +118,8 @@ function LoadedDefinitions() {
   }, []);
   if (!definitions.length) return null;
   return (
-    <details className="rounded-md border p-3 text-sm">
-      <summary className="cursor-pointer font-medium">Report metric definitions</summary>
-      <dl className="mt-3 space-y-3">
+    <Disclosure summary="Report metric definitions" className="rounded-md border p-3 text-sm">
+      <dl className="space-y-3">
         {definitions.map(({ label, text }, index) => (
           <div key={`${label}|${index}`}>
             <dt className="font-medium">{label}</dt>
@@ -128,7 +127,7 @@ function LoadedDefinitions() {
           </div>
         ))}
       </dl>
-    </details>
+    </Disclosure>
   );
 }
 

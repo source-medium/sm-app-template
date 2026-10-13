@@ -31,7 +31,7 @@ export type ReportFilterBarProps = {
 
 export function ReportFilterBar(props: ReportFilterBarProps) {
   return (
-    <Suspense fallback={<Skeleton className="h-[4.75rem] rounded-lg" />}>
+    <Suspense fallback={<Skeleton className="h-[4.75rem] rounded-xl" />}>
       <RosterFilterBar {...props} />
     </Suspense>
   );

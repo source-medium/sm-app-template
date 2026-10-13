@@ -10,7 +10,7 @@ export function AdNameMatches({ data, rules }: { data: Matches; rules: AdNameRul
   return (
     <div className="flex flex-col gap-2">
       <Table
-        containerClassName="max-h-80 rounded-lg border bg-card"
+        containerClassName="max-h-80 rounded-xl border bg-card"
         containerProps={{ tabIndex: 0, role: "region", "aria-label": "Matching names" }}
       >
         <caption className="sr-only">Matching campaign and ad names</caption>

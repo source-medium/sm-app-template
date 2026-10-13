@@ -19,6 +19,7 @@ import {
 import { useCopy } from "@/lib/use-copy";
 import { USE_AGENT_FIELD, type AgentField } from "@/lib/report-data";
 import { AgentTargetPicker, readAgentTargets } from "./agent-target-picker";
+import { Disclosure } from "@/components/ui/disclosure";
 
 const EMPTY_PAGE: AgentPageSnapshot = { pathname: "/", title: "Page", filters: {}, currency: null, targets: [] };
 const targetKey = (target: AgentTarget) => JSON.stringify(target);
@@ -264,14 +265,12 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
                   {contextNotice}
                 </p>
               </div>
-              <details
+              <Disclosure
+                summary="Preview prompt"
                 open={previewOpen || copyState === "failed"}
                 onToggle={(event) => setPreviewOpen(event.currentTarget.open)}
               >
-                <summary className="min-h-9 cursor-pointer rounded-sm py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11">
-                  Preview prompt
-                </summary>
-                <div className="flex flex-col gap-2 pt-2">
+                <div className="flex flex-col gap-2">
                   <label className="sr-only" htmlFor={`${id}-prompt`}>
                     Prompt
                   </label>
@@ -292,7 +291,7 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
                       : ""}
                   </p>
                 </div>
-              </details>
+              </Disclosure>
             </div>
             <div className="flex shrink-0 flex-col gap-2 border-t bg-background p-4">
               <Button

@@ -45,6 +45,7 @@ import {
 } from "./queries";
 import { SpendBreakdownView } from "./breakdown";
 import { AD_RELATION, MAX_CAMPAIGNS } from "./rows";
+import { Disclosure } from "@/components/ui/disclosure";
 
 export const metadata: Metadata = { title: "Paid marketing" };
 
@@ -103,26 +104,21 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
             {!names.error && (
               <>
                 {names.rules.length > 0 && (
-                  <details>
-                    <summary className="min-h-9 w-fit cursor-pointer rounded-sm py-2 text-sm text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11">
-                      Matching names
-                    </summary>
-                    <div className="pt-3">
-                      <Suspense
-                        key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${nameKey}`}
-                        fallback={<LoadingState variant="control" label="Loading matching names" />}
+                  <Disclosure summary="Matching names">
+                    <Suspense
+                      key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${nameKey}`}
+                      fallback={<LoadingState variant="control" label="Loading matching names" />}
+                    >
+                      <DataRegion
+                        timestamp={false}
+                        load={() => getPaidNames(paidFilters)}
+                        isEmpty={(data) => data.rows.length === 0}
+                        emptyMessage="No names match these filters. Edit or clear a name filter to try again."
                       >
-                        <DataRegion
-                          timestamp={false}
-                          load={() => getPaidNames(paidFilters)}
-                          isEmpty={(data) => data.rows.length === 0}
-                          emptyMessage="No names match these filters. Edit or clear a name filter to try again."
-                        >
-                          {(data) => <AdNameMatches data={data} rules={names.rules} />}
-                        </DataRegion>
-                      </Suspense>
-                    </div>
-                  </details>
+                        {(data) => <AdNameMatches data={data} rules={names.rules} />}
+                      </DataRegion>
+                    </Suspense>
+                  </Disclosure>
                 )}
                 <Suspense
                   key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${nameKey}`}

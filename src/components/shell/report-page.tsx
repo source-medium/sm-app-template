@@ -191,13 +191,14 @@ export async function ReportPage({
             ? ` The same calendar dates are used in each store's local time. Default dates use ${zoneLabel}.`
             : ` Dates are calendar dates in the store's time zone, ${zoneLabel}.`)}
         {dates && range.to === today && " Today may be incomplete."}
-        <span className="mt-1 block">
-          {allStores
-            ? "Reporting currencies are shown per store. Amounts are never added across stores."
-            : currency
-              ? `Reporting currency: ${currency}.`
+        {/* A verified currency is already named under the title; the footer only carries what the header cannot. */}
+        {(allStores || !currency) && (
+          <span className="mt-1 block">
+            {allStores
+              ? "Reporting currencies are shown per store. Amounts are never added across stores."
               : "Reporting currency unverified; amounts are unlabeled."}
-        </span>
+          </span>
+        )}
       </footer>
     </div>
   );

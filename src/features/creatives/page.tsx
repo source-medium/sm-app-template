@@ -15,6 +15,7 @@ import { parseAdNameFilters, serializeAdNameFilters } from "@/lib/ad-name-filter
 import { ReportPage } from "@/components/shell/report-page";
 import { parseChoice, single, withParams, REPORT_FILTER_FORM_ID, type SearchParams } from "@/lib/filters";
 import { formatCount, formatMeasure, formatMoney, formatPercent, formatMultiple } from "@/lib/format";
+import { Disclosure } from "@/components/ui/disclosure";
 import {
   CREATIVE_SORTS,
   getCreativeChannels,
@@ -82,26 +83,21 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
           {!names.error && (
             <>
               {names.rules.length > 0 && (
-                <details className="group">
-                  <summary className="min-h-9 w-fit cursor-pointer rounded-sm py-2 text-sm text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11">
-                    Matching names
-                  </summary>
-                  <div className="pt-3">
-                    <Suspense
-                      key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${campaign}|${nameKey}`}
-                      fallback={<LoadingState variant="control" label="Loading matching names" />}
+                <Disclosure summary="Matching names">
+                  <Suspense
+                    key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${campaign}|${nameKey}`}
+                    fallback={<LoadingState variant="control" label="Loading matching names" />}
+                  >
+                    <DataRegion
+                      timestamp={false}
+                      load={() => getCreativeNames({ ...filters, sort, channel, campaign, names: names.rules })}
+                      isEmpty={(data) => data.rows.length === 0}
+                      emptyMessage="No names match these filters. Edit or clear a name filter to try again."
                     >
-                      <DataRegion
-                        timestamp={false}
-                        load={() => getCreativeNames({ ...filters, sort, channel, campaign, names: names.rules })}
-                        isEmpty={(data) => data.rows.length === 0}
-                        emptyMessage="No names match these filters. Edit or clear a name filter to try again."
-                      >
-                        {(data) => <AdNameMatches data={data} rules={names.rules} />}
-                      </DataRegion>
-                    </Suspense>
-                  </div>
-                </details>
+                      {(data) => <AdNameMatches data={data} rules={names.rules} />}
+                    </DataRegion>
+                  </Suspense>
+                </Disclosure>
               )}
               <div className="flex flex-wrap gap-4">
                 <SelectFilter

@@ -1,5 +1,6 @@
 import { COMPARISON_OPTIONS, type Comparison } from "@/lib/comparison";
 import { formatDate } from "@/lib/format";
+import { Disclosure } from "@/components/ui/disclosure";
 
 /**
  * One sentence naming the comparison period, worded the same on every view.
@@ -21,10 +22,9 @@ export function ComparisonCaption({
   return (
     <div className="flex flex-col gap-1">
       {children ? (
-        <details aria-label="Comparison period" className="text-sm text-muted-foreground">
-          <summary className="w-fit cursor-pointer font-medium text-foreground">{text}</summary>
+        <Disclosure aria-label="Comparison period" summary={text} className="text-sm text-muted-foreground">
           {children}
-        </details>
+        </Disclosure>
       ) : (
         <p className="text-sm text-muted-foreground">{text}</p>
       )}

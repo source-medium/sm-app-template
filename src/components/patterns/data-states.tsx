@@ -21,11 +21,11 @@ export function LoadingState({
       {variant === "kpis" && (
         <div className={cardGridStyles}>
           {[0, 1, 2, 3, 4, 5].map((index) => (
-            <Skeleton key={index} className="h-28 rounded-lg" />
+            <Skeleton key={index} className="h-28 rounded-xl" />
           ))}
         </div>
       )}
-      {variant === "chart" && <Skeleton className="h-72 rounded-lg" />}
+      {variant === "chart" && <Skeleton className="h-72 rounded-xl" />}
       {variant === "table" && (
         <div className="flex flex-col gap-2">
           {[0, 1, 2, 3, 4, 5].map((index) => (
@@ -36,7 +36,7 @@ export function LoadingState({
       {variant === "grid" && (
         <div className={cardGridStyles}>
           {[0, 1, 2, 3, 4, 5].map((index) => (
-            <Skeleton key={index} className="h-64 rounded-lg" />
+            <Skeleton key={index} className="h-64 rounded-xl" />
           ))}
         </div>
       )}
@@ -62,7 +62,7 @@ function StateFrame({
   return (
     <div
       className={cn(
-        "flex flex-col items-start gap-2 rounded-lg border p-6 text-sm",
+        "flex flex-col items-start gap-2 rounded-xl border p-6 text-sm",
         tone === "error" && "border-destructive/40 bg-destructive/5",
         tone === "warning" && "border-warning/40 bg-warning-soft/50",
         tone === "neutral" && "border-dashed bg-card",

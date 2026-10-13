@@ -16,6 +16,7 @@ import { COHORT_WINDOWS, COHORT_MONTHS, MIN_COHORT_MONTH, RETENTION_METRICS, ret
 import { retentionMatrix } from "./matrix";
 import { AcquisitionDimensionFilter } from "./segmentation-controls";
 import { RetentionSegmentControls } from "./controls";
+import { Disclosure } from "@/components/ui/disclosure";
 
 export const metadata: Metadata = { title: "Retention" };
 export default async function RetentionPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -121,16 +122,15 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                 options={[...RETENTION_METRICS]}
               />
             </div>
-            <details className="text-sm text-muted-foreground">
-              <summary className="cursor-pointer font-medium">About these cohorts</summary>
-              <p className="mt-2 max-w-prose">
+            <Disclosure summary="About these cohorts" className="text-sm text-muted-foreground">
+              <p className="max-w-prose">
                 Twelve acquisition cohorts through {formatMonth(`${options.asOf}-01`)}. Month 0 is the acquisition
                 calendar month, followed by calendar months 1–11. Only fully elapsed months are shown; elapsed time does
                 not prove the warehouse is complete. Segments describe the first valid acquisition order, not subsequent
                 orders. Only one dimension and one segment are read at a time; overlapping segment populations are never
                 added together. Product and SKU segments are not published in this report.
               </p>
-            </details>
+            </Disclosure>
             {options.asOfIssue ? (
               // A supplied month the report cannot show: say so instead of quietly showing another month.
               <ErrorState

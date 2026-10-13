@@ -3,6 +3,7 @@ import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { fromUnits, toUnits } from "@/lib/data/decimal";
 import { formatMoneyIn } from "@/lib/format";
 import type { RevenueDeductions } from "./queries";
+import { Disclosure } from "@/components/ui/disclosure";
 
 /** Signed deductions are already negative. Missing inputs never become zero adjustments. */
 export function revenueDifference(value: RevenueDeductions | null): string | null {
@@ -32,9 +33,8 @@ export function OverviewRevenue({
     { key: "net", label: "Net revenue" },
   ] as const;
   return (
-    <details>
-      <summary className="cursor-pointer text-sm font-medium">Revenue and deductions</summary>
-      <div className="mt-3 flex min-w-0 flex-col gap-3">
+    <Disclosure summary="Revenue and deductions">
+      <div className="flex min-w-0 flex-col gap-3">
         <p className="max-w-prose text-sm text-muted-foreground">
           Published summary amounts for the selected dates and sales channels. Discounts and refunds retain their source
           signs. This is not a refund-event timeline.
@@ -69,6 +69,6 @@ export function OverviewRevenue({
           </p>
         ) : null}
       </div>
-    </details>
+    </Disclosure>
   );
 }

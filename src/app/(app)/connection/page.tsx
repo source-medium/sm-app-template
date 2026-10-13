@@ -20,7 +20,7 @@ export default async function ConnectionPage() {
         </p>
       </div>
       <ConnectionCheck mode={access.mode} />
-      <section aria-labelledby="currency-heading" className="space-y-2 rounded-lg border bg-card p-4 text-sm">
+      <section aria-labelledby="currency-heading" className="space-y-2 rounded-xl border bg-card p-4 text-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h2 id="currency-heading" className="font-semibold">
             Reporting currency
