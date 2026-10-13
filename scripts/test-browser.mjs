@@ -68,8 +68,8 @@ try {
       await browser.close();
     }
   }
-  // The environment is scoped to the browser test process; the later Worker
-  // build cannot accidentally inherit these temporary libraries.
+  // The environment is scoped to the browser test process; deployment
+  // cannot accidentally inherit these temporary libraries.
   const result = run(process.execPath, [cli, "test", ...process.argv.slice(2)], {
     env: browserEnv,
     stdio: "inherit",

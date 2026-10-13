@@ -129,9 +129,11 @@ GitHub source, choose **Import a repository** instead. See [Cloudflare's Artifac
 | Worker name       | `<app>` (initially `sm-app`)                         | `<app>-preview`                                      |
 | Production branch | `main`                                               | `main`                                               |
 | Build command     | `pnpm exec playwright install --only-shell chromium` | `pnpm exec playwright install --only-shell chromium` |
-| Deploy command    | `pnpm run deploy`                                    | `pnpm run deploy --env preview`                      |
+| Deploy command    | `pnpm run deploy`                                    | Unused after disabling production builds             |
 | Preview command   | Unused                                               | `pnpm run deploy:preview`                            |
+| Production builds | Enabled                                              | Disabled                                             |
 | Preview builds    | Disabled                                             | Enabled for trusted non-production branches          |
+| Build cache       | Enabled                                              | Enabled for Previews Base                            |
 | Root directory    | Repository root                                      | Repository root                                      |
 | Runtime secrets   | Production app block                                 | Development app block in **Previews Base**           |
 
@@ -145,9 +147,8 @@ dependency list and Ubuntu's signed package repositories. Packages are extracted
 to a temporary directory for the test process, then removed; no root access,
 system changes, or extra build variables are needed. Both deployment
 commands then run **`pnpm check:deploy`**: format/lint/types/guardrails/unit
-checks, secret isolation, browser tests, the sanitized Cloudflare build, and
-Worker smoke tests. Browser tests reuse the fresh secret-isolation build;
-Cloudflare gets a separate sanitized build. Only a passing gate uploads that artifact. The
+checks, one sanitized Cloudflare build, secret isolation, browser tests, and
+Worker smoke tests. All tests reuse that build; only a passing gate uploads it. The
 same gate runs for local deployment, so GitHub CI is never the release gate.
 Missing browser dependencies or failed checks stop the deploy; fix the cause
 instead of bypassing the command. No live warehouse credentials belong in Builds.
@@ -159,6 +160,18 @@ that Worker to the same repository with the corrected commands. Restore its
 branch filters, pinned pnpm variable and existing build token, and enable Worker
 Previews again on the Preview Worker. Keep runtime secrets in place. Verify a
 new push before calling the connection repaired.
+
+On the Preview Worker, turn on **Builds → Production → Disable builds**.
+Keep **Builds → Previews Base → Builds for Preview branches** enabled. This
+prevents a second, unused deployment on each push to `main`. Enable **Build
+cache** for production on the Production Worker and for Previews Base on the
+Preview Worker. Cloudflare caches pnpm packages and Next.js compilation output;
+tests still run on every deployment. Existing previews keep their own build
+settings, so enable the cache under each retained preview’s **Settings → Builds** too.
+
+Preview and production each run the release gate in their own build. A preview
+pass is not a transferable production artifact. Keeping both gates avoids
+custom artifact storage, credentials, or a second release service.
 
 Cloudflare supplies its deployment credentials through Workers Builds. Keep
 app credentials in runtime settings only. See [Builds settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/).

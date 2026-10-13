@@ -38,27 +38,6 @@ jobs:
         if: failure()
         run: pnpm exec vitest run
 
-  e2e:
-    name: Sample-mode end-to-end tests (Playwright + axe)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .node-version
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
-      - if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-report
-          path: playwright-report
-          retention-days: 7
-
   build:
     name: Builds, secret isolation, and Worker smoke
     runs-on: ubuntu-latest
@@ -71,8 +50,14 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Next build with sentinel credentials, then scan everything a browser can receive.
+      - run: pnpm exec playwright install --with-deps chromium
+      # One sanitized build for secret scans, Playwright + axe, and workerd.
       - run: pnpm test:secrets
-      # The OpenNext build Cloudflare runs, then each configuration mode in workerd.
-      - run: pnpm build:cloudflare
+      - run: pnpm test:browser
       - run: pnpm smoke:worker
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7

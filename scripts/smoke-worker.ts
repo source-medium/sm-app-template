@@ -2,15 +2,14 @@
  * pnpm smoke:worker: run the built Worker (pnpm build:cloudflare) in workerd
  * and check the configuration modes and protected request paths end to end.
  * Live-mode tests use a generated, unregistered key and make no data requests.
- * Runtime values come from
- * temporary env files, never from your .dev.vars.
+ * Runtime values come from test bindings, never from your local app settings.
  */
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { parseEnv } from "node:util";
+import { createTestHarness, unstable_readConfig } from "wrangler";
 import { appConfig } from "../app.config";
 import { root } from "./lib/environment";
-import { startServer, wranglerCli } from "./lib/test-server";
+import { sampleEnvironment } from "./lib/sample-env";
 import { liveEnv, makeServiceAccountKey } from "../tests/helpers/service-account";
 
 const PORT = 8791;
@@ -18,7 +17,6 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const PASSWORD = "SmokeTestPassword0123456789abc";
 const FIRST = appConfig.nav[0]?.href ?? "/";
 const LAST = appConfig.nav.at(-1)?.href ?? FIRST;
-const dir = mkdtempSync(join(tmpdir(), "sm-smoke-"));
 
 const access = "CF_ACCESS_TEAM_DOMAIN=example.cloudflareaccess.com\nCF_ACCESS_AUD=" + "a".repeat(64) + "\n";
 const dataValues = Object.fromEntries(
@@ -32,7 +30,12 @@ const live =
     .map(([name, value]) => `${name}=${value}`)
     .join("\n") + "\n";
 
-type Mode = { name: string; env: string; workerEnv?: "preview"; checks: [string, RequestInit, number, string?][] };
+type Mode = {
+  name: string;
+  env: string;
+  workerEnv?: "preview";
+  checks: [string, { method?: string; headers?: Record<string, string> }, number, string?][];
+};
 const modes: Mode[] = [
   {
     name: "public sample",
@@ -199,46 +202,50 @@ if (appConfig.nav.some((item) => item.href === "/paid-marketing")) {
 }
 
 const failures: string[] = [];
+const configPath = join(root, "wrangler.jsonc");
+const configs = {
+  production: unstable_readConfig({ config: configPath }),
+  preview: unstable_readConfig({ config: configPath, env: "preview" }),
+};
+const worker = createTestHarness();
 try {
   for (const mode of modes) {
-    const envFile = join(dir, `${mode.name.replace(/\s+/g, "-")}.env`);
-    writeFileSync(envFile, mode.env);
-    const worker = await startServer(
-      wranglerCli,
-      [
-        "dev",
-        "--port",
-        String(PORT),
-        "--ip",
-        "127.0.0.1",
-        "--inspector-port",
-        "0",
-        "--env-file",
-        envFile,
-        ...(mode.workerEnv ? ["--env", mode.workerEnv] : []),
-      ],
-      {
-        cwd: root,
-        healthUrl: `${BASE}/healthz`,
-      },
+    // Replace all app bindings on every reload, retaining the environment's
+    // configured defaults (including preview's APP_REQUIRE_LIVE). Explicit
+    // secrets override local dotenv files without changing the real config.
+    const defaults = Object.fromEntries(
+      Object.entries(configs[mode.workerEnv ?? "production"].vars).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
     );
-    try {
-      for (const [path, init, status, text] of mode.checks) {
-        const response = await fetch(`${BASE}${path}`, init);
-        const body = await response.text();
-        const ok = response.status === status && (!text || body.includes(text));
-        console.log(`${ok ? "✓" : "✗"} ${mode.name}: ${path} → ${response.status}`);
-        if (!ok)
-          failures.push(
-            `${mode.name}: ${path} answered ${response.status}, expected ${status}${text ? ` containing "${text}"` : ""}.`,
-          );
-      }
-    } finally {
-      await worker.stop();
+    const secrets = { ...sampleEnvironment, ...defaults };
+    for (const [name, value] of Object.entries(parseEnv(mode.env))) {
+      if (value !== undefined) secrets[name] = value;
+    }
+    await worker.update({
+      root,
+      workers: [
+        {
+          configPath,
+          env: mode.workerEnv,
+          secrets,
+        },
+      ],
+    });
+    await worker.listen();
+    for (const [path, init, status, text] of mode.checks) {
+      const response = await worker.fetch(`${BASE}${path}`, init);
+      const body = await response.text();
+      const ok = response.status === status && (!text || body.includes(text));
+      console.log(`${ok ? "✓" : "✗"} ${mode.name}: ${path} → ${response.status}`);
+      if (!ok)
+        failures.push(
+          `${mode.name}: ${path} answered ${response.status}, expected ${status}${text ? ` containing "${text}"` : ""}.`,
+        );
     }
   }
 } finally {
-  rmSync(dir, { recursive: true, force: true });
+  await worker.close();
 }
 if (failures.length > 0) {
   for (const failure of failures) console.error(failure);

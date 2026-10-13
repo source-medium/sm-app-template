@@ -4,7 +4,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
-import { nextCli, startServer, stopServer, wranglerCli } from "../../scripts/lib/test-server";
+import { nextCli, startServer, stopServer } from "../../scripts/lib/test-server";
 
 vi.mock("node:child_process", { spy: true });
 
@@ -32,16 +32,14 @@ async function listener() {
   };
 }
 
-it("launches both installed CLIs directly with Node", () => {
-  for (const script of [nextCli, wranglerCli]) {
-    const result = childProcess.spawnSync(process.execPath, [script, "--version"], {
-      encoding: "utf8",
-      timeout: 15_000,
-    });
-    expect(result.error).toBeUndefined();
-    expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toMatch(/\d+\.\d+\.\d+/);
-  }
+it("launches the installed Next CLI directly with Node", () => {
+  const result = childProcess.spawnSync(process.execPath, [nextCli, "--version"], {
+    encoding: "utf8",
+    timeout: 15_000,
+  });
+  expect(result.error).toBeUndefined();
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stdout).toMatch(/\d+\.\d+\.\d+/);
 });
 
 it("starts and stops a real server and its child process, leaving the port reusable", async () => {

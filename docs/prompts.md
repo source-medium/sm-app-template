@@ -218,11 +218,10 @@ pass, or change pnpm's patch-failure settings. For a security fix that requires
 an override, identify the upstream advisory, constrain it to the affected
 parent and fixed version, and run all gates below. Report any remaining
 advisory and whether its vulnerable path is used by this app. Run these gates sequentially because they share build
-output: pnpm install --frozen-lockfile, pnpm check, pnpm test:e2e,
-pnpm test:secrets, pnpm build:cloudflare, and pnpm smoke:worker. Fix failures;
+output: pnpm install --frozen-lockfile and pnpm check:deploy. Fix failures;
 do not call the update complete if any gate was skipped. For a Next or React
-change also run pnpm exec playwright test --repeat-each=8 after test:e2e,
-before test:secrets rebuilds .next. If install fails on a patch in
+change also run pnpm test:browser --repeat-each=8 after check:deploy,
+reusing its build. If install fails on a patch in
 pnpm-workspace.yaml, read its comment: remove the patch only if you can show
 the exact new release's compiled code contains the fix in every affected
 bundle, otherwise stop and tell me. A Next major version is not proof. Preserve

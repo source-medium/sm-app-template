@@ -61,12 +61,9 @@ Run these sequentially in a clean checkout with Node 24 and pnpm 10.34.5:
 ```sh
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
-pnpm check
-pnpm test:e2e
-pnpm exec playwright test --repeat-each=8
-pnpm test:secrets
-pnpm build:cloudflare
-pnpm smoke:worker
+pnpm check:deploy
+# For shared interaction or test-runner changes, repeat the affected browser tests:
+pnpm test:browser --grep "<affected interaction>" --repeat-each=8
 ```
 
 Record the commit, dependency versions, commands and results in the release

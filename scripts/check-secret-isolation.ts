@@ -2,15 +2,16 @@
  * pnpm test:secrets: build with sentinel
  * credentials in the environment, then prove none reach the browser.
  *
- *   1. `next build` with a full live sentinel configuration in the build
- *      environment; scan the client bundle, prerendered pages, and source maps.
+ *   1. The sanitized Cloudflare build with a full live sentinel configuration
+ *      in the build environment; scan the Worker, client bundle, and pages.
  *   2. `next start` in live mode (sentinel key) and in protected sample mode;
  *      fetch every view's HTML and RSC payload, and the challenge, and scan.
  *
  * The scan also checks injected environment credentials and local env files,
  * which `next build` reads (a NEXT_PUBLIC_ copy would be inlined).
  *
- * Builds into .next, so stop `pnpm dev` first. CI runs this on every change.
+ * Builds into .next and .open-next, so stop `pnpm dev` first. Browser and
+ * Worker tests reuse these outputs; deployment uploads the checked artifact.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -77,15 +78,17 @@ const scan = (label: string, text: string) => {
 };
 
 console.log("Building with sentinel credentials in the build environment...");
-const build = spawnSync(process.execPath, [nextCli, "build"], {
+const build = spawnSync("pnpm", ["build:cloudflare"], {
   cwd: root,
   env: { ...process.env, ...cleared, ...connectionEnv },
   stdio: "inherit",
+  shell: process.platform === "win32",
 });
 if (build.error) throw build.error;
 if (build.status !== 0) process.exit(build.status ?? 1);
 
 const outputs = [
+  ...files(join(root, ".open-next"), /./),
   ...files(join(root, ".next/static"), /\.(js|css|map|json)$/),
   ...files(join(root, ".next/server/app"), /\.(html|rsc|body|meta|map)$/),
 ];
@@ -149,5 +152,5 @@ if (leaks.length > 0) {
   process.exit(1);
 }
 console.log(
-  "secret-isolation: no sentinel credential in the client bundle, source maps, prerendered pages, or rendered responses.",
+  "secret-isolation: no sentinel credential in the Worker, client bundle, source maps, prerendered pages, or rendered responses.",
 );

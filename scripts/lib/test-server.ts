@@ -1,13 +1,11 @@
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
-import { dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 const require = createRequire(import.meta.url);
 // Launch JavaScript directly: pnpm/.bin shims are not executable on Windows.
 export const nextCli = require.resolve("next/dist/bin/next");
-export const wranglerCli = join(dirname(require.resolve("wrangler/package.json")), "bin/wrangler.js");
 
 /** Kill descendants too, including Wrangler's workerd process. */
 export async function stopServer(child: ChildProcess, platform = process.platform): Promise<void> {
