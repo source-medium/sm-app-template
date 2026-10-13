@@ -129,7 +129,7 @@ GitHub source, choose **Import a repository** instead. See [Cloudflare's Artifac
 | Worker name       | `<app>` (initially `sm-app`)                         | `<app>-preview`                                      |
 | Production branch | `main`                                               | `main`                                               |
 | Build command     | `pnpm exec playwright install --only-shell chromium` | `pnpm exec playwright install --only-shell chromium` |
-| Deploy command    | `pnpm run deploy`                                    | Unused after disabling production builds             |
+| Deploy command    | `pnpm run deploy`                                    | `pnpm run deploy --env preview`                      |
 | Preview command   | Unused                                               | `pnpm run deploy:preview`                            |
 | Production builds | Enabled                                              | Disabled                                             |
 | Preview builds    | Disabled                                             | Enabled for trusted non-production branches          |
