@@ -201,13 +201,16 @@ to **Apps** to recover access without sending anyone the old key or password:
 
 - **Replace key** returns a new `SM_CONNECTION` (or `SM_APP_KEY` for older
   separate settings). The old key stops working; update every use. Viewer
-  sign-in stays unchanged.
+  sign-in stays unchanged. Tokens already minted with the old key can keep
+  working until they expire, so for a compromised key revoke access and
+  create a new app.
 - **Generate new viewer password** returns a new `APP_BASIC_AUTH`. It takes effect when you
   update your hosts.
 - The non-secret values can be copied again at any time.
 
-**Revoke access** disables the app's warehouse identity and removes its keys
-and grants. It does not delete your hosted code or change its viewer password.
+**Revoke access** disables the app's warehouse identity, removes its keys and
+grants, then deletes the identity. It does not delete your hosted code or
+change its viewer password.
 Removing a person from SourceMedium does not revoke keys or app passwords
 they already hold; replace those separately or remove their Cloudflare Access
 access. See `docs/operations.md` for what each replacement interrupts.
