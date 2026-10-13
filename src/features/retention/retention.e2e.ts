@@ -35,7 +35,7 @@ test("retention: switching stores keeps the dimension and month but clears priva
   expect(params.get("segment_search")).toBeNull();
   expect(params.get("acquisition_dimension")).toBe("campaign");
   expect(params.get("as_of")).toBe("2026-09");
-  await expect(page.getByText("Choose an acquisition segment to load its cohorts.")).toBeVisible();
+  await expect(page.getByText("Choose a segment to load its cohorts", { exact: true })).toBeVisible();
 });
 
 test("retention: acquisition segments are explicit, searchable, shareable and reset with their dimension", async ({
@@ -43,13 +43,13 @@ test("retention: acquisition segments are explicit, searchable, shareable and re
 }) => {
   await page.goto("/retention?store=sample-store-a&as_of=2026-09&measure=second");
   await page.getByLabel("Segment cohorts by", { exact: true }).selectOption("campaign");
-  await expect(page.getByText("Choose an acquisition segment to load its cohorts.")).toBeVisible();
+  await expect(page.getByText("Choose a segment to load its cohorts", { exact: true })).toBeVisible();
   // selectOption can change a streamed select while inert still blocks real user input.
   await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).not.toHaveAttribute("inert");
   await page.getByRole("combobox", { name: "Acquisition segment", exact: true }).selectOption("Prospecting");
   await expect(page.getByRole("table", { name: "Purchased a second time", exact: true })).toBeVisible();
-  await page.getByRole("textbox", { name: "Find segment options", exact: true }).fill("brand");
-  await page.getByRole("button", { name: "Find segments", exact: true }).click();
+  await page.getByRole("searchbox", { name: "Find a segment", exact: true }).fill("brand");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveValue("Prospecting");
   await page.getByRole("combobox", { name: "Acquisition segment", exact: true }).selectOption("Brand search");
   await expect(page).toHaveURL(/acquisition_segment=Brand(?:\+|%20)search/);
@@ -61,8 +61,8 @@ test("retention: acquisition segments are explicit, searchable, shareable and re
   expect(context.omitted).toContain("acquisition segment");
   await page.getByLabel("Segment cohorts by", { exact: true }).selectOption("discount_code");
   await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveValue("");
-  await expect(page.getByRole("textbox", { name: "Find segment options", exact: true })).toHaveValue("");
-  await expect(page.getByText("Choose an acquisition segment to load its cohorts.")).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: "Find a segment", exact: true })).toHaveValue("");
+  await expect(page.getByText("Choose a segment to load its cohorts", { exact: true })).toBeVisible();
   await page.getByRole("combobox", { name: "Acquisition segment", exact: true }).selectOption("WELCOME10");
   await page.getByLabel("Segment cohorts by", { exact: true }).selectOption("no_filters");
   await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveCount(0);
@@ -202,7 +202,11 @@ test("retention: a month the report cannot show is reported, not silently replac
   await expect(page).toHaveURL(/as_of=\d{4}-\d{2}/);
   await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
   await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toBeVisible();
-  await page.getByLabel("Segment cohorts by", { exact: true }).selectOption("no_filters");
+  // A streamed select accepts selectOption before its handler is attached; wait until it is interactive.
+  const dimension = page.getByLabel("Segment cohorts by", { exact: true });
+  await expect(dimension).not.toHaveAttribute("inert");
+  await dimension.selectOption("no_filters");
+  await expect(page).toHaveURL(/acquisition_dimension=no_filters/);
   await expect(page.getByRole("table", { name: "Monthly retention", exact: true })).toBeVisible();
   await page.goto("/retention?store=sample-store-a&as_of=nonsense");
   await expect(page.locator('[data-slot="data-error"]')).toContainText("Choose a valid month.");

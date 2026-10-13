@@ -134,12 +134,16 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
             {options.asOfIssue ? (
               // A supplied month the report cannot show: say so instead of quietly showing another month.
               <ErrorState
+                tone="warning"
                 title="Check the month"
-                remedy={`${options.asOfIssue} The control shows the latest complete month, ${formatMonth(`${options.asOf}-01`)}. Apply it or choose another month to load the report.`}
+                remedy={`${options.asOfIssue} ${formatMonth(`${options.asOf}-01`)} is the latest complete month and is selected above. Apply it or pick another month to load the report.`}
               />
             ) : options.dimension !== "no_filters" && !options.segment ? (
               // A choice the report still needs, not an empty query result.
-              <EmptyState title="Choose a segment" message="Choose an acquisition segment to load its cohorts." />
+              <EmptyState
+                title="Choose a segment to load its cohorts"
+                message="Pick one under Acquisition segment above, or search for part of its name."
+              />
             ) : (
               <Suspense
                 key={`${filters.storeId}|${options.asOf}|${options.channel}|${options.metric}|${options.curveWindow}|${options.dimension}|${options.segment}`}

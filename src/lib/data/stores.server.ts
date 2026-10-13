@@ -72,6 +72,31 @@ export function reportingCurrency(storeId: string, mode: "sample" | "live"): str
   );
 }
 
+/** What app.config.ts establishes about live money labels, as reportingCurrency() will apply it. */
+export type ReportingCurrencyConfig = {
+  /** The deployment's validated code, or null when unset or unrecognized. */
+  currency: string | null;
+  /** A configured deployment code Intl does not accept; it is ignored, so amounts stay unlabeled. */
+  invalidCurrency: string | null;
+  /** Stores with their own validated code. */
+  labeledStores: number;
+  /** Stores explicitly set to null or to an unrecognized code: they show no currency whatever the default. */
+  unlabeledStores: number;
+};
+
+export function reportingCurrencyConfig(
+  config: Pick<typeof appConfig, "currency" | "reportingCurrencies"> = appConfig,
+): ReportingCurrencyConfig {
+  const overrides = Object.values(config.reportingCurrencies);
+  const currency = currencyCode(config.currency);
+  return {
+    currency,
+    invalidCurrency: config.currency && currency === null ? config.currency : null,
+    labeledStores: overrides.filter((code) => currencyCode(code) !== null).length,
+    unlabeledStores: overrides.filter((code) => currencyCode(code) === null).length,
+  };
+}
+
 export const loadStores = cache(async (): Promise<StoreOption[]> => {
   const access = await requireViewer();
   if (access.mode === "sample")

@@ -168,8 +168,9 @@ export async function ReportPage({
       />
       {issue ? (
         <ErrorState
+          tone="warning"
           title="Check the date range"
-          remedy={`${issue} The controls show a suggested range. Apply it or choose another range to load the report.`}
+          remedy={`${issue} The dates above show a suggested range. Apply it or pick another range to load the report.`}
         />
       ) : (
         children({

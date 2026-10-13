@@ -49,7 +49,7 @@ export function retentionOptions(params: SearchParams, today: string) {
     value === undefined || usable
       ? null
       : wellFormed
-        ? "Choose a month that has already ended in the store's time zone."
+        ? "Choose a month that has already ended."
         : "Choose a valid month.";
   const dimension = parseChoice(
     params,

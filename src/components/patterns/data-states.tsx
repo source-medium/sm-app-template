@@ -45,6 +45,9 @@ export function LoadingState({
   );
 }
 
+/** `warning` is for something the viewer can correct in the controls above; `error` is for a failure they cannot. */
+type Tone = "neutral" | "warning" | "error";
+
 function StateFrame({
   icon,
   title,
@@ -54,17 +57,22 @@ function StateFrame({
   icon: React.ReactNode;
   title: string;
   children?: React.ReactNode;
-  tone: "neutral" | "error";
+  tone: Tone;
 }) {
   return (
     <div
       className={cn(
         "flex flex-col items-start gap-2 rounded-lg border p-6 text-sm",
-        tone === "error" ? "border-destructive/40 bg-destructive/5" : "border-dashed bg-card",
+        tone === "error" && "border-destructive/40 bg-destructive/5",
+        tone === "warning" && "border-warning/40 bg-warning-soft/50",
+        tone === "neutral" && "border-dashed bg-card",
       )}
     >
       <div className="flex items-center gap-2 font-medium">
-        {icon}
+        {/* The icon takes the tone's color, so callers never pick it. */}
+        <span className={cn("flex", tone === "error" && "text-destructive", tone === "warning" && "text-warning")}>
+          {icon}
+        </span>
         <span>{title}</span>
       </div>
       {children && <div className="max-w-prose text-muted-foreground">{children}</div>}
@@ -81,10 +89,21 @@ export function EmptyState({ message, title = "No data" }: { message: string; ti
   );
 }
 
-export function ErrorState({ title, remedy, detail }: { title: string; remedy: string; detail?: string | null }) {
+export function ErrorState({
+  title,
+  remedy,
+  detail,
+  tone = "error",
+}: {
+  title: string;
+  remedy: string;
+  detail?: string | null;
+  /** `warning` for a request the viewer can fix in the controls (a bad link), `error` for a failed load. */
+  tone?: Exclude<Tone, "neutral">;
+}) {
   return (
     <div role="alert" data-slot="data-error">
-      <StateFrame icon={<AlertTriangle className="size-4 text-destructive" aria-hidden />} title={title} tone="error">
+      <StateFrame icon={<AlertTriangle className="size-4" aria-hidden />} title={title} tone={tone}>
         <p>{remedy}</p>
         {detail && (
           <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 text-xs whitespace-pre-wrap">{detail}</pre>
@@ -98,7 +117,7 @@ export function IncompatibleState({ relation, column }: { relation: string; colu
   return (
     <div role="alert" data-slot="data-error">
       <StateFrame
-        icon={<FileWarning className="size-4 text-destructive" aria-hidden />}
+        icon={<FileWarning className="size-4" aria-hidden />}
         title="The data no longer matches this view"
         tone="error"
       >

@@ -64,19 +64,21 @@ export function AcquisitionSegmentFilter({
         />
         <div className="flex min-w-0 flex-col gap-1.5">
           <label htmlFor="segment-search" className="text-xs font-medium text-muted-foreground">
-            Find segment options
+            Find a segment
           </label>
           <Input
             id="segment-search"
+            type="search"
             form={REPORT_FILTER_FORM_ID}
             name="segment_search"
             defaultValue={search}
             key={search}
             maxLength={200}
+            placeholder="Part of the name"
           />
         </div>
         <Button type="submit" form={REPORT_FILTER_FORM_ID} variant="secondary">
-          Find segments
+          Search
         </Button>
       </div>
       {truncated && (
@@ -86,9 +88,7 @@ export function AcquisitionSegmentFilter({
         </p>
       )}
       {!unavailable && !values.length && (
-        <p className="text-sm text-muted-foreground">
-          No segment options match this channel, observation window and search.
-        </p>
+        <p className="text-sm text-muted-foreground">No segments match this channel, month, and search.</p>
       )}
     </div>
   );
