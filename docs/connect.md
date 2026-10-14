@@ -5,7 +5,7 @@ Using Codex Cloud or Claude Code in the cloud? Start with
 [Connect a hosted app](#connect-a-hosted-app); local setup is optional. For
 agent-run warehouse debugging, reuse the previews' [Development credential](cloud.md#debug-with-live-data).
 
-This is a preview. Live data needs an app configuration block from the **Apps**
+This is a preview. Live data needs an app configuration block from the **Dashboards & Apps**
 page of your SourceMedium workspace. If that page says credentials are still
 being enabled, stay on sample data and ask SourceMedium support.
 Have your agent [help you choose sign-in](auth.md#choose-sign-in-with-your-agent)
@@ -38,12 +38,12 @@ SourceMedium is needed.
 
 ## 2. Get your configuration
 
-No block yet? Apps appears in the workspace menu once your data has been
+No block yet? Dashboards & Apps appears in the workspace menu once your data has been
 delivered, and only an organization admin can create an app. If the page says
 credentials are still being enabled, stay on sample data and ask
 [SourceMedium support](../SUPPORT.md).
 
-An accepted organization **admin** opens **Apps** in their SourceMedium
+An accepted organization **admin** opens **Dashboards & Apps** in their SourceMedium
 workspace, names the app, and confirms its read access. No Google account
 or Google Cloud console setup is needed.
 The page states what the app will be able to read, then shows one
@@ -197,7 +197,7 @@ no `.dev.vars` shows **Sample data** here on purpose. Paste the block into
 ## Lost a secret?
 
 Treat the configuration block as shown once. An organization admin can return
-to **Apps** to recover access without sending anyone the old key or password:
+to **Dashboards & Apps** to recover access without sending anyone the old key or password:
 
 - **Replace key** returns a new `SM_CONNECTION` (or `SM_APP_KEY` for older
   separate settings). The old key stops working; update every use. Viewer
@@ -221,7 +221,7 @@ The original seven data settings remain supported: `SM_APPLICATION_ID`,
 `SM_APP_KEY`, `BIGQUERY_JOB_PROJECT_ID`, `BIGQUERY_LOCATION`,
 `SM_DATA_PROJECT_ID`, `SM_TRANSFORMED_DATASET_ID`, and `SM_METADATA_DATASET_ID`.
 Keep them for an existing deployment; no migration or key replacement is
-needed just to update the starter. Apps offers **Using an older starter? →
+needed just to update the starter. Dashboards & Apps offers **Using an older starter? →
 Copy separate settings** when issuing or replacing a key.
 
 To switch formats, first deploy a starter that supports `SM_CONNECTION`. Then

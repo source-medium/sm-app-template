@@ -22,8 +22,8 @@ export default async function ConnectionPage() {
       {access.mode === "sample" && (
         <ol className="list-decimal space-y-2 pl-5 text-sm">
           <li>
-            Ask an organization admin to create an app on the <strong>Apps</strong> page of your SourceMedium workspace.
-            It shows a configuration block once; keep it like a password.
+            Ask an organization admin to create an app on the <strong>Dashboards &amp; Apps</strong> page of your
+            SourceMedium workspace. It shows a configuration block once; keep it like a password.
           </li>
           <li>
             Enter the block privately where this app runs: the Cloudflare Worker&apos;s runtime settings for a hosted

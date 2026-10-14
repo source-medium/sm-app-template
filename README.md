@@ -140,7 +140,7 @@ Your agent follows the [Cloudflare guide](docs/cloud.md) to connect the app and
 set up automatic deployments:
 
 1. **Connect your data.** An organization admin creates an app in your SourceMedium
-   workspace's **Apps** page. Enter its configuration block privately.
+   workspace's **Dashboards & Apps** page. Enter its configuration block privately.
 2. **Choose who can view it.** Use a shared password for a small trusted group,
    or Cloudflare Access for individual sign-in. Your agent helps you choose.
 3. **Review, then publish.** Push a task branch for a protected preview against
@@ -152,7 +152,7 @@ optional. Workers Paid is required; see the guide for Artifacts availability and
 
 Every viewer of a deployment sees the same data. For separate store audiences,
 use separate deployments with `APP_STORE_ID`. See [sign-in and store access](docs/auth.md).
-If Apps says credentials are still being enabled, use sample data and
+If Dashboards & Apps says credentials are still being enabled, use sample data and
 [contact support](SUPPORT.md). Do not use an admin credential.
 
 ## Keep building

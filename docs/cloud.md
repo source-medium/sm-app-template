@@ -314,9 +314,9 @@ replacing or revoking Development does not change Production. Already created
 an app named Preview? Reuse it as Development; the names only describe how you
 use the apps.
 
-An accepted organization admin gets each block from **Apps** in their
+An accepted organization admin gets each block from **Dashboards & Apps** in their
 SourceMedium workspace: name the app, confirm its read access, and copy the
-one-time configuration. Apps appears in the workspace menu once data has been
+one-time configuration. Dashboards & Apps appears in the workspace menu once data has been
 delivered. If the page says credentials are still being enabled, stay on sample
 data and ask SourceMedium support. An agent cannot generate a valid warehouse
 credential for you.
@@ -341,7 +341,7 @@ you enter credentials privately.
 
 1. Use the **Development** block from [Connect your data](#connect-your-data).
    If it does not exist yet, an organization admin creates that app in
-   **SourceMedium → Apps** for the same warehouse. Keep the complete block
+   **SourceMedium → Dashboards & Apps** for the same warehouse. Keep the complete block
    privately so it can also be entered in your coding environment later.
 2. In Cloudflare, open **`<app>-preview` → Settings → Variables and Secrets →
    Previews Base**. Add `SM_CONNECTION` as one **Secret**, then

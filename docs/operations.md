@@ -1,12 +1,12 @@
 # Operating the app
 
-App credentials are managed in your SourceMedium workspace's **Apps** page,
+App credentials are managed in your SourceMedium workspace's **Dashboards & Apps** page,
 separately from this template. If that page says credentials are still being
 enabled, keep sample data and ask SourceMedium support.
 
 ## Replacing secrets
 
-| Action (Apps page)               | What changes                             | What it interrupts                                                               |
+| Action (Dashboards & Apps page)  | What changes                             | What it interrupts                                                               |
 | -------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
 | **Replace key**                  | A new connection; the old key is deleted | Every deployment stops reading data until you update its connection and redeploy |
 | **Generate new viewer password** | A new `APP_BASIC_AUTH`                   | Nothing until you update your hosts; then viewers need the new password          |
@@ -75,18 +75,18 @@ the configured Development credential; it need not read or print the values.
 Follow [live debugging](cloud.md#debug-with-live-data) to configure either cloud
 agent. Hosted onboarding does not require a local file.
 
-| Message                                  | Meaning                                             | Remedy                                                              |
-| ---------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------- |
-| Configuration needs attention (503)      | Missing or malformed values, or no viewer guard     | Fix the named variables; see `docs/connect.md`                      |
-| The app key was rejected                 | Google refused `SM_APP_KEY`                         | Replace the key in Apps; an issued key cannot be retrieved          |
-| The app cannot read this data            | A permission is missing                             | Retry provisioning from Apps; contact SourceMedium if it persists   |
-| Table or dataset not found               | Wrong coordinates or location                       | Recopy the configuration from Apps; check `BIGQUERY_LOCATION`       |
-| Query allowance used up                  | A BigQuery quota was reached                        | Check the project's limits with SourceMedium; do not rotate the key |
-| Query too large                          | The scan would exceed the byte ceiling              | Narrow the date range or columns                                    |
-| The data no longer matches this view     | A column changed type or disappeared                | `pnpm schema <relation>`, then update the view's row schema         |
-| The query may not have started           | The connection dropped before BigQuery confirmed it | Reload once; the app never resubmits automatically                  |
-| The warehouse is temporarily unavailable | A temporary error or a short-term rate limit        | Reload in a minute                                                  |
-| This store's time zone is not published  | No zone in `dim_stores` and no recent orders        | Ask your SourceMedium admin to set the store's time zone            |
+| Message                                  | Meaning                                             | Remedy                                                                         |
+| ---------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Configuration needs attention (503)      | Missing or malformed values, or no viewer guard     | Fix the named variables; see `docs/connect.md`                                 |
+| The app key was rejected                 | Google refused `SM_APP_KEY`                         | Replace the key in Dashboards & Apps; an issued key cannot be retrieved        |
+| The app cannot read this data            | A permission is missing                             | Retry provisioning from Dashboards & Apps; contact SourceMedium if it persists |
+| Table or dataset not found               | Wrong coordinates or location                       | Recopy the configuration from Dashboards & Apps; check `BIGQUERY_LOCATION`     |
+| Query allowance used up                  | A BigQuery quota was reached                        | Check the project's limits with SourceMedium; do not rotate the key            |
+| Query too large                          | The scan would exceed the byte ceiling              | Narrow the date range or columns                                               |
+| The data no longer matches this view     | A column changed type or disappeared                | `pnpm schema <relation>`, then update the view's row schema                    |
+| The query may not have started           | The connection dropped before BigQuery confirmed it | Reload once; the app never resubmits automatically                             |
+| The warehouse is temporarily unavailable | A temporary error or a short-term rate limit        | Reload in a minute                                                             |
+| This store's time zone is not published  | No zone in `dim_stores` and no recent orders        | Ask your SourceMedium admin to set the store's time zone                       |
 
 A deployment never falls back to sample data when live data fails.
 
