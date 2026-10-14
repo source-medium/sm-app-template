@@ -8,7 +8,7 @@ The app and its source code are yours.
 
 **[Run it locally](#run-it-locally)** ·
 [Explore the reports](#seven-reports-to-start-from) ·
-[Open the demo (sign-in required)](https://sm-app-starter-demo.source-medium.workers.dev)
+[Open the demo](https://sm-app-starter-demo.source-medium.workers.dev)
 
 ### A report should answer your question
 
@@ -82,7 +82,7 @@ and light and dark modes are already in place.
 </picture>
 
 _All screenshots use synthetic sample data. The hosted demo reads SourceMedium's
-demo warehouse and requires sign-in: [request demo access](mailto:support@sourcemedium.com)._
+demo warehouse. No sign-in required._
 
 | Report             | Start with this question                             |
 | ------------------ | ---------------------------------------------------- |
