@@ -56,7 +56,8 @@ docs/                         Guides (index below)
    them in the page's `searchParams`; there is no client data store.
    Pass parsed, shareable view filters as `ReportPage agentFilters` (docs/prompts.md).
 4. **Inspect the schema before writing SQL**: the SourceMedium MCP
-   (`describe_table`) or `pnpm schema <relation>`. Never guess a column.
+   (`search_data_catalog` with `tables`, or `describe_table` where a connection
+   lists it) or `pnpm schema <relation>`. Never guess a column.
 5. **Never paste a secret** into chat, code, a commit, or a log. Do not inspect
    `.env*` (except `.env.example`), `.dev.vars*`, or dump environment values.
    Run `pnpm diagnose` yourself; it consumes configuration without printing it.

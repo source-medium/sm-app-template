@@ -13,8 +13,9 @@ you can see, and no app secret is involved.
 - Cursor: add `{"mcpServers": {"sourcemedium": {"url": "https://mcp.sourcemedium.com/mcp"}}}`
   to `~/.cursor/mcp.json`, then **Login** in Cursor's MCP settings.
 
-Use `get_data_context` (your project and datasets), `search_data_catalog`,
-`describe_table`, and `query_metrics`. Full guide:
+Use `get_data_context` (your project and datasets), `search_data_catalog`
+(search, and describe tables with its `tables` argument; connections on the
+earlier tool set list `describe_table` for that), and `query_metrics`. Full guide:
 https://sourcemedium.com/docs/ai-analyst/connect-an-ai-assistant
 
 **`pnpm schema <relation>`** prints a relation's columns and types through the

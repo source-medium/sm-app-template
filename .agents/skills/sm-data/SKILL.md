@@ -6,8 +6,9 @@ description: Use when reading SourceMedium warehouse data in this app - finding 
 Follow `docs/data.md` in this repository. In order:
 
 1. Discover the relation and its columns with the SourceMedium MCP
-   (`get_data_context`, `search_data_catalog`, `describe_table`) or
-   `pnpm schema <relation>`. Never guess a name. Without local live configuration,
+   (`get_data_context`, then `search_data_catalog`, whose `tables` argument
+   describes columns; connections on the earlier tool set list `describe_table`
+   instead) or `pnpm schema <relation>`. Never guess a name. Without local live configuration,
    this command uses the bundled snapshot, not the customer warehouse. In a
    cloud agent, follow `docs/cloud.md#debug-with-live-data` for an optional
    Development credential entered privately in environment settings. Run schema
