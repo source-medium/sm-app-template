@@ -153,7 +153,7 @@ schema, add sample data with the same shape, and run pnpm check.
 
 ```text
 Build an Inventory page on obt_inventory_positions. First inspect its columns
-and grain with the SourceMedium MCP (describe_table) or `pnpm schema
+and grain with the SourceMedium MCP or `pnpm schema
 obt_inventory_positions`, and tell me the grain before writing any SQL. Then
 show current units on hand by product for the selected store, following "Add a
 page" in AGENTS.md, and run pnpm check.
