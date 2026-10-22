@@ -123,8 +123,10 @@ alternative; a manual deploy alone does not configure push-to-deploy.
    agent install the locked test browser with `pnpm exec playwright install --with-deps chromium`
    once if needed. Failed checks stop publication.
 
-   The first deployment of a new Worker serves sample data. `.env.local` is
-   not uploaded; your hosted app needs its own runtime settings.
+   An unconfigured starter serves labeled sample data only while live data is
+   not required. After choosing live data, `APP_REQUIRE_LIVE=true` makes missing
+   runtime configuration an error, including on the first deployment.
+   `.env.local` is not uploaded; your hosted app needs its own runtime settings.
 
 3. Follow [Connect a hosted app](#connect-a-hosted-app) below to use live data.
 

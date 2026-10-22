@@ -19,6 +19,8 @@ Choosing `--data live` writes root `vars.APP_REQUIRE_LIVE=true` into `wrangler.j
 
 `pnpm app:setup status` observes local configuration, the current remote branch head, and the recorded URLs again each run. It never sends local credentials to a host. It reports pending verification when Access protects build identity. Its exit code is not a release approval. Use `pnpm diagnose` for local connectivity and the hosted Connection page after private sign-in for each hosted instance.
 
+The command does not discover preview URLs, inspect Cloudflare build progress or verify Access policies. The agent obtains those from the connected account and records the actual links. If account access is unavailable, report the specific check as pending and provide its destination.
+
 ## Private credential handoff
 
 Use Production credentials only for production. Reuse one Development credential for previews and optional local debugging. Do not create a third app or ask for a SourceMedium admin key.
@@ -32,6 +34,14 @@ Use Production credentials only for production. Reuse one Development credential
 Run `pnpm app:setup credentials local`, `preview` or `production` for the destination using your Worker name and sign-in choice. Create Access and its allowed-viewer policy using [auth.md](auth.md). Protect every production and preview hostname. Never paste the entire SourceMedium block into an Access environment: the issuer currently includes a shared password. Copy only the `SM_CONNECTION` value, without its variable name or quotes, into that encrypted secret's value field. Save and deploy. If an old shared password is present, remove `APP_BASIC_AUTH` from the same environment.
 
 Preview secrets copy from Previews Base when a preview is created. Updating Base does not repair existing previews. Update that preview's own settings or create a new preview. Retiring older credentials or viewer access requires [operations.md](operations.md#replacing-secrets), since immutable previews remain separate.
+
+## When setup needs your browser
+
+Before handing a step back, the agent names what is needed: account sign-in, private secret entry, hosting authorization, repository permission or browser connection. It provides the actual destination link, account and Worker or repository, and the next action. Reuse decisions and approvals already given for that scope.
+
+When browser control is available, reuse the intended signed-in tab. If connecting it requires a Chrome extension or approval popup, follow the connection flow exposed by the active agent. The agent identifies the browser, tab and prompt it has actually opened, then confirms access by reading the tab's title or URL. Do not tell the person to wait for a popup that has not been launched. If the flow is unavailable or no prompt appears, state that browser access is pending and provide the direct setup link and exact manual action.
+
+Hosting authorization and browser access are separate steps. Explain which one is pending instead of asking for a generic confirmation. The person completes sign-in, billing acceptance and secret entry privately; the agent checks the resulting saved or deployed state without reading or copying secret values, then resumes setup from there.
 
 ## The preview loop
 
