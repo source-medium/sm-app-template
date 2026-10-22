@@ -1,30 +1,30 @@
 import { Suspense } from "react";
 import { DataRegion } from "@/components/patterns/data-region";
 import { LoadingState } from "@/components/patterns/data-states";
-import { ChannelFilter } from "@/components/patterns/channel-filter";
+import { MultiChannelFilter, SalesChannelFilter } from "@/components/patterns/multi-channel-filter";
 import { getOverviewChannels, type OverviewFilters } from "./queries";
 
 export function OverviewControls({ filters }: { filters: OverviewFilters }) {
-  const applied = <ChannelFilter value={filters.channel} channels={[]} />;
+  const applied = <MultiChannelFilter channels={[]} />;
   return (
-    <Suspense
+    <SalesChannelFilter
       key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${filters.channel}`}
-      fallback={
-        <>
-          {applied}
-          <LoadingState variant="control" label="Loading sales channels" />
-        </>
-      }
+      value={filters.channel}
     >
-      <DataRegion
-        timestamp={false}
-        load={() => getOverviewChannels(filters)}
-        isEmpty={() => false}
-        emptyMessage="No sales channels in this range."
-        errorContent={applied}
+      <Suspense
+        key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${filters.channel}`}
+        fallback={<LoadingState variant="control" label="Loading sales channels" />}
       >
-        {(channels) => <ChannelFilter value={filters.channel} channels={channels} />}
-      </DataRegion>
-    </Suspense>
+        <DataRegion
+          timestamp={false}
+          load={() => getOverviewChannels(filters)}
+          isEmpty={() => false}
+          emptyMessage="No sales channels in this range."
+          errorContent={applied}
+        >
+          {(channels) => <MultiChannelFilter channels={channels} />}
+        </DataRegion>
+      </Suspense>
+    </SalesChannelFilter>
   );
 }

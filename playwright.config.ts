@@ -60,6 +60,7 @@ if (
 export default defineConfig({
   // Shared checks in e2e/; each view's own tests sit in its feature folder, so deleting a view deletes them.
   testDir: ".",
+  outputDir: process.env.SM_TEST_OUTPUT_DIR ?? "test-results",
   // An agent worktree under .claude/ is a second checkout with its own node_modules.
   testIgnore: ["**/node_modules/**", ".pnpm-store/**", ".next/**", ".open-next/**", "**/.claude/worktrees/**"],
   fullyParallel: true,

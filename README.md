@@ -7,7 +7,7 @@ Codex or Claude Code to change a metric, rework a view, or build your next repor
 The app and its source code are yours.
 
 **[Run it locally](#run-it-locally)** ·
-[Explore the reports](#seven-reports-to-start-from) ·
+[Explore the reports](#eight-reports-to-start-from) ·
 [Open the demo](https://sm-app-starter-demo.source-medium.workers.dev)
 
 ### A report should answer your question
@@ -69,7 +69,7 @@ Open **http://127.0.0.1:3000**. Sample data works immediately, with no credentia
 database setup, or AI API key. Or give your agent the [setup prompt](docs/cloud.md#your-first-message-in-either-agent)
 and let it guide you through connecting your warehouse and hosting the app.
 
-## Seven reports to start from
+## Eight reports to start from
 
 Store selection travels between reports, and report filters live in shareable
 URLs. Period comparisons, CSV exports where available, chart-to-table views,
@@ -84,15 +84,16 @@ and light and dark modes are already in place.
 _All screenshots use synthetic sample data. The hosted demo reads SourceMedium's
 demo warehouse. No sign-in required._
 
-| Report             | Start with this question                             |
-| ------------------ | ---------------------------------------------------- |
-| **Overview**       | How did revenue, orders, and spend change?           |
-| **All stores**     | Which stores are growing, and which need a look?     |
-| **Paid marketing** | Where is spend going, and what returns are reported? |
-| **Creatives**      | Which ads are delivering, and at what cost?          |
-| **Products**       | Which products and variants drive sales?             |
-| **Retention**      | How do customers from each cohort return over time?  |
-| **Orders**         | What happened with a particular order?               |
+| Report                 | Start with this question                                                   |
+| ---------------------- | -------------------------------------------------------------------------- |
+| **Overview**           | How did revenue, orders, and spend change?                                 |
+| **Performance tables** | How do business metrics and platform totals compare by day, week or month? |
+| **All stores**         | Which stores are growing, and which need a look?                           |
+| **Paid marketing**     | Where is spend going, and what returns are reported?                       |
+| **Creatives**          | Which ads are delivering, and at what cost?                                |
+| **Products**           | Which products and variants drive sales?                                   |
+| **Retention**          | How do customers from each cohort return over time?                        |
+| **Orders**             | What happened with a particular order?                                     |
 
 <details>
 <summary><strong>Compare stores, then drill into one</strong></summary>
@@ -181,3 +182,5 @@ onboarding and self-service credential issuance still need end-to-end verificati
 See [release evidence and remaining checks](docs/maintainers/release-readiness.md).
 
 [MIT license](LICENSE) · [Security](SECURITY.md) · [Support](SUPPORT.md) · [Contributing](CONTRIBUTING.md)
+
+For a resumable local, preview and production setup, start with [the setup guide](docs/setup.md). `pnpm app:setup plan` records sign-in and live intent; `pnpm app:setup status` checks current progress. [Reconcile a reference period](docs/reconciliation.md) before treating an adapted dashboard as numerically verified.

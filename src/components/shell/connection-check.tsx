@@ -11,6 +11,8 @@ export function ConnectionCheck({ mode }: { mode: "sample" | "live" }) {
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState("");
 
+  const text = report ? connectionReportText(report) : "";
+
   async function check() {
     setRunning(true);
     setReport(null);
@@ -41,7 +43,7 @@ export function ConnectionCheck({ mode }: { mode: "sample" | "live" }) {
         <Button onClick={check} disabled={running}>
           {running ? "Checking…" : "Check connection"}
         </Button>
-        {report && <CopyReport key={run} text={connectionReportText(report)} />}
+        {report && <CopyReport key={run} text={text} />}
       </div>
       <div role="status" aria-live="polite">
         {running && <p className="text-sm">Checking the connection…</p>}
@@ -55,10 +57,10 @@ export function ConnectionCheck({ mode }: { mode: "sample" | "live" }) {
                   ? "Sample mode is ready."
                   : "Connection checks passed."}
             </p>
-            <pre className="font-sans text-sm break-words whitespace-pre-wrap">{connectionReportText(report)}</pre>
+            <pre className="font-sans text-sm break-words whitespace-pre-wrap">{text}</pre>
             <p className="text-xs text-muted-foreground">
-              This report contains no credentials, configured values, SQL or warehouse rows. You can share it with your
-              coding agent or SourceMedium support.
+              This report contains no credentials, warehouse coordinates, SQL or warehouse rows. You can share it with
+              your coding agent or SourceMedium support.
             </p>
           </div>
         )}

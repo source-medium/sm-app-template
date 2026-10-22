@@ -1,6 +1,5 @@
 /** Overview's live path end to end against the fake BigQuery. */
 import { describe, expect, it, vi } from "vitest";
-import { appConfig } from "@/app.config";
 import { datesInRange, rangeLength } from "@/lib/filters";
 import { goLive, rowsResponse } from "../../../tests/helpers/live";
 
@@ -108,28 +107,43 @@ describe("overview, live", () => {
     expect(fake.count("submit")).toBe(1);
   });
 
-  it("keeps a full-length range's year comparison across Feb 29", async () => {
-    await goLive({
-      submit: (call) => {
-        const values = Object.fromEntries(
-          (call.body as { queryParameters: { name: string; parameterValue: { value: string } }[] }).queryParameters.map(
-            (param) => [param.name, param.parameterValue.value],
-          ),
-        );
-        const dates = datesInRange({ from: values.start_date ?? "", to: values.end_date ?? "" });
-        return rowsResponse(
-          FIELDS,
-          dates.map((date) => ({ date, ...MONEY, period_date: date })),
-        );
-      },
-    });
-    const { getOverviewReport } = await import("./queries");
-    const range = { from: "2025-01-01", to: "2025-03-31" };
-    expect(rangeLength(range)).toBe(appConfig.dateRange.maxDays);
-    const report = await getOverviewReport({ ...FILTERS, range }, { from: "2024-01-01", to: "2024-03-31" });
-    expect(report.comparison?.error).toBeNull();
-    expect(report.comparison?.data?.days).toHaveLength(91);
-  });
+  it.each([
+    {
+      range: { from: "2025-01-01", to: "2025-03-31" },
+      baseline: { from: "2024-01-01", to: "2024-03-31" },
+      length: 90,
+      baselineLength: 91,
+    },
+    {
+      range: { from: "2025-01-01", to: "2026-01-01" },
+      baseline: { from: "2024-01-01", to: "2025-01-01" },
+      length: 366,
+      baselineLength: 367,
+    },
+  ])(
+    "keeps a $length-day range's year comparison across Feb 29",
+    async ({ range, baseline, length, baselineLength }) => {
+      await goLive({
+        submit: (call) => {
+          const values = Object.fromEntries(
+            (
+              call.body as { queryParameters: { name: string; parameterValue: { value: string } }[] }
+            ).queryParameters.map((param) => [param.name, param.parameterValue.value]),
+          );
+          const dates = datesInRange({ from: values.start_date ?? "", to: values.end_date ?? "" });
+          return rowsResponse(
+            FIELDS,
+            dates.map((date) => ({ date, ...MONEY, period_date: date })),
+          );
+        },
+      });
+      const { getOverviewReport } = await import("./queries");
+      expect(rangeLength(range)).toBe(length);
+      const report = await getOverviewReport({ ...FILTERS, range }, baseline);
+      expect(report.comparison?.error).toBeNull();
+      expect(report.comparison?.data?.days).toHaveLength(baselineLength);
+    },
+  );
 
   it("keeps the current report when comparison data is truncated", async () => {
     await goLive({

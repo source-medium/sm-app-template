@@ -13,12 +13,20 @@ const authorization = `Basic ${Buffer.from(`${credentials.username}:${credential
 
 describe("hosted command selection", () => {
   const script = resolve("scripts/test-hosted.mjs");
+  const output = mkdtempSync(join(tmpdir(), "sm-hosted-unit-"));
+  afterAll(() => rmSync(output, { recursive: true, force: true }));
   const run = (extra: string[], cwd = process.cwd()) =>
     spawnSync(process.execPath, [script, "https://127.0.0.1:1", commit, ...extra], {
       cwd,
       encoding: "utf8",
       timeout: 15_000,
-      env: { ...process.env, APP_BASIC_AUTH: "viewer:synthetic-password", FORCE_COLOR: "0" },
+      env: {
+        ...process.env,
+        APP_BASIC_AUTH: "viewer:synthetic-password",
+        FORCE_COLOR: "0",
+        SM_TEST_OUTPUT_DIR: join(output, "results"),
+        PLAYWRIGHT_HTML_OUTPUT_DIR: join(output, "report"),
+      },
     });
 
   it.each([[], ["--grep", "renders live data"]].map((extra) => ({ extra })))(

@@ -20,6 +20,7 @@ export function FilterBar({
   from,
   to,
   maxDate,
+  maxDays,
   presets,
   dates = true,
   comparison,
@@ -33,6 +34,7 @@ export function FilterBar({
   from?: string;
   to?: string;
   maxDate?: string;
+  maxDays?: number;
   presets: FilterPreset[];
   dates?: boolean;
   comparison?: ComparisonMode;
@@ -88,6 +90,7 @@ export function FilterBar({
         const issue = dateRangeIssue(
           { from: String(data.get("from") ?? ""), to: String(data.get("to") ?? "") },
           maxDate,
+          maxDays,
         );
         setError(issue);
         if (issue) {

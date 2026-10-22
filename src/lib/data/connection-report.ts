@@ -1,4 +1,4 @@
-/** Safe to copy into an agent conversation: no configured values or provider text. */
+/** Safe to copy: no credentials, warehouse coordinates or provider text. */
 export type ConnectionCheck = {
   name: string;
   status: "pass" | "fail" | "warning";
@@ -8,11 +8,19 @@ export type ConnectionCheck = {
 export type ConnectionReport = {
   mode: "sample" | "live";
   checks: ConnectionCheck[];
+  checkedAt?: string;
+  instance?: { environment: string; build: string; requireLive: boolean };
 };
 
 export function connectionReportText(report: ConnectionReport): string {
   return [
+    ...(report.instance
+      ? [
+          `Instance: ${report.instance.environment}; build ${report.instance.build}; live required: ${report.instance.requireLive ? "yes" : "no"}.`,
+        ]
+      : []),
     `SourceMedium connection: ${report.mode === "live" ? "live configuration" : "sample data"}`,
+    ...(report.checkedAt ? [`Checked at: ${report.checkedAt}`] : []),
     ...report.checks.map((check) => `${check.status.toUpperCase()} ${check.name}: ${check.message}`),
     "This checks connectivity, not metric accuracy or data freshness.",
   ].join("\n");

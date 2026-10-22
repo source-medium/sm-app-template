@@ -14,6 +14,7 @@ import {
   Repeat2,
   ShoppingBag,
   Store,
+  Table2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -43,6 +44,7 @@ export const appConfig = {
   /** The first entry is the home page. A page also needs a feature folder and a route; see the sm-add-page skill. */
   nav: [
     { href: "/overview", label: "Overview", icon: LayoutDashboard },
+    { href: "/performance", label: "Performance tables", icon: Table2 },
     { href: "/stores", label: "All stores", icon: Store, scope: "all-stores" },
     { href: "/paid-marketing", label: "Paid marketing", icon: Megaphone },
     { href: "/creatives", label: "Creatives", icon: ImageIcon },
@@ -54,4 +56,8 @@ export const appConfig = {
   storeLabels: {} as Record<string, string>,
   /** Date picker defaults: the default range ends yesterday, in the store's SourceMedium time zone. */
   dateRange: { defaultDays: 28, maxDays: 90 },
+  /** Summary reports can deliberately cover a full year; detail views retain the shorter limit. */
+  summaryMaxDays: 366,
+  /** Optional verified sales-channel defaults for summary reports. Empty means all channels. */
+  defaultSalesChannels: [] as string[],
 };

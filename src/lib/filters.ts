@@ -54,7 +54,15 @@ export function single(params: SearchParams, name: string): string | undefined {
 
 /** Sales-channel values are data, never SQL identifiers. Keep unknown choices explicit. */
 export function parseSalesChannel(params: SearchParams): string | null {
-  return single(params, "sales_channel")?.slice(0, 100) || null;
+  const value = single(params, "sales_channel");
+  if (value === undefined) return null;
+  if (!value) return null;
+  if (value.startsWith("[")) {
+    const channels = salesChannelValues(value);
+    // Invalid selections stay an explicit unknown choice, never silently widen to all channels.
+    return encodeSalesChannels(channels);
+  }
+  return value.slice(0, 100);
 }
 
 export function defaultRange(today: string): DateRange {
@@ -63,11 +71,16 @@ export function defaultRange(today: string): DateRange {
 }
 
 /** Completed calendar periods relative to today. Weeks run Monday–Sunday. */
-export function datePresets(today: string): { label: string; range: DateRange }[] {
+export function datePresets(
+  today: string,
+  maxDays = appConfig.dateRange.maxDays,
+): { label: string; range: DateRange }[] {
   const yesterday = addDays(today, -1);
   const monthStart = `${today.slice(0, 8)}01`;
   const lastMonthEnd = addDays(monthStart, -1);
   const monday = addDays(today, -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7));
+  const quarterStart = `${today.slice(0, 4)}-${String(Math.floor((Number(today.slice(5, 7)) - 1) / 3) * 3 + 1).padStart(2, "0")}-01`;
+  const yearStart = `${today.slice(0, 4)}-01-01`;
   const presets = [
     { label: "Yesterday", range: { from: yesterday, to: yesterday } },
     ...[7, 28, 90].map((days) => ({
@@ -78,15 +91,21 @@ export function datePresets(today: string): { label: string; range: DateRange }[
     { label: "Last month", range: { from: `${lastMonthEnd.slice(0, 8)}01`, to: lastMonthEnd } },
     // On the first of the month there are no completed days in this month yet.
     ...(yesterday >= monthStart ? [{ label: "Month to date", range: { from: monthStart, to: yesterday } }] : []),
+    ...[
+      { label: "Quarter to date", from: quarterStart },
+      { label: "Year to date", from: yearStart },
+    ]
+      .filter(({ from }) => from <= yesterday)
+      .map(({ label, from }) => ({ label, range: { from, to: yesterday } })),
   ];
-  return presets.filter((preset) => rangeLength(preset.range) <= appConfig.dateRange.maxDays);
+  return presets.filter((preset) => rangeLength(preset.range) <= maxDays);
 }
 
 /**
  * The applied range: the URL's range when it is valid, otherwise the default.
  * The end is clamped to today and the length to the configured maximum.
  */
-export function parseDateRange(params: SearchParams, today: string): DateRange {
+export function parseDateRange(params: SearchParams, today: string, maxDays = appConfig.dateRange.maxDays): DateRange {
   const fallback = defaultRange(today);
   const fromParam = single(params, "from");
   const toParam = single(params, "to");
@@ -94,21 +113,22 @@ export function parseDateRange(params: SearchParams, today: string): DateRange {
   const to = toParam > today ? today : toParam;
   if (fromParam > to) return fallback;
   const range = { from: fromParam, to };
-  return rangeLength(range) > appConfig.dateRange.maxDays
-    ? { from: addDays(to, -(appConfig.dateRange.maxDays - 1)), to }
-    : range;
+  return rangeLength(range) > maxDays ? { from: addDays(to, -(maxDays - 1)), to } : range;
 }
 
 /** A supplied URL must never silently report a different period. Missing dates use the default. */
-export function dateRangeIssue(params: SearchParams, today: string): string | null {
+export function dateRangeIssue(
+  params: SearchParams,
+  today: string,
+  maxDays = appConfig.dateRange.maxDays,
+): string | null {
   const from = single(params, "from");
   const to = single(params, "to");
   if (from === undefined && to === undefined) return null;
   if (!isCalendarDate(from) || !isCalendarDate(to)) return "Choose a valid start and end date.";
   if (from > to) return "The start date must be on or before the end date.";
   if (to > today) return "The end date cannot be after today.";
-  if (rangeLength({ from, to }) > appConfig.dateRange.maxDays)
-    return `Choose a range of ${appConfig.dateRange.maxDays} days or fewer.`;
+  if (rangeLength({ from, to }) > maxDays) return `Choose a range of ${maxDays} days or fewer.`;
   return null;
 }
 
@@ -136,4 +156,38 @@ export function parseChoice<T extends string>(
 ): T {
   const value = single(params, name);
   return choices.find((choice) => choice === value) ?? fallback;
+}
+
+/** One legacy channel or a canonical JSON list in the same shareable URL parameter. */
+export function salesChannelValues(value: string | null | undefined): string[] {
+  if (!value) return [];
+  if (value.startsWith("[") && value.length <= 6000) {
+    try {
+      const items: unknown = JSON.parse(value);
+      if (
+        Array.isArray(items) &&
+        items.length > 0 &&
+        items.length <= 50 &&
+        items.every((item) => typeof item === "string" && item.length > 0 && item.length <= 100)
+      )
+        return [...new Set(items as string[])].sort();
+    } catch {
+      /* Keep an invalid choice explicit below. */
+    }
+  }
+  return [value.slice(0, 100)];
+}
+export function encodeSalesChannels(channels: readonly string[]): string | null {
+  const values = [...new Set(channels)].sort();
+  const first = values[0];
+  return first === undefined ? null : values.length === 1 && !first.startsWith("[") ? first : JSON.stringify(values);
+}
+export function matchesSalesChannel(selection: string | null | undefined, channel: string | null | undefined): boolean {
+  const values = salesChannelValues(selection);
+  return values.length === 0 || values.includes(channel ?? "(none)");
+}
+export function summarySalesChannel(params: SearchParams): string | null {
+  return single(params, "sales_channel") === undefined
+    ? encodeSalesChannels(appConfig.defaultSalesChannels)
+    : parseSalesChannel(params);
 }

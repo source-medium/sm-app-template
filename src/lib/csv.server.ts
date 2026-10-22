@@ -49,7 +49,11 @@ export type ExportScope = {
  * page would ask to correct is a 400, never a silently different period.
  * Store and warehouse failures are short JSON errors, not CSV.
  */
-export async function csvExport(request: Request, build: (scope: ExportScope) => Promise<Response>): Promise<Response> {
+export async function csvExport(
+  request: Request,
+  build: (scope: ExportScope) => Promise<Response>,
+  options: { maxDays?: number } = {},
+): Promise<Response> {
   const params: SearchParams = {};
   for (const [key, value] of new URL(request.url).searchParams) if (params[key] === undefined) params[key] = value;
   try {
@@ -63,12 +67,12 @@ export async function csvExport(request: Request, build: (scope: ExportScope) =>
     }
     // Dates are the store's calendar dates, so its time zone decides today.
     const today = calendarDate(new Date(), store.timeZone);
-    const issue = dateRangeIssue(params, today);
+    const issue = dateRangeIssue(params, today, options.maxDays);
     if (issue) return failure(400, { title: "Check the date range", remedy: issue });
     return await build({
       params,
       storeId: store.storeId,
-      range: parseDateRange(params, today),
+      range: parseDateRange(params, today, options.maxDays),
       mode,
       currency: store.currency,
     });

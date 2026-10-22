@@ -13,7 +13,7 @@ The home page redirects to the first `nav` entry, so removing Overview just
 makes the next entry the home page. Keep at least one entry, or replace
 `src/app/(app)/page.tsx` with your own home page.
 
-To remove all seven, repeat the steps for `overview`, `stores`, `paid-marketing`,
+To remove all eight, repeat the steps for `overview`, `performance`, `stores`, `paid-marketing`,
 `creatives`, `products`, `retention`, and `orders`, and add your own page first. Keep the shell
 (`src/components/shell`), the patterns (`src/components/patterns`,
 `src/components/charts`), and `src/lib`; they are what new pages use.
@@ -40,3 +40,5 @@ Removing `stores` also removes the All stores picker option when its `scope: "al
 
 Unused sample images live in `public/sample-creatives/`; delete them with
 Creatives.
+
+`performance` owns its business/platform queries, fixtures, tables and CSV route. Remove `src/app/(app)/performance` and its feature and navigation entry together. Summary date bounds and multi-channel controls are shared with Overview and remain useful without Performance.

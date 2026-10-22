@@ -25,6 +25,7 @@
   // (docs/auth.md). Version URLs stay off: they use production bindings.
   "workers_dev": true,
   "preview_urls": false,
+  "vars": { "APP_ENVIRONMENT": "production" },
   // Previews and optional agent debugging share the Development app credential.
   // Set its complete block in <name>-preview > Settings > Previews Base once.
   // Branch previews receive those secrets when created, not on every update.
@@ -34,9 +35,9 @@
     "preview": {
       "workers_dev": false,
       "preview_urls": true,
-      "vars": { "APP_REQUIRE_LIVE": "true" },
+      "vars": { "APP_REQUIRE_LIVE": "true", "APP_ENVIRONMENT": "preview" },
       "previews": {
-        "vars": { "APP_REQUIRE_LIVE": "true" },
+        "vars": { "APP_REQUIRE_LIVE": "true", "APP_ENVIRONMENT": "preview" },
       },
     },
   },

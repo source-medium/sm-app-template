@@ -62,3 +62,10 @@ export async function switchStore(page: Page, id: string) {
   await page.getByRole("dialog", { name: "Switch store" }).locator(`[data-store-option="${id}"]`).click();
   await expect(page.getByRole("button", { name: /^Store:/ })).toHaveAttribute("data-store-id", id);
 }
+
+/** Programmatic selection ignores inert; wait until a person could use the hydrated control. */
+export async function choose(page: Page, label: string, value: Parameters<Locator["selectOption"]>[0]) {
+  const select = page.getByRole("combobox", { name: label, exact: true });
+  await expect(select).not.toHaveAttribute("inert");
+  await select.selectOption(value);
+}

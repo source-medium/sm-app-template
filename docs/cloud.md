@@ -124,18 +124,18 @@ and repository. For an existing Worker, use **Settings → Builds → Connect**
 and select the Artifacts namespace in **Git connection**. With the optional
 GitHub source, choose **Import a repository** instead. See [Cloudflare's Artifacts integration](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/artifacts-integration/).
 
-| Setting           | Production Worker                                    | Preview Worker                                       |
-| ----------------- | ---------------------------------------------------- | ---------------------------------------------------- |
-| Worker name       | `<app>` (initially `sm-app`)                         | `<app>-preview`                                      |
-| Production branch | `main`                                               | `main`                                               |
-| Build command     | `pnpm exec playwright install --only-shell chromium` | `pnpm exec playwright install --only-shell chromium` |
-| Deploy command    | `pnpm run deploy`                                    | `pnpm run deploy --env preview`                      |
-| Preview command   | Unused                                               | `pnpm run deploy:preview`                            |
-| Production builds | Enabled                                              | Disabled                                             |
-| Preview builds    | Disabled                                             | Enabled for trusted non-production branches          |
-| Build cache       | Enabled                                              | Enabled for Previews Base                            |
-| Root directory    | Repository root                                      | Repository root                                      |
-| Runtime secrets   | Production app block                                 | Development app block in **Previews Base**           |
+| Setting           | Production Worker                                    | Preview Worker                                                 |
+| ----------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
+| Worker name       | `<app>` (initially `sm-app`)                         | `<app>-preview`                                                |
+| Production branch | `main`                                               | `main`                                                         |
+| Build command     | `pnpm exec playwright install --only-shell chromium` | `pnpm exec playwright install --only-shell chromium`           |
+| Deploy command    | `pnpm run deploy`                                    | `pnpm run deploy --env preview`                                |
+| Preview command   | Unused                                               | `pnpm run deploy:preview`                                      |
+| Production builds | Enabled                                              | Disabled                                                       |
+| Preview builds    | Disabled                                             | Enabled for trusted non-production branches                    |
+| Build cache       | Enabled                                              | Enabled for Previews Base                                      |
+| Root directory    | Repository root                                      | Repository root                                                |
+| Runtime secrets   | Production settings for the chosen guard             | Development settings for the chosen guard in **Previews Base** |
 
 Use the repository's Node version and pinned pnpm version from `package.json`;
 set the build variable `PNPM_VERSION` to that pnpm version if needed. The build
@@ -331,7 +331,7 @@ before sharing live data.
 
 After entering the runtime settings, click **Live data → Check connection**
 in your hosted app. The report is safe to paste into either coding agent; it
-contains no credentials, configured values, SQL, or warehouse rows.
+contains no credentials, warehouse coordinates, SQL, or warehouse rows.
 
 ## Connect preview data
 
@@ -347,7 +347,7 @@ you enter credentials privately.
    Previews Base**. Add `SM_CONNECTION` as one **Secret**, then
    [configure the chosen sign-in](auth.md#configure-the-chosen-sign-in) there.
    For a shared password, use the issued Development `APP_BASIC_AUTH`. For
-   Access, use the preview application's settings and omit `APP_BASIC_AUTH`.
+   Access, copy only the `SM_CONNECTION` value, use the preview application's Access settings and omit or remove `APP_BASIC_AUTH`. Never paste the entire issued block into an Access environment.
    Do not put this block in build settings or the preview Worker's
    **Production** tab. Production and Previews Base are different settings
    even on the preview Worker.
@@ -365,7 +365,7 @@ you enter credentials privately.
 
 New previews receive the saved secrets automatically. Cloudflare copies Base
 secrets **when a preview is created**; changing Base later does not update
-existing previews. For a preview created before setup, enter the block in that
+existing previews. For a preview created before setup, enter the settings for your chosen guard in that
 preview's own settings and deploy it again, or have your agent delete and
 recreate that specific preview with your approval. Republishing its code alone
 does not import the new Base secrets. See [Cloudflare's secret inheritance](https://developers.cloudflare.com/workers/previews/configuration/#secrets).
@@ -484,3 +484,7 @@ a limited visual smoke check.
 The account owner completes the platform account and authorization screens.
 Fresh-account journeys in both cloud agents have not yet been verified end to
 end; local checks do not prove those screens.
+
+## Resume setup and report preview progress
+
+Use [setup.md](setup.md) and `pnpm app:setup status` to keep local, branch preview and production readiness separate. For Access, enter only the issued `SM_CONNECTION` value; omit or remove `APP_BASIC_AUTH` in each hosted environment. Keep the selected guard and allowed viewers across subsequent setup steps. Share the build link while pending and the actual preview URL as soon as deployed, with verification status. Use [reconciliation.md](reconciliation.md) before claiming metrics match an existing dashboard.

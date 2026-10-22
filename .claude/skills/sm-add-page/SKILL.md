@@ -28,3 +28,7 @@ Follow "Add a page" in `AGENTS.md`, and `docs/removing-the-example.md` when dele
    for interactions.
 
 Then run `pnpm check`, and `pnpm test:e2e` after UI changes.
+
+Copy Performance for business metric groups and compact platform comparison with one selected platform detail. Wrap `MultiChannelFilter` in `SalesChannelFilter` outside the roster Suspense boundary so one canonical form value survives loading; use the shared channel predicate for summary multi-selection; preserve old single-channel URLs. Larger summary ranges need explicit aggregate bounds and the same page, client and CSV maximum. Keep partial-period labels and full-selection totals.
+
+For browser checks of native selects, use `choose` from e2e/helpers.ts; it waits until the control is hydrated and interactive. Controls whose choices are fixed should render outside query Suspense boundaries. Keep applied values available while loading any data-dependent roster.

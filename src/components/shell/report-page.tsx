@@ -41,6 +41,7 @@ export async function ReportPage({
   params,
   comparisonLabel,
   dates = true,
+  maxDays,
   comparisons = false,
   allStores = false,
   agentFilters = {},
@@ -57,6 +58,8 @@ export async function ReportPage({
   comparisonLabel?: string;
   /** False for current-state views (such as inventory) that have no date range. */
   dates?: boolean;
+  /** Larger ranges require a feature with bounded aggregate queries. */
+  maxDays?: number;
   /** Opt in only after the feature queries and presents a comparison period. */
   comparisons?: boolean;
   /** Compare stores separately; store remains the reference for default dates. */
@@ -139,8 +142,8 @@ export async function ReportPage({
   const today = calendarDate(new Date(), timeZone);
   const derived = defaults?.(today) ?? {};
   params = { ...params, ...derived };
-  const range = parseDateRange(params, today);
-  const issue = dates ? dateRangeIssue(params, today) : null;
+  const range = parseDateRange(params, today, maxDays);
+  const issue = dates ? dateRangeIssue(params, today, maxDays) : null;
   const comparison = comparisons && dates ? parseComparison(params, range) : undefined;
   if (comparison) params = { ...params, compare: comparison.mode };
   const zoneLabel = /^[+-]/.test(timeZone) ? `UTC${timeZone}` : timeZone;
@@ -160,6 +163,7 @@ export async function ReportPage({
         params={params}
         range={range}
         today={today}
+        maxDays={maxDays}
         comparisonLabel={comparisonLabel}
         dates={dates}
         comparison={comparison}

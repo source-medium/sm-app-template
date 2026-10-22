@@ -17,7 +17,7 @@ import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber } from "@/lib/data/decimal";
 import { parseTimeGrain, periodStart, periodRange, TIME_GRAINS } from "@/lib/time-grain";
-import { datesInRange, parseChoice, withParams, type SearchParams } from "@/lib/filters";
+import { datesInRange, REPORT_FILTER_FORM_ID, parseChoice, withParams, type SearchParams } from "@/lib/filters";
 import {
   EMPTY_VALUE,
   formatCount,
@@ -32,6 +32,7 @@ import {
 import { MAX_NAMED_CHANNELS, channelChart, type MetricValue } from "./chart";
 import {
   PAID_METRICS,
+  BREAKDOWN_DIMENSIONS,
   getSpendBreakdown,
   breakdownDimension,
   getPaidMarketing,
@@ -93,6 +94,11 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
     >
       {({ filters, comparison, params: applied, timeZone, currency }) => {
         const paidFilters: PaidMarketingFilters = { ...filters, channel, names: names.rules };
+        const paidData = names.error ? null : getPaidMarketing(paidFilters);
+        paidData?.catch(() => undefined); // Both regions handle the same query's failure.
+        const appliedChannel = (
+          <ChannelFilter name="channel" label="Channel" value={channel} channels={[]} allLabel="All channels" />
+        );
         return (
           <>
             <AdNameFilter
@@ -101,8 +107,48 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
               rules={names.rules}
               error={names.error}
             />
-            {!names.error && (
+            {paidData && (
               <>
+                <div className="flex flex-wrap items-end gap-4">
+                  <SelectFilter
+                    name="grain"
+                    label="Trend interval"
+                    value={parseTimeGrain(params)}
+                    options={[...TIME_GRAINS]}
+                  />
+                  <SelectFilter
+                    name="metric"
+                    label="Measure"
+                    value={metric}
+                    options={PAID_METRICS.map((value) => ({ value, label: METRIC_LABELS[value] }))}
+                  />
+                  <Suspense
+                    fallback={
+                      <>
+                        <input type="hidden" name="channel" value={channel ?? ""} form={REPORT_FILTER_FORM_ID} />
+                        <LoadingState variant="control" label="Loading channels" />
+                      </>
+                    }
+                  >
+                    <DataRegion
+                      timestamp={false}
+                      load={async () => [...new Set((await paidData).channelDays.map((day) => day.channel))].sort()}
+                      isEmpty={() => false}
+                      emptyMessage="No channels."
+                      errorContent={appliedChannel}
+                    >
+                      {(channels) => (
+                        <ChannelFilter
+                          name="channel"
+                          label="Channel"
+                          value={channel}
+                          channels={channels}
+                          allLabel="All channels"
+                        />
+                      )}
+                    </DataRegion>
+                  </Suspense>
+                </div>
                 {names.rules.length > 0 && (
                   <Disclosure summary="Matching names">
                     <Suspense
@@ -126,7 +172,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                 >
                   <DataRegion
                     timestamp={timeZone}
-                    load={() => getPaidMarketing(paidFilters)}
+                    load={() => paidData}
                     isEmpty={() => false}
                     emptyMessage="This store has no ad delivery in the selected dates."
                   >
@@ -141,6 +187,12 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                     )}
                   </DataRegion>
                 </Suspense>
+                <SelectFilter
+                  name="breakdown"
+                  label="Break down spend by"
+                  value={breakdownDimension(params)}
+                  options={[...BREAKDOWN_DIMENSIONS]}
+                />
                 <Suspense
                   key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${comparison?.mode}|${breakdownDimension(params)}|${nameKey}`}
                   fallback={<LoadingState variant="chart" label="Loading spend breakdown" />}
@@ -204,7 +256,7 @@ function PaidMarketingView({
   const money = formatMoneyIn(currency);
   const hasCreatives = appConfig.nav.some((item) => item.href === "/creatives");
   const grain = parseTimeGrain(params);
-  const { series, byDate, channels, folded } = channelChart(data.channelDays, metric, filters.channel, grain);
+  const { series, byDate, folded } = channelChart(data.channelDays, metric, filters.channel, grain);
   const chart = buildChartData(
     [...new Set(datesInRange(filters.range).map((date) => periodStart(date, grain)))].map((date) => {
       const values: Record<string, PointValue> = {};
@@ -219,22 +271,6 @@ function PaidMarketingView({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap gap-4">
-        <SelectFilter name="grain" label="Trend interval" value={grain} options={[...TIME_GRAINS]} />
-        <SelectFilter
-          name="metric"
-          label="Measure"
-          value={metric}
-          options={PAID_METRICS.map((value) => ({ value, label: METRIC_LABELS[value] }))}
-        />
-        <ChannelFilter
-          name="channel"
-          label="Channel"
-          value={filters.channel ?? ""}
-          allLabel="All channels"
-          channels={channels}
-        />
-      </div>
       {!data.channelDays.some((day) => !filters.channel || day.channel === filters.channel) ? (
         <EmptyState
           message={

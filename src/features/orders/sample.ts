@@ -1,3 +1,4 @@
+import { matchesSalesChannel } from "@/lib/filters";
 /**
  * Orders, sample. Each day's orders are generated from the store and the
  * date alone, so any page, search, or detail read regenerates the same
@@ -125,7 +126,7 @@ export async function sampleOrders(filters: OrdersFilters): Promise<OrdersPage> 
   const rows = datesInRange(filters.range)
     .flatMap((date) => ordersForDay(filters.storeId, date))
     .filter((order) => processed(order).slice(0, 10) <= filters.range.to)
-    .filter((order) => !filters.channel || (order.sm_channel ?? "(none)") === filters.channel)
+    .filter((order) => matchesSalesChannel(filters.channel, order.sm_channel))
     .filter((order) => !filters.search || matchesSearch(order, filters.search))
     .filter((order) => !filters.cursor || isAfterCursor(order, filters.cursor))
     .sort(compareNewestFirst)

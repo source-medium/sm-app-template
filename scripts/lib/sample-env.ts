@@ -12,6 +12,7 @@ export const sampleEnvironment = Object.fromEntries(
     "APP_BASIC_AUTH",
     "APP_STORE_ID",
     "APP_REQUIRE_LIVE",
+    "APP_ENVIRONMENT",
     "CF_ACCESS_TEAM_DOMAIN",
     "CF_ACCESS_AUD",
     "BIGQUERY_MAX_BYTES_BILLED",

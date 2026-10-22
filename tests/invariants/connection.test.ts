@@ -6,6 +6,7 @@ import { liveEnv, makeServiceAccountKey } from "../helpers/service-account";
 import { createFakeBigQuery, googleError, hang, queryResponse } from "../fake-bigquery/fake-bigquery";
 import { emit, setLogEmitter } from "@/lib/data/log";
 import { ROSTER_FIELDS } from "../helpers/live";
+import { POST } from "@/app/(app)/connection/check/route";
 
 const originalEmit = emit;
 const row = (values: unknown[]) => ({ f: values.map((v) => ({ v })) });
@@ -60,6 +61,22 @@ afterEach(() => {
 });
 
 describe("connection diagnostics", () => {
+  it("stamps the check response with the serving instance and completion time", async () => {
+    vi.stubEnv("APP_ENVIRONMENT", "production");
+    vi.stubEnv("SM_BUILD_ID", "current-build");
+    const response = await POST(
+      new Request("https://example.test/connection/check", {
+        method: "POST",
+        headers: { origin: "https://example.test" },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      mode: "sample",
+      instance: { environment: "Production", build: "current-build", requireLive: false },
+      checkedAt: expect.stringContaining("UTC"),
+    });
+  });
   it("uses the real protocol, respects the deployment store, and returns no credential or data values", async () => {
     const { warehouse, fake, key } = await setup();
     const report = await warehouse.checkConnection();

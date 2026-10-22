@@ -26,3 +26,7 @@ Follow `docs/data.md` in this repository. In order:
    `pnpm check` do not verify warehouse numbers.
 
 Then run `pnpm check`.
+
+## Reference dashboard parity
+
+Follow docs/reconciliation.md when adapting a reference dashboard. Freeze store, dates/time zone, currency, sales channels and attribution before comparing scoped CSV totals. Use `pnpm reconcile` and retain unresolved measures. Summary orders are not valid-order detail or unique customers; platform revenue is not deduplicated store revenue. Do not introduce CAC from an unreconciled customer denominator or change SQL solely to hit an expected number.

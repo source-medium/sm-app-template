@@ -149,7 +149,7 @@ export function DataTable({
                     key={cell.id}
                     className={cn(
                       column?.align === "right" && "text-right tabular-nums",
-                      column?.nowrap && "whitespace-nowrap",
+                      column?.nowrap && "max-w-none! whitespace-nowrap!",
                     )}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

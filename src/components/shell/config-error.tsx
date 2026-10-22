@@ -4,15 +4,20 @@
  * No query runs and no sample data is shown in its place.
  */
 import { AlertTriangle } from "lucide-react";
-import type { ConfigProblem } from "@/lib/config/env.server";
+import { instanceInfo, type ConfigProblem } from "@/lib/config/env.server";
 
 export function ConfigErrorScreen({ problems }: { problems: ConfigProblem[] }) {
+  const info = instanceInfo();
   return (
     <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center gap-6 p-6">
       <div className="flex items-center gap-2">
         <AlertTriangle className="size-5 text-destructive" aria-hidden />
         <h1 className="text-xl font-semibold">This app&apos;s configuration needs attention</h1>
       </div>
+      <p className="text-sm text-muted-foreground">
+        Instance: {info.environment}. Build: <code>{info.build}</code>. Update this instance's settings, save and
+        deploy.
+      </p>
       <ul className="flex list-disc flex-col gap-2 pl-5 text-sm">
         {problems.map((problem) => (
           <li key={`${problem.variable}:${problem.message}`}>{problem.message}</li>

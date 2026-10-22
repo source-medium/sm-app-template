@@ -717,3 +717,9 @@ name variations within the period.
 **Matching names** shows up to 50 distinct combinations for inspection; its limit
 does not limit report totals. Invalid rules stop the report until cleared.
 No naming taxonomy is inferred, and filters never rewrite warehouse names.
+
+## Summary report scope
+
+Overview and Performance tables opt into `appConfig.summaryMaxDays` (366 by default) while detail views retain `dateRange.maxDays` (90). Pass the same maximum to ReportPage and csvExport so the URL, browser validation and download agree. Quarter-to-date and year-to-date presets appear only when they fit the report's bound. Performance uses a grain-specific aggregate row bound and rejects excess platform groups rather than truncating totals.
+
+For multiple sales channels, copy Overview's `SalesChannelFilter` wrapper outside Suspense and `MultiChannelFilter` inside it. The wrapper owns one form value while the roster loads or fails. The shared `SALES_CHANNEL_PREDICATE` accepts bound legacy single-channel values and canonical JSON selections. Keep explicit All selections in links and exports as `sales_channel=` so customer defaults cannot reapply. See [reconciliation.md](reconciliation.md) for metric definitions and reference parity.

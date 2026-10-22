@@ -1,5 +1,4 @@
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
-import { SelectFilter } from "@/components/patterns/select-filter";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { periodChanges } from "@/lib/comparison";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
@@ -7,12 +6,7 @@ import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatMoney, formatMoneyIn, formatPercent } from "@/lib/format";
 import { withParams, type SearchParams } from "@/lib/filters";
 import type { Comparison } from "@/lib/comparison";
-import {
-  BREAKDOWN_DIMENSIONS,
-  type BreakdownDimension,
-  type PaidMarketingFilters,
-  type SpendBreakdown,
-} from "./queries";
+import { type BreakdownDimension, type PaidMarketingFilters, type SpendBreakdown } from "./queries";
 
 export function SpendBreakdownView({
   data,
@@ -37,12 +31,6 @@ export function SpendBreakdownView({
   return (
     <section aria-label="Spend breakdown" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <SelectFilter
-          name="breakdown"
-          label="Break down spend by"
-          value={dimension}
-          options={[...BREAKDOWN_DIMENSIONS]}
-        />
         {comparison && <ComparisonCaption comparison={comparison} issue={issue} />}
       </div>
       {(dimension === "type" || dimension === "tactic") && (

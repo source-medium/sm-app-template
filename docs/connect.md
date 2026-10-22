@@ -23,8 +23,7 @@ The app has three states, always shown in the top bar:
 There is no partial mode and no fallback: a broken live configuration never
 quietly shows sample numbers.
 Hosted previews set `APP_REQUIRE_LIVE=true`: even a completely missing live
-block is an error. Set it in production runtime settings when connecting your
-warehouse too, so accidentally removing the whole block cannot restore sample mode.
+block is an error. Run `pnpm app:setup plan --auth access --data live` (or `--auth basic`) before connecting production. This writes the production requirement into `wrangler.jsonc`; deploy it so accidentally removing the whole block cannot restore sample mode. See [setup.md](setup.md).
 
 ## 1. Run it locally on sample data
 
@@ -162,7 +161,7 @@ You only need to complete private entry and account steps it cannot perform.
    For a single-store app, add `APP_STORE_ID` using its exact `sm_store_id`;
    omit it to keep the multi-store picker. Add `SM_CONNECTION` as one
    **Secret**, then [configure the chosen sign-in](auth.md#configure-the-chosen-sign-in).
-   Set `APP_REQUIRE_LIVE=true` as a runtime variable, then save and deploy the settings.
+   First record live intent with `pnpm app:setup plan --auth access --data live` (or `--auth basic`), then deploy the generated `APP_REQUIRE_LIVE=true` setting. For Access, add only `SM_CONNECTION` from the issued block, keep the Access pair and remove `APP_BASIC_AUTH`. Save and deploy the settings.
    Enter the values privately yourself. Do not put the block in agent chat, the
    agent's environment, build variables, or Previews Base settings. Viewer-only
    `APP_BASIC_AUTH` may be entered privately for [hosted verification](cloud.md#verify-a-hosted-build); the production warehouse key stays in the Worker. A separate

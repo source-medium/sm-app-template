@@ -1,4 +1,5 @@
 import { OVERVIEW_RELATION } from "./rows";
+import { appConfig } from "@/app.config";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ChartCard } from "@/components/charts/chart-card";
@@ -12,7 +13,7 @@ import { periodChanges, type Comparison } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
 import {
   parseChoice,
-  parseSalesChannel,
+  summarySalesChannel,
   withParams,
   datesInRange,
   rangeLength,
@@ -37,7 +38,7 @@ export const metadata: Metadata = { title: "Overview" };
 
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
-  const channel = parseSalesChannel(params);
+  const channel = summarySalesChannel(params);
   const grain = parseTimeGrain(params);
   const trendMode = parseChoice(
     params,
@@ -47,6 +48,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   );
   return (
     <ReportPage
+      maxDays={appConfig.summaryMaxDays}
       sources={[
         {
           relation: OVERVIEW_RELATION,
@@ -56,7 +58,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       title="Overview"
       description="Executive Summary metrics for one store, with an explicit sales-channel scope."
       pathname="/overview"
-      params={params}
+      params={{ ...params, sales_channel: channel ?? "" }}
       agentFilters={{ sales_channel: channel, grain, trend: trendMode }}
       comparisons
     >
@@ -64,7 +66,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         const selected: OverviewFilters = { ...filters, channel, grain };
         return (
           <>
-            <div className="flex flex-wrap items-end gap-4">
+            <div className="flex flex-wrap items-start gap-4">
               <OverviewControls filters={selected} />
               <SelectFilter name="trend" label="Trend values" value={trendMode} options={[...TREND_MODES]} />
             </div>
@@ -80,7 +82,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                 emptyAction={
                   channel
                     ? {
-                        href: withParams("/overview", params, { sales_channel: null }),
+                        href: withParams("/overview", params, { sales_channel: "" }),
                         label: "Show all sales channels",
                       }
                     : undefined
@@ -133,7 +135,7 @@ function OverviewView({
   const dailyTableHref =
     filters.grain === "day"
       ? "#summary-heading"
-      : `${withParams("/overview", {}, { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? null, compare: comparison?.mode ?? null, grain: "day" })}#summary-heading`;
+      : `${withParams("/overview", {}, { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? "", compare: comparison?.mode ?? null, grain: "day" })}#summary-heading`;
   function trend(key: OverviewMeasureKey) {
     return {
       tableHref: dailyTableHref,

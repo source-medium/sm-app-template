@@ -1,3 +1,4 @@
+import { SALES_CHANNEL_PREDICATE } from "@/lib/data/channel-sql";
 /**
  * Orders, live. One bounded query per page: newest first by processed time
  * (store-local), then by order key, starting after the cursor. Filtering on
@@ -34,7 +35,7 @@ export async function queryOrders(filters: OrdersFilters): Promise<OrdersPage> {
   ];
   if (filters.channel) {
     params.push({ name: "channel", type: "STRING", value: filters.channel });
-    predicates.push("IFNULL(sm_channel, '(none)') = @channel");
+    predicates.push(SALES_CHANNEL_PREDICATE);
   }
   if (filters.search) {
     params.push({ name: "search", type: "STRING", value: filters.search });

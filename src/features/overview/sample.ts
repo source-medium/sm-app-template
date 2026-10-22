@@ -1,3 +1,4 @@
+import { matchesSalesChannel } from "@/lib/filters";
 /**
  * Overview, sample. Generates source-grain rows (store, channel,
  * sub-channel, date) the way the warehouse relation holds them, then
@@ -51,7 +52,7 @@ export function aggregateOverviewWire(
       row.sm_store_id !== storeId ||
       row.date < range.from ||
       row.date > range.to ||
-      (channel && row.sm_channel !== channel)
+      !matchesSalesChannel(channel, row.sm_channel)
     )
       continue;
     if (row.order_gross_revenue_cents !== null) gross = (gross ?? 0n) + row.order_gross_revenue_cents;

@@ -356,3 +356,17 @@ export function describeConfig(config: AppConfig): string {
       : "protected by Cloudflare Access";
   return `${data}, ${guard}${config.storeId !== null ? ", restricted to one store" : ""}`;
 }
+
+/** Safe instance metadata. These values never include a credential or warehouse coordinate. */
+export function instanceInfo() {
+  return {
+    environment:
+      process.env.APP_ENVIRONMENT === "production"
+        ? "Production"
+        : process.env.APP_ENVIRONMENT === "preview"
+          ? "Branch preview"
+          : "Local / unassigned",
+    requireLive: process.env.APP_REQUIRE_LIVE === "true",
+    build: buildId(),
+  };
+}

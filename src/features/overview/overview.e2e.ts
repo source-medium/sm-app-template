@@ -1,3 +1,4 @@
+import { choose } from "../../../e2e/helpers";
 import { switchStore } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
 
@@ -6,7 +7,7 @@ test("overview: cumulative trends and revenue highlights preserve scope and exac
 }, testInfo) => {
   await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=previous");
   const totals = await page.locator('[data-slot="kpi-value"]').allTextContents();
-  await page.getByLabel("Trend values", { exact: true }).selectOption("cumulative");
+  await choose(page, "Trend values", "cumulative");
   await expect(page).toHaveURL(/trend=cumulative/);
   expect(new URL(page.url()).searchParams.get("store")).toBe("sample-store-a");
   expect(new URL(page.url()).searchParams.get("compare")).toBe("previous");
@@ -27,7 +28,7 @@ test("overview: cumulative trends and revenue highlights preserve scope and exac
   await page.screenshot({ path: testInfo.outputPath("foundation-overview.png"), fullPage: true });
   await page.reload();
   await expect(page.getByLabel("Trend values", { exact: true })).toHaveValue("cumulative");
-  await page.getByLabel("Compare with").selectOption("off");
+  await choose(page, "Compare with", "off");
   await expect(page.locator("summary").filter({ hasText: /^Largest daily revenue changes$/ })).toHaveCount(0);
 });
 test("overview: revenue detail is opt-in and preserves signed deductions and comparisons", async ({ page }) => {
@@ -47,7 +48,7 @@ test("overview: revenue detail is opt-in and preserves signed deductions and com
     .filter({ hasText: /^Revenue and deductions$/ })
     .click();
   await expect(revenue).toBeHidden();
-  await page.getByLabel("Sales channel", { exact: true }).selectOption("Online DTC");
+  await choose(page, "Sales channel", "Online DTC");
   await expect(page).toHaveURL(/sales_channel=Online/);
   await expect(page.getByRole("region", { name: "Acquisition economics", exact: true })).toHaveCount(0);
 });
@@ -102,7 +103,7 @@ test("overview: period and year comparisons survive links, navigation, and refre
   const comparison = page.locator('details[aria-label="Comparison period"]');
   await expect(comparison).toContainText("Aug 25, 2026 – Aug 31, 2026");
   await expect(page.locator('[data-slot="kpi-comparison"]:visible')).toHaveCount(6);
-  await page.getByLabel("Compare with").selectOption("year");
+  await choose(page, "Compare with", "year");
   await expect(page).toHaveURL(/compare=year/);
   await page.getByRole("button", { name: "Copy report link" }).click();
   await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
@@ -131,7 +132,7 @@ test("overview: period and year comparisons survive links, navigation, and refre
     await expect(page).toHaveURL(/\/overview\?/);
   }
   await expect(page.getByLabel("Compare with")).toHaveValue("year");
-  await page.getByLabel("Compare with").selectOption("off");
+  await choose(page, "Compare with", "off");
   await expect(page).toHaveURL(/compare=off/);
   await expect(comparison).toHaveCount(0);
   await expect(page.locator('[data-slot="kpi-comparison"]:visible')).toHaveCount(0);
@@ -187,10 +188,10 @@ test("overview: KPI trends expose daily values and purchase measures follow filt
   const revenueText = await first.getByRole("cell").nth(1).innerText();
   // selectOption sets the value programmatically, even while inert blocks real pointer/keyboard input.
   await expect(page.getByLabel("Sales channel", { exact: true })).not.toHaveAttribute("inert");
-  await page.getByLabel("Sales channel", { exact: true }).selectOption("Amazon");
+  await choose(page, "Sales channel", "Amazon");
   await expect(page).toHaveURL(/sales_channel=Amazon/);
   await expect(first.getByRole("cell").nth(1)).not.toHaveText(revenueText);
-  await page.getByLabel("Compare with").selectOption("off");
+  await choose(page, "Compare with", "off");
   await expect(purchases.getByRole("columnheader", { name: "Revenue change", exact: true })).toHaveCount(0);
   await expect(totals.getByRole("img")).toHaveCount(6);
   await expect(page).toHaveTitle(/Overview/);
@@ -259,16 +260,16 @@ test("overview: comparison dates and the dashed baseline survive the table toggl
   await card.getByRole("button", { name: "View as table" }).click();
   await expect(card.getByRole("columnheader", { name: "Comparison", exact: true })).toBeVisible();
   await expect(card.getByRole("cell").filter({ hasText: "Aug 26, 2026" })).toBeVisible();
-  await page.getByLabel("Compare with").selectOption("off");
+  await choose(page, "Compare with", "off");
   await expect(page).toHaveURL(/compare=off/);
   await expect(card.locator('.recharts-line-curve[stroke-dasharray="6 4"]')).toHaveCount(0);
 });
 
 test("overview: channel and grain filter the summary and raw export together", async ({ page, request }) => {
   await page.goto("/overview?store=sample-store-a&from=2026-09-02&to=2026-09-08&compare=year");
-  await page.getByLabel("Sales channel", { exact: true }).selectOption("Amazon");
+  await choose(page, "Sales channel", "Amazon");
   await expect(page).toHaveURL(/sales_channel=Amazon/);
-  await page.getByLabel("Summary rows", { exact: true }).selectOption("week");
+  await choose(page, "Summary rows", "week");
   await expect(page).toHaveURL(/grain=week/);
   expect(new URL(page.url()).searchParams.get("compare")).toBe("year");
   const table = page.getByRole("table", { name: "Business summary", exact: true });
@@ -292,7 +293,7 @@ test("overview: an unknown channel stays explicit and can be reset", async ({ pa
   await page.goto("/overview?store=sample-store-a&sales_channel=unknown");
   await expect(page.getByText("No rows match this store, sales channel, and date range.")).toBeVisible();
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("unknown");
-  await page.getByLabel("Sales channel", { exact: true }).selectOption("");
+  await choose(page, "Sales channel", "");
   await expect(page.getByRole("table", { name: "Business summary", exact: true })).toBeVisible();
 });
 
@@ -300,19 +301,19 @@ test("overview: date and channel drafts apply together, and invalid ranges never
   await page.goto("/overview?store=sample-store-a&from=2026-09-09&to=2026-09-28");
   await page.getByLabel("From", { exact: true }).fill("2026-09-01");
   await expect(page).toHaveURL(/from=2026-09-09/);
-  await page.getByLabel("Sales channel", { exact: true }).selectOption("Amazon");
+  await choose(page, "Sales channel", "Amazon");
   await expect(page).toHaveURL(
     (url) => url.searchParams.get("from") === "2026-09-01" && url.searchParams.get("sales_channel") === "Amazon",
   );
   await page.getByLabel("From", { exact: true }).fill("2026-09-30");
-  await page.getByLabel("Sales channel", { exact: true }).selectOption("");
+  await choose(page, "Sales channel", "");
   await expect(page.getByRole("main").getByRole("alert")).toContainText("start date must be on or before");
   await expect(page).toHaveURL(/from=2026-09-01/);
   await expect(page.getByLabel("From", { exact: true })).toBeFocused();
-  await page.getByLabel("From", { exact: true }).fill("2026-01-01");
+  await page.getByLabel("From", { exact: true }).fill("2025-01-01");
   await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
-  await expect(page.getByRole("main").getByRole("alert")).toContainText("90 days or fewer");
-  for (const dates of ["from=2026-09-30&to=2026-09-01", "from=2026-01-01&to=2026-09-30", "from=bad&to=bad"]) {
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("366 days or fewer");
+  for (const dates of ["from=2026-09-30&to=2026-09-01", "from=2025-01-01&to=2026-09-30", "from=bad&to=bad"]) {
     await page.goto(`/overview?store=sample-store-a&${dates}`);
     await expect(page.getByRole("main").getByRole("alert")).toContainText("Check the date range");
     await expect(page.locator('[data-slot="kpi-value"]')).toHaveCount(0);

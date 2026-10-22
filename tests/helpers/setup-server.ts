@@ -7,6 +7,12 @@
 import { afterEach, vi } from "vitest";
 import { requestHeaders } from "./live";
 
+// Keep fixture expectations independent of the customer's reporting currency.
+// Currency-specific tests set their own verified code.
+vi.mock("@/app.config", async (original) => {
+  const config = await original<typeof import("@/app.config")>();
+  return { ...config, appConfig: { ...config.appConfig, currency: null } };
+});
 vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
 vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
 

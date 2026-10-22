@@ -5,7 +5,7 @@ description: Set up Cloudflare hosting and automatic deployments, prepare a host
 
 # Cloud setup and iteration
 
-Read `AGENTS.md` and `docs/cloud.md`. Default to Cloudflare Artifacts for source
+Read `AGENTS.md`, `docs/setup.md` and `docs/cloud.md`. Use `pnpm app:setup plan` to preserve known sign-in, live intent and actual target URLs in the customer copy; use `pnpm app:setup status` to observe current readiness. Default to Cloudflare Artifacts for source
 and Workers Builds for checks, branch previews and automatic main deployments.
 GitHub is optional source hosting for an existing repository or browser agent
 that needs it; GitHub Actions and PRs are not required for the Artifacts path.
@@ -69,6 +69,7 @@ keep that limitation and its pricing visible during first setup.
 4. Cloudflare runs `deploy:preview`, including the full `check:deploy` gate,
    against the separate preview Worker. Wait for the current commit's successful
    build and get the actual URL from `<app>-preview` → Previews (or a linked PR).
+   Share its build link while pending. Return the actual preview URL as soon as deployed with verification pending, then continue verification. Never substitute localhost or a guessed URL.
    On first setup, verify the source connection, build/deploy/Preview commands
    and successful push-triggered build before claiming auto-deploy is ready.
    Do not infer this from GitHub status or a local check.
@@ -99,6 +100,8 @@ keep that limitation and its pricing visible during first setup.
    it with approval using current runtime settings. Before an urgent Cloudflare
    version rollback, follow `docs/operations.md#rolling-back`: it can restore
    old passwords and store restrictions. Revert the source too.
+
+For Access, enter only `SM_CONNECTION` from the issued block and omit or remove `APP_BASIC_AUTH` in each hosted environment. Use `pnpm app:setup credentials <target>` for the exact destination. When connecting production, record live intent so the generated `APP_REQUIRE_LIVE=true` ships with its source.
 
 Follow `docs/cloud.md#connect-your-data` and `#connect-preview-data` for private
 credential placement. Reuse **Production** for the production Worker only and

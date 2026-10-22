@@ -25,6 +25,7 @@ export type ReportFilterBarProps = {
   today: string | null;
   comparisonLabel?: string;
   dates: boolean;
+  maxDays?: number;
   comparison?: Comparison;
   fixedStore: boolean;
   allStores?: boolean;
@@ -75,10 +76,11 @@ function StoreFilterBar({
   comparison,
   fixedStore,
   allStores,
+  maxDays,
 }: Omit<ReportFilterBarProps, "roster"> & { stores: StoreOption[] }) {
   const presets =
     dates && today !== null && range !== null
-      ? datePresets(today).map(({ label, range: preset }) => ({
+      ? datePresets(today, maxDays).map(({ label, range: preset }) => ({
           label,
           href: withParams(pathname, params, { store: storeId, ...preset, cursor: null, order: null }),
           active: range.from === preset.from && range.to === preset.to,
@@ -101,6 +103,7 @@ function StoreFilterBar({
         from={range?.from}
         to={range?.to}
         maxDate={today ?? undefined}
+        maxDays={maxDays}
         presets={presets}
         carriedComparison={single(params, "compare")}
         comparisonLabel={comparisonLabel}

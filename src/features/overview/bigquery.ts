@@ -1,3 +1,5 @@
+import { rangeLength } from "@/lib/filters";
+import { SALES_CHANNEL_PREDICATE } from "@/lib/data/channel-sql";
 /**
  * Overview, live. One query aggregates the store's channel and sub-channel
  * rows to daily totals and computes the period totals in the same pass, so
@@ -15,14 +17,14 @@ import { OVERVIEW_RELATION, OverviewChannelRow, OverviewRow, toOverviewData } fr
  * One row per date, so the longest allowed range bounds the result; past it is an error, not a shorter
  * answer. A same-dates-last-year baseline can hold one more day, Feb 29.
  */
-const MAX_ROWS = appConfig.dateRange.maxDays + 1;
+const MAX_ROWS = appConfig.summaryMaxDays + 1;
 const GRAIN_SQL: Record<TimeGrain, string> = { day: "DAY", week: "WEEK(MONDAY)", month: "MONTH" };
 
 export async function queryOverview(filters: OverviewFilters): Promise<OverviewData> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "overview_daily",
-    maxRows: MAX_ROWS,
+    maxRows: Math.min(MAX_ROWS, rangeLength(filters.range)),
     sql: `
       WITH daily AS (
         SELECT
@@ -42,7 +44,7 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
         FROM ${warehouse.table(OVERVIEW_RELATION)}
         WHERE sm_store_id = @store_id
           AND date BETWEEN @start_date AND @end_date
-          AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
+          AND ${SALES_CHANNEL_PREDICATE}
         GROUP BY date
       )
       SELECT

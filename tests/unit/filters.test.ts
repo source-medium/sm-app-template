@@ -110,3 +110,11 @@ describe("URL filters", () => {
     expect(addDays("2026-03-08", 1)).toBe("2026-03-09");
   });
 });
+
+it("offers quarter and year presets only within a report's explicit bound", () => {
+  expect(datePresets("2026-10-22").some((p) => p.label === "Year to date")).toBe(false);
+  const yearly = datePresets("2026-10-22", 366).find((p) => p.label === "Year to date");
+  expect(yearly?.range).toEqual({ from: "2026-01-01", to: "2026-10-21" });
+  expect(dateRangeIssue(yearly?.range ?? {}, "2026-10-22", 366)).toBeNull();
+  expect(datePresets("2026-01-01", 366).some((p) => p.label === "Year to date")).toBe(false);
+});

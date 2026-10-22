@@ -58,7 +58,7 @@ export function OverviewSummary({
                   store: filters.storeId,
                   ...filters.range,
                   grain: filters.grain ?? "day",
-                  sales_channel: filters.channel ?? null,
+                  sales_channel: filters.channel ?? "",
                 },
               )}
             >

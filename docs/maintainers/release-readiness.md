@@ -401,3 +401,78 @@ publishing tenant data in fixtures.
 - Auth coverage is a development check. Runtime authorization remains
   mandatory, and new external consumers or per-person actions need a design
   and review beyond the shared viewer guards.
+
+## Setup and reporting improvements (2026-10-22)
+
+The template now pins Next 16.4.2, OpenNext Cloudflare 1.20.13 / AWS 4.1.12,
+Wrangler 4.152.0 and workers-types 5.20261019.1. The obsolete Next hydration
+and OpenNext query-encoding patches were removed after the installed hydration
+regressions and the encoded-query Worker smoke check passed. Middleware remains
+in the supported edge convention for this adapter; Next's proxy migration notice
+is not a reason to switch its runtime without a separate compatibility review.
+
+Local verification on Node 24 / macOS:
+
+- `pnpm check:deploy` passed, including 141 browser checks, the sanitized
+  Cloudflare build and secret scans (2,562 files and 153 rendered responses),
+  and every workerd smoke mode. One complete run took 106 seconds; per-stage
+  durations are recorded by the command in the ignored `.sm/release-timings.json`.
+- The unit suite passed 867 tests, with the existing Linux-only bootstrap check
+  skipped on macOS. Linux and Windows CI remain required for the final pushed
+  commit; local success does not replace them.
+- Forty-eight repeated browser checks passed across Overview channel/grain
+  changes, Paid marketing scope preservation and all Performance interactions.
+  The unit suite ran simultaneously to exercise output isolation. Hosted-check
+  unit subprocesses used a temporary output/report directory and did not remove
+  browser artifacts.
+- A separate copy with no dependencies, Git metadata or credentials completed
+  `setup-agent`, recorded live intent with `app:setup`, passed format/check and
+  built the Cloudflare Worker. Its generated intent stayed formatted after
+  adding workspace and viewer emails. Setting its reporting currency to USD
+  also passed checks and the Worker build; fixture expectations remain
+  independent of the customer's currency choice.
+- Synthetic `reconcile` CLI checks matched a nine-place decimal exactly and
+  returned a nonzero exit code for a one-unit difference at the ninth place.
+  No live warehouse parity claim follows from this synthetic check.
+- Removing Performance's feature, routes, navigation entry and icon in the
+  separate copy passed `pnpm check`. The shared implementation does not import
+  this new example. Other example-removal combinations were not rerun here.
+- The new platform comparison/detail layout and Connection instance metadata
+  were inspected in Chrome. Phone, dark-mode and accessibility coverage ran in
+  the browser gate. Local test servers and the synthetic rehearsal are temporary.
+
+Template-side concerns are covered by [setup.md](../setup.md) and
+[reconciliation.md](../reconciliation.md). The SourceMedium credential issuer is
+outside this repository: its current block includes a shared password, so the
+Access handoff explicitly copies only SM_CONNECTION and removes APP_BASIC_AUTH.
+An issuer-side auth-aware copy action would remove that remaining manual
+selection. Fresh account billing, app credential issuance, Access policy
+provisioning and a newly hosted customer deployment remain account-level
+rehearsals, not claims established by these local tests. No deployment or real
+credential rotation was performed for this change.
+
+### Review follow-up
+
+- Corrected the shared sales-channel predicate after BigQuery rejected
+  `SAFE.JSON_VALUE_ARRAY`. The normalized channel parameter uses
+  `JSON_VALUE_ARRAY`, which accepts legacy values and canonical string arrays.
+  Executed the generated Performance business, platform and channel-roster SQL
+  against DemoCo for September 1–7, 2026; all three returned their expected wire
+  types without truncation. This verifies execution and returned types,
+  not customer metric parity.
+- Added failing regressions for money sorted as text and platform sample
+  measures that did not add across disjoint sales channels. Sorting now uses
+  the existing decimal conversion, and fixtures round each source channel
+  before aggregation. Added a streamed-form regression for a selected platform
+  disappearing while its data loads; the picker and tables share one query.
+- Connection reports now stamp the serving instance in the check response,
+  avoiding a stale page's build label after a deployment. The shared report
+  formatter supplies both the displayed and copied text.
+- The OpenNext upgrade introduced `glob@10.3.3` through
+  `@node-minify/core@9.0.2`. A parent-specific override selects patched
+  `glob@10.5.0` for [GHSA-5j98-mcp5-4vw2](https://github.com/advisories/GHSA-5j98-mcp5-4vw2).
+  The audit still reports pre-existing development-tool advisories in braces,
+  Vite and Vitest's mocker, including high-severity
+  [braces](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) and
+  [Vite](https://github.com/advisories/GHSA-587h-7wmj-h5pm) issues. Those remain
+  outside this reporting change; the audit is not clean.

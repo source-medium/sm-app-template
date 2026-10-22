@@ -1,3 +1,4 @@
+import { choose } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
 import { appConfig } from "@/app.config";
 import { MAX_NAME_FILTER_QUERY_LENGTH } from "@/lib/ad-name-filters";
@@ -9,9 +10,9 @@ test("paid marketing: return intervals, classifications, and campaign creative d
   );
   await expect(page.getByRole("img", { name: "Platform ROAS by channel over time chart", exact: true })).toBeVisible();
   await expect(page.getByRole("table", { name: "Spend by campaign tactic details", exact: true })).toBeVisible();
-  await page.getByLabel("Trend interval", { exact: true }).selectOption("month");
+  await choose(page, "Trend interval", "month");
   await expect(page).toHaveURL(/grain=month/);
-  await page.getByLabel("Measure", { exact: true }).selectOption("cpo");
+  await choose(page, "Measure", "cpo");
   await expect(page).toHaveURL(/metric=cpo/);
   const campaigns = page.getByRole("table", { name: "Campaigns by spend", exact: true });
   if (!appConfig.nav.some((item) => item.href === "/creatives")) {
@@ -30,7 +31,7 @@ test("paid marketing: return intervals, classifications, and campaign creative d
   });
   expect(params.get("campaign")).toMatch(/^cmp-/);
   await expect(page.getByText("Platform ROAS", { exact: true }).first()).toBeVisible();
-  await page.getByLabel("View", { exact: true }).selectOption("table");
+  await choose(page, "View", "table");
   const returns = page.getByRole("table", { name: "Creative returns", exact: true });
   await expect(returns).toBeVisible();
   await returns.getByRole("button", { name: "Platform ROAS", exact: true }).click();
@@ -51,14 +52,14 @@ test("paid marketing: ranked spend shares, dimension changes, and comparisons ho
   await expect(channelTable.getByRole("columnheader", { name: "Change vs comparison" })).toBeVisible();
   await channelTable.getByRole("link", { name: "Meta", exact: true }).click();
   await expect(page).toHaveURL(/channel=Meta/);
-  await page.getByLabel("Break down spend by", { exact: true }).selectOption("campaign");
+  await choose(page, "Break down spend by", "campaign");
   await expect(page).toHaveURL(/breakdown=campaign/);
   const params = new URL(page.url()).searchParams;
   expect(params.get("channel")).toBe("Meta");
   expect(params.get("compare")).toBe("year");
   const campaignTable = region.getByRole("table", { name: "Spend by campaign details", exact: true });
   await expect(campaignTable.locator("tbody tr")).toHaveCount(3);
-  await page.getByLabel("Compare spend breakdown with").selectOption("off");
+  await choose(page, "Compare spend breakdown with", "off");
   await expect(page).toHaveURL(/compare=off/);
   await expect(campaignTable.getByRole("columnheader", { name: "Change vs comparison" })).toHaveCount(0);
   expect(new URL(page.url()).searchParams.get("breakdown")).toBe("campaign");
@@ -110,11 +111,12 @@ test("paid marketing: calendar presets preserve the store and channel", async ({
 
 test("paid marketing: each picker replaces its own value and preserves the other filters", async ({ page }) => {
   await page.goto("/paid-marketing?store=sample-store-b&from=2026-09-01&to=2026-09-07&metric=spend&channel=Google");
-  await page.getByLabel("Measure", { exact: true }).selectOption("clicks");
+  await choose(page, "Measure", "clicks");
   await expect(page).toHaveURL(/metric=clicks/);
   // Let the clicks view render before the next choice, so its render cannot replace the channel picker mid-change.
   await expect(page.getByText("Clicks by channel over time", { exact: true })).toBeVisible();
-  await page.getByLabel("Channel", { exact: true }).selectOption("Meta");
+  await expect(page.getByLabel("Channel", { exact: true })).not.toHaveAttribute("inert");
+  await choose(page, "Channel", "Meta");
   await expect(page).toHaveURL(/channel=Meta/);
   const params = new URL(page.url()).searchParams;
   expect(params.getAll("metric")).toEqual(["clicks"]);
@@ -127,7 +129,7 @@ test("paid marketing: each picker replaces its own value and preserves the other
 
 test("paid marketing: a channel filter narrows the campaigns", async ({ page }) => {
   await page.goto("/paid-marketing");
-  await page.getByLabel("Channel", { exact: true }).selectOption("Google");
+  await choose(page, "Channel", "Google");
   await expect(page).toHaveURL(/channel=Google/);
   await expect(page.getByRole("heading", { name: "Campaigns in Google" })).toBeVisible();
   const channels = await page
@@ -170,9 +172,9 @@ test("paid marketing: name scope carries through comparisons, CSV, and creative 
   const campaigns = page.getByRole("table", { name: "Campaigns by spend" });
   await expect(campaigns.locator("tbody tr")).toHaveCount(1);
   await expect(campaigns).toContainText("[retargeting] Site Visitors");
-  await page.getByLabel("Compare spend breakdown with").selectOption("year");
+  await choose(page, "Compare spend breakdown with", "year");
   await expect(page).toHaveURL(/compare=year/);
-  await page.getByLabel("Break down spend by").selectOption("campaign");
+  await choose(page, "Break down spend by", "campaign");
   await expect(page.getByRole("table", { name: "Spend by campaign details" }).locator("tbody tr")).toHaveCount(1);
   const href = await page.getByRole("link", { name: "Download CSV" }).getAttribute("href");
   if (!href) throw new Error("Missing CSV link");
@@ -203,7 +205,7 @@ test("paid marketing: a near-limit Unicode name filter survives client navigatio
   expect(query.length).toBeLessThanOrEqual(MAX_NAME_FILTER_QUERY_LENGTH);
   await page.goto(`/paid-marketing?store=sample-store-a&from=2026-09-01&to=2026-09-07&${query}`);
   await expect(page.getByRole("table", { name: "Campaigns by spend" })).toBeVisible();
-  await page.getByLabel("Measure", { exact: true }).selectOption("roas");
+  await choose(page, "Measure", "roas");
   await expect(page).toHaveURL(/metric=roas/);
   expect(new URL(page.url()).searchParams.get("names")).toBe(names);
   await expect(page.getByRole("table", { name: "Campaigns by spend" })).toBeVisible();

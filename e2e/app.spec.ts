@@ -337,6 +337,7 @@ test("copy link freezes applied defaults and ignores unapplied filter edits", as
     from,
     to,
     ...((await compare.count()) ? { compare: await compare.inputValue() } : {}),
+    ...(["/overview", "/performance"].includes(home) ? { sales_channel: "" } : {}),
   });
   await page.goto(copied.href);
   await expect(page.getByRole("button", { name: /^Store:/ })).toHaveAttribute("data-store-id", store ?? "");
@@ -447,7 +448,11 @@ test("refresh re-reads the report, shows progress, and keeps applied filters", a
   let refreshRequests = 0;
   await page.route("**/*", async (route) => {
     const request = route.request();
-    if (request.headers().rsc === "1" && new URL(request.url()).pathname === home) {
+    if (
+      request.headers().rsc === "1" &&
+      request.headers()["next-router-prefetch"] !== "1" &&
+      new URL(request.url()).pathname === home
+    ) {
       refreshRequests += 1;
       const response = await route.fetch();
       await held;

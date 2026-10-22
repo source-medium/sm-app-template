@@ -1,3 +1,4 @@
+import { matchesSalesChannel } from "@/lib/filters";
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits, sumDecimals, toUnits } from "@/lib/data/decimal";
 import { datesInRange, latestDate, type ReportFilters, type DateRange } from "@/lib/filters";
@@ -89,7 +90,7 @@ export function aggregateProducts(
     if (
       row.storeId !== filters.storeId ||
       !row.valid ||
-      (Boolean(filters.channel) && (row.channel ?? "(none)") !== filters.channel) ||
+      !matchesSalesChannel(filters.channel, row.channel) ||
       (!inRange(row.date, filters.range) && !inRange(row.date, baseline))
     )
       continue;
@@ -180,7 +181,7 @@ export function aggregateProductCoverage(
       row.valid &&
       row.date >= filters.range.from &&
       row.date <= filters.range.to &&
-      (!filters.channel || (row.channel ?? "(none)") === filters.channel),
+      matchesSalesChannel(filters.channel, row.channel),
   );
   const productLines = rows.filter((row) => row.orderLineId !== null);
   return {

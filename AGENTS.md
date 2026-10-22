@@ -14,6 +14,8 @@ Keep only UI components the app uses; add more when a view needs them.
 
 ## Commands
 
+- `pnpm app:setup plan|status|credentials`: owner setup intent, current readiness and exact private-entry destination (docs/setup.md).
+- `pnpm reconcile <reference.json> <export.csv>`: compare a reviewed reference with a scoped live CSV (docs/reconciliation.md).
 - `pnpm dev`: checks configuration, then serves on http://127.0.0.1:3000.
 - `pnpm check`: format, lint, types, auth and store-scope coverage, skill copies, all tests. Under a minute.
 - `pnpm schema <relation>`: a relation's columns and types (never rows).
@@ -75,7 +77,7 @@ docs/                         Guides (index below)
 3. Add one entry to `nav` in `app.config.ts`.
 4. Wrap each data region in `<Suspense key={…the filters it reads…} fallback={<LoadingState …/>}>`
    and `<DataRegion timestamp={timeZone}>` (from the `ReportPage` context), so it
-   has loading, empty, error, and incompatible-schema states. A view with no date
+   has loading, empty, error, and incompatible-schema states. A bounded aggregate view may opt into `maxDays={appConfig.summaryMaxDays}`; pass the same maximum to its `csvExport`. Keep detail views at the shorter default. A view with no date
    range (current state, such as inventory) passes `dates={false}` to `ReportPage`.
 5. Add tests beside the view: `fixture-contract.test.ts` (sample shape and
    totals), `live-contract.test.ts` (the SQL, the `store_id` and other parameters,
@@ -85,6 +87,7 @@ docs/                         Guides (index below)
 
 Copy `products` for a simple page (KPIs, one chart, one table; the simplest view),
 `overview` (multi-measure daily summaries, grains, comparisons, CSV),
+`performance` (business metric groups and platform comparison/detail period tables),
 `paid-marketing` (filters), `creatives` (cards), `orders` (search/detail), or
 `retention` (cohorts), all in `src/features`. See `docs/removing-the-example.md`
 to delete any of them.

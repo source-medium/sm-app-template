@@ -6,22 +6,6 @@ onlyBuiltDependencies:
   - workerd
   - simple-git-hooks
 
-# Upstream fixes not yet in the pinned versions. Each key covers its patch
-# releases, so a routine update keeps the patch; pnpm refuses to install when a
-# patch no longer applies, so an upgrade cannot drop one silently.
-# - @opennextjs/aws: re-encode the query when rebuilding req.url on Workers
-#   (`a%26b` otherwise reaches route handlers and useSearchParams as `a&b=`).
-#   Remove when OpenNext encodes it itself.
-# - next: React 19.3's hydration-replay fix (facebook/react#35494), backported
-#   into all of Next's stable and experimental DOM replay bundles, including
-#   profiling. Updating the react-dom package alone does not fix these copies.
-#   Remove only after checking the exact replacement's compiled bundles for
-#   the upstream fix and passing tests/static/react-hydration.test.ts and E2E.
-#   A major version (including Next 16) is not evidence that the fix shipped.
-patchedDependencies:
-  "@opennextjs/aws@~4.1.7": patches/@opennextjs__aws@4.1.7.patch
-  "next@~15.5.27": patches/next@15.5.27.patch
-
 # eslint-plugin-jsx-a11y 6.10.2 is the current release and works under
 # ESLint 10 (checked in the lint suite); its peer range predates ESLint 10.
 peerDependencyRules:
@@ -33,7 +17,8 @@ peerDependencyRules:
 # pnpm audit and the full build/Worker gates. Exact parent selectors prevent an
 # unrelated future parent version from inheriting a stale override.
 overrides:
-  "next@15.5.27>postcss": "8.5.29" # GHSA-6g55-p6wh-862q, GHSA-r28c-9q8g-f849
+  "next@16.4.2>postcss": "8.5.29" # GHSA-6g55-p6wh-862q, GHSA-r28c-9q8g-f849
+  "@node-minify/core@9.0.2>glob": "10.5.0" # GHSA-5j98-mcp5-4vw2
   "miniflare@5.20260815.0-alpha>sharp": "0.35.5" # libheif and librsvg fixes
   "miniflare@5.20261001.0-alpha>sharp": "0.35.5" # GHSA-wq5f-xc86-pv6w
   "miniflare@5.20260815.0-alpha>undici": "7.29.1" # GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3

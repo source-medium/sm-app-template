@@ -4,12 +4,13 @@
  * (including the invariants, in Node and workerd), run side by side. Each
  * failure is one sentence naming the file and the fix.
  */
+import { SetupPlan, readWorkerConfig } from "./lib/setup";
 import { spawn } from "node:child_process";
 import { findAuthGaps } from "./lib/auth-coverage";
 import { findStoreScopeGaps } from "./lib/store-scope";
 import { root } from "./lib/environment";
 import { skillDifferences } from "./lib/skills";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
 type Step = { name: string; run: () => Promise<string[]> | string[] };
@@ -88,6 +89,23 @@ const steps: Step[] = [
         text: readFileSync(path, "utf8"),
       }));
       return [...findAuthGaps(files), ...findStoreScopeGaps(files)];
+    },
+  },
+  {
+    name: "setup-intent",
+    run: () => {
+      if (!existsSync(join(root, "setup.json"))) return [];
+      try {
+        const intent = SetupPlan.parse(JSON.parse(readFileSync(join(root, "setup.json"), "utf8")));
+        const worker = readWorkerConfig(readFileSync(join(root, "wrangler.jsonc"), "utf8"));
+        if (intent.data === "live" && (!intent.auth || worker.vars?.APP_REQUIRE_LIVE !== "true"))
+          return [
+            "Live setup intent needs a sign-in choice and root APP_REQUIRE_LIVE=true. Run pnpm app:setup plan --auth access --data live (or --auth basic).",
+          ];
+        return [];
+      } catch {
+        return ["Check the non-secret setup.json against docs/setup.md. Never put credentials in this file."];
+      }
     },
   },
   { name: "skills", run: () => skillDifferences(root) },

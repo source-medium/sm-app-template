@@ -36,7 +36,7 @@ describe("Next's bundled hydration replay", () => {
   for (const bundle of bundles) {
     it.each(["claimed", "inserted", "unrelated"])(`${bundle.name}: restores %s hydration state`, (scenario) => {
       const parent = {};
-      const fiber = { stateNode: {}, return: parent };
+      const fiber = { tag: 5, stateNode: {}, return: parent };
       const previousInstance = {};
       const context = {
         next: fiber,

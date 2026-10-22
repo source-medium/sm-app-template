@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import pkg from "../../package.json";
 
@@ -24,7 +24,7 @@ function deploy(script: "deploy" | "deploy:preview", failure = "", args = "") {
     const { spawnSync } = require('node:child_process');
     const [command, ...args] = process.argv.slice(2);
     if (command === 'pnpm' && args[0] === 'check:deploy') {
-      const result = spawnSync(${JSON.stringify(pkg.scripts["check:deploy"])}, { shell: true, stdio: 'inherit' });
+      const result = spawnSync(${JSON.stringify(`"${process.execPath}" "${resolve("scripts/check-deploy.mjs")}"`)}, { shell: true, stdio: 'inherit' });
       process.exit(result.status ?? 1);
     }
     appendFileSync(${JSON.stringify(log)}, JSON.stringify([command, ...args]) + String.fromCharCode(10));

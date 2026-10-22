@@ -1,3 +1,5 @@
+import { formatInstant } from "@/lib/format";
+import { instanceInfo } from "@/lib/config/env.server";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { SAMPLE_CONNECTION_REPORT } from "@/lib/data/connection-report";
 
@@ -13,5 +15,8 @@ export async function POST(request: Request) {
   }
   const report =
     access.mode === "sample" ? SAMPLE_CONNECTION_REPORT : await access.warehouse.checkConnection(request.signal);
-  return Response.json(report, { headers });
+  return Response.json(
+    { ...report, checkedAt: formatInstant(new Date().toISOString(), "UTC", true), instance: instanceInfo() },
+    { headers },
+  );
 }

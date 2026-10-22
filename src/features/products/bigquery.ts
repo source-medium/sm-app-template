@@ -1,3 +1,4 @@
+import { SALES_CHANNEL_PREDICATE } from "@/lib/data/channel-sql";
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { decodeRows } from "@/lib/data/decode";
@@ -49,7 +50,7 @@ export async function queryProductCoverage(filters: ReportFilters & { channel?: 
       -SUM(order_line_refund_quantity) AS refunded_units
       FROM ${warehouse.table(PRODUCTS_RELATION)}
       WHERE sm_store_id = @store_id AND is_order_sm_valid = TRUE
-        AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
+        AND ${SALES_CHANNEL_PREDICATE}
         AND order_processed_at_local_datetime >= DATETIME(@start_date)
         AND order_processed_at_local_datetime < DATETIME(DATE_ADD(@end_date, INTERVAL 1 DAY))`,
     params: [
@@ -82,7 +83,7 @@ export async function queryProducts(filters: ProductFilters, baseline: DateRange
         ${period.latest}
       FROM ${warehouse.table(PRODUCTS_RELATION)}
       WHERE sm_store_id = @store_id AND is_order_sm_valid = TRUE
-        AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
+        AND ${SALES_CHANNEL_PREDICATE}
         AND ${period.dateTimeRows("order_processed_at_local_datetime")}
       GROUP BY product_key
     )
