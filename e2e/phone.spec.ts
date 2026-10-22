@@ -1,6 +1,60 @@
 import { expect, test } from "@playwright/test";
 import { appConfig } from "../app.config";
-import { watchConsole, expectNoSeriousA11yViolations } from "./helpers";
+import { watchConsole, expectNoSeriousA11yViolations, choose } from "./helpers";
+
+for (const route of ["overview", "performance"]) {
+  test(`${route}: results appear before the fold and collapsed filters preserve drafts`, async ({ page }) => {
+    test.skip(!appConfig.nav.some((item) => item.href === `/${route}`), "Example view removed");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/${route}?store=sample-store-a&from=2026-09-01&to=2026-09-07`);
+    const toggle = page.getByRole("button", { name: "Filters", exact: true });
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    const result =
+      route === "overview"
+        ? page.locator('[data-slot="kpi-value"]').first()
+        : page
+            .getByRole("table", { name: "Revenue and orders", exact: true })
+            .locator("tbody tr")
+            .first()
+            .getByRole("cell")
+            .nth(1);
+    await expect(result).toBeInViewport({ ratio: 1 });
+    await expectNoSeriousA11yViolations(page);
+    const appliedURL = page.url();
+    const csv = page.getByRole("link", {
+      name: route === "overview" ? "Download CSV" : "Download business CSV",
+      exact: true,
+    });
+    const appliedCSV = await csv.getAttribute("href");
+    await toggle.tap();
+    const channel = page.getByRole("combobox", { name: "Sales channel", exact: true });
+    await expect(channel).toBeVisible();
+    await page.getByText("Choose multiple channels", { exact: true }).tap();
+    await page.getByRole("checkbox", { name: "Amazon", exact: true }).check();
+    await expect(channel).toHaveValue("");
+    await expect(page).toHaveURL(appliedURL);
+    await expect(csv).toHaveAttribute("href", appliedCSV ?? "");
+    await expect(page.getByRole("status")).toHaveText("Channel changes not applied.");
+    await page.getByText("Choose multiple channels", { exact: true }).tap();
+    await expect(page.getByRole("status")).toBeVisible();
+    await toggle.tap();
+    await expect(channel).toBeHidden();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    // A date submission still includes the mounted channel draft, even with the panel closed.
+    await page.getByRole("button", { name: /^Change dates/ }).tap();
+    await page.getByLabel("From", { exact: true }).fill("2026-09-02");
+    await page.getByRole("button", { name: "Apply", exact: true }).tap();
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get("sales_channel") === "Amazon" && url.searchParams.get("from") === "2026-09-02",
+    );
+    await toggle.tap();
+    await expect(channel).toHaveValue("Amazon");
+    await expect(page.getByRole("status")).toHaveCount(0);
+    await choose(page, "Sales channel", "Online DTC");
+    await expect(page).toHaveURL(/sales_channel=Online\+DTC/);
+    await expectNoSeriousA11yViolations(page);
+  });
+}
 
 test("the data dictionary and field handoff fit a small phone", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });

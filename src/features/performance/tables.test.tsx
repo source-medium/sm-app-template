@@ -25,11 +25,14 @@ it("sorts money numerically in both directions and keeps missing values last", (
       currency="USD"
     />,
   );
+  const headers = screen.getAllByRole("columnheader").map((header) => header.textContent);
+  expect(headers.slice(0, 4)).toEqual(["Period", "Net revenue", "Summary orders", "Net revenue / order"]);
+  const revenueIndex = headers.indexOf("Net revenue");
   const values = () =>
     screen
       .getAllByRole("row")
       .slice(1)
-      .map((row) => within(row).getAllByRole("cell")[5]?.textContent);
+      .map((row) => within(row).getAllByRole("cell")[revenueIndex]?.textContent);
   fireEvent.click(screen.getByRole("button", { name: "Net revenue" }));
   expect(values()).toEqual(["$10.01", "$9.50", "$1.10", "$1.09", "-$2.00", "—"]);
   fireEvent.click(screen.getByRole("button", { name: "Net revenue" }));

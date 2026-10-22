@@ -7,6 +7,7 @@ import { Disclosure } from "@/components/ui/disclosure";
 import { encodeSalesChannels, REPORT_FILTER_FORM_ID, salesChannelValues } from "@/lib/filters";
 
 const ChannelScope = createContext<{
+  applied: string[];
   selected: string[];
   setSelected: Dispatch<SetStateAction<string[]>>;
   apply: (value: string) => void;
@@ -19,6 +20,7 @@ export function SalesChannelFilter({ value, children }: { value?: string | null;
   return (
     <ChannelScope.Provider
       value={{
+        applied: salesChannelValues(value),
         selected,
         setSelected,
         apply: (value) => {
@@ -47,8 +49,9 @@ export function MultiChannelFilter({ channels }: { channels: string[] }) {
   const id = useId();
   const scope = useContext(ChannelScope);
   if (!scope) throw new Error("Wrap channel choices in SalesChannelFilter so scope survives loading.");
-  const { selected, setSelected, apply } = scope;
-  const options = [...new Set([...selected, ...channels])].sort();
+  const { applied, selected, setSelected, apply } = scope;
+  const pending = encodeSalesChannels(selected) !== encodeSalesChannels(applied);
+  const options = [...new Set([...applied, ...selected, ...channels])].sort();
   return (
     <div className="max-w-full min-w-0 rounded-lg border bg-card px-3 py-1" data-agent-target="Sales channels">
       <label htmlFor={`${id}-quick`} className="block pb-1 text-xs font-medium text-muted-foreground">
@@ -57,7 +60,7 @@ export function MultiChannelFilter({ channels }: { channels: string[] }) {
       <NativeSelect
         id={`${id}-quick`}
         aria-label="Sales channel"
-        value={selected.length > 1 ? "__multiple" : (selected[0] ?? "")}
+        value={applied.length > 1 ? "__multiple" : (applied[0] ?? "")}
         onChange={(event) => {
           const value = event.currentTarget.value;
           if (value === "__multiple") return;
@@ -65,13 +68,18 @@ export function MultiChannelFilter({ channels }: { channels: string[] }) {
         }}
       >
         <option value="">All sales channels</option>
-        {selected.length > 1 && <option value="__multiple">{selected.length} selected</option>}
+        {applied.length > 1 && <option value="__multiple">{applied.length} selected</option>}
         {options.map((channel) => (
           <option key={channel} value={channel}>
             {channel}
           </option>
         ))}
       </NativeSelect>
+      {pending && (
+        <p role="status" className="pt-2 text-xs text-warning">
+          Channel changes not applied.
+        </p>
+      )}
       <Disclosure summary="Choose multiple channels">
         <fieldset className="space-y-3 pb-2">
           <legend className="sr-only">Sales channels</legend>

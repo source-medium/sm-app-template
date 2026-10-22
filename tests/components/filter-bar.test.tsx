@@ -24,14 +24,18 @@ it("keeps the date fields behind the applied range on phones until someone chang
       maxDate="2026-10-01"
       presets={[]}
       rangeLabel="Sep 1, 2026 – Sep 7, 2026"
+      comparison="previous"
+      comparisonLabel="Compare spend breakdown with"
     />,
   );
   const change = screen.getByRole("button", { name: "Change dates, Sep 1, 2026 – Sep 7, 2026" });
   expect(change).toHaveTextContent("Sep 1, 2026 – Sep 7, 2026");
+  expect(change).toHaveAccessibleDescription("Compare spend breakdown with: Previous period");
   // The collapsed fields still carry the applied dates into the request.
   const form = screen.getByRole("form", { name: "Report filters" }) as HTMLFormElement;
   expect(new FormData(form).get("from")).toBe("2026-09-01");
   expect(new FormData(form).get("to")).toBe("2026-09-07");
+  expect(new FormData(form).get("compare")).toBe("previous");
   const fields = screen.getByLabelText("From").closest("div.col-span-full");
   expect(fields).toHaveClass("max-sm:hidden");
   fireEvent.click(change);

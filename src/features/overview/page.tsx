@@ -17,6 +17,7 @@ import {
   withParams,
   datesInRange,
   rangeLength,
+  salesChannelValues,
   type SearchParams,
 } from "@/lib/filters";
 import { decimalToNumber } from "@/lib/data/decimal";
@@ -33,6 +34,7 @@ import { SelectFilter } from "@/components/patterns/select-filter";
 import { overviewTrends, TREND_MODES } from "./trends";
 import { SectionHeader } from "@/components/patterns/section-header";
 import { overviewHeadline } from "./headline";
+import { ReportControls } from "@/components/shell/report-controls";
 
 export const metadata: Metadata = { title: "Overview" };
 
@@ -66,10 +68,12 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         const selected: OverviewFilters = { ...filters, channel, grain };
         return (
           <>
-            <div className="flex flex-wrap items-start gap-4">
+            <ReportControls
+              summary={`${salesChannelValues(channel).join(", ") || "All sales channels"}. ${TREND_MODES.find((mode) => mode.value === trendMode)?.label}.`}
+            >
               <OverviewControls filters={selected} />
               <SelectFilter name="trend" label="Trend values" value={trendMode} options={[...TREND_MODES]} />
-            </div>
+            </ReportControls>
             <Suspense
               key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${comparison?.mode}|${channel}|${grain}`}
               fallback={<LoadingState variant="kpis" label="Loading the overview" />}

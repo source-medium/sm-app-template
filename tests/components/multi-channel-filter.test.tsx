@@ -49,3 +49,25 @@ it("encodes a multi-selection once and keeps an unknown applied value available"
   const form = screen.getByRole<HTMLFormElement>("form", { name: "Report filters" });
   expect(new FormData(form).getAll("sales_channel")).toEqual(['["Amazon","Online DTC"]']);
 });
+
+it("keeps the applied channel visible while checkbox changes wait for Apply", () => {
+  render(
+    <>
+      <form id={REPORT_FILTER_FORM_ID} aria-label="Report filters" />
+      <SalesChannelFilter value="Online DTC">
+        <MultiChannelFilter channels={["Amazon", "Online DTC"]} />
+      </SalesChannelFilter>
+    </>,
+  );
+  fireEvent.click(screen.getByText("Choose multiple channels"));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Amazon" }));
+  const select = screen.getByRole("combobox", { name: "Sales channel" });
+  expect(select).toHaveValue("Online DTC");
+  expect(screen.getByRole("status")).toHaveTextContent("Channel changes not applied.");
+  const form = screen.getByRole<HTMLFormElement>("form", { name: "Report filters" });
+  expect(new FormData(form).getAll("sales_channel")).toEqual(['["Amazon","Online DTC"]']);
+  // Returning the draft to the applied selection clears the notice without a request.
+  fireEvent.click(screen.getByRole("checkbox", { name: "Amazon" }));
+  expect(screen.queryByRole("status")).toBeNull();
+  expect(select).toHaveValue("Online DTC");
+});

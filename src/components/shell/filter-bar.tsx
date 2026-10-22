@@ -105,7 +105,12 @@ export function FilterBar({
       )}
       <input type="hidden" name="store" value={storeId} />
       {comparison !== undefined && (
-        <div className="flex min-w-0 flex-col gap-1.5 sm:order-2 sm:w-48">
+        <div
+          className={cn(
+            "flex min-w-0 flex-col gap-1.5 sm:order-2 sm:w-48",
+            dates && rangeLabel && !datesOpen && "max-sm:hidden",
+          )}
+        >
           <label htmlFor={`${id}-compare`} className="text-xs font-medium text-muted-foreground">
             {comparisonLabel}
           </label>
@@ -129,16 +134,22 @@ export function FilterBar({
         <button
           type="button"
           aria-label={`Change dates, ${rangeLabel}`}
+          aria-describedby={comparison !== undefined ? `${id}-comparison-summary` : undefined}
           data-agent-element="Change dates"
           onClick={() => {
             setDatesOpen(true);
             focusFrom.current = true;
           }}
-          className="col-span-full flex min-h-11 items-center justify-between gap-3 rounded-md border border-input bg-background px-3 text-left text-sm sm:hidden"
+          className="col-span-full flex min-h-11 items-center justify-between gap-3 rounded-md border border-input bg-background px-3 py-2 text-left text-sm sm:hidden"
         >
           <span className="min-w-0">
             <span className="block text-xs font-medium text-muted-foreground">Dates</span>
-            <span className="block truncate">{rangeLabel}</span>
+            <span className="block">{rangeLabel}</span>
+            {comparison !== undefined && (
+              <span id={`${id}-comparison-summary`} className="block text-xs text-muted-foreground">
+                {comparisonLabel}: {COMPARISON_OPTIONS.find((option) => option.value === comparison)?.label}
+              </span>
+            )}
           </span>
           <span className="shrink-0 text-xs font-medium text-primary">Change</span>
         </button>

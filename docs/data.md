@@ -451,6 +451,12 @@ use the already applied filters. **More dates** holds the less frequent presets.
 Invalid or overlong date URLs show a correction message and no report until a
 valid range is applied.
 
+On phones, Overview and Performance use `ReportControls` to show applied scope
+above an expandable filter panel. Collapsed fields stay mounted and continue to
+submit with the report form. Channel checkboxes are drafts until submission;
+the quick selector and scope summary keep showing the applied channels, with a
+notice for unapplied changes.
+
 `FilterBar` owns the `report-filters` GET form. `SelectFilter` and the other
 feature inputs associate with it using `REPORT_FILTER_FORM_ID`, including when
 rendered outside it or streamed later. Do not add a separate filter form or

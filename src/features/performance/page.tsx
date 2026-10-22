@@ -2,16 +2,24 @@ import { appConfig } from "@/app.config";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ReportPage } from "@/components/shell/report-page";
+import { ReportControls } from "@/components/shell/report-controls";
 import { DataRegion } from "@/components/patterns/data-region";
 import { LoadingState } from "@/components/patterns/data-states";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { MultiChannelFilter, SalesChannelFilter } from "@/components/patterns/multi-channel-filter";
 import { buttonVariants } from "@/components/ui/button";
-import { parseChoice, summarySalesChannel, withParams, single, type SearchParams } from "@/lib/filters";
+import {
+  parseChoice,
+  summarySalesChannel,
+  salesChannelValues,
+  withParams,
+  single,
+  type SearchParams,
+} from "@/lib/filters";
 import { parseTimeGrain, TIME_GRAINS } from "@/lib/time-grain";
 import { getBusiness, getPlatforms, getPerformanceChannels, type PerformanceFilters } from "./queries";
 import { BUSINESS_RELATION, PLATFORM_RELATION } from "./rows";
-import { BusinessTable, PlatformFilter, PlatformTables, METRIC_GROUPS } from "./tables";
+import { BusinessTable, PlatformFilter, PlatformTables, METRIC_GROUPS, platformLabel } from "./tables";
 
 export const metadata: Metadata = { title: "Performance tables" };
 export default async function PerformancePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -57,9 +65,42 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
         const platformData = view === "platforms" ? getPlatforms(selected) : null;
         platformData?.catch(() => undefined); // The roster and tables handle the same query's failure.
         const appliedPlatform = <PlatformFilter platform={platform} />;
+        const reportLabel =
+          view === "business"
+            ? "Business"
+            : `Platform detail: ${platform ? platformLabel(platform) : "Combined platforms"}`;
+        const grainLabel = TIME_GRAINS.find((item) => item.value === grain)?.label.toLowerCase();
+        const channelLabel = salesChannelValues(channel).join(", ") || "All sales channels";
+        const download = (
+          <a
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+            href={withParams(
+              "/performance/export",
+              {},
+              { store: filters.storeId, ...filters.range, sales_channel: channel ?? "", grain, view, platform },
+            )}
+          >
+            Download {view === "business" ? "business" : "platform"} CSV
+          </a>
+        );
+        const businessActions = (
+          <>
+            <a
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+              href={withParams(
+                "/overview",
+                {},
+                { store: filters.storeId, ...filters.range, sales_channel: channel ?? "", compare: "year" },
+              )}
+            >
+              Compare last year in Overview
+            </a>
+            {download}
+          </>
+        );
         return (
           <div className="flex flex-col gap-6">
-            <div className="flex flex-wrap items-start gap-4">
+            <ReportControls summary={`${reportLabel}, ${grainLabel}. ${channelLabel}.`}>
               <SelectFilter
                 name="view"
                 label="Report"
@@ -107,29 +148,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
                   </DataRegion>
                 </Suspense>
               )}
-              {view === "business" && (
-                <a
-                  className={`${buttonVariants({ variant: "outline", size: "sm" })} self-start`}
-                  href={withParams(
-                    "/overview",
-                    {},
-                    { store: filters.storeId, ...filters.range, sales_channel: channel ?? "", compare: "year" },
-                  )}
-                >
-                  Compare period with last year
-                </a>
-              )}
-            </div>
-            <a
-              className={`${buttonVariants({ variant: "outline", size: "sm" })} self-start`}
-              href={withParams(
-                "/performance/export",
-                {},
-                { store: filters.storeId, ...filters.range, sales_channel: channel ?? "", grain, view, platform },
-              )}
-            >
-              Download {view === "business" ? "business" : "platform"} CSV
-            </a>
+            </ReportControls>
             {view === "business" ? (
               <Suspense
                 key={`business|${scope}|${grain}|${group}`}
@@ -150,7 +169,13 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
                   }
                 >
                   {(records) => (
-                    <BusinessTable records={records} filters={selected} group={group} currency={currency} />
+                    <BusinessTable
+                      records={records}
+                      filters={selected}
+                      group={group}
+                      currency={currency}
+                      actions={businessActions}
+                    />
                   )}
                 </DataRegion>
               </Suspense>
@@ -175,7 +200,13 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
                     }
                   >
                     {(records) => (
-                      <PlatformTables records={records} filters={selected} currency={currency} platform={platform} />
+                      <PlatformTables
+                        records={records}
+                        filters={selected}
+                        currency={currency}
+                        platform={platform}
+                        actions={download}
+                      />
                     )}
                   </DataRegion>
                 </Suspense>

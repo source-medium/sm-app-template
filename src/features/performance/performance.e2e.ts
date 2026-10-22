@@ -5,7 +5,7 @@ test("performance: calendar grains and metric groups preserve the full business 
   await page.goto("/performance?store=sample-store-a&from=2026-09-02&to=2026-10-04");
   const table = page.getByRole("table", { name: "Revenue and orders", exact: true });
   const allScope = await page
-    .getByRole("link", { name: "Compare period with last year", exact: true })
+    .getByRole("link", { name: "Compare last year in Overview", exact: true })
     .getAttribute("href");
   expect(new URL(allScope ?? "", "http://example.com").searchParams.get("sales_channel")).toBe("");
   await expect(table).toBeVisible();
@@ -22,9 +22,11 @@ test("performance: calendar grains and metric groups preserve the full business 
   await choose(page, "Metrics", "purchases");
   await expect(page.getByRole("table", { name: "New and repeat purchases", exact: true })).toBeVisible();
   await choose(page, "Sales channel", "Amazon");
-  const comparison = page.getByRole("link", { name: "Compare period with last year", exact: true });
+  const comparison = page.getByRole("link", { name: "Compare last year in Overview", exact: true });
   await expect(comparison).toHaveAttribute("href", /sales_channel=Amazon/);
   await expect(comparison).toHaveAttribute("href", /compare=year/);
+  await comparison.click();
+  await expect(page).toHaveURL((url) => url.pathname === "/overview" && url.searchParams.get("compare") === "year");
   await page.goto("/performance?store=sample-store-a&sales_channel=unknown");
   await expect(page.getByText("No business rows match this store, sales channel, and date range.")).toBeVisible();
   await page.getByRole("link", { name: "Show all sales channels", exact: true }).click();
@@ -33,6 +35,7 @@ test("performance: calendar grains and metric groups preserve the full business 
 
 test("performance: platform summary and individual platform tables share daily, weekly and monthly controls", async ({
   page,
+  request,
 }) => {
   await page.goto("/performance?store=sample-store-a&from=2026-09-02&to=2026-10-04&view=platforms");
   const combined = page.getByRole("table", { name: "Combined platforms", exact: true });
@@ -49,6 +52,16 @@ test("performance: platform summary and individual platform tables share daily, 
   await choose(page, "Platform detail", "Meta");
   await expect(page.getByRole("table", { name: "Meta", exact: true })).toBeVisible();
   await expect(page.getByRole("table", { name: "Combined platforms", exact: true })).toHaveCount(0);
+  const detail = page.locator('section[aria-labelledby="platform-detail-heading"]');
+  const href = await detail.getByRole("link", { name: "Download platform CSV", exact: true }).getAttribute("href");
+  if (!href) throw new Error("Missing platform detail export");
+  expect(new URL(href, "http://example.com").searchParams.get("platform")).toBe("Meta");
+  const response = await request.get(href);
+  expect(response.status()).toBe(200);
+  const { parseCsv } = await import("../../../scripts/lib/reconciliation");
+  const rows = parseCsv(await response.text());
+  expect(rows.length).toBeGreaterThan(1);
+  expect(rows.every((row) => row.platform === "Meta")).toBe(true);
   await expect(page.getByText(/Combined revenue and conversions sum platform claims/)).toBeVisible();
   await page.setViewportSize({ width: 375, height: 812 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

@@ -20,14 +20,14 @@ export type MetricGroup = (typeof METRIC_GROUPS)[number]["value"];
 type Metric = readonly [key: string, label: string];
 const BUSINESS_COLUMNS: Record<MetricGroup, readonly Metric[]> = {
   revenue: [
-    ["gross", "Gross revenue"],
-    ["discounts", "Discounts"],
-    ["demand", "Demand before returns"],
-    ["refunds", "Refunds"],
     ["revenue", "Net revenue"],
     ["orders", "Summary orders"],
     ["average", "Net revenue / order"],
     ["sessions", "Sessions"],
+    ["gross", "Gross revenue"],
+    ["discounts", "Discounts"],
+    ["demand", "Demand before returns"],
+    ["refunds", "Refunds"],
   ],
   efficiency: [
     ["revenue", "Net revenue"],
@@ -109,11 +109,13 @@ export function BusinessTable({
   filters,
   group,
   currency,
+  actions,
 }: {
   records: BusinessRecord[];
   filters: PerformanceFilters;
   group: MetricGroup;
   currency: string | null;
+  actions?: React.ReactNode;
 }) {
   const columns = BUSINESS_COLUMNS[group];
   const label = METRIC_GROUPS.find((item) => item.value === group)?.label ?? "Revenue and orders";
@@ -123,6 +125,7 @@ export function BusinessTable({
         id="business-table-heading"
         title={label}
         description="Newest periods first. Weeks start Monday; edge weeks and months include only the selected dates. Totals cover the full selection."
+        actions={actions}
       />
       <DataTable
         caption={label}
@@ -192,11 +195,13 @@ export function PlatformTables({
   filters,
   currency,
   platform,
+  actions,
 }: {
   records: PlatformRecord[];
   filters: PerformanceFilters;
   currency: string | null;
   platform: string;
+  actions?: React.ReactNode;
 }) {
   const comparison = records.filter((row) => row.is_total && !row.combined);
   const total = records.find((row) => row.is_total && row.combined);
@@ -244,6 +249,7 @@ export function PlatformTables({
           id="platform-detail-heading"
           title={label}
           description="Newest periods first. Edge periods are labeled partial; totals cover the full selection."
+          actions={actions}
         />
         <DataTable
           caption={label}
