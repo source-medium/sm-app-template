@@ -211,6 +211,7 @@ export function managedApiError(status: number, body: unknown): WarehouseError {
     case "SOURCE_UNAVAILABLE":
       return managedError(retryable ? "transient" : "permission_denied", {
         ...base,
+        title: "SourceMedium cannot reach this app's warehouse",
         remedy:
           "SourceMedium cannot reach this app's warehouse right now. Reload in a minute; if it persists, contact SourceMedium support.",
       });

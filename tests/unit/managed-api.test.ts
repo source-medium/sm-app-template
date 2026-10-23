@@ -167,6 +167,16 @@ describe("errors", () => {
     expectManagedCopy(error);
   });
 
+  it("titles an unreachable warehouse as one, not as a refusal", async () => {
+    const unavailable = example(examples.error, "source_unavailable");
+    const error = (await runManagedQuery(client(reply(unavailable.value, unavailable.status)), {
+      name: "orders",
+      sql: "SELECT 1",
+    }).catch((caught: unknown) => caught)) as WarehouseError;
+    expect(error.title).toBe("SourceMedium cannot reach this app's warehouse");
+    expect(error.remedy).toMatch(/cannot reach this app's warehouse/);
+  });
+
   it.each([
     [401, { success: false, error: { code: "UNAUTHORIZED", message: "Authentication required" } }],
     [403, "<html>Forbidden</html>"],
