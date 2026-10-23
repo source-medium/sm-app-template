@@ -14,6 +14,9 @@
  *   some live values, or a bad value   -> error (no query, no sample fallback)
  *   all seven live,  no guard          -> error, including on localhost
  *   partial Access pair, bad Basic, or both guards -> error
+ *   SM_HOSTING=managed-dev with the data API address -> managed development,
+ *     loopback only, no Google key, guard or store restriction (docs/managed.md)
+ *   SM_HOSTING with any self-hosted value, or another value -> error
  */
 import "server-only";
 
@@ -26,6 +29,26 @@ export const LIVE_VARIABLES = [
   "SM_TRANSFORMED_DATASET_ID",
   "SM_METADATA_DATASET_ID",
 ] as const;
+
+/** SourceMedium-managed development (docs/managed.md): the data API, not a Google key. */
+export const MANAGED_VARIABLES = ["SM_HOSTING", "SM_DATA_API_URL", "SM_DEVELOPER_TOKEN"] as const;
+
+/** Self-hosted settings a managed app never takes: no key, viewer guard, store restriction or byte cap. */
+const SELF_HOSTED_VARIABLES = [
+  "SM_CONNECTION",
+  ...LIVE_VARIABLES,
+  "APP_BASIC_AUTH",
+  "CF_ACCESS_TEAM_DOMAIN",
+  "CF_ACCESS_AUD",
+  "APP_STORE_ID",
+  "BIGQUERY_MAX_BYTES_BILLED",
+] as const;
+
+const DATA_API_PATH = "/api/app-data/v1";
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const DEVELOPER_TOKEN = /^smapp_[A-Za-z0-9_-]{43}$/;
+/** A cloud environment may hold a placeholder its proxy swaps; printable, no spaces. */
+const TOKEN_PLACEHOLDER = /^[\x21-\x7e]{1,512}$/;
 
 const DEFAULT_MAX_BYTES_BILLED = 1024n * 1024n * 1024n; // 1 GiB
 
@@ -47,6 +70,13 @@ export type LiveConfig = {
   maxBytesBilled: bigint;
 };
 
+export type ManagedDevConfig = {
+  /** The data API root, ending in /api/app-data/v1. */
+  dataApiUrl: string;
+  /** Null when the environment's proxy adds the Authorization header. */
+  developerToken: string | null;
+};
+
 export type GuardConfig =
   { kind: "basic"; username: string; password: string } | { kind: "access"; teamDomain: string; audience: string };
 
@@ -56,6 +86,7 @@ export type ConfigProblem = { variable: string; message: string };
 export type AppConfig =
   | { status: "ok"; mode: "sample"; guard: GuardConfig | null; storeId: string | null }
   | { status: "ok"; mode: "live"; guard: GuardConfig; live: LiveConfig; storeId: string | null }
+  | { status: "ok"; mode: "managed-dev"; guard: null; managed: ManagedDevConfig; storeId: null }
   | { status: "error"; problems: ConfigProblem[] };
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -85,7 +116,18 @@ function read(env: Env, name: string): string | undefined {
 }
 
 export function parseConfig(env: Env): AppConfig {
+  const hosting = read(env, "SM_HOSTING");
+  if (hosting !== undefined) return parseManaged(env, hosting);
   const problems: ConfigProblem[] = [];
+  for (const name of ["SM_DATA_API_URL", "SM_DEVELOPER_TOKEN"] as const) {
+    if (read(env, name) !== undefined) {
+      problems.push({
+        variable: name,
+        message: `${name} is for development against SourceMedium's data API; set SM_HOSTING=managed-dev, or remove it for a self-hosted app (docs/managed.md).`,
+      });
+    }
+  }
+  if (problems.length > 0) return { status: "error", problems };
   const dataEnv = readLiveValues(env, problems);
   if (!dataEnv) return { status: "error", problems };
   const guard = parseGuard(env, problems);
@@ -137,6 +179,83 @@ export function parseConfig(env: Env): AppConfig {
   }
   if (problems.length > 0 || !live || !guard) return { status: "error", problems };
   return { status: "ok", mode: "live", guard, live, storeId };
+}
+
+/**
+ * Managed development: SourceMedium's data API with a developer token. It
+ * never falls back to sample data, and refuses every self-hosted setting
+ * rather than guessing which configuration was meant.
+ */
+function parseManaged(env: Env, hosting: string): AppConfig {
+  const problems: ConfigProblem[] = [];
+  if (hosting === "managed") {
+    problems.push({
+      variable: "SM_HOSTING",
+      message:
+        "SM_HOSTING=managed is set only by SourceMedium hosting. To develop against your app's data, use SM_HOSTING=managed-dev (docs/managed.md).",
+    });
+  } else if (hosting !== "managed-dev") {
+    problems.push({
+      variable: "SM_HOSTING",
+      message:
+        "SM_HOSTING must be managed-dev to develop against SourceMedium's data API, or removed for a self-hosted app (docs/managed.md).",
+    });
+  }
+  for (const name of SELF_HOSTED_VARIABLES) {
+    if (read(env, name) !== undefined) {
+      problems.push({
+        variable: name,
+        message: `${name} belongs to a self-hosted app; an app SourceMedium hosts takes no Google key, viewer guard, store restriction or byte limit. Remove it (docs/managed.md).`,
+      });
+    }
+  }
+  const requireLive = read(env, "APP_REQUIRE_LIVE");
+  if (requireLive !== undefined && requireLive !== "true" && requireLive !== "false") {
+    problems.push({ variable: "APP_REQUIRE_LIVE", message: "APP_REQUIRE_LIVE must be true or false." });
+  }
+  const dataApiUrl = parseDataApiUrl(read(env, "SM_DATA_API_URL"), problems);
+  const token = read(env, "SM_DEVELOPER_TOKEN");
+  if (token !== undefined && !(token.startsWith("smapp_") ? DEVELOPER_TOKEN : TOKEN_PLACEHOLDER).test(token)) {
+    problems.push({
+      variable: "SM_DEVELOPER_TOKEN",
+      message:
+        "SM_DEVELOPER_TOKEN is incomplete; paste the whole token shown when it was created, or create a new one in your app's Agent setup (docs/managed.md#token-expired).",
+    });
+  }
+  if (problems.length > 0 || dataApiUrl === null) return { status: "error", problems };
+  return {
+    status: "ok",
+    mode: "managed-dev",
+    guard: null,
+    managed: { dataApiUrl, developerToken: token ?? null },
+    storeId: null,
+  };
+}
+
+/** HTTPS, or http to this computer for a local SourceMedium; exactly the data API root. */
+function parseDataApiUrl(raw: string | undefined, problems: ConfigProblem[]): string | null {
+  const problem = (message: string) => {
+    problems.push({ variable: "SM_DATA_API_URL", message });
+    return null;
+  };
+  if (raw === undefined) {
+    return problem(
+      "SM_DATA_API_URL is missing; copy it from your app's Agent setup in SourceMedium (docs/managed.md).",
+    );
+  }
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return problem("SM_DATA_API_URL is not a URL; copy it from your app's Agent setup in SourceMedium.");
+  }
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && LOOPBACK_HOSTNAMES.has(url.hostname))) {
+    return problem("SM_DATA_API_URL must use https://.");
+  }
+  if (url.username || url.password || url.search || url.hash || url.pathname.replace(/\/+$/, "") !== DATA_API_PATH) {
+    return problem(`SM_DATA_API_URL must be the data API address ending in ${DATA_API_PATH}, with nothing after it.`);
+  }
+  return `${url.origin}${DATA_API_PATH}`;
 }
 
 function connectionProblem(): ConfigProblem {
@@ -348,6 +467,8 @@ export function buildId(): string {
 /** One line naming the mode and guard, for the doctor and the top bar. Never a value. */
 export function describeConfig(config: AppConfig): string {
   if (config.status === "error") return "Configuration error";
+  if (config.mode === "managed-dev")
+    return "Live data through SourceMedium's data API, development on this computer only";
   const data = config.mode === "live" ? "Live data" : "Sample data";
   const guard = !config.guard
     ? "public"

@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "type": "number",
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,62}$"
+    },
+    "sql": {
+      "type": "string",
+      "minLength": 1
+    },
+    "params": {
+      "default": [],
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"
+              },
+              "type": {
+                "type": "string",
+                "const": "STRING"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": ["name", "type", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"
+              },
+              "type": {
+                "type": "string",
+                "const": "DATE"
+              },
+              "value": {
+                "type": "string",
+                "pattern": "^(\\d{4})-(\\d{2})-(\\d{2})$"
+              }
+            },
+            "required": ["name", "type", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"
+              },
+              "type": {
+                "type": "string",
+                "const": "DATETIME"
+              },
+              "value": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?$"
+              }
+            },
+            "required": ["name", "type", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"
+              },
+              "type": {
+                "type": "string",
+                "const": "TIMESTAMP"
+              },
+              "value": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2}| UTC)?$"
+              }
+            },
+            "required": ["name", "type", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"
+              },
+              "type": {
+                "type": "string",
+                "const": "INT64"
+              },
+              "value": {
+                "type": "string",
+                "pattern": "^-?\\d{1,19}$"
+              }
+            },
+            "required": ["name", "type", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"
+              },
+              "type": {
+                "type": "string",
+                "const": "FLOAT64"
+              },
+              "value": {
+                "type": "number"
+              }
+            },
+            "required": ["name", "type", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"
+              },
+              "type": {
+                "type": "string",
+                "const": "BOOL"
+              },
+              "value": {
+                "type": "boolean"
+              }
+            },
+            "required": ["name", "type", "value"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "max_rows": {
+      "default": 1000,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "partial": {
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "required": ["contract_version", "name", "sql"],
+  "additionalProperties": false
+}

@@ -2,8 +2,9 @@
  * pnpm schema <relation>: one relation's columns, types, keys, and
  * descriptions, never its rows. With live configuration it reads your
  * warehouse (types from BigQuery, descriptions from SourceMedium's data
- * dictionary); otherwise it prints the bundled snapshot of SourceMedium's
- * published relations.
+ * dictionary); in managed development, through SourceMedium's data API (types
+ * from the dataset's INFORMATION_SCHEMA); otherwise it prints the bundled
+ * snapshot of SourceMedium's published relations.
  *
  *   pnpm schema obt_orders
  *   pnpm schema sm_metadata.dim_data_dictionary
@@ -16,7 +17,8 @@ import { getTableMetadata, type BigQueryField } from "../src/lib/data/bigquery-r
 import { readDictionary } from "../src/lib/data/catalog.server";
 import { setLogEmitter } from "../src/lib/data/log";
 import { queryStoreRoster } from "../src/lib/data/store-roster.server";
-import { bigQueryClientFor, warehouseFor } from "../src/lib/data/warehouse.server";
+import { loadManagedContext } from "../src/lib/data/managed-api.server";
+import { bigQueryClientFor, managedWarehouse, warehouseFor, type Warehouse } from "../src/lib/data/warehouse.server";
 import { WarehouseError } from "../src/lib/data/warehouse-error";
 import { loadLocalEnvironment, root } from "./lib/environment";
 
@@ -65,6 +67,13 @@ async function main(): Promise<void> {
   loadLocalEnvironment();
   setLogEmitter(() => undefined);
   const config = parseConfig(process.env);
+  if (config.status === "ok" && config.mode === "managed-dev") {
+    await printManagedRelation(managedWarehouse(config.managed, await loadManagedContext(config.managed)), {
+      datasetArg,
+      table,
+    });
+    return;
+  }
   if (config.status === "ok" && config.mode === "live") {
     const live = config.live;
     const client = bigQueryClientFor(live);
@@ -120,6 +129,46 @@ async function main(): Promise<void> {
     entry.description,
     entry.columns,
   );
+}
+
+/** Columns from INFORMATION_SCHEMA through the data API: no Google metadata endpoint. */
+async function printManagedRelation(
+  warehouse: Warehouse,
+  { datasetArg, table }: { datasetArg: string | null; table: string },
+): Promise<void> {
+  const datasets = datasetArg ? [datasetArg] : ["transformed", "metadata"];
+  for (const dataset of datasets) {
+    // table() resolves and validates the dataset; INFORMATION_SCHEMA.COLUMNS is a view inside it.
+    const columnsView = warehouse.table("COLUMNS", dataset).replace(/\.COLUMNS`$/, ".INFORMATION_SCHEMA.COLUMNS`");
+    const result = await warehouse.query({
+      name: "schema-columns",
+      sql: `SELECT column_name, data_type, is_nullable FROM ${columnsView} WHERE table_name = @table_name ORDER BY ordinal_position`,
+      params: [{ name: "table_name", type: "STRING", value: table }],
+      maxRows: 10_000,
+    });
+    if (result.rows.length === 0) continue;
+    const fields: Column[] = result.rows.map((row) => ({
+      name: String(row.column_name),
+      type: String(row.data_type),
+      ...(row.is_nullable === "NO" ? { mode: "REQUIRED" } : {}),
+    }));
+    const documented = await queryStoreRoster(warehouse, null)
+      .then(({ stores }) => (stores[0] ? readDictionary(warehouse, stores[0].sm_store_id, table) : []))
+      .catch(() => []);
+    const descriptions = new Map(documented.map((entry) => [entry.column_name, entry.column_description ?? undefined]));
+    printRelation(
+      `${warehouse.table(table, dataset)}, ${fields.length} columns:`,
+      documented.find((entry) => entry.table_description)?.table_description ?? undefined,
+      fields.map((field) => ({ ...field, description: descriptions.get(field.name) })),
+    );
+    if (documented.length === 0)
+      console.log("\n(No data dictionary entries for this relation; it may be your own table.)");
+    return;
+  }
+  console.error(
+    `No relation named ${table} in ${datasetArg ?? "the transformed or metadata dataset"}; check the name with the SourceMedium MCP or your data dictionary.`,
+  );
+  process.exit(1);
 }
 
 main().catch((error: unknown) => {

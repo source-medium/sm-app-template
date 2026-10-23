@@ -12,10 +12,12 @@
 import "server-only";
 import { cache } from "react";
 import { headers } from "next/headers";
-import { readConfig, type ConfigProblem } from "@/lib/config/env.server";
+import { buildId, readConfig, type ConfigProblem } from "@/lib/config/env.server";
 import { logEvent } from "@/lib/data/log";
-import { warehouseFor, type Warehouse } from "@/lib/data/warehouse.server";
+import { loadManagedContext } from "@/lib/data/managed-api.server";
+import { managedWarehouse, warehouseFor, type Warehouse } from "@/lib/data/warehouse.server";
 import { authenticateRequest, type Viewer } from "./authenticate";
+import { isLoopbackRequest } from "./loopback";
 import { assertStoreAccess } from "./store-access";
 
 export type { Viewer } from "./authenticate";
@@ -45,7 +47,23 @@ const resolveViewer = cache(async (): Promise<ViewerAccess> => {
     logEvent({ event: "config_error", level: "error", variables: config.problems.map((p) => p.variable) });
     throw new ConfigurationError(config.problems);
   }
-  const result = await authenticateRequest(config.guard, await headers());
+  const requestHeaders = await headers();
+  if (config.mode === "managed-dev") {
+    if (!isLoopbackRequest(requestHeaders)) {
+      logEvent({ event: "viewer_denied", level: "warn", guard: "loopback", error_reason: "foreign_host" });
+      throw new ViewerDeniedError();
+    }
+    // Once per request; a failure is an explicit error, never sample data.
+    const client = { ...config.managed, buildId: buildId() };
+    const context = await loadManagedContext(client);
+    return {
+      mode: "live",
+      viewer: { kind: "developer" },
+      storeId: null,
+      warehouse: managedWarehouse(client, context),
+    };
+  }
+  const result = await authenticateRequest(config.guard, requestHeaders);
   if (!result.ok) {
     logEvent({ event: "viewer_denied", level: "warn", guard: result.guard, error_reason: result.reason });
     throw new ViewerDeniedError();

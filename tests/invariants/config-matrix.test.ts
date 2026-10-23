@@ -265,3 +265,78 @@ describe("configuration matrix", () => {
     }
   });
 });
+
+describe("managed development", () => {
+  const TOKEN = `smapp_${"b".repeat(43)}`;
+  const MANAGED = {
+    SM_HOSTING: "managed-dev",
+    SM_DATA_API_URL: "https://urchin.sourcemedium.com/api/app-data/v1",
+    SM_DEVELOPER_TOKEN: TOKEN,
+  };
+
+  it("reads the data API address and token, with no guard or store restriction", () => {
+    expect(parseConfig(MANAGED)).toEqual({
+      status: "ok",
+      mode: "managed-dev",
+      guard: null,
+      storeId: null,
+      managed: { dataApiUrl: "https://urchin.sourcemedium.com/api/app-data/v1", developerToken: TOKEN },
+    });
+  });
+
+  it("runs without a token when the environment's proxy adds it, and keeps a placeholder a proxy swaps", () => {
+    const withoutToken = parseConfig({ ...MANAGED, SM_DEVELOPER_TOKEN: undefined });
+    expect(withoutToken.status === "ok" && withoutToken.mode === "managed-dev" && withoutToken.managed).toEqual({
+      dataApiUrl: MANAGED.SM_DATA_API_URL,
+      developerToken: null,
+    });
+    const placeholder = parseConfig({ ...MANAGED, SM_DEVELOPER_TOKEN: "codex-secret-placeholder" });
+    expect(placeholder.status).toBe("ok");
+  });
+
+  it("accepts http only for a SourceMedium running on this computer, and normalizes a trailing slash", () => {
+    const local = parseConfig({ ...MANAGED, SM_DATA_API_URL: "http://localhost:3000/api/app-data/v1/" });
+    expect(local.status === "ok" && local.mode === "managed-dev" && local.managed.dataApiUrl).toBe(
+      "http://localhost:3000/api/app-data/v1",
+    );
+  });
+
+  it.each([
+    ["no address", { SM_DATA_API_URL: undefined }, "SM_DATA_API_URL"],
+    ["http to another host", { SM_DATA_API_URL: "http://urchin.example.com/api/app-data/v1" }, "SM_DATA_API_URL"],
+    ["another path", { SM_DATA_API_URL: "https://urchin.example.com/api/internal" }, "SM_DATA_API_URL"],
+    ["a query string", { SM_DATA_API_URL: `${MANAGED.SM_DATA_API_URL}?app=other` }, "SM_DATA_API_URL"],
+    ["embedded credentials", { SM_DATA_API_URL: "https://u:p@urchin.example.com/api/app-data/v1" }, "SM_DATA_API_URL"],
+    ["a truncated token", { SM_DEVELOPER_TOKEN: TOKEN.slice(0, 20) }, "SM_DEVELOPER_TOKEN"],
+    ["a token with spaces", { SM_DEVELOPER_TOKEN: "not a token" }, "SM_DEVELOPER_TOKEN"],
+    ["hosted mode set by hand", { SM_HOSTING: "managed" }, "SM_HOSTING"],
+    ["an unknown hosting mode", { SM_HOSTING: "vercel" }, "SM_HOSTING"],
+  ])("%s is an error", (_label, override, variable) => {
+    expect(problemsOf(parseConfig({ ...MANAGED, ...override }))).toContain(variable);
+  });
+
+  it("refuses every self-hosted setting rather than mixing modes or falling back to sample data", () => {
+    const selfHosted = {
+      ...liveEnv(key),
+      SM_CONNECTION: "eyJ2ZXJzaW9uIjoxfQ==",
+      ...ACCESS,
+      APP_STORE_ID: "store_1",
+      BIGQUERY_MAX_BYTES_BILLED: "5000000",
+    };
+    for (const [name, value] of Object.entries(selfHosted)) {
+      if (value === undefined) continue;
+      expect(problemsOf(parseConfig({ ...MANAGED, [name]: value })), name).toEqual([name]);
+    }
+  });
+
+  it("refuses managed settings without SM_HOSTING, so a self-hosted app never half-switches", () => {
+    expect(problemsOf(parseConfig({ SM_DATA_API_URL: MANAGED.SM_DATA_API_URL }))).toEqual(["SM_DATA_API_URL"]);
+    expect(problemsOf(parseConfig({ ...liveEnv(key), SM_DEVELOPER_TOKEN: TOKEN }))).toEqual(["SM_DEVELOPER_TOKEN"]);
+  });
+
+  it("never echoes the token or address in a problem", () => {
+    const config = parseConfig({ ...MANAGED, SM_DEVELOPER_TOKEN: `${TOKEN}x`, APP_STORE_ID: "store_1" });
+    expect(config.status).toBe("error");
+    expect(JSON.stringify(config)).not.toContain(TOKEN);
+  });
+});

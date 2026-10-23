@@ -5,11 +5,14 @@
  * credential. Sample mode makes no Google call. `--offline` (used by
  * `pnpm dev`) stops after the configuration check. `--dev-vars` (used by
  * `pnpm preview`) checks `.dev.vars`, the only file the Worker preview reads,
- * instead of the Next environment, and is always offline.
+ * instead of the Next environment, and is always offline. In managed
+ * development every check goes through SourceMedium's data API, never Google.
  */
 import { execFileSync } from "node:child_process";
 import { describeConfig, parseConfig } from "../src/lib/config/env.server";
-import { warehouseFor } from "../src/lib/data/warehouse.server";
+import { loadManagedContext } from "../src/lib/data/managed-api.server";
+import { managedWarehouse, warehouseFor } from "../src/lib/data/warehouse.server";
+import { WarehouseError } from "../src/lib/data/warehouse-error";
 import { connectionReportText } from "../src/lib/data/connection-report";
 import { setLogEmitter } from "../src/lib/data/log";
 import { loadLocalEnvironment, readDevVars, root } from "./lib/environment";
@@ -50,7 +53,9 @@ async function main(): Promise<void> {
     console.error(
       devVars
         ? "Fix .dev.vars (the Worker preview reads it, not .env.local), then run `pnpm preview` again. See docs/connect.md#test-the-worker-locally."
-        : "Fix your environment settings (or .env.local for local development), then run `pnpm diagnose` again. See docs/cloud.md#debug-with-live-data.",
+        : `Fix your environment settings (or .env.local for local development), then run \`pnpm diagnose\` again. See ${
+            process.env.SM_HOSTING?.trim() ? "docs/managed.md" : "docs/cloud.md#debug-with-live-data"
+          }.`,
     );
     process.exit(1);
   }
@@ -62,6 +67,10 @@ async function main(): Promise<void> {
   if (offline) {
     if (!devVars && config.mode === "sample")
       ok("Sample data needs no setup. To connect your warehouse, see docs/connect.md.");
+    if (config.mode === "managed-dev")
+      ok(
+        "Managed development reads your data through SourceMedium. Run `pnpm diagnose` to check the token and tables.",
+      );
     return;
   }
 
@@ -73,7 +82,18 @@ async function main(): Promise<void> {
     return;
   }
   setLogEmitter(() => undefined);
-  const report = await warehouseFor(config.live, config.storeId).checkConnection();
+  let warehouse = config.mode === "live" ? warehouseFor(config.live, config.storeId) : null;
+  if (config.mode === "managed-dev") {
+    try {
+      warehouse = managedWarehouse(config.managed, await loadManagedContext(config.managed));
+    } catch (error) {
+      if (!(error instanceof WarehouseError)) throw error;
+      fail(`SourceMedium data API: ${error.title}. ${error.remedy}`);
+      process.exit(1);
+    }
+  }
+  if (!warehouse) return;
+  const report = await warehouse.checkConnection();
   console.log(connectionReportText(report));
   const healthy = !report.checks.some((check) => check.status === "fail");
   console.log(healthy ? "All checks passed." : "Some checks failed; see docs/operations.md for remedies.");
