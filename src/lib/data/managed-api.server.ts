@@ -119,7 +119,7 @@ const MANAGED_COPY: Partial<Record<WarehouseErrorKind, { title: string; remedy: 
   permission_denied: {
     title: "SourceMedium refused this app's request",
     remedy:
-      "The token's creator may no longer manage the workspace, or the app is paused or removed. Ask a workspace admin (docs/managed.md).",
+      "The app may be paused or removed, or this person's or token's access to the workspace changed. Ask a workspace admin (docs/managed.md).",
   },
   quota_exceeded: {
     title: "Query allowance used up",

@@ -115,6 +115,29 @@ describe("requireViewer when hosted", () => {
   });
 });
 
+describe("the app shell when hosted", () => {
+  it("explains a refused data context in place of a blank error page", async () => {
+    hostedEnv();
+    requestHeaders.current = new Headers({ host: "acme-weekly.apps.example", [VIEWER_HEADER]: encode(member) });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          { error: { code: "ACCESS_DENIED", message: "Paused.", retryable: false, request_id: "r" } },
+          { status: 403 },
+        ),
+      ),
+    );
+    const { default: AppLayout } = await import("@/app/(app)/layout");
+    const { DataAccessErrorScreen } = await import("@/components/shell/config-error");
+    const element = (await AppLayout({ children: null })) as { type: unknown; props: Record<string, string> };
+    expect(element.type).toBe(DataAccessErrorScreen);
+    expect(element.props.title).toBe("SourceMedium refused this app's request");
+    expect(element.props.remedy).toMatch(/paused or removed/);
+    expect(`${element.props.title} ${element.props.remedy}`).not.toMatch(/Google|BigQuery|key/i);
+  });
+});
+
 describe("middleware when hosted", () => {
   it("passes a gateway-signed request and refuses any other, with no loopback rule", async () => {
     hostedEnv();

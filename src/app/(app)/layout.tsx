@@ -3,12 +3,13 @@
  * configuration error replaces the whole app with its explanation, and the
  * mode chip and viewer email come from the same decision the data reads use.
  */
-import { ConfigErrorScreen } from "@/components/shell/config-error";
+import { ConfigErrorScreen, DataAccessErrorScreen } from "@/components/shell/config-error";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { TopBar } from "@/components/shell/top-bar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConfigurationError, requireViewer, type ViewerAccess } from "@/lib/auth/require-viewer";
+import { WarehouseError } from "@/lib/data/warehouse-error";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   let access: ViewerAccess;
@@ -16,6 +17,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     access = await requireViewer();
   } catch (error) {
     if (error instanceof ConfigurationError) return <ConfigErrorScreen problems={error.problems} />;
+    // A managed app loads its data context here, so a refusal (app paused,
+    // access changed) or an outage is explained in place of a blank error page.
+    if (error instanceof WarehouseError) return <DataAccessErrorScreen title={error.title} remedy={error.remedy} />;
     throw error;
   }
   return (
