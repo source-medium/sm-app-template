@@ -67,6 +67,11 @@ async function main(): Promise<void> {
   loadLocalEnvironment();
   setLogEmitter(() => undefined);
   const config = parseConfig(process.env);
+  if (config.status === "error" && process.env.SM_HOSTING?.trim()) {
+    console.error("SourceMedium managed configuration is invalid. Run `pnpm diagnose`.");
+    for (const problem of config.problems) console.error(problem.message);
+    process.exit(1);
+  }
   if (config.status === "ok" && config.mode === "managed") {
     console.error(
       "SM_HOSTING=managed runs only on SourceMedium's hosting. Use SM_HOSTING=managed-dev with a developer token (docs/managed.md).",

@@ -21,6 +21,11 @@ refused token or an unreachable API is an error that says what to fix. It
 also refuses every self-hosted setting (`SM_CONNECTION`, the seven separate
 data settings, `APP_BASIC_AUTH`, Cloudflare Access, `APP_STORE_ID`,
 `BIGQUERY_MAX_BYTES_BILLED`) rather than guessing which one you meant.
+`pnpm schema` also refuses invalid managed settings instead of printing its
+offline schema snapshot.
+
+Hosted mode is set by SourceMedium's deploy. `pnpm dev`, `pnpm diagnose` and
+`pnpm schema` refuse it; use `managed-dev` on your computer.
 
 ## What your app can read
 

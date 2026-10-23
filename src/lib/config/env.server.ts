@@ -217,7 +217,7 @@ function parseManaged(env: Env, hosting: string): AppConfig {
     if (read(env, name) !== undefined) {
       problems.push({
         variable: name,
-        message: `${name} belongs to a self-hosted app; an app SourceMedium hosts takes no Google key, viewer guard, store restriction or byte limit. Remove it (docs/managed.md).`,
+        message: `${name} belongs to a self-hosted app. Remove it and use only SourceMedium's managed settings (docs/managed.md).`,
       });
     }
   }
