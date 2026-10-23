@@ -53,6 +53,49 @@ export function readWorkerConfig(text: string): { name: string; vars?: Record<st
   return result.config;
 }
 
+/** Runs one git command in the checkout and returns its trimmed output; throws when git fails. */
+export type GitRunner = (args: string[]) => string;
+
+/**
+ * Whether HEAD is on the remote branch the current branch tracks. The remote
+ * is the branch's own upstream, never a fixed name: the Artifacts setup
+ * (docs/cloud.md) keeps `origin` as the upstream template and pushes the
+ * customer's code to `cloudflare`. Without an upstream the answer is unknown,
+ * not unpushed.
+ */
+export function sourcePushStatus(git: GitRunner): { head: string | null; line: string } {
+  let head: string;
+  try {
+    head = git(["rev-parse", "HEAD"]);
+  } catch {
+    return { head: null, line: "Source: remote push status unavailable." };
+  }
+  const source = `Source: ${head.slice(0, 12)}`;
+  try {
+    let branch: string;
+    try {
+      branch = git(["symbolic-ref", "-q", "HEAD"]);
+    } catch {
+      return { head, line: `${source}; detached HEAD, so push status is unknown.` };
+    }
+    const [remote, remoteRef] = git([
+      "for-each-ref",
+      "--format=%(upstream:remotename) %(upstream:remoteref)",
+      branch,
+    ]).split(" ");
+    if (!remote || !remoteRef)
+      return {
+        head,
+        line: `${source}; this branch tracks no remote branch, so push status is unknown. Push it with git push -u <remote> <branch>.`,
+      };
+    const target = `${remote}/${remoteRef.replace(/^refs\/heads\//, "")}`;
+    const pushed = git(["ls-remote", remote, remoteRef]).split(/\s/)[0];
+    return { head, line: `${source} ${pushed === head ? `pushed to ${target}` : `not confirmed on ${target}`}.` };
+  } catch {
+    return { head, line: `${source}; remote push status unavailable.` };
+  }
+}
+
 /** Edit only the root live intent, preserving the customer's JSONC and every other setting. */
 export function requireProductionLive(text: string): string {
   readWorkerConfig(text);
