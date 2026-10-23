@@ -12,10 +12,11 @@
 import "server-only";
 import { cache } from "react";
 import { headers } from "next/headers";
-import { buildId, readConfig, type ConfigProblem } from "@/lib/config/env.server";
+import { buildId, readConfig, type ConfigProblem, type ManagedApiConfig } from "@/lib/config/env.server";
 import { logEvent } from "@/lib/data/log";
 import { loadManagedContext } from "@/lib/data/managed-api.server";
-import { managedWarehouse, warehouseFor, type Warehouse } from "@/lib/data/warehouse.server";
+import { managedWarehouse, refusedWarehouse, warehouseFor, type Warehouse } from "@/lib/data/warehouse.server";
+import { WarehouseError } from "@/lib/data/warehouse-error";
 import { authenticateRequest, type Viewer } from "./authenticate";
 import { isLoopbackRequest } from "./loopback";
 import { readSourceMediumViewer } from "./sourcemedium-viewer";
@@ -24,7 +25,14 @@ import { assertStoreAccess } from "./store-access";
 export type { Viewer } from "./authenticate";
 
 export type SampleAccess = { mode: "sample"; viewer: Viewer; storeId: string | null };
-export type LiveAccess = { mode: "live"; viewer: Viewer; storeId: string | null; warehouse: Warehouse };
+export type LiveAccess = {
+  mode: "live";
+  viewer: Viewer;
+  storeId: string | null;
+  warehouse: Warehouse;
+  /** A managed app's refused data context; `warehouse` raises it on every read. */
+  refusal?: WarehouseError;
+};
 export type ViewerAccess = SampleAccess | LiveAccess;
 
 export class ConfigurationError extends Error {
@@ -38,6 +46,28 @@ export class ViewerDeniedError extends Error {
   constructor() {
     super("This request is not signed in.");
     this.name = "ViewerDeniedError";
+  }
+}
+
+/**
+ * A managed app's live access, loading its data context once per request. The
+ * data API can refuse or fail that load (app paused, access changed, outage),
+ * and the refusal rides in the Warehouse, never as sample data: the guard
+ * itself only denies for sign-in or configuration, which middleware answers
+ * before any handler runs, so every route handler can start with it unwrapped.
+ */
+async function managedAccess(managed: ManagedApiConfig, viewer: Viewer): Promise<LiveAccess> {
+  const client = { ...managed, buildId: buildId() };
+  try {
+    return {
+      mode: "live",
+      viewer,
+      storeId: null,
+      warehouse: managedWarehouse(client, await loadManagedContext(client)),
+    };
+  } catch (error) {
+    if (!(error instanceof WarehouseError)) throw error;
+    return { mode: "live", viewer, storeId: null, warehouse: refusedWarehouse(error), refusal: error };
   }
 }
 
@@ -57,24 +87,14 @@ const resolveViewer = cache(async (): Promise<ViewerAccess> => {
       logEvent({ event: "viewer_denied", level: "warn", guard: "sourcemedium", error_reason: "missing" });
       throw new ViewerDeniedError();
     }
-    const client = { ...config.managed, buildId: buildId() };
-    const context = await loadManagedContext(client);
-    return { mode: "live", viewer, storeId: null, warehouse: managedWarehouse(client, context) };
+    return managedAccess(config.managed, viewer);
   }
   if (config.mode === "managed-dev") {
     if (!isLoopbackRequest(requestHeaders)) {
       logEvent({ event: "viewer_denied", level: "warn", guard: "loopback", error_reason: "foreign_host" });
       throw new ViewerDeniedError();
     }
-    // Once per request; a failure is an explicit error, never sample data.
-    const client = { ...config.managed, buildId: buildId() };
-    const context = await loadManagedContext(client);
-    return {
-      mode: "live",
-      viewer: { kind: "developer" },
-      storeId: null,
-      warehouse: managedWarehouse(client, context),
-    };
+    return managedAccess(config.managed, { kind: "developer" });
   }
   const result = await authenticateRequest(config.guard, requestHeaders);
   if (!result.ok) {

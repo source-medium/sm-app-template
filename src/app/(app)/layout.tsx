@@ -9,7 +9,6 @@ import { TopBar } from "@/components/shell/top-bar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConfigurationError, requireViewer, type ViewerAccess } from "@/lib/auth/require-viewer";
-import { WarehouseError } from "@/lib/data/warehouse-error";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   let access: ViewerAccess;
@@ -17,10 +16,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     access = await requireViewer();
   } catch (error) {
     if (error instanceof ConfigurationError) return <ConfigErrorScreen problems={error.problems} />;
-    // A managed app loads its data context here, so a refusal (app paused,
-    // access changed) or an outage is explained in place of a blank error page.
-    if (error instanceof WarehouseError) return <DataAccessErrorScreen title={error.title} remedy={error.remedy} />;
     throw error;
+  }
+  // A managed app loads its data context in requireViewer(), so a refusal (app
+  // paused, access changed) or an outage is explained here in place of a blank error page.
+  if (access.mode === "live" && access.refusal) {
+    return <DataAccessErrorScreen title={access.refusal.title} remedy={access.refusal.remedy} />;
   }
   return (
     <TooltipProvider>

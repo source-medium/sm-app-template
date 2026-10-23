@@ -25,6 +25,18 @@ function managedEnv() {
   vi.stubEnv("SM_DEVELOPER_TOKEN", TOKEN);
 }
 
+/** A request from this computer whose data context the data API refuses. */
+function refusedContext(status: number, code: string) {
+  managedEnv();
+  requestHeaders.current = new Headers({ host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({ error: { code, message: "Refused.", retryable: false, request_id: "r" } }, { status }),
+    ),
+  );
+}
+
 describe("requireViewer in managed development", () => {
   it("hands features a live Warehouse over the data API", async () => {
     managedEnv();
@@ -50,20 +62,55 @@ describe("requireViewer in managed development", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("surfaces a refused token as an error, never sample data", async () => {
-    managedEnv();
-    requestHeaders.current = new Headers({ host: "localhost:3000" });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        Response.json(
-          { error: { code: "TOKEN_INVALID", message: "Expired.", retryable: false, request_id: "r" } },
-          { status: 401 },
-        ),
-      ),
-    );
+  it("carries a refused token in the Warehouse: live and failing, never sample data", async () => {
+    refusedContext(401, "TOKEN_INVALID");
     const { requireViewer } = await import("@/lib/auth/require-viewer");
-    await expect(requireViewer()).rejects.toMatchObject({ kind: "credential_invalid" });
+    const access = await requireViewer({ live: true });
+    expect(access).toMatchObject({ mode: "live", refusal: { kind: "credential_invalid" } });
+    expect(() => access.warehouse.table("obt_orders")).toThrow(access.refusal);
+    await expect(access.warehouse.query({ name: "orders", sql: "SELECT 1" })).rejects.toBe(access.refusal);
+    const report = await access.warehouse.checkConnection();
+    expect(report.checks).toEqual([
+      expect.objectContaining({ status: "fail", message: expect.stringContaining(access.refusal?.title ?? "") }),
+    ]);
+  });
+});
+
+/** Every route handler starts with an unwrapped requireViewer(), so a refused context must reach it as a response. */
+describe("route handlers when SourceMedium refuses the app", () => {
+  const origin = "http://127.0.0.1:3000";
+
+  it("answers the data dictionary with the refusal and a 503", async () => {
+    refusedContext(403, "ACCESS_DENIED");
+    const { GET } = await import("@/app/(app)/data-dictionary/route");
+    const response = await GET(new Request(`${origin}/data-dictionary?relation=obt_orders&store=s1`));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error: expect.stringContaining("SourceMedium refused this app's request"),
+    });
+  });
+
+  it("reports the refusal as a failed check instead of failing the request", async () => {
+    refusedContext(403, "ACCESS_DENIED");
+    const { POST } = await import("@/app/(app)/connection/check/route");
+    const response = await POST(new Request(`${origin}/connection/check`, { method: "POST", headers: { origin } }));
+    expect(response.status).toBe(200);
+    const report = (await response.json()) as { checks: { status: string; message: string }[] };
+    expect(report.checks).toEqual([
+      expect.objectContaining({ status: "fail", message: expect.stringContaining("SourceMedium refused") }),
+    ]);
+  });
+
+  it.each([
+    ["overview", "@/features/overview/download"],
+    ["paid marketing", "@/features/paid-marketing/download"],
+    ["performance", "@/features/performance/download"],
+  ])("answers the %s export with the refusal and a 503", async (_name, module) => {
+    refusedContext(403, "ACCESS_DENIED");
+    const { GET } = (await import(module)) as { GET: (request: Request) => Promise<Response> };
+    const response = await GET(new Request(`${origin}/export?store=s1`));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ title: "SourceMedium refused this app's request" });
   });
 });
 

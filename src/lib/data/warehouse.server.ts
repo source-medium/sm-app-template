@@ -19,6 +19,7 @@ import { assertStoreAccess, StoreAccessError } from "../auth/store-access";
 import { checkManagedConnection, checkWarehouseConnection } from "./connection.server";
 import { runManagedQuery, type ManagedApiClient, type ManagedContext } from "./managed-api.server";
 import type { ConnectionReport } from "./connection-report";
+import type { WarehouseError } from "./warehouse-error";
 
 /** SourceMedium's two datasets by role, or any other dataset id in your warehouse project. */
 export type DatasetName = "transformed" | "metadata" | (string & {});
@@ -150,4 +151,24 @@ export function managedWarehouse(client: ManagedApiClient, context: ManagedConte
     },
   };
   return warehouse;
+}
+
+/**
+ * A managed app whose data context the data API refused (app paused, access
+ * changed) or could not answer. Every read raises that error, so views,
+ * exports and the connection check report it where they already report a
+ * warehouse failure, and nothing falls back to sample data.
+ */
+export function refusedWarehouse(refusal: WarehouseError): Warehouse {
+  return {
+    applicationId: "", // No context was loaded, so there is no app id.
+    table: () => {
+      throw refusal;
+    },
+    query: () => Promise.reject(refusal),
+    checkConnection: async () => ({
+      mode: "live",
+      checks: [{ name: "SourceMedium data API", status: "fail", message: `${refusal.title}. ${refusal.remedy}` }],
+    }),
+  };
 }
