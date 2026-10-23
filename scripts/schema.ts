@@ -67,6 +67,12 @@ async function main(): Promise<void> {
   loadLocalEnvironment();
   setLogEmitter(() => undefined);
   const config = parseConfig(process.env);
+  if (config.status === "ok" && config.mode === "managed") {
+    console.error(
+      "SM_HOSTING=managed runs only on SourceMedium's hosting. Use SM_HOSTING=managed-dev with a developer token (docs/managed.md).",
+    );
+    process.exit(1);
+  }
   if (config.status === "ok" && config.mode === "managed-dev") {
     await printManagedRelation(managedWarehouse(config.managed, await loadManagedContext(config.managed)), {
       datasetArg,

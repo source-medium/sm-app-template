@@ -18,6 +18,7 @@ import { loadManagedContext } from "@/lib/data/managed-api.server";
 import { managedWarehouse, warehouseFor, type Warehouse } from "@/lib/data/warehouse.server";
 import { authenticateRequest, type Viewer } from "./authenticate";
 import { isLoopbackRequest } from "./loopback";
+import { readSourceMediumViewer } from "./sourcemedium-viewer";
 import { assertStoreAccess } from "./store-access";
 
 export type { Viewer } from "./authenticate";
@@ -48,6 +49,18 @@ const resolveViewer = cache(async (): Promise<ViewerAccess> => {
     throw new ConfigurationError(config.problems);
   }
   const requestHeaders = await headers();
+  if (config.mode === "managed") {
+    // SourceMedium's gateway is the only way in and sets this header on every
+    // request; without it, nothing is served (no sample fallback).
+    const viewer = readSourceMediumViewer(requestHeaders);
+    if (!viewer) {
+      logEvent({ event: "viewer_denied", level: "warn", guard: "sourcemedium", error_reason: "missing" });
+      throw new ViewerDeniedError();
+    }
+    const client = { ...config.managed, buildId: buildId() };
+    const context = await loadManagedContext(client);
+    return { mode: "live", viewer, storeId: null, warehouse: managedWarehouse(client, context) };
+  }
   if (config.mode === "managed-dev") {
     if (!isLoopbackRequest(requestHeaders)) {
       logEvent({ event: "viewer_denied", level: "warn", guard: "loopback", error_reason: "foreign_host" });

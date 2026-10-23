@@ -309,7 +309,8 @@ describe("managed development", () => {
     ["embedded credentials", { SM_DATA_API_URL: "https://u:p@urchin.example.com/api/app-data/v1" }, "SM_DATA_API_URL"],
     ["a truncated token", { SM_DEVELOPER_TOKEN: TOKEN.slice(0, 20) }, "SM_DEVELOPER_TOKEN"],
     ["a token with spaces", { SM_DEVELOPER_TOKEN: "not a token" }, "SM_DEVELOPER_TOKEN"],
-    ["hosted mode set by hand", { SM_HOSTING: "managed" }, "SM_HOSTING"],
+    // Hosting is SourceMedium's to set: by hand there are no deploy ids.
+    ["hosted mode set by hand", { SM_HOSTING: "managed" }, "SM_DEPLOYMENT_ID"],
     ["an unknown hosting mode", { SM_HOSTING: "vercel" }, "SM_HOSTING"],
   ])("%s is an error", (_label, override, variable) => {
     expect(problemsOf(parseConfig({ ...MANAGED, ...override }))).toContain(variable);

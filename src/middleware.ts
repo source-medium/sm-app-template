@@ -13,6 +13,7 @@ import { readConfig } from "@/lib/config/env.server";
 import { SECURITY_HEADERS } from "@/lib/security-headers";
 import { assertStoreAccess, StoreAccessError } from "@/lib/auth/store-access";
 import { isLoopbackRequest } from "@/lib/auth/loopback";
+import { readSourceMediumViewer } from "@/lib/auth/sourcemedium-viewer";
 
 export async function middleware(request: NextRequest) {
   const config = readConfig();
@@ -24,6 +25,20 @@ export async function middleware(request: NextRequest) {
       "The app owner can fix this in the host's variables; docs/connect.md in the app's repository explains each one.";
     return new NextResponse(`This app's configuration needs attention:\n${problems}\n${owner}\n`, {
       status: 503,
+      headers: {
+        ...SECURITY_HEADERS,
+        "Cache-Control": "private, no-store",
+        "Content-Type": "text/plain; charset=utf-8",
+      },
+    });
+  }
+
+  if (config.mode === "managed") {
+    // Hosting: SourceMedium's gateway signed the viewer in and set X-SM-Viewer.
+    // There is no guard of the app's own to run; requireViewer() reads it again.
+    if (readSourceMediumViewer(request.headers)) return NextResponse.next();
+    return new NextResponse("This app opens only through SourceMedium.\n", {
+      status: 403,
       headers: {
         ...SECURITY_HEADERS,
         "Cache-Control": "private, no-store",

@@ -16,6 +16,9 @@
  *   partial Access pair, bad Basic, or both guards -> error
  *   SM_HOSTING=managed-dev with the data API address -> managed development,
  *     loopback only, no Google key, guard or store restriction (docs/managed.md)
+ *   SM_HOSTING=managed with the platform's app and deployment ids -> hosted by
+ *     SourceMedium: the gateway's viewer, the data API through the outbound
+ *     Worker, no developer token (set only by SourceMedium's deploy)
  *   SM_HOSTING with any self-hosted value, or another value -> error
  */
 import "server-only";
@@ -30,8 +33,14 @@ export const LIVE_VARIABLES = [
   "SM_METADATA_DATASET_ID",
 ] as const;
 
-/** SourceMedium-managed development (docs/managed.md): the data API, not a Google key. */
-export const MANAGED_VARIABLES = ["SM_HOSTING", "SM_DATA_API_URL", "SM_DEVELOPER_TOKEN"] as const;
+/** Apps SourceMedium manages (docs/managed.md): the data API, not a Google key. */
+export const MANAGED_VARIABLES = [
+  "SM_HOSTING",
+  "SM_DATA_API_URL",
+  "SM_DEVELOPER_TOKEN",
+  "SM_APP_ID",
+  "SM_DEPLOYMENT_ID",
+] as const;
 
 /** Self-hosted settings a managed app never takes: no key, viewer guard, store restriction or byte cap. */
 const SELF_HOSTED_VARIABLES = [
@@ -70,12 +79,18 @@ export type LiveConfig = {
   maxBytesBilled: bigint;
 };
 
-export type ManagedDevConfig = {
+export type ManagedApiConfig = {
   /** The data API root, ending in /api/app-data/v1. */
   dataApiUrl: string;
-  /** Null when the environment's proxy adds the Authorization header. */
+  /**
+   * Null when the environment's proxy adds the Authorization header, and
+   * always in hosting, where the outbound Worker carries the viewer instead.
+   */
   developerToken: string | null;
 };
+
+/** What SourceMedium's deploy names this deployment; identity, never authority. */
+export type HostedConfig = { appId: string; deploymentId: string };
 
 export type GuardConfig =
   { kind: "basic"; username: string; password: string } | { kind: "access"; teamDomain: string; audience: string };
@@ -86,7 +101,8 @@ export type ConfigProblem = { variable: string; message: string };
 export type AppConfig =
   | { status: "ok"; mode: "sample"; guard: GuardConfig | null; storeId: string | null }
   | { status: "ok"; mode: "live"; guard: GuardConfig; live: LiveConfig; storeId: string | null }
-  | { status: "ok"; mode: "managed-dev"; guard: null; managed: ManagedDevConfig; storeId: null }
+  | { status: "ok"; mode: "managed-dev"; guard: null; managed: ManagedApiConfig; storeId: null }
+  | { status: "ok"; mode: "managed"; guard: null; managed: ManagedApiConfig; hosted: HostedConfig; storeId: null }
   | { status: "error"; problems: ConfigProblem[] };
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -182,19 +198,15 @@ export function parseConfig(env: Env): AppConfig {
 }
 
 /**
- * Managed development: SourceMedium's data API with a developer token. It
- * never falls back to sample data, and refuses every self-hosted setting
- * rather than guessing which configuration was meant.
+ * Apps SourceMedium manages: development with a developer token, or hosting,
+ * where the deploy sets the app and deployment ids and the gateway's outbound
+ * Worker carries the viewer. Neither falls back to sample data, and both
+ * refuse every self-hosted setting rather than guessing which was meant.
  */
 function parseManaged(env: Env, hosting: string): AppConfig {
   const problems: ConfigProblem[] = [];
-  if (hosting === "managed") {
-    problems.push({
-      variable: "SM_HOSTING",
-      message:
-        "SM_HOSTING=managed is set only by SourceMedium hosting. To develop against your app's data, use SM_HOSTING=managed-dev (docs/managed.md).",
-    });
-  } else if (hosting !== "managed-dev") {
+  const hosted = hosting === "managed";
+  if (!hosted && hosting !== "managed-dev") {
     problems.push({
       variable: "SM_HOSTING",
       message:
@@ -213,8 +225,9 @@ function parseManaged(env: Env, hosting: string): AppConfig {
   if (requireLive !== undefined && requireLive !== "true" && requireLive !== "false") {
     problems.push({ variable: "APP_REQUIRE_LIVE", message: "APP_REQUIRE_LIVE must be true or false." });
   }
-  const dataApiUrl = parseDataApiUrl(read(env, "SM_DATA_API_URL"), problems);
+  const dataApiUrl = parseDataApiUrl(read(env, "SM_DATA_API_URL"), problems, hosted);
   const token = read(env, "SM_DEVELOPER_TOKEN");
+  if (hosted) return parseHosted(env, dataApiUrl, token, problems);
   if (token !== undefined && !(token.startsWith("smapp_") ? DEVELOPER_TOKEN : TOKEN_PLACEHOLDER).test(token)) {
     problems.push({
       variable: "SM_DEVELOPER_TOKEN",
@@ -232,8 +245,51 @@ function parseManaged(env: Env, hosting: string): AppConfig {
   };
 }
 
-/** HTTPS, or http to this computer for a local SourceMedium; exactly the data API root. */
-function parseDataApiUrl(raw: string | undefined, problems: ConfigProblem[]): string | null {
+/**
+ * Hosting: the data API is reached only through the outbound Worker, which
+ * attaches the viewer the gateway authorized. A developer token here would be
+ * a credential in customer code, so it is refused, not ignored.
+ */
+function parseHosted(
+  env: Env,
+  dataApiUrl: string | null,
+  token: string | undefined,
+  problems: ConfigProblem[],
+): AppConfig {
+  if (token !== undefined) {
+    problems.push({
+      variable: "SM_DEVELOPER_TOKEN",
+      message:
+        "A hosted app never holds a developer token: SourceMedium's gateway carries each viewer's access. Remove it.",
+    });
+  }
+  const ids = { appId: read(env, "SM_APP_ID"), deploymentId: read(env, "SM_DEPLOYMENT_ID") };
+  for (const [variable, value] of [
+    ["SM_APP_ID", ids.appId],
+    ["SM_DEPLOYMENT_ID", ids.deploymentId],
+  ] as const) {
+    if (value === undefined || !UUID.test(value)) {
+      problems.push({
+        variable,
+        message: `${variable} is set by SourceMedium's deploy; SM_HOSTING=managed is not for local use. To develop against your app's data, use SM_HOSTING=managed-dev (docs/managed.md).`,
+      });
+    }
+  }
+  if (problems.length > 0 || dataApiUrl === null || !ids.appId || !ids.deploymentId) {
+    return { status: "error", problems };
+  }
+  return {
+    status: "ok",
+    mode: "managed",
+    guard: null,
+    managed: { dataApiUrl, developerToken: null },
+    hosted: { appId: ids.appId, deploymentId: ids.deploymentId },
+    storeId: null,
+  };
+}
+
+/** HTTPS (or, in development, http to this computer); exactly the data API root. */
+function parseDataApiUrl(raw: string | undefined, problems: ConfigProblem[], hosted = false): string | null {
   const problem = (message: string) => {
     problems.push({ variable: "SM_DATA_API_URL", message });
     return null;
@@ -249,7 +305,7 @@ function parseDataApiUrl(raw: string | undefined, problems: ConfigProblem[]): st
   } catch {
     return problem("SM_DATA_API_URL is not a URL; copy it from your app's Agent setup in SourceMedium.");
   }
-  if (url.protocol !== "https:" && !(url.protocol === "http:" && LOOPBACK_HOSTNAMES.has(url.hostname))) {
+  if (url.protocol !== "https:" && (hosted || !(url.protocol === "http:" && LOOPBACK_HOSTNAMES.has(url.hostname)))) {
     return problem("SM_DATA_API_URL must use https://.");
   }
   if (url.username || url.password || url.search || url.hash || url.pathname.replace(/\/+$/, "") !== DATA_API_PATH) {
@@ -469,6 +525,7 @@ export function describeConfig(config: AppConfig): string {
   if (config.status === "error") return "Configuration error";
   if (config.mode === "managed-dev")
     return "Live data through SourceMedium's data API, development on this computer only";
+  if (config.mode === "managed") return "Live data, hosted by SourceMedium for signed-in workspace members";
   const data = config.mode === "live" ? "Live data" : "Sample data";
   const guard = !config.guard
     ? "public"

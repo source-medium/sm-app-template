@@ -64,6 +64,13 @@ async function main(): Promise<void> {
       "No .dev.vars file, so the Worker preview serves sample data. Paste the configuration block into .dev.vars to preview live data.",
     );
   }
+  if (config.mode === "managed") {
+    // Hosting's data path is SourceMedium's outbound Worker, which exists only there.
+    fail(
+      "SM_HOSTING=managed runs only on SourceMedium's hosting. To check your app's data from here, use SM_HOSTING=managed-dev with a developer token (docs/managed.md).",
+    );
+    process.exit(1);
+  }
   if (offline) {
     if (!devVars && config.mode === "sample")
       ok("Sample data needs no setup. To connect your warehouse, see docs/connect.md.");
