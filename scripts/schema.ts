@@ -183,6 +183,7 @@ async function printManagedRelation(
 }
 
 main().catch((error: unknown) => {
-  console.error(error);
+  // A refused token or an unreachable API is a message to act on, not a stack trace.
+  console.error(error instanceof WarehouseError ? `${error.title}. ${error.remedy}` : error);
   process.exit(1);
 });

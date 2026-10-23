@@ -31,6 +31,14 @@ describe("schema CLI in managed mode", () => {
     expect(result.stdout).not.toContain("snapshot of SourceMedium");
     expect(result.stderr).not.toMatch(/Google|BigQuery|app key/i);
   });
+  it("explains an unreachable data API in a sentence, not a stack trace", () => {
+    // Port 9 (discard) refuses connections on this computer, so the context load fails at once.
+    const result = schema({ SM_HOSTING: "managed-dev", SM_DATA_API_URL: "http://127.0.0.1:9/api/app-data/v1" });
+    expect(result.status, result.stderr).toBe(1);
+    const lines = result.stderr.trim().split("\n");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("SourceMedium's data API is temporarily unavailable");
+  });
   it("keeps the explicitly offline schema available outside managed modes", () => {
     const result = schema({});
     expect(result.status, result.stderr).toBe(0);
