@@ -1,5 +1,8 @@
 # Connect and deploy
 
+SourceMedium hosting your app? Use [managed.md](managed.md) instead; it needs
+none of the settings below.
+
 Using Codex Cloud or Claude Code in the cloud? Start with
 [the browser guide](cloud.md). For an already hosted app, jump to
 [Connect a hosted app](#connect-a-hosted-app); local setup is optional. For

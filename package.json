@@ -11,9 +11,9 @@
   },
   "scripts": {
     "setup:agent": "node scripts/setup-agent.mjs",
-    "dev": "tsx --conditions=react-server scripts/diagnose.ts --offline && next dev --hostname 127.0.0.1 --port 3000",
-    "diagnose": "tsx --conditions=react-server scripts/diagnose.ts",
-    "schema": "tsx --conditions=react-server scripts/schema.ts",
+    "dev": "node scripts/managed-node.mjs tsx --conditions=react-server scripts/diagnose.ts --offline && node scripts/managed-node.mjs next dev --hostname 127.0.0.1 --port 3000",
+    "diagnose": "node scripts/managed-node.mjs tsx --conditions=react-server scripts/diagnose.ts",
+    "schema": "node scripts/managed-node.mjs tsx --conditions=react-server scripts/schema.ts",
     "check": "tsx scripts/check.ts",
     "skills:sync": "tsx scripts/skills-sync.ts",
     "format": "prettier --write --cache .",

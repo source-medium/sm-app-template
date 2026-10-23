@@ -1,9 +1,9 @@
 /**
  * sm-app-template integration file. Template version: 0.1.0 (unreleased).
  *
- * Binds validated live configuration to the REST client. Pages get a
- * Warehouse only through requireViewer(); there is no other route from a
- * request to the warehouse.
+ * Binds validated live configuration to the REST client, or a managed app's
+ * context to SourceMedium's data API. Pages get a Warehouse only through
+ * requireViewer(); there is no other route from a request to the warehouse.
  */
 import "server-only";
 import { BIGQUERY_IDENTIFIER, buildId, type LiveConfig } from "@/lib/config/env.server";
@@ -16,8 +16,10 @@ import {
 } from "./bigquery-rest.server";
 import { createTokenProvider } from "./google-token.server";
 import { assertStoreAccess, StoreAccessError } from "../auth/store-access";
-import { checkWarehouseConnection } from "./connection.server";
+import { checkManagedConnection, checkWarehouseConnection } from "./connection.server";
+import { runManagedQuery, type ManagedApiClient, type ManagedContext } from "./managed-api.server";
 import type { ConnectionReport } from "./connection-report";
+import type { WarehouseError } from "./warehouse-error";
 
 /** SourceMedium's two datasets by role, or any other dataset id in your warehouse project. */
 export type DatasetName = "transformed" | "metadata" | (string & {});
@@ -62,31 +64,44 @@ export function bigQueryClientFor(live: LiveConfig): BigQueryClient {
   return client;
 }
 
+/** `table()` for one warehouse project and its two SourceMedium dataset roles. */
+function tableIn(coordinates: {
+  projectId: string;
+  transformedDatasetId: string;
+  metadataDatasetId: string;
+}): Warehouse["table"] {
+  return (name, dataset = "transformed") => {
+    const [qualifiedDataset, qualifiedTable] = name.includes(".") ? name.split(".", 2) : [null, name];
+    const datasetName = qualifiedDataset ?? dataset;
+    const datasetId =
+      datasetName === "transformed"
+        ? coordinates.transformedDatasetId
+        : datasetName === "metadata"
+          ? coordinates.metadataDatasetId
+          : datasetName;
+    if (
+      !qualifiedTable ||
+      !BIGQUERY_IDENTIFIER.test(qualifiedTable) ||
+      !BIGQUERY_IDENTIFIER.test(datasetId) ||
+      name.split(".").length > 2
+    ) {
+      throw new Error(
+        `"${name}" is not a valid table name; use "table", or "dataset.table" within your warehouse project.`,
+      );
+    }
+    return `\`${coordinates.projectId}.${datasetId}.${qualifiedTable}\``;
+  };
+}
+
 export function warehouseFor(live: LiveConfig, fixedStoreId: string | null = null): Warehouse {
   const client = bigQueryClientFor(live);
   const warehouse: Warehouse = {
     applicationId: live.applicationId,
-    table(name, dataset = "transformed") {
-      const [qualifiedDataset, qualifiedTable] = name.includes(".") ? name.split(".", 2) : [null, name];
-      const datasetName = qualifiedDataset ?? dataset;
-      const datasetId =
-        datasetName === "transformed"
-          ? live.transformedDatasetId
-          : datasetName === "metadata"
-            ? live.metadataDatasetId
-            : datasetName;
-      if (
-        !qualifiedTable ||
-        !BIGQUERY_IDENTIFIER.test(qualifiedTable) ||
-        !BIGQUERY_IDENTIFIER.test(datasetId) ||
-        name.split(".").length > 2
-      ) {
-        throw new Error(
-          `"${name}" is not a valid table name; use "table", or "dataset.table" within your warehouse project.`,
-        );
-      }
-      return `\`${live.dataProjectId}.${datasetId}.${qualifiedTable}\``;
-    },
+    table: tableIn({
+      projectId: live.dataProjectId,
+      transformedDatasetId: live.transformedDatasetId,
+      metadataDatasetId: live.metadataDatasetId,
+    }),
     query: async (request, options) => {
       if (fixedStoreId !== null) {
         const parameters = request.params?.filter((param) => param.name === "store_id") ?? [];
@@ -111,4 +126,49 @@ export function warehouseFor(live: LiveConfig, fixedStoreId: string | null = nul
     },
   };
   return warehouse;
+}
+
+/**
+ * A SourceMedium-managed app's warehouse: every query goes through the data
+ * API, which owns the credential, the job location and the dataset scope.
+ * The app reads every store in its organization, so there is no store
+ * restriction to enforce here.
+ */
+export function managedWarehouse(client: ManagedApiClient, context: ManagedContext): Warehouse {
+  const warehouse: Warehouse = {
+    applicationId: context.appId,
+    table: tableIn(context),
+    query: (request, options) => runManagedQuery(client, request, options),
+    checkConnection: (callerSignal) => {
+      const timeout = AbortSignal.timeout(30_000);
+      const signal = callerSignal ? AbortSignal.any([timeout, callerSignal]) : timeout;
+      const diagnosticsWarehouse = {
+        ...warehouse,
+        query: (request: QueryRequest, options?: QueryOptions) =>
+          runManagedQuery(client, request, { ...options, signal }),
+      };
+      return checkManagedConnection(context, diagnosticsWarehouse, signal);
+    },
+  };
+  return warehouse;
+}
+
+/**
+ * A managed app whose data context the data API refused (app paused, access
+ * changed) or could not answer. Every read raises that error, so views,
+ * exports and the connection check report it where they already report a
+ * warehouse failure, and nothing falls back to sample data.
+ */
+export function refusedWarehouse(refusal: WarehouseError): Warehouse {
+  return {
+    applicationId: "", // No context was loaded, so there is no app id.
+    table: () => {
+      throw refusal;
+    },
+    query: () => Promise.reject(refusal),
+    checkConnection: async () => ({
+      mode: "live",
+      checks: [{ name: "SourceMedium data API", status: "fail", message: `${refusal.title}. ${refusal.remedy}` }],
+    }),
+  };
 }

@@ -20,6 +20,11 @@ export async function TopBar({ mode, viewer }: { mode: "sample" | "live"; viewer
             {viewer.email}
           </span>
         )}
+        {viewer.kind === "sourcemedium" && (viewer.name ?? viewer.email) && (
+          <span className="hidden truncate text-sm text-muted-foreground sm:inline" title={viewer.email ?? undefined}>
+            {viewer.name ?? viewer.email}
+          </span>
+        )}
         <AgentPrompt mode={mode} build={buildId()} />
         <ModeChip mode={mode} />
         <ThemeControl initialTheme={theme} />

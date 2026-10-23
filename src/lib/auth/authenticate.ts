@@ -8,8 +8,16 @@
 import type { GuardConfig } from "@/lib/config/env.server";
 import { verifyBasicAuthorization } from "./basic";
 import { ACCESS_TOKEN_HEADER, accessVerifierFor } from "./cloudflare-access";
+import type { SourceMediumViewer } from "./sourcemedium-viewer";
 
-export type Viewer = { kind: "public" } | { kind: "shared-password" } | { kind: "access"; email: string };
+export type Viewer =
+  | { kind: "public" }
+  | { kind: "shared-password" }
+  | { kind: "access"; email: string }
+  /** Managed development on this computer; see src/lib/auth/loopback.ts. */
+  | { kind: "developer" }
+  /** A workspace member signed in through SourceMedium's gateway (hosting). */
+  | SourceMediumViewer;
 
 export type AuthenticationResult =
   | { ok: true; viewer: Viewer }

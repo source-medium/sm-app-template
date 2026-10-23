@@ -12,6 +12,8 @@ export default async function ConnectionPage() {
   const info = instanceInfo();
   const config = readConfig();
   const auth = config.status === "ok" ? config.guard?.kind : null;
+  const managed = config.status === "ok" && (config.mode === "managed-dev" || config.mode === "managed");
+  const hosted = config.status === "ok" && config.mode === "managed";
   const currency = access.mode === "sample" ? sampleCurrencyNote() : liveCurrencyNote(reportingCurrencyConfig());
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -29,14 +31,24 @@ export default async function ConnectionPage() {
           <dt className="text-muted-foreground">Environment</dt>
           <dd>{info.environment}</dd>
           <dt className="text-muted-foreground">Data</dt>
-          <dd>{access.mode === "live" ? "Live configuration present" : "Sample data"}</dd>
+          <dd>
+            {managed
+              ? "Live, through SourceMedium's data API"
+              : access.mode === "live"
+                ? "Live configuration present"
+                : "Sample data"}
+          </dd>
           <dt className="text-muted-foreground">Sign-in</dt>
           <dd>
-            {auth === "access"
-              ? "Individual email via Cloudflare Access"
-              : auth === "basic"
-                ? "Shared password"
-                : "Public sample"}
+            {hosted
+              ? "SourceMedium sign-in, for your workspace's members"
+              : managed
+                ? "This computer only (managed development)"
+                : auth === "access"
+                  ? "Individual email via Cloudflare Access"
+                  : auth === "basic"
+                    ? "Shared password"
+                    : "Public sample"}
           </dd>
           <dt className="text-muted-foreground">Live data required</dt>
           <dd>{info.requireLive ? "Yes" : "No"}</dd>

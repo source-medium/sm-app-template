@@ -24,6 +24,7 @@ const WAREHOUSE_MODULES = new Set([
   "src/lib/data/bigquery-rest.server.ts",
   "src/lib/data/google-token.server.ts",
   "src/lib/data/connection.server.ts",
+  "src/lib/data/managed-api.server.ts",
 ]);
 const WAREHOUSE_IMPORTERS = new Set([
   "src/lib/auth/require-viewer.ts",

@@ -50,10 +50,12 @@ export function configuredSecretValues(
       }
     }
     if (name === "APP_BASIC_AUTH") values.push(value, value.slice(value.indexOf(":") + 1));
+    if (name === "SM_DEVELOPER_TOKEN") values.push(value);
   };
   add("SM_APP_KEY", env.SM_APP_KEY);
   add("SM_CONNECTION", env.SM_CONNECTION);
   add("APP_BASIC_AUTH", env.APP_BASIC_AUTH);
+  add("SM_DEVELOPER_TOKEN", env.SM_DEVELOPER_TOKEN);
   for (const file of readdirSync(directory).filter((name) => name.startsWith(".env") && name !== ".env.example")) {
     for (const [name, value] of Object.entries(parseDotenv(readFileSync(join(directory, file), "utf8")))) {
       add(name, value);

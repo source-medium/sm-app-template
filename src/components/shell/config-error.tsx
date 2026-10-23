@@ -30,3 +30,22 @@ export function ConfigErrorScreen({ problems }: { problems: ConfigProblem[] }) {
     </main>
   );
 }
+
+/**
+ * Shown instead of an app SourceMedium manages when the data API refuses or
+ * cannot answer the request that loads the app's data context: the app was
+ * paused or removed, the viewer's access changed, or SourceMedium is
+ * unavailable. The title and remedy are the managed adapter's fixed copy,
+ * never provider text. No sample data is shown in its place.
+ */
+export function DataAccessErrorScreen({ title, remedy }: { title: string; remedy: string }) {
+  return (
+    <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center gap-4 p-6">
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="size-5 text-destructive" aria-hidden />
+        <h1 className="text-xl font-semibold">{title}</h1>
+      </div>
+      <p className="text-sm text-muted-foreground">{remedy}</p>
+    </main>
+  );
+}

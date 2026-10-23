@@ -16,5 +16,8 @@ export const sampleEnvironment = Object.fromEntries(
     "CF_ACCESS_TEAM_DOMAIN",
     "CF_ACCESS_AUD",
     "BIGQUERY_MAX_BYTES_BILLED",
+    "SM_HOSTING",
+    "SM_DATA_API_URL",
+    "SM_DEVELOPER_TOKEN",
   ].map((name) => [name, ""]),
 );

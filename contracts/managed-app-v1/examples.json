@@ -1,0 +1,793 @@
+{
+  "$comment": "Canonical examples for the managed-app data API (specs/managed-apps-v1.md §9), beside the JSON Schemas rendered from apps/web/lib/managed-apps/data/wire.ts. Urchin's managed-app-contract.test.ts validates every example against the wire schemas and reproduces the response, context and error examples from its real handlers. sm-app-template vendors this directory byte for byte and drives the same examples through its managed adapter. A breaking change is v2.",
+  "contract": "sourcemedium_managed_app_v1",
+  "query_request": {
+    "valid": [
+      {
+        "case": "orders_by_day",
+        "value": {
+          "contract_version": 1,
+          "name": "orders_by_day",
+          "sql": "SELECT order_date, COUNT(*) AS orders FROM obt_orders WHERE order_date >= @start GROUP BY 1",
+          "params": [
+            {
+              "name": "start",
+              "type": "DATE",
+              "value": "2026-09-01"
+            }
+          ],
+          "max_rows": 1000,
+          "partial": false
+        }
+      },
+      {
+        "case": "every_parameter_type",
+        "value": {
+          "contract_version": 1,
+          "name": "parameter-types",
+          "sql": "SELECT @store_id, @start, @local_start, @since, @order_id, @ratio, @include_test",
+          "params": [
+            {
+              "name": "store_id",
+              "type": "STRING",
+              "value": "acme-store"
+            },
+            {
+              "name": "start",
+              "type": "DATE",
+              "value": "2026-09-01"
+            },
+            {
+              "name": "local_start",
+              "type": "DATETIME",
+              "value": "2026-09-01 00:00:00"
+            },
+            {
+              "name": "since",
+              "type": "TIMESTAMP",
+              "value": "2026-09-01T00:00:00.000000Z"
+            },
+            {
+              "name": "order_id",
+              "type": "INT64",
+              "value": "9007199254740993"
+            },
+            {
+              "name": "ratio",
+              "type": "FLOAT64",
+              "value": 0.25
+            },
+            {
+              "name": "include_test",
+              "type": "BOOL",
+              "value": false
+            }
+          ],
+          "max_rows": 10000,
+          "partial": true
+        }
+      },
+      {
+        "case": "defaults",
+        "value": {
+          "contract_version": 1,
+          "name": "store_roster",
+          "sql": "SELECT sm_store_id FROM dim_stores"
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "case": "missing_contract_version",
+        "value": {
+          "name": "orders",
+          "sql": "SELECT 1"
+        }
+      },
+      {
+        "case": "uppercase_name",
+        "value": {
+          "contract_version": 1,
+          "name": "Orders",
+          "sql": "SELECT 1"
+        }
+      },
+      {
+        "case": "int64_as_json_number",
+        "value": {
+          "contract_version": 1,
+          "name": "orders",
+          "sql": "SELECT @id",
+          "params": [
+            {
+              "name": "id",
+              "type": "INT64",
+              "value": 5
+            }
+          ]
+        }
+      },
+      {
+        "case": "int64_out_of_range",
+        "value": {
+          "contract_version": 1,
+          "name": "orders",
+          "sql": "SELECT @id",
+          "params": [
+            {
+              "name": "id",
+              "type": "INT64",
+              "value": "9223372036854775808"
+            }
+          ]
+        }
+      },
+      {
+        "case": "float64_as_string",
+        "value": {
+          "contract_version": 1,
+          "name": "orders",
+          "sql": "SELECT @ratio",
+          "params": [
+            {
+              "name": "ratio",
+              "type": "FLOAT64",
+              "value": "0.25"
+            }
+          ]
+        }
+      },
+      {
+        "case": "impossible_date",
+        "value": {
+          "contract_version": 1,
+          "name": "orders",
+          "sql": "SELECT @day",
+          "params": [
+            {
+              "name": "day",
+              "type": "DATE",
+              "value": "2026-02-30"
+            }
+          ]
+        }
+      },
+      {
+        "case": "duplicate_parameter_names",
+        "value": {
+          "contract_version": 1,
+          "name": "orders",
+          "sql": "SELECT @start",
+          "params": [
+            {
+              "name": "start",
+              "type": "DATE",
+              "value": "2026-09-01"
+            },
+            {
+              "name": "Start",
+              "type": "DATE",
+              "value": "2026-09-02"
+            }
+          ]
+        }
+      },
+      {
+        "case": "max_rows_over_limit",
+        "value": {
+          "contract_version": 1,
+          "name": "orders",
+          "sql": "SELECT 1",
+          "max_rows": 10001
+        }
+      },
+      {
+        "case": "app_id_in_body",
+        "value": {
+          "contract_version": 1,
+          "name": "orders",
+          "sql": "SELECT 1",
+          "app_id": "0b2c3d4e-0000-4000-8000-000000000001"
+        }
+      }
+    ]
+  },
+  "query_response": {
+    "valid": [
+      {
+        "case": "inline_scalars",
+        "value": {
+          "contract_version": 1,
+          "request_id": "5d1f0e8a-6c3b-4e8f-9a51-2f7c4b9d0e11",
+          "fields": [
+            {
+              "name": "order_date",
+              "type": "DATE",
+              "mode": "NULLABLE"
+            },
+            {
+              "name": "orders",
+              "type": "INTEGER",
+              "mode": "NULLABLE"
+            },
+            {
+              "name": "revenue",
+              "type": "NUMERIC",
+              "mode": "NULLABLE"
+            },
+            {
+              "name": "aov",
+              "type": "FLOAT",
+              "mode": "NULLABLE"
+            },
+            {
+              "name": "is_test",
+              "type": "BOOLEAN",
+              "mode": "NULLABLE"
+            },
+            {
+              "name": "placed_at",
+              "type": "TIMESTAMP",
+              "mode": "NULLABLE"
+            },
+            {
+              "name": "payload",
+              "type": "JSON",
+              "mode": "NULLABLE"
+            },
+            {
+              "name": "note",
+              "type": "STRING",
+              "mode": "NULLABLE"
+            }
+          ],
+          "rows": [
+            {
+              "order_date": "2026-09-01",
+              "orders": "9007199254740993",
+              "revenue": "12345.67",
+              "aov": "29.966",
+              "is_test": "false",
+              "placed_at": "1788220800000000",
+              "payload": "{\"channel\":\"online\"}",
+              "note": null
+            }
+          ],
+          "truncated": false,
+          "receipt": {
+            "job": null,
+            "query_id": "q-inline-1",
+            "bytes_billed": "10485760",
+            "cache_hit": false
+          },
+          "fetched_at": "2026-10-22T20:00:00.000Z"
+        }
+      },
+      {
+        "case": "job_nested_records",
+        "value": {
+          "contract_version": 1,
+          "request_id": "5d1f0e8a-6c3b-4e8f-9a51-2f7c4b9d0e12",
+          "fields": [
+            {
+              "name": "order_id",
+              "type": "STRING",
+              "mode": "NULLABLE"
+            },
+            {
+              "name": "tags",
+              "type": "STRING",
+              "mode": "REPEATED"
+            },
+            {
+              "name": "line_items",
+              "type": "RECORD",
+              "mode": "REPEATED",
+              "fields": [
+                {
+                  "name": "sku",
+                  "type": "STRING",
+                  "mode": "NULLABLE"
+                },
+                {
+                  "name": "quantity",
+                  "type": "INTEGER",
+                  "mode": "NULLABLE"
+                }
+              ]
+            }
+          ],
+          "rows": [
+            {
+              "order_id": "1001",
+              "tags": ["vip", "subscription"],
+              "line_items": [
+                {
+                  "sku": "TEE-M",
+                  "quantity": "2"
+                },
+                {
+                  "sku": "CAP",
+                  "quantity": "1"
+                }
+              ]
+            },
+            {
+              "order_id": "1002",
+              "tags": [],
+              "line_items": []
+            }
+          ],
+          "truncated": false,
+          "receipt": {
+            "job": {
+              "project_id": "sm-acme",
+              "job_id": "app_3c6e0b8a5f2d4e1a9b7c6d5e4f3a2b1c0d9e8f7a",
+              "location": "US"
+            },
+            "query_id": null,
+            "bytes_billed": "20971520",
+            "cache_hit": false
+          },
+          "fetched_at": "2026-10-22T20:00:01.000Z"
+        }
+      },
+      {
+        "case": "partial_truncated",
+        "value": {
+          "contract_version": 1,
+          "request_id": "5d1f0e8a-6c3b-4e8f-9a51-2f7c4b9d0e13",
+          "fields": [
+            {
+              "name": "order_id",
+              "type": "STRING",
+              "mode": "NULLABLE"
+            }
+          ],
+          "rows": [
+            {
+              "order_id": "1001"
+            }
+          ],
+          "truncated": true,
+          "receipt": {
+            "job": null,
+            "query_id": "q-inline-2",
+            "bytes_billed": null,
+            "cache_hit": null
+          },
+          "fetched_at": "2026-10-22T20:00:02.000Z"
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "case": "number_cell",
+        "value": {
+          "contract_version": 1,
+          "request_id": "r",
+          "fields": [
+            {
+              "name": "orders",
+              "type": "INTEGER",
+              "mode": "NULLABLE"
+            }
+          ],
+          "rows": [
+            {
+              "orders": 412
+            }
+          ],
+          "truncated": false,
+          "receipt": {
+            "job": null,
+            "query_id": null,
+            "bytes_billed": null,
+            "cache_hit": null
+          },
+          "fetched_at": "2026-10-22T20:00:00.000Z"
+        }
+      },
+      {
+        "case": "bytes_billed_as_number",
+        "value": {
+          "contract_version": 1,
+          "request_id": "r",
+          "fields": [],
+          "rows": [],
+          "truncated": false,
+          "receipt": {
+            "job": null,
+            "query_id": null,
+            "bytes_billed": 10485760,
+            "cache_hit": null
+          },
+          "fetched_at": "2026-10-22T20:00:00.000Z"
+        }
+      },
+      {
+        "case": "missing_receipt",
+        "value": {
+          "contract_version": 1,
+          "request_id": "r",
+          "fields": [],
+          "rows": [],
+          "truncated": false,
+          "fetched_at": "2026-10-22T20:00:00.000Z"
+        }
+      }
+    ]
+  },
+  "context": {
+    "valid": [
+      {
+        "case": "developer_token",
+        "value": {
+          "contract_version": 1,
+          "app": {
+            "id": "0b2c3d4e-0000-4000-8000-000000000001",
+            "name": "Weekly performance"
+          },
+          "organization": {
+            "id": "0b2c3d4e-0000-4000-8000-0000000000aa",
+            "name": "Acme"
+          },
+          "principal": {
+            "kind": "developer_token",
+            "user_id": "0b2c3d4e-0000-4000-8000-0000000000bb"
+          },
+          "warehouse": {
+            "project_id": "sm-acme",
+            "transformed_dataset": "sm_transformed_v2",
+            "metadata_dataset": "sm_metadata",
+            "allowed_datasets": [
+              "sm_transformed_v2",
+              "sm_metadata",
+              "sm_experimental"
+            ]
+          },
+          "limits": {
+            "default_rows": 1000,
+            "max_rows": 10000,
+            "timeout_ms": 30000,
+            "max_bytes_billed": 10737418240,
+            "max_response_bytes": 10485760,
+            "max_parameters": 100
+          }
+        }
+      },
+      {
+        "case": "viewer",
+        "value": {
+          "contract_version": 1,
+          "app": {
+            "id": "0b2c3d4e-0000-4000-8000-000000000001",
+            "name": "Weekly performance"
+          },
+          "organization": {
+            "id": "0b2c3d4e-0000-4000-8000-0000000000aa",
+            "name": "Acme"
+          },
+          "principal": {
+            "kind": "viewer",
+            "user_id": "0b2c3d4e-0000-4000-8000-0000000000dd"
+          },
+          "warehouse": {
+            "project_id": "sm-acme",
+            "transformed_dataset": "sm_transformed_v2",
+            "metadata_dataset": "sm_metadata",
+            "allowed_datasets": [
+              "sm_transformed_v2",
+              "sm_metadata",
+              "sm_experimental"
+            ]
+          },
+          "limits": {
+            "default_rows": 1000,
+            "max_rows": 10000,
+            "timeout_ms": 30000,
+            "max_bytes_billed": 10737418240,
+            "max_response_bytes": 10485760,
+            "max_parameters": 100
+          }
+        }
+      },
+      {
+        "case": "verifier",
+        "value": {
+          "contract_version": 1,
+          "app": {
+            "id": "0b2c3d4e-0000-4000-8000-000000000001",
+            "name": "Weekly performance"
+          },
+          "organization": {
+            "id": "0b2c3d4e-0000-4000-8000-0000000000aa",
+            "name": "Acme"
+          },
+          "principal": {
+            "kind": "verifier",
+            "user_id": null
+          },
+          "warehouse": {
+            "project_id": "sm-acme",
+            "transformed_dataset": "sm_transformed_v2",
+            "metadata_dataset": "sm_metadata",
+            "allowed_datasets": ["sm_transformed_v2", "sm_metadata"]
+          },
+          "limits": {
+            "default_rows": 1000,
+            "max_rows": 10000,
+            "timeout_ms": 30000,
+            "max_bytes_billed": 10737418240,
+            "max_response_bytes": 10485760,
+            "max_parameters": 100
+          }
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "case": "verifier_with_user",
+        "value": {
+          "contract_version": 1,
+          "app": {
+            "id": "a",
+            "name": "A"
+          },
+          "organization": {
+            "id": "o",
+            "name": "O"
+          },
+          "principal": {
+            "kind": "verifier",
+            "user_id": "u"
+          },
+          "warehouse": {
+            "project_id": "p",
+            "transformed_dataset": "t",
+            "metadata_dataset": "m",
+            "allowed_datasets": ["t"]
+          },
+          "limits": {
+            "default_rows": 1000,
+            "max_rows": 10000,
+            "timeout_ms": 30000,
+            "max_bytes_billed": 10737418240,
+            "max_response_bytes": 10485760,
+            "max_parameters": 100
+          }
+        }
+      },
+      {
+        "case": "no_allowed_datasets",
+        "value": {
+          "contract_version": 1,
+          "app": {
+            "id": "a",
+            "name": "A"
+          },
+          "organization": {
+            "id": "o",
+            "name": "O"
+          },
+          "principal": {
+            "kind": "developer_token",
+            "user_id": "u"
+          },
+          "warehouse": {
+            "project_id": "p",
+            "transformed_dataset": "t",
+            "metadata_dataset": "m",
+            "allowed_datasets": []
+          },
+          "limits": {
+            "default_rows": 1000,
+            "max_rows": 10000,
+            "timeout_ms": 30000,
+            "max_bytes_billed": 10737418240,
+            "max_response_bytes": 10485760,
+            "max_parameters": 100
+          }
+        }
+      }
+    ]
+  },
+  "error": {
+    "valid": [
+      {
+        "case": "token_invalid",
+        "status": 401,
+        "value": {
+          "error": {
+            "code": "TOKEN_INVALID",
+            "message": "The developer token is invalid or expired. Create a new token in SourceMedium.",
+            "retryable": false,
+            "request_id": "5d1f0e8a-6c3b-4e8f-9a51-2f7c4b9d0e21"
+          }
+        }
+      },
+      {
+        "case": "access_denied",
+        "status": 403,
+        "value": {
+          "error": {
+            "code": "ACCESS_DENIED",
+            "message": "This token no longer has access to the app.",
+            "retryable": false,
+            "request_id": "5d1f0e8a-6c3b-4e8f-9a51-2f7c4b9d0e22"
+          }
+        }
+      },
+      {
+        "case": "relation_not_found",
+        "status": 400,
+        "value": {
+          "error": {
+            "code": "INVALID_REQUEST",
+            "message": "BigQuery rejected this SQL during dry-run validation: no table named `sm-acme:sm_transformed_v2.dim_stores` exists.",
+            "retryable": false,
+            "request_id": "5d1f0e8a-6c3b-4e8f-9a51-2f7c4b9d0e23",
+            "reason": "relation_not_found"
+          }
+        }
+      },
+      {
+        "case": "result_too_large",
+        "status": 413,
+        "value": {
+          "error": {
+            "code": "RESULT_TOO_LARGE",
+            "message": "The query returned more than 1000 rows. Aggregate, raise max_rows (up to 10000), or send partial: true to accept the first rows.",
+            "retryable": false,
+            "request_id": "5d1f0e8a-6c3b-4e8f-9a51-2f7c4b9d0e24"
+          }
+        }
+      },
+      {
+        "case": "rate_limited",
+        "status": 429,
+        "value": {
+          "error": {
+            "code": "RATE_LIMITED",
+            "message": "This caller reached its app_data request limit (60 per 60s). Wait 12s and retry, or batch the work into fewer calls.",
+            "retryable": true,
+            "request_id": "5d1f0e8a-6c3b-4e8f-9a51-2f7c4b9d0e25",
+            "retry_after_seconds": 12
+          }
+        }
+      },
+      {
+        "case": "source_unavailable",
+        "status": 503,
+        "value": {
+          "error": {
+            "code": "SOURCE_UNAVAILABLE",
+            "message": "This app's warehouse is not available right now. If it persists, contact SourceMedium support with the request ID.",
+            "retryable": false,
+            "request_id": "5d1f0e8a-6c3b-4e8f-9a51-2f7c4b9d0e26"
+          }
+        }
+      },
+      {
+        "case": "query_timeout",
+        "status": 504,
+        "value": {
+          "error": {
+            "code": "QUERY_TIMEOUT",
+            "message": "The query exceeded the 30-second limit. Narrow the date range or aggregate earlier.",
+            "retryable": false,
+            "request_id": "5d1f0e8a-6c3b-4e8f-9a51-2f7c4b9d0e27"
+          }
+        }
+      },
+      {
+        "case": "internal_error",
+        "status": 500,
+        "value": {
+          "error": {
+            "code": "INTERNAL_ERROR",
+            "message": "SourceMedium could not complete this request. Retry shortly; if it persists, contact SourceMedium support with the request ID.",
+            "retryable": true,
+            "request_id": "5d1f0e8a-6c3b-4e8f-9a51-2f7c4b9d0e28"
+          }
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "case": "mcp_only_code",
+        "value": {
+          "error": {
+            "code": "PROVIDER_PERMISSION_DENIED",
+            "message": "Denied.",
+            "retryable": false,
+            "request_id": "r"
+          }
+        }
+      },
+      {
+        "case": "unknown_reason",
+        "value": {
+          "error": {
+            "code": "INVALID_REQUEST",
+            "message": "Bad.",
+            "retryable": false,
+            "request_id": "r",
+            "reason": "column_not_found"
+          }
+        }
+      },
+      {
+        "case": "missing_request_id",
+        "value": {
+          "error": {
+            "code": "INTERNAL_ERROR",
+            "message": "Failed.",
+            "retryable": true
+          }
+        }
+      }
+    ]
+  },
+  "viewer_header": {
+    "valid": [
+      {
+        "case": "member",
+        "value": {
+          "contract_version": 1,
+          "kind": "member",
+          "user_id": "0b2c3d4e-0000-4000-8000-0000000000dd",
+          "email": "ana@acme.example",
+          "name": "Ana Lucía Pérez",
+          "organization_id": "0b2c3d4e-0000-4000-8000-0000000000aa"
+        }
+      },
+      {
+        "case": "agency_without_profile",
+        "value": {
+          "contract_version": 1,
+          "kind": "agency",
+          "user_id": "0b2c3d4e-0000-4000-8000-0000000000ee",
+          "email": null,
+          "name": null,
+          "organization_id": "0b2c3d4e-0000-4000-8000-0000000000aa"
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "case": "missing_organization",
+        "value": {
+          "contract_version": 1,
+          "kind": "member",
+          "user_id": "0b2c3d4e-0000-4000-8000-0000000000dd",
+          "email": null,
+          "name": null
+        }
+      },
+      {
+        "case": "credential_field",
+        "value": {
+          "contract_version": 1,
+          "kind": "member",
+          "user_id": "0b2c3d4e-0000-4000-8000-0000000000dd",
+          "email": null,
+          "name": null,
+          "organization_id": "0b2c3d4e-0000-4000-8000-0000000000aa",
+          "token": "smapp_x"
+        }
+      },
+      {
+        "case": "store_scoped_kind",
+        "value": {
+          "contract_version": 1,
+          "kind": "store",
+          "user_id": "0b2c3d4e-0000-4000-8000-0000000000dd",
+          "email": null,
+          "name": null,
+          "organization_id": "0b2c3d4e-0000-4000-8000-0000000000aa"
+        }
+      }
+    ]
+  }
+}

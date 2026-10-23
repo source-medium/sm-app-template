@@ -10,3 +10,6 @@ scripts/schema-snapshot.json
 next-env.d.ts
 cloudflare-env.d.ts
 .claude/worktrees
+
+# Vendored byte for byte from urchin specs/contracts/managed-app-v1.
+contracts/

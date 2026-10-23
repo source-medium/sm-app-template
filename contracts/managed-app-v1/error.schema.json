@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "TOKEN_INVALID",
+            "ACCESS_DENIED",
+            "INVALID_REQUEST",
+            "QUERY_NOT_READ_ONLY",
+            "QUERY_SCOPE_DENIED",
+            "QUERY_TOO_EXPENSIVE",
+            "RESULT_TOO_LARGE",
+            "RATE_LIMITED",
+            "SOURCE_UNAVAILABLE",
+            "PROVIDER_ERROR",
+            "QUERY_TIMEOUT",
+            "INTERNAL_ERROR"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "const": "relation_not_found"
+        },
+        "retry_after_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        }
+      },
+      "required": ["code", "message", "retryable", "request_id"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["error"],
+  "additionalProperties": false
+}

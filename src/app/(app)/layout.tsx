@@ -3,7 +3,7 @@
  * configuration error replaces the whole app with its explanation, and the
  * mode chip and viewer email come from the same decision the data reads use.
  */
-import { ConfigErrorScreen } from "@/components/shell/config-error";
+import { ConfigErrorScreen, DataAccessErrorScreen } from "@/components/shell/config-error";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { TopBar } from "@/components/shell/top-bar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -17,6 +17,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   } catch (error) {
     if (error instanceof ConfigurationError) return <ConfigErrorScreen problems={error.problems} />;
     throw error;
+  }
+  // A managed app loads its data context in requireViewer(), so a refusal (app
+  // paused, access changed) or an outage is explained here in place of a blank error page.
+  if (access.mode === "live" && access.refusal) {
+    return <DataAccessErrorScreen title={access.refusal.title} remedy={access.refusal.remedy} />;
   }
   return (
     <TooltipProvider>
