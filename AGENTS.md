@@ -140,7 +140,10 @@ A `route.ts` handler (a CSV download, an API) calls `await requireViewer()`
 first, like any data function. On a `WarehouseError`, return its `title` and
 `remedy` with a 5xx status. A CSV download wraps its query in `csvExport()`
 (`src/lib/csv.server.ts`), which applies the page's store, dates and errors. Exports carry raw values (exact decimals, ISO
-dates), not display formatting. This app is read-only: anything that writes or
+dates), not display formatting. React's `cache` does not span a route handler;
+`requireViewer()` shares its result per request with `requestScoped`
+(`src/lib/request-scope.ts`), which also shares your own per-request work there.
+This app is read-only: anything that writes or
 acts for a person needs a real per-person authorization design first.
 
 ## Runtime constraints (Cloudflare Workers, tested)

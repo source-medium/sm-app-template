@@ -10,10 +10,9 @@
  * route handler, or a server action does not call it.
  */
 import "server-only";
-import { cache } from "react";
-import { headers } from "next/headers";
 import { buildId, readConfig, type ConfigProblem, type ManagedApiConfig } from "@/lib/config/env.server";
 import { logEvent } from "@/lib/data/log";
+import { requestScoped } from "@/lib/request-scope";
 import { loadManagedContext } from "@/lib/data/managed-api.server";
 import { managedWarehouse, refusedWarehouse, warehouseFor, type Warehouse } from "@/lib/data/warehouse.server";
 import { WarehouseError } from "@/lib/data/warehouse-error";
@@ -71,14 +70,13 @@ async function managedAccess(managed: ManagedApiConfig, viewer: Viewer): Promise
   }
 }
 
-/** Once per request: React.cache scopes the result to one server render. */
-const resolveViewer = cache(async (): Promise<ViewerAccess> => {
+/** Once per request, in a render, a route handler or a server action (src/lib/request-scope.ts). */
+const resolveViewer = requestScoped(async (requestHeaders): Promise<ViewerAccess> => {
   const config = readConfig();
   if (config.status === "error") {
     logEvent({ event: "config_error", level: "error", variables: config.problems.map((p) => p.variable) });
     throw new ConfigurationError(config.problems);
   }
-  const requestHeaders = await headers();
   if (config.mode === "managed") {
     // SourceMedium's gateway is the only way in and sets this header on every
     // request; without it, nothing is served (no sample fallback).

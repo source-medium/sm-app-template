@@ -1,8 +1,9 @@
 /**
  * Server code under test, in Node and workerd: a request's headers are
  * `requestHeaders.current` (see goLive in ./live), React's per-request
- * `cache` runs every call, and environment stubs, global stubs and request
- * headers reset after each test.
+ * `cache` and `requestScoped` run every call, and environment stubs, global
+ * stubs and request headers reset after each test. A test of the per-request
+ * sharing itself calls `vi.unmock("@/lib/request-scope")`.
  */
 import { afterEach, vi } from "vitest";
 import { requestHeaders } from "./live";
@@ -15,6 +16,12 @@ vi.mock("@/app.config", async (original) => {
 });
 vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
 vi.mock("react", async (original) => ({ ...(await original<typeof import("react")>()), cache: <T>(fn: T) => fn }));
+vi.mock("@/lib/request-scope", () => ({
+  requestScoped:
+    <T>(compute: (request: Headers) => Promise<T>) =>
+    async () =>
+      compute(requestHeaders.current),
+}));
 
 afterEach(() => {
   vi.unstubAllEnvs();
