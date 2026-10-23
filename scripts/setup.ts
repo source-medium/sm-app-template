@@ -5,7 +5,14 @@ import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { parseConfig, describeConfig } from "../src/lib/config/env.server";
 import { loadLocalEnvironment, root } from "./lib/environment";
-import { credentialInstructions, EMPTY_PLAN, readWorkerConfig, requireProductionLive, SetupPlan } from "./lib/setup";
+import {
+  credentialInstructions,
+  EMPTY_PLAN,
+  readWorkerConfig,
+  requireProductionLive,
+  SetupPlan,
+  sourcePushStatus,
+} from "./lib/setup";
 
 const file = join(root, "setup.json");
 const workerFile = join(root, "wrangler.jsonc");
@@ -83,26 +90,16 @@ try {
     );
     loadLocalEnvironment();
     console.log(`Local: ${describeConfig(parseConfig(process.env))}. Run pnpm diagnose to verify connectivity.`);
-    let head = "";
-    try {
-      head = execFileSync("git", ["rev-parse", "HEAD"], {
-        cwd: root,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim();
-      const branch = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
-      const remote = execFileSync("git", ["ls-remote", "origin", `refs/heads/${branch}`], {
+    const source = sourcePushStatus((gitArgs) =>
+      execFileSync("git", gitArgs, {
         cwd: root,
         encoding: "utf8",
         timeout: 10_000,
         stdio: ["ignore", "pipe", "ignore"],
-      })
-        .trim()
-        .split(/\s/)[0];
-      console.log(`Source: ${head.slice(0, 12)} ${remote === head ? "pushed" : "not confirmed on the remote branch"}.`);
-    } catch {
-      console.log("Source: remote push status unavailable.");
-    }
+      }).trim(),
+    );
+    console.log(source.line);
+    const head = source.head ?? "";
     for (const target of ["preview", "production"] as const) {
       const entry = plan[target];
       console.log(`\n${target === "preview" ? "Branch preview" : "Production"}: ${entry.url ?? "URL not recorded"}`);
