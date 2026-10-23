@@ -28,3 +28,20 @@ it("offers the way out of an empty result as a link", () => {
   );
   expect(screen.getByRole("link", { name: "Show all sales channels" })).toHaveAttribute("href", "/overview?store=a");
 });
+
+it("shows a selectable support code for failures and rejects arbitrary text", () => {
+  const id = "47ca1e6b-fa2c-4e96-aa86-39801bb3dbeb";
+  const { rerender } = render(
+    <ErrorState title="SourceMedium refused this request" remedy="Contact support." requestId={id} />,
+  );
+  expect(screen.getByRole("alert")).toHaveTextContent(`Support code: ${id}`);
+  expect(screen.getByText(id)).toHaveClass("select-all");
+  rerender(
+    <ErrorState
+      title="SourceMedium refused this request"
+      remedy="Contact support."
+      requestId="private-provider-text"
+    />,
+  );
+  expect(screen.queryByText(/Support code|private-provider-text/)).toBeNull();
+});

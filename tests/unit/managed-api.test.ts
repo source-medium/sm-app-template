@@ -17,6 +17,9 @@ import {
 import { checkManagedConnection } from "@/lib/data/connection.server";
 import type { Warehouse } from "@/lib/data/warehouse.server";
 import type { QueryRequest } from "@/lib/data/bigquery-rest.server";
+import { emit, setLogEmitter } from "@/lib/data/log";
+import { connectionReportText } from "@/lib/data/connection-report";
+import { refusedWarehouse } from "@/lib/data/warehouse.server";
 import { WarehouseError, type WarehouseErrorKind } from "@/lib/data/warehouse-error";
 
 type Example = { case: string; value: unknown; status?: number };
@@ -334,5 +337,44 @@ describe("managed connection checks", () => {
     const failed = report.checks.find((check) => check.status === "fail");
     expect(failed?.message).toMatch(/^SourceMedium refused this app's request\. /);
     expect(failed?.message).not.toMatch(/Google|BigQuery|app key|job project/i);
+  });
+});
+
+describe("managed request correlation", () => {
+  const id = "47ca1e6b-fa2c-4e96-aa86-39801bb3dbeb";
+  it("correlates successful and refused queries with API logs without leaking request values", async () => {
+    const lines: string[] = [];
+    const original = emit;
+    setLogEmitter((line) => lines.push(line));
+    try {
+      const success = { ...(example(examples.query_response, "inline_scalars").value as object), request_id: id };
+      await runManagedQuery(client(reply(success)), { name: "support-test", sql: "SELECT 'private-sql'" });
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({ request_id: id, error_kind: null });
+      const body = {
+        error: { code: "ACCESS_DENIED", message: "private-provider-message", retryable: false, request_id: id },
+      };
+      await expect(
+        runManagedQuery(client(reply(body, 403)), { name: "support-test", sql: "SELECT 'private-sql'" }),
+      ).rejects.toMatchObject({ requestId: id, kind: "permission_denied" });
+      expect(JSON.parse(lines[1] ?? "{}")).toMatchObject({ request_id: id, error_kind: "permission_denied" });
+      expect(lines.join("\n")).not.toMatch(/private-sql|private-provider-message|smapp_/);
+      const report = await refusedWarehouse(managedApiError(403, body)).checkConnection();
+      expect(connectionReportText(report)).toContain(`Support code: ${id}`);
+    } finally {
+      setLogEmitter(original);
+    }
+  });
+
+  it("never treats arbitrary upstream text as a support code", () => {
+    const error = managedApiError(403, {
+      error: { code: "ACCESS_DENIED", message: "private", retryable: false, request_id: TOKEN },
+    });
+    expect(error.requestId).toBeNull();
+    expect(
+      connectionReportText({
+        mode: "live",
+        checks: [{ name: "Access", status: "fail", message: "Refused", requestId: TOKEN }],
+      }),
+    ).not.toContain(TOKEN);
   });
 });

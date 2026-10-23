@@ -7,11 +7,12 @@
  */
 
 export type LogEvent = {
-  event: "bq_query" | "viewer_denied" | "config_error" | "token_exchange";
+  event: "bq_query" | "managed_context_refused" | "viewer_denied" | "config_error" | "token_exchange";
   level: "info" | "warn" | "error";
   build?: string;
   app?: string | null;
   query?: string | null;
+  request_id?: string | null;
   job_project?: string | null;
   job_id?: string | null;
   location?: string | null;
@@ -34,6 +35,7 @@ const KEYS = [
   "build",
   "app",
   "query",
+  "request_id",
   "job_project",
   "job_id",
   "location",

@@ -95,6 +95,8 @@ const COPY: Record<WarehouseErrorKind, { title: string; remedy: string }> = {
 };
 
 type Details = {
+  /** A SourceMedium request identifier safe to share with support. */
+  requestId?: string | null;
   status?: number;
   reason?: string;
   /** Provider text for SQL errors only: names and positions, which an agent needs to fix the query. */
@@ -109,6 +111,7 @@ type Details = {
 };
 
 export class WarehouseError extends Error {
+  readonly requestId: string | null;
   readonly kind: WarehouseErrorKind;
   readonly title: string;
   readonly remedy: string;
@@ -125,6 +128,7 @@ export class WarehouseError extends Error {
     const remedy = details.remedy ?? copy.remedy;
     super(`${title}. ${remedy}`);
     this.name = "WarehouseError";
+    this.requestId = supportRequestId(details.requestId);
     this.kind = kind;
     this.title = title;
     this.remedy = remedy;
@@ -148,6 +152,13 @@ export class WarehouseError extends Error {
     if (name === "AbortError") return new WarehouseError("cancelled", { reason });
     return new WarehouseError("transient", { reason: `${reason}_network` });
   }
+}
+
+/** Never reflect arbitrary upstream text, credentials or SQL as a support code. */
+export function supportRequestId(value: unknown): string | null {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : null;
 }
 
 type GoogleErrorBody = {

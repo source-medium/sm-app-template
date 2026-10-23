@@ -17,6 +17,7 @@ const examples = JSON.parse(
 const CONTEXT = examples.context.valid.find((entry) => entry.case === "developer_token")?.value;
 if (!CONTEXT) throw new Error("the vendored contract has no developer_token context example");
 
+const REQUEST_ID = "47ca1e6b-fa2c-4e96-aa86-39801bb3dbeb";
 const TOKEN = `smapp_${"c".repeat(43)}`;
 
 function managedEnv() {
@@ -32,7 +33,7 @@ function refusedContext(status: number, code: string) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async () =>
-      Response.json({ error: { code, message: "Refused.", retryable: false, request_id: "r" } }, { status }),
+      Response.json({ error: { code, message: "Refused.", retryable: false, request_id: REQUEST_ID } }, { status }),
     ),
   );
 }
@@ -87,6 +88,7 @@ describe("route handlers when SourceMedium refuses the app", () => {
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
       error: expect.stringContaining("SourceMedium refused this app's request"),
+      request_id: REQUEST_ID,
     });
   });
 
@@ -97,7 +99,11 @@ describe("route handlers when SourceMedium refuses the app", () => {
     expect(response.status).toBe(200);
     const report = (await response.json()) as { checks: { status: string; message: string }[] };
     expect(report.checks).toEqual([
-      expect.objectContaining({ status: "fail", message: expect.stringContaining("SourceMedium refused") }),
+      expect.objectContaining({
+        status: "fail",
+        message: expect.stringContaining("SourceMedium refused"),
+        requestId: REQUEST_ID,
+      }),
     ]);
   });
 
@@ -110,7 +116,10 @@ describe("route handlers when SourceMedium refuses the app", () => {
     const { GET } = (await import(module)) as { GET: (request: Request) => Promise<Response> };
     const response = await GET(new Request(`${origin}/export?store=s1`));
     expect(response.status).toBe(503);
-    expect(await response.json()).toMatchObject({ title: "SourceMedium refused this app's request" });
+    expect(await response.json()).toMatchObject({
+      title: "SourceMedium refused this app's request",
+      request_id: REQUEST_ID,
+    });
   });
 });
 

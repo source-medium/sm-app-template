@@ -9,6 +9,17 @@ import { cardGridStyles } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { supportRequestId } from "@/lib/data/warehouse-error";
+
+/** A correlation ID only, never arbitrary upstream text. */
+export function SupportCode({ requestId }: { requestId?: string | null }) {
+  const id = supportRequestId(requestId);
+  return id ? (
+    <p className="mt-2 text-xs">
+      Support code: <code className="break-all select-all">{id}</code>
+    </p>
+  ) : null;
+}
 
 export function LoadingState({
   variant,
@@ -109,11 +120,13 @@ export function ErrorState({
   title,
   remedy,
   detail,
+  requestId,
   tone = "error",
 }: {
   title: string;
   remedy: string;
   detail?: string | null;
+  requestId?: string | null;
   /** `warning` for a request the viewer can fix in the controls (a bad link), `error` for a failed load. */
   tone?: Exclude<Tone, "neutral">;
 }) {
@@ -121,6 +134,7 @@ export function ErrorState({
     <div role="alert" data-slot="data-error">
       <StateFrame icon={<AlertTriangle className="size-4" aria-hidden />} title={title} tone={tone}>
         <p>{remedy}</p>
+        <SupportCode requestId={requestId} />
         {detail && (
           <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 text-xs whitespace-pre-wrap">{detail}</pre>
         )}

@@ -1,7 +1,7 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
 import type { Viewer } from "@/lib/auth/require-viewer";
-import { buildId } from "@/lib/config/env.server";
+import { buildId, instanceInfo, readConfig } from "@/lib/config/env.server";
 import { parseTheme, THEME_COOKIE } from "@/lib/theme";
 import { AgentPrompt } from "./agent-prompt";
 import { ModeChip } from "./mode-chip";
@@ -10,6 +10,9 @@ import { STORE_SWITCHER_SLOT } from "@/lib/store-navigation";
 
 export async function TopBar({ mode, viewer }: { mode: "sample" | "live"; viewer: Viewer }) {
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const info = instanceInfo();
+  const config = readConfig();
+  const probe = config.status === "ok" && config.mode === "managed" && config.hosted.authMethod === "probe";
   return (
     <header className="sticky top-0 z-20 flex min-h-14 flex-wrap items-center gap-x-2 border-b bg-background/90 px-2 py-1 backdrop-blur sm:gap-3 sm:px-4 lg:h-14 lg:flex-nowrap lg:py-0">
       <SidebarTrigger aria-label="Toggle navigation" />
@@ -20,13 +23,16 @@ export async function TopBar({ mode, viewer }: { mode: "sample" | "live"; viewer
             {viewer.email}
           </span>
         )}
-        {viewer.kind === "sourcemedium" && (viewer.name ?? viewer.email) && (
+        {!probe && viewer.kind === "sourcemedium" && (viewer.name ?? viewer.email) && (
           <span className="hidden truncate text-sm text-muted-foreground sm:inline" title={viewer.email ?? undefined}>
             {viewer.name ?? viewer.email}
           </span>
         )}
         <AgentPrompt mode={mode} build={buildId()} />
         <ModeChip mode={mode} />
+        {(probe || info.environment === "Staging") && (
+          <span className="text-xs text-muted-foreground">{probe ? "Staging probe" : "Staging"}</span>
+        )}
         <ThemeControl initialTheme={theme} />
       </div>
     </header>

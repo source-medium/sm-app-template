@@ -36,7 +36,7 @@ export function ConnectionCheck({ mode }: { mode: "sample" | "live" }) {
     <section className="space-y-4 rounded-xl border bg-card p-4" aria-label="Connection check">
       <p className="text-sm text-muted-foreground">
         {mode === "live"
-          ? "Checks the credential, dataset access, store roster and query allowance. Runs small warehouse queries with a 30-second limit."
+          ? "Checks this app's data access, store roster and published metadata. Runs small warehouse queries with a 30-second limit."
           : "Checks sample mode without making any warehouse requests."}
       </p>
       <div className="flex flex-wrap gap-2">

@@ -79,7 +79,16 @@ export function ReportHeader({
       <div className="flex min-w-0 flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="max-w-prose text-sm text-muted-foreground">{description}</p>
-        {currency && <p className="text-xs text-muted-foreground">Reporting currency: {currency}</p>}
+        <p data-slot="report-trust" className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span>{mode === "sample" ? "Synthetic sample data" : "Warehouse freshness: unknown"}</span>
+          <span>
+            {allStores
+              ? "Currencies shown per store; no combined totals"
+              : currency
+                ? `Reporting currency: ${currency}`
+                : "Currency unverified; amounts are unlabeled"}
+          </span>
+        </p>
       </div>
       <div className="flex flex-wrap items-start gap-2">
         {sources.length > 0 && (

@@ -90,3 +90,21 @@ it("loads on demand, aborts replaced requests, and ignores a late response from 
   fireEvent.click(screen.getByRole("button", { name: "Close" }));
   expect((fetch.mock.calls[1]?.[1].signal as AbortSignal).aborted).toBe(true);
 });
+
+it("keeps the report usable and offers a support code when the dictionary fails", async () => {
+  const id = "47ca1e6b-fa2c-4e96-aa86-39801bb3dbeb";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(Response.json({ error: "SourceMedium is unavailable", request_id: id }, { status: 503 })),
+  );
+  render(
+    <AboutData
+      mode="live"
+      context={{ pathname: "/test", title: "Test", filters: { store: "store-a" }, currency: null }}
+      sources={[{ relation: "obt_orders", scope: "One order per row" }]}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "About this data" }));
+  expect(await screen.findByText(id)).toBeVisible();
+  expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+});

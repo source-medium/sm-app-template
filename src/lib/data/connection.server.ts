@@ -35,7 +35,12 @@ function checkRunner(checks: ConnectionCheck[], signal: AbortSignal, keepCopy = 
           : (error as WarehouseError).kind,
       );
       const shown = keepCopy && !signal.aborted ? (error as WarehouseError) : safe;
-      checks.push({ name, status: "fail", message: `${shown.title}. ${shown.remedy}` });
+      checks.push({
+        name,
+        status: "fail",
+        message: `${shown.title}. ${shown.remedy}`,
+        ...(shown.requestId ? { requestId: shown.requestId } : {}),
+      });
       return null;
     }
   };
@@ -155,7 +160,7 @@ export async function checkManagedConnection(
   signal: AbortSignal,
 ): Promise<ConnectionReport> {
   const checks: ConnectionCheck[] = [
-    { name: "SourceMedium data API", status: "pass", message: "SourceMedium accepted this app's development session." },
+    { name: "SourceMedium data API", status: "pass", message: "SourceMedium accepted this app's data access." },
   ];
   const report: ConnectionReport = { mode: "live", checks };
   const step = checkRunner(checks, signal, true);

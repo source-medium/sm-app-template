@@ -96,12 +96,18 @@ The server writes one JSON line per event with a fixed set of keys
 (`src/lib/data/log.ts`): `bq_query` for every query (app id, query name, job
 id, duration, bytes billed, rows, truncation, error kind), `viewer_denied`, and
 `config_error`. They never contain SQL, rows, keys, passwords, or headers.
+Managed queries also log the data API's `request_id`. Refused managed context
+loads emit `managed_context_refused` with the request ID, status and error
+kind, even though the explanation page intentionally returns HTTP 200.
+Search that event as well as query errors; HTTP status alone misses it.
 Search them in Cloudflare's Workers Logs, for example
 by `"event":"bq_query"` and `"error_kind"`. To forward them to an error
 tracker, replace `emit` in `log.ts`.
 
 `/healthz` answers with the build id. It shows the Worker is up, not that the
 warehouse is reachable; Connection or `pnpm diagnose` checks that.
+Logging does not create an alert. Configure and verify the host's error
+notification path before relying on unattended monitoring.
 
 ## Rolling back
 

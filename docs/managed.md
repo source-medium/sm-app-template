@@ -27,6 +27,12 @@ offline schema snapshot.
 Hosted mode is set by SourceMedium's deploy. `pnpm dev`, `pnpm diagnose` and
 `pnpm schema` refuse it; use `managed-dev` on your computer.
 
+The staging M0 probe uses shared probe access with a fixed test viewer,
+not individual workspace sign-in. SourceMedium sets `APP_ENVIRONMENT=staging`
+and `SM_GATEWAY_AUTH=probe` for that deployment; the app labels it accordingly.
+These labels never authorize a request: the gateway viewer and the data API's
+app, deployment and membership checks still apply.
+
 ## What your app can read
 
 Every store in your organization, from SourceMedium's published and
@@ -136,3 +142,10 @@ app is paused or removed; ask a workspace admin.
   `INFORMATION_SCHEMA`, and its descriptions from the data dictionary.
 - A missing table reads as "Table or dataset not found" with no job, so views
   that fall back to another table keep working.
+- Failures with a SourceMedium request ID show a **Support code**. Include it
+  with the failing page and time when contacting support; it connects the
+  app's error or safe Connection report to SourceMedium's request log. CSV
+  and dictionary errors include the same ID as `request_id`. A transport
+  failure without a server response has no support code.
+- Report headers say when warehouse freshness or reporting currency is
+  unknown. A successful query or connection check does not establish either.

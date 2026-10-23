@@ -24,7 +24,7 @@ import type {
   QueryRequest,
   QueryResult,
 } from "./bigquery-rest.server";
-import { WarehouseError, type WarehouseErrorKind } from "./warehouse-error";
+import { WarehouseError, supportRequestId, type WarehouseErrorKind } from "./warehouse-error";
 
 const DEFAULT_DEADLINE_MS = 35_000; // The server stops at 30 s; leave room to hear it say so.
 const DEFAULT_MAX_ROWS = 1000;
@@ -183,8 +183,8 @@ export function managedApiError(status: number, body: unknown): WarehouseError {
       remedy: `The address in SM_DATA_API_URL answered HTTP ${status}, but not as SourceMedium's data API. Check it against your app's Agent setup, then run \`pnpm diagnose\`.`,
     });
   }
-  const { code, message, retryable, reason, retry_after_seconds } = parsed.data.error;
-  const base = { status, reason: code.toLowerCase() };
+  const { code, message, retryable, reason, retry_after_seconds, request_id } = parsed.data.error;
+  const base = { status, reason: code.toLowerCase(), requestId: supportRequestId(request_id) };
   switch (code) {
     case "TOKEN_INVALID":
       return managedError("credential_invalid", base);
@@ -258,6 +258,7 @@ export async function runManagedQuery(
   const body = JSON.stringify(queryBody(request));
   const call = new Call(client, options);
   let result: QueryResult | null = null;
+  let requestId: string | null = null;
   let failure: WarehouseError | null = null;
   try {
     let response: Response;
@@ -285,6 +286,7 @@ export async function runManagedQuery(
     const parsed = queryResponse.safeParse(answer);
     if (!parsed.success) throw managedError("response_invalid", { reason: "data_api_query_shape" });
     const { receipt } = parsed.data;
+    requestId = supportRequestId(parsed.data.request_id);
     const job: JobReference | null = receipt.job
       ? { projectId: receipt.job.project_id, jobId: receipt.job.job_id, location: receipt.job.location }
       : null;
@@ -307,6 +309,7 @@ export async function runManagedQuery(
       level: failure && !(options.missingRelationOk && failure.kind === "not_found") ? "warn" : "info",
       build: client.buildId,
       query: request.name,
+      request_id: failure?.requestId ?? requestId,
       job_project: result?.job?.projectId ?? null,
       job_id: result?.job?.jobId ?? null,
       location: result?.job?.location ?? null,

@@ -21,7 +21,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // A managed app loads its data context in requireViewer(), so a refusal (app
   // paused, access changed) or an outage is explained here in place of a blank error page.
   if (access.mode === "live" && access.refusal) {
-    return <DataAccessErrorScreen title={access.refusal.title} remedy={access.refusal.remedy} />;
+    return (
+      <DataAccessErrorScreen
+        title={access.refusal.title}
+        remedy={access.refusal.remedy}
+        requestId={access.refusal.requestId}
+      />
+    );
   }
   return (
     <TooltipProvider>
