@@ -40,7 +40,19 @@ if (hosted) {
     throw new Error("Hosted checks need the full 40-character Git commit expected on this deployment.");
   }
 }
+// A managed app's previews sit behind SourceMedium sign-in, which a Basic Auth browser cannot pass.
+if (hosted && ["managed", "managed-dev"].includes(process.env.SM_HOSTING?.trim() ?? "")) {
+  throw new Error(
+    "Apps SourceMedium hosts are not checked with pnpm test:hosted. Run pnpm test:live against your data instead; see docs/managed.md.",
+  );
+}
 if (live && !hosted) nextEnv.loadEnvConfig(process.cwd(), false, { info: () => undefined, error: console.error });
+// Managed development reads through SourceMedium's data API and serves only
+// this computer, so the live server needs no Basic Auth (docs/managed.md).
+const managedDev = live && !hosted && process.env.SM_HOSTING?.trim() === "managed-dev";
+if (managedDev && !process.env.SM_DATA_API_URL) {
+  throw new Error("Managed live checks need SM_DATA_API_URL. Run pnpm diagnose first; see docs/managed.md.");
+}
 const [liveUser = "", ...livePassword] = (process.env.APP_BASIC_AUTH ?? "").split(":");
 if (hosted && (!liveUser || !livePassword.join(":"))) {
   throw new Error(
@@ -50,6 +62,7 @@ if (hosted && (!liveUser || !livePassword.join(":"))) {
 if (
   live &&
   !hosted &&
+  !managedDev &&
   ((!process.env.SM_CONNECTION && !process.env.SM_APP_KEY) || !liveUser || !livePassword.join(":"))
 ) {
   throw new Error(
@@ -83,7 +96,9 @@ export default defineConfig({
           use: {
             ...devices["Desktop Chrome"],
             baseURL: liveURL,
-            httpCredentials: { username: liveUser, password: livePassword.join(":"), origin: liveURL },
+            ...(managedDev
+              ? {}
+              : { httpCredentials: { username: liveUser, password: livePassword.join(":"), origin: liveURL } }),
           },
         },
       ]
@@ -118,7 +133,10 @@ export default defineConfig({
     : live
       ? [
           {
-            command: "pnpm exec next start --hostname 127.0.0.1 --port 3108",
+            // The wrapper sends a cloud environment's HTTPS through its proxy, as `pnpm dev` does.
+            command: managedDev
+              ? "node scripts/managed-node.mjs next start --hostname 127.0.0.1 --port 3108"
+              : "pnpm exec next start --hostname 127.0.0.1 --port 3108",
             url: "http://127.0.0.1:3108/healthz",
             reuseExistingServer: false,
           },

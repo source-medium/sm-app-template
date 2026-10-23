@@ -8,6 +8,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   vi.stubEnv("SM_HOSTED_E2E", "");
+  vi.stubEnv("SM_HOSTING", "");
 });
 afterEach(() => vi.unstubAllEnvs());
 
@@ -68,6 +69,29 @@ describe("browser checks in a cloud agent environment", () => {
     vi.stubEnv("APP_BASIC_AUTH", "");
     await expect(import("../../playwright.config")).rejects.toThrow("complete Development app block");
   });
+
+  it("runs managed development's live checks through the data API, loopback only and without Basic auth", async () => {
+    vi.stubEnv("SM_LIVE_E2E", "1");
+    vi.stubEnv("SM_HOSTING", "managed-dev");
+    vi.stubEnv("SM_DATA_API_URL", "https://sourcemedium.example.com/api/app-data/v1");
+    vi.stubEnv("SM_APP_KEY", "");
+    vi.stubEnv("SM_CONNECTION", "");
+    vi.stubEnv("APP_BASIC_AUTH", "");
+    const { default: config } = await import("../../playwright.config");
+    expect(config.projects).toHaveLength(1);
+    expect(config.projects?.[0]?.use?.httpCredentials).toBeUndefined();
+    const [server, ...others] = [config.webServer].flat();
+    expect(others).toEqual([]);
+    expect(server?.command).toBe("node scripts/managed-node.mjs next start --hostname 127.0.0.1 --port 3108");
+    expect(config.use).toMatchObject({ trace: "off", screenshot: "off", video: "off" });
+  });
+
+  it("names the missing data API before starting a managed live server", async () => {
+    vi.stubEnv("SM_LIVE_E2E", "1");
+    vi.stubEnv("SM_HOSTING", "managed-dev");
+    vi.stubEnv("SM_DATA_API_URL", "");
+    await expect(import("../../playwright.config")).rejects.toThrow("Managed live checks need SM_DATA_API_URL");
+  });
 });
 
 describe("hosted browser checks", () => {
@@ -112,6 +136,15 @@ describe("hosted browser checks", () => {
     vi.stubEnv("SM_EXPECTED_COMMIT", commit);
     await expect(import("../../playwright.config")).rejects.toThrow("full 40-character Git commit");
   });
+
+  it.each(["managed-dev", "managed"])(
+    "refuses an app SourceMedium hosts (%s) instead of asking for Basic auth",
+    async (mode) => {
+      vi.stubEnv("SM_HOSTING", mode);
+      await expect(import("../../playwright.config")).rejects.toThrow("not checked with pnpm test:hosted");
+      expect(nextEnv.loadEnvConfig).not.toHaveBeenCalled();
+    },
+  );
 
   it("does not fall back to the checkout's dotenv password", async () => {
     vi.stubEnv("APP_BASIC_AUTH", "");

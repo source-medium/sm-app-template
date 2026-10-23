@@ -101,6 +101,19 @@ SourceMedium MCP connector helps write the query, but only the app's own query
 through its own adapter proves the change works. "Agent connected" in
 SourceMedium means a token completed a query; nothing else marks it.
 
+`pnpm test:live` (or `pnpm test:live --grep Overview` for one view) builds the
+app and opens every view in a browser against your data, failing on any error
+state. In managed development it needs no `APP_BASIC_AUTH`: the server listens
+only on 127.0.0.1, behind the same local-only check as `pnpm dev`.
+`pnpm test:hosted` is for self-hosted deployments behind Basic Auth and refuses
+managed mode.
+
+Checking a changed metric against an independent number (`pnpm reconcile`,
+[reconciliation.md](reconciliation.md)) is worth doing when a change alters
+what a total means, with a reviewed reference for the same dates, stores,
+filters, time zone and currency. It is a separate check from "the app works",
+and the first task does not depend on it.
+
 ## Token expired
 
 A token lasts 30 days. Expired, revoked and mistyped tokens all read as
