@@ -49,6 +49,9 @@ export async function GET(request: Request) {
     if (error instanceof StoreAccessError)
       return Response.json({ error: "This store is not available in this app." }, { status: 403, headers });
     if (!(error instanceof WarehouseError)) throw error;
-    return Response.json({ error: `${error.title}. ${error.remedy}` }, { status: 503, headers });
+    return Response.json(
+      { error: `${error.title}. ${error.remedy}`, ...(error.requestId ? { request_id: error.requestId } : {}) },
+      { status: 503, headers },
+    );
   }
 }

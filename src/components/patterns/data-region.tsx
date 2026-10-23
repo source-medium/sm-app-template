@@ -50,7 +50,7 @@ export async function DataRegion<T>({
     }
     return (
       <>
-        <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} />
+        <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} requestId={error.requestId} />
         {errorContent}
       </>
     );

@@ -66,6 +66,15 @@ async function managedAccess(managed: ManagedApiConfig, viewer: Viewer): Promise
     };
   } catch (error) {
     if (!(error instanceof WarehouseError)) throw error;
+    logEvent({
+      event: "managed_context_refused",
+      level: error.status !== null && error.status < 500 ? "warn" : "error",
+      build: client.buildId,
+      request_id: error.requestId,
+      error_kind: error.kind,
+      error_reason: error.reason,
+      http_status: error.status,
+    });
     return { mode: "live", viewer, storeId: null, warehouse: refusedWarehouse(error), refusal: error };
   }
 }

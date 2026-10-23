@@ -8,6 +8,8 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { AgentReportContext } from "@/lib/agent-prompt";
 import { Disclosure } from "@/components/ui/disclosure";
+import { SupportCode } from "@/components/patterns/data-states";
+import { supportRequestId } from "@/lib/data/warehouse-error";
 import {
   USE_AGENT_FIELD,
   DICTIONARY_FIELD_LIMIT,
@@ -193,6 +195,7 @@ function Dictionary({
   const id = useId();
   const [report, setReport] = useState<DictionaryReport | null>(null);
   const [error, setError] = useState("");
+  const [requestId, setRequestId] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [search, setSearch] = useState("");
   useEffect(() => {
@@ -206,7 +209,12 @@ function Dictionary({
           }),
           import("@/lib/data/dictionary-report"),
         ]);
-        if (!response.ok) throw new Error("Dictionary unavailable");
+        if (!response.ok) {
+          const body: unknown = await response.json();
+          if (!controller.signal.aborted && body && typeof body === "object" && "request_id" in body)
+            setRequestId(supportRequestId(body.request_id));
+          throw new Error("Dictionary unavailable");
+        }
         const result = DictionaryReport.parse(await response.json());
         if (!controller.signal.aborted) setReport(result);
       } catch {
@@ -223,11 +231,13 @@ function Dictionary({
     return (
       <div role="status" className="space-y-2 text-sm">
         <p>{error}</p>
+        <SupportCode requestId={requestId} />
         <Button
           variant="outline"
           size="sm"
           onClick={() => {
             setError("");
+            setRequestId(null);
             setAttempt((value) => value + 1);
           }}
         >

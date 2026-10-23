@@ -50,6 +50,7 @@ export async function queryPlatforms(filters: PerformanceFilters) {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "performance_platforms",
+    // Up to 25 platforms plus the combined group, each with period rows and a total.
     maxRows: performanceRowLimit(filters.range, filters.grain) * 26,
     sql: `WITH scoped AS (
       SELECT DATE_TRUNC(date, ${GRAINS[filters.grain]}) AS period_date,

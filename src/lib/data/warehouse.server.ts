@@ -168,7 +168,14 @@ export function refusedWarehouse(refusal: WarehouseError): Warehouse {
     query: () => Promise.reject(refusal),
     checkConnection: async () => ({
       mode: "live",
-      checks: [{ name: "SourceMedium data API", status: "fail", message: `${refusal.title}. ${refusal.remedy}` }],
+      checks: [
+        {
+          name: "SourceMedium data API",
+          status: "fail",
+          message: `${refusal.title}. ${refusal.remedy}`,
+          ...(refusal.requestId ? { requestId: refusal.requestId } : {}),
+        },
+      ],
     }),
   };
 }

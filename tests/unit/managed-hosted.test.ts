@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 import { readSourceMediumViewer, VIEWER_HEADER } from "@/lib/auth/sourcemedium-viewer";
-import { parseConfig } from "@/lib/config/env.server";
+import { describeConfig, instanceInfo, parseConfig } from "@/lib/config/env.server";
 import { requestHeaders } from "../helpers/live";
 
 type Example = { case: string; value: Record<string, unknown> };
@@ -41,12 +41,28 @@ describe("hosted configuration", () => {
       mode: "managed",
       guard: null,
       managed: { dataApiUrl: "https://urchin.test/api/app-data/v1", developerToken: null },
-      hosted: { appId: HOSTED.SM_APP_ID, deploymentId: HOSTED.SM_DEPLOYMENT_ID },
+      hosted: { appId: HOSTED.SM_APP_ID, deploymentId: HOSTED.SM_DEPLOYMENT_ID, authMethod: "workspace" },
       storeId: null,
     });
   });
 
+  it("labels probe access and staging without changing viewer authorization", async () => {
+    const config = parseConfig({ ...HOSTED, SM_GATEWAY_AUTH: "probe" });
+    expect(describeConfig(config)).toMatch(/shared staging probe access/);
+    hostedEnv();
+    vi.stubEnv("SM_GATEWAY_AUTH", "probe");
+    vi.stubEnv("APP_ENVIRONMENT", "staging");
+    expect(instanceInfo().environment).toBe("Staging");
+    requestHeaders.current = new Headers({ host: "probe.apps.example" });
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const { requireViewer } = await import("@/lib/auth/require-viewer");
+    await expect(requireViewer()).rejects.toThrow("not signed in");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it.each([
+    ["an unrecognized gateway sign-in mode", { SM_GATEWAY_AUTH: "custom" }, "SM_GATEWAY_AUTH"],
     ["a developer token", { SM_DEVELOPER_TOKEN: `smapp_${"a".repeat(43)}` }, "SM_DEVELOPER_TOKEN"],
     ["a local data API over http", { SM_DATA_API_URL: "http://127.0.0.1:3000/api/app-data/v1" }, "SM_DATA_API_URL"],
     ["no deployment id, as on a laptop", { SM_DEPLOYMENT_ID: undefined }, "SM_DEPLOYMENT_ID"],
@@ -117,13 +133,21 @@ describe("requireViewer when hosted", () => {
 
 describe("the app shell when hosted", () => {
   it("explains a refused data context in place of a blank error page", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     hostedEnv();
     requestHeaders.current = new Headers({ host: "acme-weekly.apps.example", [VIEWER_HEADER]: encode(member) });
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
         Response.json(
-          { error: { code: "ACCESS_DENIED", message: "Paused.", retryable: false, request_id: "r" } },
+          {
+            error: {
+              code: "ACCESS_DENIED",
+              message: "Paused.",
+              retryable: false,
+              request_id: "47ca1e6b-fa2c-4e96-aa86-39801bb3dbeb",
+            },
+          },
           { status: 403 },
         ),
       ),
@@ -134,6 +158,14 @@ describe("the app shell when hosted", () => {
     expect(element.type).toBe(DataAccessErrorScreen);
     expect(element.props.title).toBe("SourceMedium refused this app's request");
     expect(element.props.remedy).toMatch(/paused or removed/);
+    expect(element.props.requestId).toBe("47ca1e6b-fa2c-4e96-aa86-39801bb3dbeb");
+    expect(JSON.parse(String(warn.mock.calls.at(-1)?.[0]))).toMatchObject({
+      event: "managed_context_refused",
+      request_id: element.props.requestId,
+      http_status: 403,
+      error_kind: "permission_denied",
+    });
+    warn.mockRestore();
     expect(`${element.props.title} ${element.props.remedy}`).not.toMatch(/Google|BigQuery|key/i);
   });
 });

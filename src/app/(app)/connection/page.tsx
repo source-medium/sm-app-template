@@ -14,6 +14,7 @@ export default async function ConnectionPage() {
   const auth = config.status === "ok" ? config.guard?.kind : null;
   const managed = config.status === "ok" && (config.mode === "managed-dev" || config.mode === "managed");
   const hosted = config.status === "ok" && config.mode === "managed";
+  const probe = hosted && config.hosted.authMethod === "probe";
   const currency = access.mode === "sample" ? sampleCurrencyNote() : liveCurrencyNote(reportingCurrencyConfig());
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -41,7 +42,9 @@ export default async function ConnectionPage() {
           <dt className="text-muted-foreground">Sign-in</dt>
           <dd>
             {hosted
-              ? "SourceMedium sign-in, for your workspace's members"
+              ? probe
+                ? "Shared staging probe access; not individual sign-in"
+                : "SourceMedium sign-in, for your workspace's members"
               : managed
                 ? "This computer only (managed development)"
                 : auth === "access"
@@ -111,8 +114,13 @@ export default async function ConnectionPage() {
       </section>
       {access.mode === "live" && (
         <p className="text-sm text-muted-foreground">
-          To replace or revoke the app credential, follow docs/connect.md in your repository. Enter credentials
-          privately in the Worker&apos;s runtime settings, never in an agent conversation.
+          {managed
+            ? probe
+              ? "This staging app uses a shared probe session with a fixed test viewer. SourceMedium operates its data access. Individual workspace sign-in is not enabled on this probe."
+              : hosted
+                ? "SourceMedium manages this app's data access. Ask your workspace admin to review app availability and membership."
+                : "Manage this development token in the app's Agent setup in SourceMedium. See docs/managed.md in your repository. Never paste a token into an agent conversation."
+            : "To replace or revoke the app credential, follow docs/connect.md in your repository. Enter credentials privately in the Worker's runtime settings, never in an agent conversation."}
         </p>
       )}
     </div>

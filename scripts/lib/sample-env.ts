@@ -19,5 +19,8 @@ export const sampleEnvironment = Object.fromEntries(
     "SM_HOSTING",
     "SM_DATA_API_URL",
     "SM_DEVELOPER_TOKEN",
+    "SM_APP_ID",
+    "SM_DEPLOYMENT_ID",
+    "SM_GATEWAY_AUTH",
   ].map((name) => [name, ""]),
 );

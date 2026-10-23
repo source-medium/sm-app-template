@@ -33,15 +33,6 @@ export const LIVE_VARIABLES = [
   "SM_METADATA_DATASET_ID",
 ] as const;
 
-/** Apps SourceMedium manages (docs/managed.md): the data API, not a Google key. */
-export const MANAGED_VARIABLES = [
-  "SM_HOSTING",
-  "SM_DATA_API_URL",
-  "SM_DEVELOPER_TOKEN",
-  "SM_APP_ID",
-  "SM_DEPLOYMENT_ID",
-] as const;
-
 /** Self-hosted settings a managed app never takes: no key, viewer guard, store restriction or byte cap. */
 const SELF_HOSTED_VARIABLES = [
   "SM_CONNECTION",
@@ -90,7 +81,7 @@ export type ManagedApiConfig = {
 };
 
 /** What SourceMedium's deploy names this deployment; identity, never authority. */
-export type HostedConfig = { appId: string; deploymentId: string };
+export type HostedConfig = { appId: string; deploymentId: string; authMethod: "workspace" | "probe" };
 
 export type GuardConfig =
   { kind: "basic"; username: string; password: string } | { kind: "access"; teamDomain: string; audience: string };
@@ -264,6 +255,15 @@ function parseHosted(
     });
   }
   const ids = { appId: read(env, "SM_APP_ID"), deploymentId: read(env, "SM_DEPLOYMENT_ID") };
+  // Display metadata only. Authorization still requires the gateway's viewer
+  // and the data API's independent membership and deployment checks.
+  const authMethod = read(env, "SM_GATEWAY_AUTH") ?? "workspace";
+  if (authMethod !== "workspace" && authMethod !== "probe") {
+    problems.push({
+      variable: "SM_GATEWAY_AUTH",
+      message: "SM_GATEWAY_AUTH must be workspace or probe, as set by SourceMedium's deploy.",
+    });
+  }
   for (const [variable, value] of [
     ["SM_APP_ID", ids.appId],
     ["SM_DEPLOYMENT_ID", ids.deploymentId],
@@ -283,7 +283,11 @@ function parseHosted(
     mode: "managed",
     guard: null,
     managed: { dataApiUrl, developerToken: null },
-    hosted: { appId: ids.appId, deploymentId: ids.deploymentId },
+    hosted: {
+      appId: ids.appId,
+      deploymentId: ids.deploymentId,
+      authMethod: authMethod === "probe" ? "probe" : "workspace",
+    },
     storeId: null,
   };
 }
@@ -525,7 +529,10 @@ export function describeConfig(config: AppConfig): string {
   if (config.status === "error") return "Configuration error";
   if (config.mode === "managed-dev")
     return "Live data through SourceMedium's data API, development on this computer only";
-  if (config.mode === "managed") return "Live data, hosted by SourceMedium for signed-in workspace members";
+  if (config.mode === "managed")
+    return config.hosted.authMethod === "probe"
+      ? "Live data, hosted by SourceMedium with shared staging probe access"
+      : "Live data, hosted by SourceMedium for signed-in workspace members";
   const data = config.mode === "live" ? "Live data" : "Sample data";
   const guard = !config.guard
     ? "public"
@@ -541,9 +548,11 @@ export function instanceInfo() {
     environment:
       process.env.APP_ENVIRONMENT === "production"
         ? "Production"
-        : process.env.APP_ENVIRONMENT === "preview"
-          ? "Branch preview"
-          : "Local / unassigned",
+        : process.env.APP_ENVIRONMENT === "staging"
+          ? "Staging"
+          : process.env.APP_ENVIRONMENT === "preview"
+            ? "Branch preview"
+            : "Local / unassigned",
     requireLive: process.env.APP_REQUIRE_LIVE === "true",
     build: buildId(),
   };

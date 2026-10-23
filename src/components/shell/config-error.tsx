@@ -5,6 +5,7 @@
  */
 import { AlertTriangle } from "lucide-react";
 import { instanceInfo, type ConfigProblem } from "@/lib/config/env.server";
+import { SupportCode } from "@/components/patterns/data-states";
 
 export function ConfigErrorScreen({ problems }: { problems: ConfigProblem[] }) {
   const info = instanceInfo();
@@ -38,7 +39,15 @@ export function ConfigErrorScreen({ problems }: { problems: ConfigProblem[] }) {
  * unavailable. The title and remedy are the managed adapter's fixed copy,
  * never provider text. No sample data is shown in its place.
  */
-export function DataAccessErrorScreen({ title, remedy }: { title: string; remedy: string }) {
+export function DataAccessErrorScreen({
+  title,
+  remedy,
+  requestId,
+}: {
+  title: string;
+  remedy: string;
+  requestId?: string | null;
+}) {
   return (
     <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center gap-4 p-6">
       <div className="flex items-center gap-2">
@@ -46,6 +55,7 @@ export function DataAccessErrorScreen({ title, remedy }: { title: string; remedy
         <h1 className="text-xl font-semibold">{title}</h1>
       </div>
       <p className="text-sm text-muted-foreground">{remedy}</p>
+      <SupportCode requestId={requestId} />
     </main>
   );
 }

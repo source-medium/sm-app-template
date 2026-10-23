@@ -79,10 +79,14 @@ export async function csvExport(
   } catch (error) {
     if (error instanceof StoreAccessError) return failure(403, { title: error.message });
     if (!(error instanceof WarehouseError)) throw error;
-    return failure(503, { title: error.title, remedy: error.remedy });
+    return failure(503, {
+      title: error.title,
+      remedy: error.remedy,
+      ...(error.requestId ? { request_id: error.requestId } : {}),
+    });
   }
 }
 
-function failure(status: number, body: { title: string; remedy?: string }): Response {
+function failure(status: number, body: { title: string; remedy?: string; request_id?: string }): Response {
   return Response.json(body, { status, headers: { "Cache-Control": "private, no-store" } });
 }

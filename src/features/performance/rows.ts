@@ -7,8 +7,6 @@ import { bq } from "@/lib/data/decode";
 export const BUSINESS_RELATION = "rpt_executive_summary_daily";
 export const PLATFORM_RELATION = "rpt_ad_performance_daily";
 export const MAX_BUSINESS_ROWS = appConfig.summaryMaxDays + 1;
-// Up to 25 platforms, plus the combined platform group, each with period rows and a total.
-export const MAX_PLATFORM_ROWS = (appConfig.summaryMaxDays + 1) * 26;
 export const BUSINESS_FIELDS = {
   gross: "order_gross_revenue",
   discounts: "order_discounts",

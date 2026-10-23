@@ -100,7 +100,12 @@ export async function ReportPage({
       <div className="flex flex-col gap-4">
         <ReportHeader {...header} params={params} />
         {store.error ? (
-          <ErrorState title={store.error.title} remedy={store.error.remedy} detail={store.error.detail} />
+          <ErrorState
+            title={store.error.title}
+            remedy={store.error.remedy}
+            detail={store.error.detail}
+            requestId={store.error.requestId}
+          />
         ) : (
           <EmptyState message="This warehouse has no stores available yet." />
         )}
@@ -132,7 +137,12 @@ export async function ReportPage({
           fixedStore={fixedStore}
         />
         {store.error && !rosterFailed && (
-          <ErrorState title={store.error.title} remedy={store.error.remedy} detail={store.error.detail} />
+          <ErrorState
+            title={store.error.title}
+            remedy={store.error.remedy}
+            detail={store.error.detail}
+            requestId={store.error.requestId}
+          />
         )}
       </div>
     );
