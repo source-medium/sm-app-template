@@ -104,6 +104,8 @@ type Details = {
   column?: string;
   /** Replaces the kind's generic remedy when the caller knows the specific one. */
   remedy?: string;
+  /** Replaces the kind's generic title, for a transport whose generic copy does not apply. */
+  title?: string;
 };
 
 export class WarehouseError extends Error {
@@ -119,11 +121,12 @@ export class WarehouseError extends Error {
 
   constructor(kind: WarehouseErrorKind, details: Details = {}) {
     const copy = COPY[kind];
+    const title = details.title ?? copy.title;
     const remedy = details.remedy ?? copy.remedy;
-    super(`${copy.title}. ${remedy}`);
+    super(`${title}. ${remedy}`);
     this.name = "WarehouseError";
     this.kind = kind;
-    this.title = copy.title;
+    this.title = title;
     this.remedy = remedy;
     this.status = details.status ?? null;
     this.reason = details.reason ?? null;

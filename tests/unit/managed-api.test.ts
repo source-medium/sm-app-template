@@ -7,7 +7,15 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { loadManagedContext, queryBody, runManagedQuery, type ManagedApiClient } from "@/lib/data/managed-api.server";
+import {
+  loadManagedContext,
+  managedApiError,
+  queryBody,
+  runManagedQuery,
+  type ManagedApiClient,
+} from "@/lib/data/managed-api.server";
+import { checkManagedConnection } from "@/lib/data/connection.server";
+import type { Warehouse } from "@/lib/data/warehouse.server";
 import type { QueryRequest } from "@/lib/data/bigquery-rest.server";
 import { WarehouseError, type WarehouseErrorKind } from "@/lib/data/warehouse-error";
 
@@ -28,6 +36,13 @@ const API = "https://urchin.test/api/app-data/v1";
 
 function client(fetch: typeof globalThis.fetch, developerToken: string | null = TOKEN): ManagedApiClient {
   return { dataApiUrl: API, developerToken, fetch };
+}
+
+/** Managed errors name SourceMedium's fix; the self-hosted Google copy never applies. */
+function expectManagedCopy(error: unknown) {
+  expect(error).toBeInstanceOf(WarehouseError);
+  const { title, remedy } = error as WarehouseError;
+  expect(`${title}. ${remedy}`).not.toMatch(/Google|BigQuery|BIGQUERY_|app key|replacement key/i);
 }
 
 const reply = (body: unknown, status = 200) =>
@@ -149,7 +164,48 @@ describe("errors", () => {
     );
     expect(error).toBeInstanceOf(WarehouseError);
     expect((error as WarehouseError).kind).toBe(kinds[name]);
-    expect((error as WarehouseError).remedy).not.toMatch(/Google|BIGQUERY_|key/);
+    expectManagedCopy(error);
+  });
+
+  it.each([
+    [401, { success: false, error: { code: "UNAUTHORIZED", message: "Authentication required" } }],
+    [403, "<html>Forbidden</html>"],
+    [404, ""],
+  ])("never reads a reply that is not the data API's (%i) as a refused token", async (status, body) => {
+    const error = (await runManagedQuery(client(reply(body, status)), { name: "orders", sql: "SELECT 1" }).catch(
+      (caught: unknown) => caught,
+    )) as WarehouseError;
+    expect(error).toMatchObject({ kind: "response_invalid", status, reason: "data_api_unreadable" });
+    expect(error.remedy).toContain(`SM_DATA_API_URL answered HTTP ${status}`);
+    expectManagedCopy(error);
+  });
+
+  it("keeps managed copy for edge rate limits, outages, transport failures and malformed answers", async () => {
+    const failures = await Promise.all([
+      runManagedQuery(client(reply("Too many requests", 429)), { name: "orders", sql: "SELECT 1" }).catch(
+        (e: unknown) => e,
+      ),
+      loadManagedContext(client(reply("<html>Bad gateway</html>", 502))).catch((e: unknown) => e),
+      loadManagedContext(
+        client(
+          vi.fn(async () => {
+            throw new TypeError("network down");
+          }),
+        ),
+      ).catch((e: unknown) => e),
+      runManagedQuery(client(reply({ contract_version: 1 })), { name: "orders", sql: "SELECT 1" }).catch(
+        (e: unknown) => e,
+      ),
+      loadManagedContext(client(reply({ app: null }))).catch((e: unknown) => e),
+    ]);
+    expect(failures.map((error) => (error as WarehouseError).kind)).toEqual([
+      "quota_exceeded",
+      "transient",
+      "transient",
+      "response_invalid",
+      "response_invalid",
+    ]);
+    for (const error of failures) expectManagedCopy(error);
   });
 
   it("gives a missing relation the shape the optional-table fallbacks read, and nothing else", async () => {
@@ -241,5 +297,32 @@ describe("context", () => {
     const fetch = reply(refused.value, refused.status);
     await expect(loadManagedContext(client(fetch))).rejects.toMatchObject({ kind: "credential_invalid" });
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("managed connection checks", () => {
+  it("show the adapter's own title and remedy, not the self-hosted copy for that kind", async () => {
+    const denied = example(examples.error, "access_denied");
+    const warehouse: Warehouse = {
+      applicationId: "app",
+      table: (name) => `\`project.dataset.${name}\``,
+      query: async () => {
+        throw managedApiError(denied.status ?? 403, denied.value);
+      },
+      checkConnection: async () => {
+        throw new Error("unused");
+      },
+    };
+    const context = {
+      appId: "app",
+      projectId: "project",
+      transformedDatasetId: "dataset",
+      metadataDatasetId: "metadata",
+      allowedDatasets: ["dataset", "metadata"],
+    };
+    const report = await checkManagedConnection(context, warehouse, new AbortController().signal);
+    const failed = report.checks.find((check) => check.status === "fail");
+    expect(failed?.message).toMatch(/^SourceMedium refused this app's request\. /);
+    expect(failed?.message).not.toMatch(/Google|BigQuery|app key|job project/i);
   });
 });

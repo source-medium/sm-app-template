@@ -101,88 +101,126 @@ const errorResponse = z.object({
   }),
 });
 
+const SQL_REMEDY = "SourceMedium rejected the SQL. Inspect the table with `pnpm schema <relation>` and fix the query.";
+const TRANSIENT_REMEDY = "SourceMedium's data API returned a temporary error. Reload in a minute.";
+
 /**
- * A wire error as the WarehouseError the views already handle. Remedies name
- * the managed fix, never Google's. Only the server's typed
- * `relation_not_found` becomes `not_found` without a job, which is what the
- * optional-table fallbacks read; its copy is never parsed.
+ * Copy for every kind whose generic WarehouseError copy describes the
+ * self-hosted Google path (an app key, BigQuery settings, Google's errors).
+ * Every error this adapter raises goes through `managedError`, so a managed
+ * app never tells its user to replace a Google key.
+ */
+const MANAGED_COPY: Partial<Record<WarehouseErrorKind, { title: string; remedy: string }>> = {
+  credential_invalid: {
+    title: "SourceMedium did not accept the developer token",
+    remedy:
+      "It expired, was revoked, or was copied incompletely. Create a new token in your app's Agent setup and replace SM_DEVELOPER_TOKEN (docs/managed.md#token-expired).",
+  },
+  permission_denied: {
+    title: "SourceMedium refused this app's request",
+    remedy:
+      "The token's creator may no longer manage the workspace, or the app is paused or removed. Ask a workspace admin (docs/managed.md).",
+  },
+  quota_exceeded: {
+    title: "Query allowance used up",
+    remedy: "SourceMedium is limiting this app's request rate. Wait a minute, then reload.",
+  },
+  bytes_limit_exceeded: {
+    title: "Query too large",
+    remedy:
+      "This query would scan more than SourceMedium's per-query limit. Narrow the date range or aggregate earlier.",
+  },
+  not_found: {
+    title: "Table or dataset not found",
+    remedy: "The table does not exist in your SourceMedium datasets. Check its name with `pnpm schema <relation>`.",
+  },
+  invalid_query: { title: "The query is invalid", remedy: SQL_REMEDY },
+  submission_indeterminate: {
+    title: "The query may not have started",
+    remedy:
+      "The connection to SourceMedium dropped before it confirmed the query, so it was not resent automatically. Reload to try once more.",
+  },
+  transient: { title: "SourceMedium's data API is temporarily unavailable", remedy: TRANSIENT_REMEDY },
+  response_invalid: {
+    title: "Unexpected response from SourceMedium",
+    remedy:
+      "SourceMedium's data API returned a response the app could not read. Run `pnpm diagnose`; if it persists, contact SourceMedium support.",
+  },
+};
+
+function managedError(kind: WarehouseErrorKind, details: ConstructorParameters<typeof WarehouseError>[1] = {}) {
+  const copy = MANAGED_COPY[kind];
+  return new WarehouseError(kind, {
+    ...details,
+    title: details.title ?? copy?.title,
+    remedy: details.remedy ?? copy?.remedy,
+  });
+}
+
+/** A thrown fetch, abort or deadline, in managed copy; this adapter's own errors pass through. */
+function managedTransport(error: unknown, reason: string): WarehouseError {
+  if (error instanceof WarehouseError) return error;
+  const generic = WarehouseError.fromTransport(error, reason);
+  return managedError(generic.kind, { reason: generic.reason ?? reason });
+}
+
+/**
+ * A wire error as the WarehouseError the views already handle, in managed
+ * copy. Only the server's typed `relation_not_found` becomes `not_found`
+ * without a job, which is what the optional-table fallbacks read; its message
+ * is never parsed. A reply without the API's error body did not come from the
+ * data API (a proxy, a gateway, or an address that does not serve it), so it
+ * never reads as a refused token.
  */
 export function managedApiError(status: number, body: unknown): WarehouseError {
   const parsed = errorResponse.safeParse(body);
   if (!parsed.success) {
-    const kind: WarehouseErrorKind =
-      status === 401
-        ? "credential_invalid"
-        : status === 403
-          ? "permission_denied"
-          : status === 429
-            ? "quota_exceeded"
-            : status >= 500
-              ? "transient"
-              : "response_invalid";
-    return new WarehouseError(kind, { status, reason: "data_api_unreadable" });
+    const unreadable = { status, reason: "data_api_unreadable" };
+    if (status === 429) return managedError("quota_exceeded", unreadable);
+    if (status >= 500) return managedError("transient", unreadable);
+    return managedError("response_invalid", {
+      ...unreadable,
+      remedy: `The address in SM_DATA_API_URL answered HTTP ${status}, but not as SourceMedium's data API. Check it against your app's Agent setup, then run \`pnpm diagnose\`.`,
+    });
   }
   const { code, message, retryable, reason, retry_after_seconds } = parsed.data.error;
   const base = { status, reason: code.toLowerCase() };
   switch (code) {
     case "TOKEN_INVALID":
-      return new WarehouseError("credential_invalid", {
-        ...base,
-        remedy:
-          "SourceMedium did not accept the developer token: it expired, was revoked, or was copied incompletely. Create a new token in your app's Agent setup and replace SM_DEVELOPER_TOKEN (docs/managed.md#token-expired).",
-      });
+      return managedError("credential_invalid", base);
     case "ACCESS_DENIED":
-      return new WarehouseError("permission_denied", {
-        ...base,
-        remedy:
-          "SourceMedium refused this token: its creator may no longer manage the workspace, or the app is paused or removed. Ask a workspace admin (docs/managed.md).",
-      });
+      return managedError("permission_denied", base);
     case "INVALID_REQUEST":
       return reason === "relation_not_found"
-        ? new WarehouseError("not_found", {
-            ...base,
-            reason: "relation_not_found",
-            job: null,
-            remedy:
-              "The table does not exist in your SourceMedium datasets. Check its name with `pnpm schema <relation>`.",
-          })
-        : new WarehouseError("invalid_query", { ...base, detail: message.slice(0, 500), remedy: SQL_REMEDY });
+        ? managedError("not_found", { ...base, reason: "relation_not_found", job: null })
+        : managedError("invalid_query", { ...base, detail: message.slice(0, 500) });
     case "QUERY_NOT_READ_ONLY":
     case "QUERY_SCOPE_DENIED":
-      return new WarehouseError("invalid_query", { ...base, detail: message.slice(0, 500), remedy: SQL_REMEDY });
+      return managedError("invalid_query", { ...base, detail: message.slice(0, 500) });
     case "QUERY_TOO_EXPENSIVE":
-      return new WarehouseError("bytes_limit_exceeded", {
-        ...base,
-        remedy:
-          "This query would scan more than SourceMedium's per-query limit. Narrow the date range or aggregate earlier.",
-      });
+      return managedError("bytes_limit_exceeded", base);
     case "QUERY_TIMEOUT":
-      return new WarehouseError("deadline_exceeded", base);
+      return managedError("deadline_exceeded", base);
     case "RESULT_TOO_LARGE":
-      return new WarehouseError("result_too_large", base);
+      return managedError("result_too_large", base);
     case "RATE_LIMITED":
-      return new WarehouseError("quota_exceeded", {
+      return managedError("quota_exceeded", {
         ...base,
         remedy: `SourceMedium is limiting this app's request rate. Wait ${retry_after_seconds ?? 60} seconds, then reload.`,
       });
     case "SOURCE_UNAVAILABLE":
-      return new WarehouseError(retryable ? "transient" : "permission_denied", {
+      return managedError(retryable ? "transient" : "permission_denied", {
         ...base,
         remedy:
           "SourceMedium cannot reach this app's warehouse right now. Reload in a minute; if it persists, contact SourceMedium support.",
       });
     case "PROVIDER_ERROR":
-      return retryable
-        ? new WarehouseError("transient", { ...base, remedy: TRANSIENT_REMEDY })
-        : new WarehouseError("submission_indeterminate", base);
+      return managedError(retryable ? "transient" : "submission_indeterminate", base);
     case "INTERNAL_ERROR":
-      return new WarehouseError("transient", { ...base, remedy: TRANSIENT_REMEDY });
+      return managedError("transient", base);
   }
-  return new WarehouseError("unknown", base);
+  return managedError("unknown", base);
 }
-
-const SQL_REMEDY = "SourceMedium rejected the SQL. Inspect the table with `pnpm schema <relation>` and fix the query.";
-const TRANSIENT_REMEDY = "SourceMedium's data API returned a temporary error. Reload in a minute.";
 
 /** The wire form of a parameter: INT64 as a decimal string, so no precision is lost. */
 function toWireParameter(parameter: QueryParameter): Record<string, unknown> {
@@ -231,7 +269,7 @@ export async function runManagedQuery(
     } catch (error) {
       if (call.signal.aborted) throw call.signal.reason;
       void error; // The server may have received it: never resent.
-      throw new WarehouseError("submission_indeterminate", { reason: "data_api_no_response" });
+      throw managedError("submission_indeterminate", { reason: "data_api_no_response" });
     }
     const answer = await call.readJson(response).catch((error: unknown) => {
       if (error instanceof WarehouseError) throw error;
@@ -240,11 +278,11 @@ export async function runManagedQuery(
     });
     if (!response.ok) {
       throw answer === undefined && response.status >= 500
-        ? new WarehouseError("submission_indeterminate", { status: response.status, reason: "data_api_server_error" })
+        ? managedError("submission_indeterminate", { status: response.status, reason: "data_api_server_error" })
         : managedApiError(response.status, answer);
     }
     const parsed = queryResponse.safeParse(answer);
-    if (!parsed.success) throw new WarehouseError("response_invalid", { reason: "data_api_query_shape" });
+    if (!parsed.success) throw managedError("response_invalid", { reason: "data_api_query_shape" });
     const { receipt } = parsed.data;
     const job: JobReference | null = receipt.job
       ? { projectId: receipt.job.project_id, jobId: receipt.job.job_id, location: receipt.job.location }
@@ -259,7 +297,7 @@ export async function runManagedQuery(
     };
     return result;
   } catch (error) {
-    failure = WarehouseError.fromTransport(error, "data_api_query");
+    failure = managedTransport(error, "data_api_query");
     throw failure;
   } finally {
     call.dispose();
@@ -296,7 +334,7 @@ export async function loadManagedContext(
         response = await call.fetch("/context", { method: "GET" });
       } catch (error) {
         if (call.signal.aborted) throw call.signal.reason;
-        if (attempt > 0) throw WarehouseError.fromTransport(error, "data_api_context");
+        if (attempt > 0) throw managedTransport(error, "data_api_context");
         continue;
       }
       const body = await call.readJson(response).catch((error: unknown) => {
@@ -309,7 +347,7 @@ export async function loadManagedContext(
         throw managedApiError(response.status, body);
       }
       const parsed = contextResponse.safeParse(body);
-      if (!parsed.success) throw new WarehouseError("response_invalid", { reason: "data_api_context_shape" });
+      if (!parsed.success) throw managedError("response_invalid", { reason: "data_api_context_shape" });
       const { app, warehouse } = parsed.data;
       return {
         appId: app.id,
@@ -320,7 +358,7 @@ export async function loadManagedContext(
       };
     }
   } catch (error) {
-    throw WarehouseError.fromTransport(error, "data_api_context");
+    throw managedTransport(error, "data_api_context");
   } finally {
     call.dispose();
   }
@@ -394,7 +432,7 @@ class Call {
         bytes += value.byteLength;
         if (bytes > MAX_RESPONSE_BYTES) {
           await reader.cancel();
-          throw new WarehouseError("result_too_large", { reason: "response_bytes" });
+          throw managedError("result_too_large", { reason: "response_bytes" });
         }
         chunks.push(decoder.decode(value, { stream: true }));
       }

@@ -15,7 +15,12 @@ import { WarehouseError } from "./warehouse-error";
  * custom one may name a configured value; the data API's remedies are fixed
  * text about the managed fix, so a managed check keeps them.
  */
-function checkRunner(checks: ConnectionCheck[], signal: AbortSignal, keepRemedy = false) {
+/**
+ * `keepCopy` keeps the error's own title and remedy: the managed adapter's are
+ * fixed SourceMedium copy, never provider text, and the generic copy for its
+ * kind would describe the self-hosted Google path.
+ */
+function checkRunner(checks: ConnectionCheck[], signal: AbortSignal, keepCopy = false) {
   return async <T>(name: string, run: () => Promise<T>, message: string): Promise<T | null> => {
     try {
       signal.throwIfAborted();
@@ -32,8 +37,8 @@ function checkRunner(checks: ConnectionCheck[], signal: AbortSignal, keepRemedy 
             : "cancelled"
           : (error as WarehouseError).kind,
       );
-      const remedy = keepRemedy && !signal.aborted ? (error as WarehouseError).remedy : safe.remedy;
-      checks.push({ name, status: "fail", message: `${safe.title}. ${remedy}` });
+      const shown = keepCopy && !signal.aborted ? (error as WarehouseError) : safe;
+      checks.push({ name, status: "fail", message: `${shown.title}. ${shown.remedy}` });
       return null;
     }
   };
