@@ -93,6 +93,8 @@ export default defineConfig({
         {
           name: "live",
           testMatch: /e2e\/live\.spec\.ts/,
+          // A click or filter waits on real warehouse queries before the URL or page settles.
+          expect: { timeout: 30_000 },
           use: {
             ...devices["Desktop Chrome"],
             baseURL: liveURL,

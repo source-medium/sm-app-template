@@ -63,6 +63,19 @@ describe("browser checks in a cloud agent environment", () => {
     expect(config.retries).toBe(0);
   });
 
+  it("gives live assertions the warehouse's latency budget, and sample assertions the default", async () => {
+    vi.stubEnv("SM_LIVE_E2E", "1");
+    vi.stubEnv("SM_APP_KEY", "synthetic-live-key");
+    vi.stubEnv("APP_BASIC_AUTH", "viewer:synthetic-live-password-0123456789");
+    const live = (await import("../../playwright.config")).default;
+    expect(live.projects?.[0]?.expect?.timeout).toBe(30_000);
+
+    vi.resetModules();
+    vi.stubEnv("SM_LIVE_E2E", "");
+    const sample = (await import("../../playwright.config")).default;
+    for (const project of sample.projects ?? []) expect(project.expect).toBeUndefined();
+  });
+
   it("names the missing Development configuration before starting a live server", async () => {
     vi.stubEnv("SM_LIVE_E2E", "1");
     vi.stubEnv("SM_APP_KEY", "");
