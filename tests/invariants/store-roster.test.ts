@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { appConfig } from "@/app.config";
 import { StoreAccessError } from "@/lib/auth/store-access";
-import { loadStores, resolveReportStore, storeTimeZone } from "@/lib/data/stores.server";
+import { loadStores, resolveReportStore } from "@/lib/data/stores.server";
 import { MAX_STORES } from "@/lib/data/store-roster.server";
 import { setLogEmitter } from "@/lib/data/log";
 import { googleError } from "../fake-bigquery/fake-bigquery";
@@ -238,8 +238,8 @@ describe("store time zones", () => {
 
   it("uses the store's dim_stores time zone, and remembers it", async () => {
     const fake = await goLive({ submit: () => rowsResponse(ROSTER_FIELDS, roster("zone-ny", "America/New_York")) });
-    expect(await storeTimeZone("zone-ny")).toBe("America/New_York");
-    expect(await storeTimeZone("zone-ny")).toBe("America/New_York");
+    expect(await resolveReportStore("zone-ny")).toMatchObject({ status: "ready", timeZone: "America/New_York" });
+    expect(await resolveReportStore("zone-ny")).toMatchObject({ status: "ready", timeZone: "America/New_York" });
     expect(fake.count("submit")).toBe(1);
   });
 
@@ -250,7 +250,7 @@ describe("store time zones", () => {
           ? rowsResponse(offset, [{ offset_minutes: "-420" }])
           : rowsResponse(ROSTER_FIELDS, roster("zone-masked", "2d4bbedff8")),
     });
-    expect(await storeTimeZone("zone-masked")).toBe("-07:00");
+    expect(await resolveReportStore("zone-masked")).toMatchObject({ status: "ready", timeZone: "-07:00" });
     const sql = fake.calls.map(query).find((text) => text?.includes("offset_minutes"));
     expect(sql).toContain("sm_store_id = @store_id");
     expect(sql).toContain("STARTS_WITH(LOWER(IFNULL(source_system, '')), 'amazon'), order_processed_at DESC");
@@ -265,7 +265,7 @@ describe("store time zones", () => {
         return rowsResponse(ROSTER_FIELDS, roster("zone-legacy", null));
       },
     });
-    expect(await storeTimeZone("zone-legacy")).toBe("+05:30");
+    expect(await resolveReportStore("zone-legacy")).toMatchObject({ status: "ready", timeZone: "+05:30" });
   });
 
   it("reads the order offset for a store the list omits, or when the list fails", async () => {
@@ -279,12 +279,15 @@ describe("store time zones", () => {
             ? googleError(403, "accessDenied")
             : rowsResponse(ROSTER_FIELDS, roster("zone-listed", "Europe/Paris")),
     });
-    expect(await storeTimeZone("zone-omitted")).toBe("-05:00");
+    expect(await resolveReportStore("zone-omitted")).toMatchObject({ status: "ready", timeZone: "-05:00" });
     listFails = true;
-    expect(await storeTimeZone("zone-list-failed")).toBe("-05:00");
+    expect(await resolveReportStore("zone-list-failed")).toMatchObject({ status: "ready", timeZone: "-05:00" });
     // Without an offset either, the list's failure is the answer, not a guessed zone.
     orders = [];
-    await expect(storeTimeZone("zone-list-failed-no-orders")).rejects.toMatchObject({ kind: "permission_denied" });
+    expect(await resolveReportStore("zone-list-failed-no-orders")).toMatchObject({
+      status: "no_date",
+      error: { kind: "permission_denied" },
+    });
     expect(fake.calls.filter((call) => call.kind === "submit")).toHaveLength(6);
   });
 
@@ -292,27 +295,34 @@ describe("store time zones", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     try {
       const fake = await goLive({ submit: () => rowsResponse(ROSTER_FIELDS, roster("zone-hour", "Asia/Tokyo")) });
-      expect(await storeTimeZone("zone-hour")).toBe("Asia/Tokyo");
+      expect(await resolveReportStore("zone-hour")).toMatchObject({ status: "ready", timeZone: "Asia/Tokyo" });
       vi.advanceTimersByTime(59 * 60 * 1000);
-      expect(await storeTimeZone("zone-hour")).toBe("Asia/Tokyo");
+      expect(await resolveReportStore("zone-hour")).toMatchObject({ status: "ready", timeZone: "Asia/Tokyo" });
       expect(fake.count("submit")).toBe(1);
       vi.advanceTimersByTime(2 * 60 * 1000);
-      expect(await storeTimeZone("zone-hour")).toBe("Asia/Tokyo");
+      expect(await resolveReportStore("zone-hour")).toMatchObject({ status: "ready", timeZone: "Asia/Tokyo" });
       expect(fake.count("submit")).toBe(2);
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("never guesses: a listed store without a zone or recent orders is an error, an unlisted store is null", async () => {
+  it("leaves dates unresolved without a zone or recent orders, preserving why they are unknown", async () => {
     await goLive({
       submit: ({ body }) =>
         (body as { query: string }).query.includes("offset_minutes")
           ? rowsResponse(offset, [])
           : rowsResponse(ROSTER_FIELDS, roster("zone-none", null)),
     });
-    await expect(storeTimeZone("zone-none")).rejects.toMatchObject({ kind: "time_zone_unknown" });
-    await expect(storeTimeZone("zone-unlisted")).resolves.toBeNull();
+    expect(await resolveReportStore("zone-none")).toMatchObject({
+      status: "no_date",
+      error: { kind: "time_zone_unknown" },
+    });
+    expect(await resolveReportStore("zone-unlisted")).toEqual({
+      status: "no_date",
+      storeId: "zone-unlisted",
+      error: null,
+    });
   });
 });
 

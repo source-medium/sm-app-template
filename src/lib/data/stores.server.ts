@@ -165,15 +165,6 @@ async function storeFacts(storeId: string, stores?: StoreOption[]): Promise<{ zo
   throw new WarehouseError("time_zone_unknown", { relation: "dim_stores", column: "store_timezone" });
 }
 
-/**
- * The store's SourceMedium time zone, which every warehouse date for the
- * store uses. See storeFacts for how it is chosen.
- */
-export async function storeTimeZone(storeId: string, stores?: StoreOption[]): Promise<string | null> {
-  const facts = await storeFacts(storeId, stores);
-  return facts?.zone ?? null;
-}
-
 export type ReportStore =
   | { status: "ready"; storeId: string; timeZone: string; currency: string | null }
   /** No store to show: the list failed (`error`) or has none (null). */

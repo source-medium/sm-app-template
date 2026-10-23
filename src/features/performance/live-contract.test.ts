@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { goLive, rowsResponse } from "../../../tests/helpers/live";
-import { BUSINESS_FIELDS, PLATFORM_FIELDS, MAX_BUSINESS_ROWS, MAX_PLATFORM_ROWS } from "./rows";
+import { BUSINESS_FIELDS, PLATFORM_FIELDS } from "./rows";
 import type { PerformanceFilters } from "./queries";
 
 const businessFields = [
@@ -82,26 +82,48 @@ it.each(["business", "platforms"] as const)(
     if (kind === "platforms") expect(body.query).toContain("COALESCE(source_system, '(unknown platform)') AS platform");
   },
 );
-it.each(["business", "platforms", "channels"] as const)("rejects truncated %s results", async (kind) => {
+it.each(
+  [
+    { grain: "day" as const, business: 34, platforms: 884 },
+    { grain: "week" as const, business: 6, platforms: 156 },
+    { grain: "month" as const, business: 3, platforms: 78 },
+  ].flatMap(({ grain, business, platforms }) => [
+    { grain, kind: "business" as const, limit: business },
+    { grain, kind: "platforms" as const, limit: platforms },
+  ]),
+)("bounds $kind to $limit rows for the selected $grain periods and totals", async ({ grain, kind, limit }) => {
+  let count = limit;
+  let nextPage = false;
+  const fake = await goLive({
+    submit: () =>
+      rowsResponse(
+        kind === "business" ? businessFields : platformFields,
+        Array.from({ length: count }, () => ({ period_date: null, is_total: "true", combined: "true" })),
+        nextPage ? { pageToken: "more" } : {},
+      ),
+  });
+  const { getBusiness, getPlatforms } = await import("./queries");
+  const load = kind === "business" ? getBusiness : getPlatforms;
+  expect(await load({ ...filters, grain })).toHaveLength(limit);
+  expect(fake.calls.find((call) => call.kind === "submit")?.body).toMatchObject({ maxResults: limit });
+  count = limit + 1;
+  await expect(load({ ...filters, grain })).rejects.toMatchObject({ kind: "result_too_large" });
+  count = limit;
+  nextPage = true;
+  await expect(load({ ...filters, grain })).rejects.toMatchObject({ kind: "result_too_large" });
+});
+
+it("rejects a truncated channel roster", async () => {
   await goLive({
     submit: () =>
       rowsResponse(
-        kind === "channels"
-          ? [{ name: "channel", type: "STRING" }]
-          : kind === "business"
-            ? businessFields
-            : platformFields,
-        Array.from(
-          { length: kind === "channels" ? 51 : kind === "business" ? MAX_BUSINESS_ROWS + 1 : MAX_PLATFORM_ROWS + 1 },
-          () => ({}),
-        ),
+        [{ name: "channel", type: "STRING" }],
+        Array.from({ length: 51 }, (_, i) => ({ channel: `channel-${i}` })),
         { pageToken: "more" },
       ),
   });
-  const { getBusiness, getPlatforms, getPerformanceChannels } = await import("./queries");
-  await expect(
-    { business: getBusiness, platforms: getPlatforms, channels: getPerformanceChannels }[kind](filters),
-  ).rejects.toMatchObject({ kind: "result_too_large" });
+  const { getPerformanceChannels } = await import("./queries");
+  await expect(getPerformanceChannels(filters)).rejects.toMatchObject({ kind: "result_too_large" });
 });
 it("denies a different store before every live or dispatch loader can query", async () => {
   const fake = await goLive({ submit: () => rowsResponse([], []) });

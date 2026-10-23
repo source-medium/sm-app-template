@@ -33,16 +33,6 @@ export const LIVE_VARIABLES = [
   "SM_METADATA_DATASET_ID",
 ] as const;
 
-/** Apps SourceMedium manages (docs/managed.md): the data API, not a Google key. */
-export const MANAGED_VARIABLES = [
-  "SM_HOSTING",
-  "SM_DATA_API_URL",
-  "SM_DEVELOPER_TOKEN",
-  "SM_APP_ID",
-  "SM_DEPLOYMENT_ID",
-  "SM_GATEWAY_AUTH",
-] as const;
-
 /** Self-hosted settings a managed app never takes: no key, viewer guard, store restriction or byte cap. */
 const SELF_HOSTED_VARIABLES = [
   "SM_CONNECTION",
