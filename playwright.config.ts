@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import nextEnv from "@next/env";
 import { sampleEnvironment as cleared } from "./scripts/lib/sample-env";
+import { testPortOffset } from "./scripts/lib/test-ports";
 
 /**
  * End-to-end tests against a production build (`pnpm test:e2e` builds first).
@@ -18,11 +19,7 @@ const hosted = process.env.SM_HOSTED_E2E === "1";
 const live = hosted || process.env.SM_LIVE_E2E === "1";
 // Explicit offsets let independent checkouts keep their own test servers.
 // Hosted checks start no local servers and do not consume this setting.
-const offsetText = hosted ? "0" : (process.env.SM_TEST_PORT_OFFSET ?? "0");
-const portOffset = Number(offsetText);
-if (!/^\d+$/.test(offsetText) || !Number.isSafeInteger(portOffset) || portOffset > 65535 - 3109) {
-  throw new Error("SM_TEST_PORT_OFFSET must be an integer from 0 through 62426.");
-}
+const portOffset = hosted ? 0 : testPortOffset();
 const ports = {
   sample: 3105 + portOffset,
   protected: 3106 + portOffset,

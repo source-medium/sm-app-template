@@ -20,8 +20,9 @@ import { appConfig } from "../app.config";
 import { configuredSecretValues, root } from "./lib/environment";
 import { sampleEnvironment as cleared } from "./lib/sample-env";
 import { nextCli, startServer } from "./lib/test-server";
+import { testPortOffset } from "./lib/test-ports";
 
-const PORT = 3107;
+const PORT = 3107 + testPortOffset();
 const PASSWORD = "SentinelPasswordDoNotShip0123456789";
 const APP_ID = "5e1e4e1e-0000-4000-8000-5e1e4e1e0000";
 

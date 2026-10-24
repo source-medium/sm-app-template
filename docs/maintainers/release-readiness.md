@@ -66,11 +66,13 @@ pnpm check:deploy
 pnpm test:browser --grep "<affected interaction>" --repeat-each=8
 ```
 
-If another checkout owns the default browser-test ports, leave its servers
-running and choose an unused offset, for example
-`SM_TEST_PORT_OFFSET=20000 pnpm check:deploy`. This moves the local browser
-servers together to ports 23105, 23106, 23108 and 23109 without reusing another
-checkout's server. The default offset is zero; hosted checks use no local ports.
+If another checkout owns the default test ports, leave its servers running and
+choose an unused offset, for example
+`SM_TEST_PORT_OFFSET=20000 pnpm check:deploy`. This moves every local test
+server together: the browser servers to ports 23105, 23106, 23108 and 23109,
+and secret isolation to 23107. Neither reuses another checkout's server. The
+Worker smoke lets wrangler pick its ports at run time, so it needs no offset.
+The default offset is zero; hosted checks use no local ports.
 
 Record the commit, dependency versions, commands and results in the release
 notes. Recheck Linux and Windows CI for the final commit. Test removal of each
