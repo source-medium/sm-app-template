@@ -65,7 +65,7 @@
       "gcloud": {
         "version": "590.0.1",
         "url": "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-590.0.1-linux-x86_64.tar.gz",
-        "sha256": "b0dc27650a82e50321aa7c9d068cdc01443aa348f15489af9e5dec0a94623ae6",
+        "sha256": "d1ae7be7e12c4e7d8286fab4774f5441020aca89dc7793ddacbace8d11d20f06",
         "binaries": {
           "gcloud": "google-cloud-sdk/bin/gcloud",
           "bq": "google-cloud-sdk/bin/bq",
@@ -170,7 +170,7 @@
       "gcloud": {
         "version": "590.0.1",
         "url": "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-590.0.1-linux-arm.tar.gz",
-        "sha256": "c9e8618c9257b3289deb7cb5483479230d5d96230bd68a80fce17f592d0d3012",
+        "sha256": "fd760d8b1c2c4c484d7b659964994b07aaefddc6ac4350e681940477dbdbb22c",
         "binaries": {
           "gcloud": "google-cloud-sdk/bin/gcloud",
           "bq": "google-cloud-sdk/bin/bq",
