@@ -17,7 +17,8 @@
     "run.googleapis.com",
     "cloudbuild.googleapis.com",
     "storage.googleapis.com",
-    "api.github.com"
+    "api.github.com",
+    "cdn.playwright.dev"
   ],
   "integrations": [],
   "node": "24.7.0"
