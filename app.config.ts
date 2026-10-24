@@ -19,7 +19,6 @@ import {
   Table2,
   type LucideIcon,
 } from "lucide-react";
-import { VALID_SALES_CHANNELS } from "@/lib/sales-channels";
 
 export type NavItem = {
   href: `/${string}`;
@@ -70,9 +69,6 @@ export const appConfig = {
   dateRange: { defaultDays: 28, maxDays: 90 },
   /** Summary reports can deliberately cover a full year; detail views retain the shorter limit. */
   summaryMaxDays: 366,
-  /**
-   * The sales channels summary reports (Overview, Performance, Stores) open on: SourceMedium's valid
-   * channels unless you verify another default, such as ["online_dtc"]. Empty means every published row.
-   */
-  defaultSalesChannels: [...VALID_SALES_CHANNELS],
+  /** Optional verified sales-channel defaults for summary reports. Empty means all channels. */
+  defaultSalesChannels: [] as string[],
 };

@@ -1,19 +1,13 @@
 import { choose } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
 
-const VALID = '["amazon","online_dtc","retail","tiktok_shop","wholesale"]';
-
 test("performance: calendar grains and metric groups preserve the full business totals and scope", async ({ page }) => {
   await page.goto("/performance?store=sample-store-a&from=2026-09-02&to=2026-10-04");
   const table = page.getByRole("table", { name: "Revenue and orders", exact: true });
   const allScope = await page
     .getByRole("link", { name: "Compare last year in Overview", exact: true })
     .getAttribute("href");
-  // Summary reports open on SourceMedium's valid channels, and links carry that scope explicitly.
-  expect(new URL(allScope ?? "", "http://example.com").searchParams.get("sales_channel")).toBe(VALID);
-  await expect(page.getByLabel("Sales channel", { exact: true }).locator("option:checked")).toHaveText(
-    "Valid sales channels",
-  );
+  expect(new URL(allScope ?? "", "http://example.com").searchParams.get("sales_channel")).toBe("");
   await expect(table).toBeVisible();
   const total = table.locator("tfoot");
   const original = await total.locator("td").allTextContents();
@@ -35,13 +29,8 @@ test("performance: calendar grains and metric groups preserve the full business 
   await expect(page).toHaveURL((url) => url.pathname === "/overview" && url.searchParams.get("compare") === "year");
   await page.goto("/performance?store=sample-store-a&sales_channel=unknown");
   await expect(page.getByText("No business rows match this store, sales channel, and date range.")).toBeVisible();
-  // Reset returns to the default scope rather than widening to every published row.
-  await page.getByRole("link", { name: "Reset sales channels", exact: true }).click();
-  await expect(page).toHaveURL((url) => !url.searchParams.has("sales_channel"));
+  await page.getByRole("link", { name: "Show all sales channels", exact: true }).click();
   await expect(page.getByRole("table", { name: "Revenue and orders", exact: true })).toBeVisible();
-  await expect(page.getByLabel("Sales channel", { exact: true }).locator("option:checked")).toHaveText(
-    "Valid sales channels",
-  );
 });
 
 test("performance: platform summary and individual platform tables share daily, weekly and monthly controls", async ({
@@ -87,12 +76,12 @@ test("performance: multiple channels survive reload and CSV includes the full ye
   await expect(table).toBeVisible();
   const original = await table.locator("tfoot td").allTextContents();
   await page.getByText("Choose multiple channels", { exact: true }).click();
-  // Narrow the valid default to the two channels the sample publishes, which keeps the same totals.
-  for (const channel of ["retail", "tiktok_shop", "wholesale"])
-    await page.getByRole("checkbox", { name: channel, exact: true }).uncheck();
+  await page.getByRole("checkbox", { name: "online_dtc", exact: true }).check();
+  await page.getByRole("checkbox", { name: "amazon", exact: true }).check();
   await page.getByRole("button", { name: "Apply channels", exact: true }).click();
   await expect(page).toHaveURL((url) => url.searchParams.get("sales_channel") === '["amazon","online_dtc"]');
   await page.reload();
+  // The sample also publishes exchange orders, which are not sales, so its two sales channels are every total.
   await expect(table.locator("tfoot td")).toHaveText(original);
   const href = await page.getByRole("link", { name: "Download business CSV", exact: true }).getAttribute("href");
   if (!href) throw new Error("Missing scoped export");
@@ -109,11 +98,4 @@ test("performance: multiple channels survive reload and CSV includes the full ye
   ).toBe(true);
   await choose(page, "Sales channel", "online_dtc");
   await expect(table.locator("tfoot td")).not.toHaveText(original);
-  // Every published row adds the sample's exchange orders, which carry no revenue.
-  await choose(page, "Sales channel", VALID);
-  await expect(table.locator("tfoot td")).toHaveText(original);
-  await choose(page, "Sales channel", "");
-  await expect(page).toHaveURL((url) => url.searchParams.get("sales_channel") === "");
-  await expect(table.locator("tfoot td").nth(0)).toHaveText(original[0] ?? "");
-  await expect(table.locator("tfoot td").nth(1)).not.toHaveText(original[1] ?? "");
 });

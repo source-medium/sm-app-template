@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sumDecimals, fromUnits, toUnits } from "@/lib/data/decimal";
-import { sampleSummarySource } from "@/lib/sample/executive-summary";
+import { countedSales, sampleSummarySource } from "@/lib/sample/executive-summary";
 import { performanceRowLimit } from "./rows";
 import { periodRange } from "@/lib/time-grain";
 import { sampleBusiness, samplePlatforms } from "./sample";
@@ -23,7 +23,8 @@ describe("performance fixtures", () => {
     const rows = sampleBusiness({ ...filters, grain });
     const periods = rows.filter((row) => !row.is_total);
     const total = present(rows.find((row) => row.is_total));
-    const source = sampleSummarySource(filters.storeId, filters.range);
+    // The published rows as summary reports count them: exchange orders are not sales.
+    const source = sampleSummarySource(filters.storeId, filters.range).map(countedSales);
     const cents = source.reduce((sum, row) => sum + row.order_net_revenue_cents, 0n);
     expect(total.revenue).toBe(fromUnits(cents * 10_000_000n));
     expect(total.orders).toBe(source.reduce((sum, row) => sum + row.order_count, 0));
@@ -41,11 +42,11 @@ describe("performance fixtures", () => {
     const dtc = present(sampleBusiness({ ...filters, channel: "online_dtc" }).find((row) => row.is_total));
     const amazon = present(sampleBusiness({ ...filters, channel: "amazon" }).find((row) => row.is_total));
     const exchanged = present(sampleBusiness({ ...filters, channel: "exchanged" }).find((row) => row.is_total));
-    // Non-valid rows publish orders without sales, so they change order measures and not revenue.
+    // The sample publishes exchange orders, which are not sales: order measures count valid channels only.
     expect(toUnits(exchanged.revenue ?? "")).toBe(0n);
-    expect(present(exchanged.orders)).toBeGreaterThan(0);
+    expect(present(exchanged.orders)).toBe(0);
     expect(sumDecimals([dtc.revenue, amazon.revenue])).toBe(all.revenue);
-    expect(present(dtc.orders) + present(amazon.orders) + present(exchanged.orders)).toBe(all.orders);
+    expect(present(dtc.orders) + present(amazon.orders)).toBe(all.orders);
     for (const sample of [sampleBusiness, samplePlatforms]) {
       expect(sample({ ...filters, storeId: "missing" })).toEqual([]);
       expect(sample({ ...filters, channel: "missing" })).toEqual([]);
@@ -105,7 +106,7 @@ describe("performance fixtures", () => {
 });
 
 it("multi-selection adds the same reviewed channels without broadening unknown choices", () => {
-  const selected = { ...filters, channel: '["amazon","exchanged","online_dtc"]' };
+  const selected = { ...filters, channel: '["amazon","online_dtc"]' };
   expect(sampleBusiness(selected)).toEqual(sampleBusiness(filters));
   expect(samplePlatforms(selected)).toEqual(samplePlatforms(filters));
   expect(sampleBusiness({ ...filters, channel: '["missing","amazon"]' })).toEqual(

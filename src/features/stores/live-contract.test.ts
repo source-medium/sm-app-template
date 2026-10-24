@@ -1,4 +1,5 @@
 import { expect, it, vi } from "vitest";
+import { validSales } from "@/lib/data/channel-sql";
 import { goLive, rowsResponse, withStores, isStoreList, requestHeaders } from "../../../tests/helpers/live";
 
 const fields = [
@@ -37,13 +38,10 @@ it("makes one bounded summary query for the canonical roster, preserves precisio
     parameterType: { type: "STRING" },
     parameterValue: { value: JSON.stringify([id, "empty-store"]) },
   });
-  // Each store total uses the summary reports' valid-channel default, bound as data.
-  expect(body.query).toContain("IN UNNEST(IFNULL(JSON_VALUE_ARRAY(@channel)");
-  expect(body.queryParameters).toContainEqual({
-    name: "channel",
-    parameterType: { type: "STRING" },
-    parameterValue: { value: '["amazon","online_dtc","retail","tiktok_shop","wholesale"]' },
-  });
+  // Revenue and orders count the catalog's valid sales channels; spend counts every row.
+  expect(body.query).toContain(validSales("order_net_revenue"));
+  expect(body.query).toContain(validSales("order_count"));
+  expect(body.query).not.toContain(validSales("ad_spend"));
   expect(body.queryParameters).toContainEqual({
     name: "baseline_from",
     parameterType: { type: "DATE" },

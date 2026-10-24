@@ -54,10 +54,8 @@ for (const route of ["overview", "performance"]) {
     const channel = page.getByRole("combobox", { name: "Sales channel", exact: true });
     await expect(channel).toBeVisible();
     await page.getByText("Choose multiple channels", { exact: true }).tap();
-    // From the valid default, clear the draft and keep one channel.
-    await page.getByRole("checkbox", { name: "All channels, including non-valid", exact: true }).check();
     await page.getByRole("checkbox", { name: "amazon", exact: true }).check();
-    await expect(channel).toHaveValue('["amazon","online_dtc","retail","tiktok_shop","wholesale"]');
+    await expect(channel).toHaveValue("");
     await expect(page).toHaveURL(appliedURL);
     await expect(csv).toHaveAttribute("href", appliedCSV ?? "");
     await expect(page.getByRole("status")).toHaveText("Channel changes not applied.");

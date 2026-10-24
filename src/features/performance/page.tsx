@@ -11,7 +11,6 @@ import { buttonVariants } from "@/components/ui/button";
 import {
   parseChoice,
   salesChannelLabel,
-  salesChannelReset,
   summarySalesChannel,
   withParams,
   single,
@@ -55,7 +54,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
           relation: view === "business" ? BUSINESS_RELATION : PLATFORM_RELATION,
           scope:
             view === "business"
-              ? "Selected store, dates and sales channels, aggregated into calendar periods. Summary orders are published order measures."
+              ? "Selected store, dates and sales channels, aggregated into calendar periods. Summary orders are published order measures; revenue and orders count valid sales channels."
               : "Selected store, dates and sales channels, aggregated by advertising source_system and calendar period. Platform attribution is not deduplicated.",
         },
       ]}
@@ -162,7 +161,14 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
                   load={() => getBusiness(selected)}
                   isEmpty={(rows) => !rows.some((row) => !row.is_total)}
                   emptyMessage="No business rows match this store, sales channel, and date range."
-                  emptyAction={salesChannelReset("/performance", params, channel)}
+                  emptyAction={
+                    channel
+                      ? {
+                          href: withParams("/performance", params, { sales_channel: "" }),
+                          label: "Show all sales channels",
+                        }
+                      : undefined
+                  }
                 >
                   {(records) => (
                     <BusinessTable
@@ -186,7 +192,14 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
                     load={() => platformData}
                     isEmpty={(rows) => !rows.some((row) => !row.is_total)}
                     emptyMessage="No platform rows match this store, sales channel, and date range."
-                    emptyAction={salesChannelReset("/performance", params, channel)}
+                    emptyAction={
+                      channel
+                        ? {
+                            href: withParams("/performance", params, { sales_channel: "" }),
+                            label: "Show all sales channels",
+                          }
+                        : undefined
+                    }
                   >
                     {(records) => (
                       <PlatformTables

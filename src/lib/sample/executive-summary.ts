@@ -1,7 +1,7 @@
 /** Deterministic source-grain fixtures for rpt_executive_summary_daily. */
 import { datesInRange, type DateRange } from "@/lib/filters";
 import { calendarDate } from "@/lib/format";
-import { VALID_SALES_CHANNELS } from "@/lib/sales-channels";
+import { isValidSalesChannel } from "@/lib/sales-channels";
 import { randomInt, seededRandom } from "./random";
 import { SAMPLE_STORE_SCALE, SAMPLE_STORES } from "./stores";
 
@@ -70,6 +70,26 @@ const SOURCES = [
 /** Average net revenue per order, in cents. */
 const ORDER_VALUE_CENTS = 6840;
 
+/**
+ * A row as summary reports measure it (validSales in channel-sql): outside the valid sales channels
+ * its order measures add nothing, while spend and traffic still count.
+ */
+export function countedSales(row: SummarySourceRow): SummarySourceRow {
+  if (isValidSalesChannel(row.sm_channel)) return row;
+  return {
+    ...row,
+    order_net_revenue_cents: 0n,
+    order_gross_revenue_cents: 0n,
+    order_discounts_cents: 0n,
+    order_refunds_cents: 0n,
+    order_count: 0,
+    new_customer_order_net_revenue_cents: 0n,
+    new_customer_order_count: 0,
+    repeat_customer_order_net_revenue_cents: 0n,
+    repeat_customer_order_count: 0,
+  };
+}
+
 /** The channels the relation publishes for one store and dates, as the live channel rosters list them. */
 export function sampleSummaryChannels(storeId: string, range: DateRange): string[] {
   return [...new Set(sampleSummarySource(storeId, range).map((row) => row.sm_channel))].sort();
@@ -114,7 +134,7 @@ export function sampleSummarySource(storeId: string, range: DateRange, today?: s
         });
         continue;
       }
-      const valid = VALID_SALES_CHANNELS.includes(source.channel);
+      const valid = isValidSalesChannel(source.channel);
       const random = seededRandom(`overview|${storeId}|${date}|${source.subChannel}`);
       // Marketplace orders arrive split across attribution, so the measure can be fractional.
       const orders =

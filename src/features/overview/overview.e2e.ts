@@ -518,15 +518,16 @@ test("sidebar links carry shared store and dates, start the next report fresh, a
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("amazon");
 });
 
-test("overview: the geography link carries the default channel scope and names it", async ({ page }) => {
+test("overview: the geography link carries a multi-channel scope and Geography names it", async ({ page }) => {
   test.skip(!appConfig.nav.some((item) => item.href === "/geography"), "No Geography view");
-  await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  const scope = '["amazon","online_dtc"]';
+  await page.goto(
+    `/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&sales_channel=${encodeURIComponent(scope)}`,
+  );
   await openDisclosure(page, "Explore sales by geography");
   await page.getByRole("link", { name: "Open valid-order geography", exact: true }).click();
   await expect(page).toHaveURL(
-    (url) =>
-      url.pathname === "/geography" &&
-      url.searchParams.get("sales_channel") === '["amazon","online_dtc","retail","tiktok_shop","wholesale"]',
+    (url) => url.pathname === "/geography" && url.searchParams.get("sales_channel") === scope,
   );
-  await expect(page.getByText("Sales channels: Valid sales channels.")).toBeVisible();
+  await expect(page.getByText("Sales channels: amazon, online_dtc.")).toBeVisible();
 });

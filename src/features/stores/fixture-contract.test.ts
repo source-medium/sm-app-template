@@ -3,7 +3,7 @@ import { SAMPLE_STORES } from "@/lib/sample/stores";
 import { sampleSummarySource } from "@/lib/sample/executive-summary";
 import { toUnits } from "@/lib/data/decimal";
 import { periodChanges } from "@/lib/comparison";
-import { VALID_SALES_CHANNELS } from "@/lib/sales-channels";
+import { isValidSalesChannel } from "@/lib/sales-channels";
 import { sampleStoreComparison } from "./sample";
 
 const range = { from: "2026-09-01", to: "2026-09-07" };
@@ -17,11 +17,9 @@ it("aggregates each store and period independently with exact money and fraction
       ["previous_", baseline],
     ] as const) {
       const rows = sampleSummarySource(row.sm_store_id, period, "2026-10-01");
-      // Stores opens on the summary default, so published non-valid rows stay out of each total.
-      expect(rows.some((value) => !VALID_SALES_CHANNELS.includes(value.sm_channel) && value.order_count > 0)).toBe(
-        true,
-      );
-      const source = rows.filter((value) => VALID_SALES_CHANNELS.includes(value.sm_channel));
+      // Revenue and orders count valid sales channels: published exchange orders must not.
+      expect(rows.some((value) => !isValidSalesChannel(value.sm_channel) && value.order_count > 0)).toBe(true);
+      const source = rows.filter((value) => isValidSalesChannel(value.sm_channel));
       expect(toUnits(row[`${prefix}revenue`] ?? "0")).toBe(
         source.reduce((total, value) => total + value.order_net_revenue_cents, 0n) * 10_000_000n,
       );

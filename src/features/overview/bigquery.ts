@@ -1,9 +1,11 @@
 import { rangeLength } from "@/lib/filters";
-import { SALES_CHANNEL_PREDICATE } from "@/lib/data/channel-sql";
+import { SALES_CHANNEL_PREDICATE, VALID_SALES_CHANNEL_SQL, validSales } from "@/lib/data/channel-sql";
 /**
  * Overview, live. One query aggregates the store's channel and sub-channel
  * rows to daily totals and computes the period totals in the same pass, so
- * totals are never computed from a truncated list.
+ * totals are never computed from a truncated list. Order measures count the
+ * valid sales channels only, as the catalog defines them; spend and traffic
+ * count every row.
  */
 import "server-only";
 import { appConfig } from "@/app.config";
@@ -27,17 +29,23 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
     maxRows: Math.min(MAX_ROWS, rangeLength(filters.range)),
     sql: `
       WITH scoped AS (
-        SELECT date, sm_channel, sm_sub_channel, order_gross_revenue, order_discounts, order_refunds,
-          order_net_revenue, order_count, website_sessions, ad_clicks, ad_spend,
-          new_customer_order_net_revenue, new_customer_order_count,
-          repeat_customer_order_net_revenue, repeat_customer_order_count
+        SELECT date, sm_channel, sm_sub_channel, website_sessions, ad_clicks, ad_spend,
+          ${validSales("order_gross_revenue")} AS order_gross_revenue,
+          ${validSales("order_discounts")} AS order_discounts,
+          ${validSales("order_refunds")} AS order_refunds,
+          ${validSales("order_net_revenue")} AS order_net_revenue,
+          ${validSales("order_count")} AS order_count,
+          ${validSales("new_customer_order_net_revenue")} AS new_customer_order_net_revenue,
+          ${validSales("new_customer_order_count")} AS new_customer_order_count,
+          ${validSales("repeat_customer_order_net_revenue")} AS repeat_customer_order_net_revenue,
+          ${validSales("repeat_customer_order_count")} AS repeat_customer_order_count
         FROM ${warehouse.table(OVERVIEW_RELATION)}
         WHERE sm_store_id = @store_id AND date BETWEEN @start_date AND @end_date
           AND ${SALES_CHANNEL_PREDICATE}
       ), contributions AS (
         SELECT sm_channel AS channel, sm_sub_channel AS sub_channel, SUM(order_net_revenue) AS revenue,
           ROW_NUMBER() OVER (ORDER BY ABS(SUM(order_net_revenue)) DESC NULLS LAST, sm_channel, sm_sub_channel) AS rank
-        FROM scoped GROUP BY sm_channel, sm_sub_channel
+        FROM scoped WHERE ${VALID_SALES_CHANNEL_SQL} GROUP BY sm_channel, sm_sub_channel
       ), contribution_rows AS (
         SELECT channel, sub_channel, CAST(revenue AS STRING) AS revenue, FALSE AS remainder FROM contributions WHERE rank <= 200
         UNION ALL

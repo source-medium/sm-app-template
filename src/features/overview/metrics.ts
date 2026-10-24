@@ -1,5 +1,6 @@
 import definitions from "../../../contracts/dashboard-metrics-v1/definitions.json";
 import type { MetricBinding, PublishedMetric } from "@/lib/metric-binding";
+import { validSales } from "@/lib/data/channel-sql";
 import { OVERVIEW_RELATION } from "./rows";
 
 const canonical = (name: string): PublishedMetric => {
@@ -11,7 +12,7 @@ const base = {
   source: OVERVIEW_RELATION,
   reviewedDependencies: definitions.metrics,
   population:
-    "Published Executive Summary rows for the selected store, dates and sales channels. Includes published excluded, draft and exchanged channels.",
+    "Published Executive Summary rows for the selected store, dates and sales channels. Revenue and order measures count SourceMedium's valid sales channels; spend and sessions count every row.",
   grain: "Selected period, aggregated from daily channel/sub-channel rows",
   dateBasis: "Published summary date in the store's reporting timezone",
   attribution: "Summary reporting; marketing efficiency is not platform-attributed ROAS.",
@@ -26,7 +27,7 @@ export const overviewBindings = [
     id: "revenue",
     label: "Net revenue",
     canonical: canonical("order_net_revenue_summary"),
-    calculation: "SUM(order_net_revenue)",
+    calculation: `SUM(${validSales("order_net_revenue")})`,
     fields: ["order_net_revenue"],
     format: "currency",
   },
@@ -35,7 +36,7 @@ export const overviewBindings = [
     id: "orders",
     label: "Summary orders",
     canonical: canonical("order_count_summary"),
-    calculation: "SUM(order_count)",
+    calculation: `SUM(${validSales("order_count")})`,
     fields: ["order_count"],
     format: "count",
   },
@@ -53,7 +54,7 @@ export const overviewBindings = [
     id: "mer",
     label: "Marketing efficiency (MER)",
     canonical: canonical("marketing_efficiency_ratio_summary"),
-    calculation: "SUM(order_net_revenue) / SUM(ad_spend)",
+    calculation: `SUM(${validSales("order_net_revenue")}) / SUM(ad_spend)`,
     numerator: "Summary net revenue",
     denominator: "Summary ad spend",
     fields: ["order_net_revenue", "ad_spend"],
@@ -63,7 +64,7 @@ export const overviewBindings = [
     ...base,
     id: "average",
     label: "Revenue per summary order",
-    calculation: "SUM(order_net_revenue) / SUM(order_count)",
+    calculation: `SUM(${validSales("order_net_revenue")}) / SUM(${validSales("order_count")})`,
     numerator: "Summary net revenue",
     denominator: "Summary orders, not valid-order count",
     fields: ["order_net_revenue", "order_count"],

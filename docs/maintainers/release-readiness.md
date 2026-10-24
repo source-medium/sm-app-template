@@ -361,9 +361,8 @@ connectivity and rendering, not the independent number comparison below.
 
 ## Reconcile Overview before claiming business equivalence
 
-Overview applies the catalog's summary sums to SourceMedium's valid sales channels by
-default; **All channels, including non-valid** adds draft, exchanged, excluded and
-`*_via_shopify` rows. Its order count and revenue
+Overview's revenue and order measures count SourceMedium's valid sales channels, as the
+catalog's summary metrics do; spend and sessions count every row. Its order count and revenue
 ratio are labeled **Summary orders** and **Revenue per summary order**. They
 must not be presented as valid-order count or valid-order AOV.
 
@@ -371,8 +370,8 @@ For the demo tenant, inspect the current schemas and metric definitions first.
 Choose one explicit store and calendar date range, then obtain independently
 reviewed results for:
 
-1. Executive Summary net revenue, order count and ad spend, including every
-   `sm_channel` and sub-channel row.
+1. Executive Summary net revenue and order count on the valid sales channels,
+   and ad spend over every `sm_channel` and sub-channel row.
 2. Those measures broken down by channel, identifying excluded, draft and
    exchanged categories that contribute to the total.
 3. Valid orders from `obt_orders`, using the documented validity definition
