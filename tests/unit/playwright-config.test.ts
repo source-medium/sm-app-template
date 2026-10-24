@@ -8,6 +8,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   vi.stubEnv("SM_HOSTED_E2E", "");
+  vi.stubEnv("SM_TEST_PORT_OFFSET", "0");
   vi.stubEnv("SM_HOSTING", "");
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -20,6 +21,34 @@ describe("browser checks in a cloud agent environment", () => {
     const { default: config } = await import("../../playwright.config");
     expect(config.reporter).toEqual([[github ? "github" : "list"], ["html", { open: "never" }]]);
   });
+
+  it("keeps each browser target on its own shifted server without reusing a listener", async () => {
+    vi.stubEnv("SM_LIVE_E2E", "");
+    vi.stubEnv("SM_TEST_PORT_OFFSET", "20000");
+    const { default: config } = await import("../../playwright.config");
+    expect(config.projects?.map((project) => project.use?.baseURL)).toEqual([
+      "http://127.0.0.1:23105",
+      "http://127.0.0.1:23105",
+      "http://127.0.0.1:23106",
+      "http://127.0.0.1:23109",
+    ]);
+    const servers = [config.webServer].flat();
+    for (const [index, port] of [23105, 23106, 23109].entries()) {
+      expect(servers[index]).toMatchObject({
+        command: `pnpm exec next start --hostname 127.0.0.1 --port ${port}`,
+        url: `http://127.0.0.1:${port}/healthz`,
+        reuseExistingServer: false,
+      });
+    }
+  });
+
+  it.each(["-1", "1.5", "NaN", "", "62427", "9007199254740993"])(
+    "refuses an invalid local port offset before starting servers: %s",
+    async (offset) => {
+      vi.stubEnv("SM_TEST_PORT_OFFSET", offset);
+      await expect(import("../../playwright.config")).rejects.toThrow("SM_TEST_PORT_OFFSET must be an integer");
+    },
+  );
 
   it("keeps every sample server isolated from injected live credentials", async () => {
     vi.stubEnv("SM_LIVE_E2E", "");
@@ -99,6 +128,20 @@ describe("browser checks in a cloud agent environment", () => {
     expect(config.use).toMatchObject({ trace: "off", screenshot: "off", video: "off" });
   });
 
+  it("shifts managed live checks and preserves their proxy-aware loopback startup", async () => {
+    vi.stubEnv("SM_LIVE_E2E", "1");
+    vi.stubEnv("SM_HOSTING", "managed-dev");
+    vi.stubEnv("SM_DATA_API_URL", "https://sourcemedium.example.com/api/app-data/v1");
+    vi.stubEnv("SM_TEST_PORT_OFFSET", "20000");
+    const { default: config } = await import("../../playwright.config");
+    expect(config.projects?.[0]?.use?.baseURL).toBe("http://127.0.0.1:23108");
+    expect([config.webServer].flat()[0]).toMatchObject({
+      command: "node scripts/managed-node.mjs next start --hostname 127.0.0.1 --port 23108",
+      url: "http://127.0.0.1:23108/healthz",
+      reuseExistingServer: false,
+    });
+  });
+
   it("names the missing data API before starting a managed live server", async () => {
     vi.stubEnv("SM_LIVE_E2E", "1");
     vi.stubEnv("SM_HOSTING", "managed-dev");
@@ -128,6 +171,13 @@ describe("hosted browser checks", () => {
     });
     expect(config.use).toMatchObject({ trace: "off", screenshot: "off", video: "off" });
     expect(config.preserveOutput).toBe("never");
+  });
+
+  it("ignores a local port offset when all browser traffic targets the hosted origin", async () => {
+    vi.stubEnv("SM_TEST_PORT_OFFSET", "not-a-local-port");
+    const { default: config } = await import("../../playwright.config");
+    expect(config.webServer).toEqual([]);
+    expect(config.projects?.[0]?.use?.baseURL).toBe("https://preview.example.com");
   });
 
   it.each([
