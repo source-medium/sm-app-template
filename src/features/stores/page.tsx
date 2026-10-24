@@ -7,7 +7,7 @@ import { LoadingState } from "@/components/patterns/data-states";
 import { StoreComparisonTable } from "./comparison-table";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { requireViewer } from "@/lib/auth/require-viewer";
-import { single, type SearchParams } from "@/lib/filters";
+import { defaultSalesChannel, salesChannelLabel, single, type SearchParams } from "@/lib/filters";
 import { storeReportPath, switchStoreHref } from "@/lib/store-navigation";
 import { STORES_RELATION } from "./rows";
 import { getStoreComparison } from "./queries";
@@ -34,8 +34,7 @@ export default async function StoresPage({ searchParams }: { searchParams: Promi
       sources={[
         {
           relation: STORES_RELATION,
-          scope:
-            "Daily executive summary, aggregated separately for each available store. No channel filters or cross-store totals.",
+          scope: `Daily executive summary, aggregated separately for each available store, with no cross-store totals. Sales channels: ${salesChannelLabel(defaultSalesChannel())}.`,
         },
       ]}
     >

@@ -37,6 +37,13 @@ it("makes one bounded summary query for the canonical roster, preserves precisio
     parameterType: { type: "STRING" },
     parameterValue: { value: JSON.stringify([id, "empty-store"]) },
   });
+  // Each store total uses the summary reports' valid-channel default, bound as data.
+  expect(body.query).toContain("IN UNNEST(IFNULL(JSON_VALUE_ARRAY(@channel)");
+  expect(body.queryParameters).toContainEqual({
+    name: "channel",
+    parameterType: { type: "STRING" },
+    parameterValue: { value: '["amazon","online_dtc","retail","tiktok_shop","wholesale"]' },
+  });
   expect(body.queryParameters).toContainEqual({
     name: "baseline_from",
     parameterType: { type: "DATE" },

@@ -9,6 +9,7 @@
  * appear as zero-valued days.
  */
 import { appConfig } from "@/app.config";
+import { VALID_SALES_CHANNELS } from "@/lib/sales-channels";
 
 export const REPORT_FILTER_FORM_ID = "report-filters";
 
@@ -186,8 +187,32 @@ export function matchesSalesChannel(selection: string | null | undefined, channe
   const values = salesChannelValues(selection);
   return values.length === 0 || values.includes(channel ?? "(none)");
 }
+/** How a summary report names its channel scope; no selection sums every published row. */
+export function salesChannelLabel(selection: string | null | undefined): string {
+  const values = salesChannelValues(selection);
+  if (!values.length) return "All channels, including non-valid";
+  return encodeSalesChannels(values) === encodeSalesChannels(VALID_SALES_CHANNELS)
+    ? "Valid sales channels"
+    : values.join(", ");
+}
+/** The scope summary reports open on, and the one reports without a channel control apply. */
+export function defaultSalesChannel(): string | null {
+  return encodeSalesChannels(appConfig.defaultSalesChannels);
+}
 export function summarySalesChannel(params: SearchParams): string | null {
-  return single(params, "sales_channel") === undefined
-    ? encodeSalesChannels(appConfig.defaultSalesChannels)
-    : parseSalesChannel(params);
+  return single(params, "sales_channel") === undefined ? defaultSalesChannel() : parseSalesChannel(params);
+}
+/**
+ * An empty summary report's way out: another selection returns to the default scope, and the default
+ * widens to every published row. A missing parameter reapplies the default; an empty one sums every row.
+ */
+export function salesChannelReset(
+  pathname: string,
+  params: SearchParams,
+  channel: string | null,
+): { href: string; label: string } | undefined {
+  if (channel === null) return undefined;
+  return channel === defaultSalesChannel()
+    ? { href: withParams(pathname, params, { sales_channel: "" }), label: "Show all channels, including non-valid" }
+    : { href: withParams(pathname, params, { sales_channel: null }), label: "Reset sales channels" };
 }

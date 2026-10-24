@@ -326,3 +326,28 @@ window)` instead of `COALESCE(...)`, in Orders (list, roster, detail) and
   same tree had one load-related failure in the pre-existing Orders channel test
   (`orders.e2e.ts:50`, select read before the streamed roster replaced its
   placeholder); it passed three isolated reruns and the full rerun unchanged.
+
+### Follow-up, 2026-10-24 (valid sales-channel default)
+
+- A numbers audit of the public demo (September 2026 plus its comparison period)
+  matched every displayed Overview, Performance, Stores, Geography, Products, Paid
+  marketing and Creatives value to independent SQL. It also found that summary
+  reports summed every published `sm_channel` row, including `draft_orders`,
+  `exchanged`, `excluded` and `*_via_shopify`. On a real tenant that added about
+  10.5% to September net revenue, mostly `tiktok_shop_via_shopify`, which repeats
+  orders already counted in `tiktok_shop`.
+- Overview, Performance and Stores now default to SourceMedium's valid channels
+  (`src/lib/sales-channels.ts`). **All channels, including non-valid** stays an
+  explicit choice. Sample data now uses warehouse channel values and publishes a
+  small `exchanged` channel with orders and no sales, so the difference is tested.
+  The deployed demo's export with the five valid channels selected matched
+  independent SQL exactly: $7,084,493.66 net, 79,524 summary orders.
+- Open, for the semantic catalog owners: `order_net_revenue_summary`,
+  `order_count_summary` and the other `*_summary` metrics have no channel filter,
+  so `query_metrics` and other catalog consumers still sum every row. The
+  `rpt_executive_summary_daily` documentation already warns about this.
+- DemoCo's own data is internally inconsistent and should not be chased as app
+  defects: published summary and cohort counts are about 1.9 times `obt_orders`
+  while revenue agrees, gross minus discounts minus refunds misses net by
+  $403,734.59, and demand before returns differs from gross plus discounts. All
+  three reconcile exactly on a real tenant.

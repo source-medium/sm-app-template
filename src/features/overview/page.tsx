@@ -15,11 +15,12 @@ import { periodChanges, type Comparison } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
 import {
   parseChoice,
+  salesChannelLabel,
+  salesChannelReset,
   summarySalesChannel,
   withParams,
   datesInRange,
   rangeLength,
-  salesChannelValues,
   type SearchParams,
 } from "@/lib/filters";
 import { decimalToNumber } from "@/lib/data/decimal";
@@ -75,7 +76,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         return (
           <>
             <ReportControls
-              summary={`${salesChannelValues(channel).join(", ") || "All sales channels"}. ${TREND_MODES.find((mode) => mode.value === trendMode)?.label}.`}
+              summary={`${salesChannelLabel(channel)}. ${TREND_MODES.find((mode) => mode.value === trendMode)?.label}.`}
             >
               <OverviewControls filters={selected} />
               <SelectFilter name="trend" label="Trend values" value={trendMode} options={[...TREND_MODES]} />
@@ -90,14 +91,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                 load={() => getOverviewReport(selected, comparison?.range ?? null)}
                 isEmpty={(report) => report.current.days.length === 0}
                 emptyMessage="No rows match this store, sales channel, and date range."
-                emptyAction={
-                  channel
-                    ? {
-                        href: withParams("/overview", params, { sales_channel: "" }),
-                        label: "Show all sales channels",
-                      }
-                    : undefined
-                }
+                emptyAction={salesChannelReset("/overview", params, channel)}
               >
                 {(report) => (
                   <OverviewView

@@ -54,8 +54,10 @@ for (const route of ["overview", "performance"]) {
     const channel = page.getByRole("combobox", { name: "Sales channel", exact: true });
     await expect(channel).toBeVisible();
     await page.getByText("Choose multiple channels", { exact: true }).tap();
-    await page.getByRole("checkbox", { name: "Amazon", exact: true }).check();
-    await expect(channel).toHaveValue("");
+    // From the valid default, clear the draft and keep one channel.
+    await page.getByRole("checkbox", { name: "All channels, including non-valid", exact: true }).check();
+    await page.getByRole("checkbox", { name: "amazon", exact: true }).check();
+    await expect(channel).toHaveValue('["amazon","online_dtc","retail","tiktok_shop","wholesale"]');
     await expect(page).toHaveURL(appliedURL);
     await expect(csv).toHaveAttribute("href", appliedCSV ?? "");
     await expect(page.getByRole("status")).toHaveText("Channel changes not applied.");
@@ -69,13 +71,13 @@ for (const route of ["overview", "performance"]) {
     await page.getByLabel("From", { exact: true }).fill("2026-09-02");
     await page.getByRole("button", { name: "Apply", exact: true }).tap();
     await expect(page).toHaveURL(
-      (url) => url.searchParams.get("sales_channel") === "Amazon" && url.searchParams.get("from") === "2026-09-02",
+      (url) => url.searchParams.get("sales_channel") === "amazon" && url.searchParams.get("from") === "2026-09-02",
     );
     await toggle.tap();
-    await expect(channel).toHaveValue("Amazon");
+    await expect(channel).toHaveValue("amazon");
     await expect(page.getByRole("status")).toHaveCount(0);
-    await choose(page, "Sales channel", "Online DTC");
-    await expect(page).toHaveURL(/sales_channel=Online\+DTC/);
+    await choose(page, "Sales channel", "online_dtc");
+    await expect(page).toHaveURL(/sales_channel=online_dtc/);
     await expectNoSeriousA11yViolations(page);
   });
 }

@@ -19,7 +19,7 @@ test("switches independently of invalid date drafts and clears campaign drill-th
 test("compares stores separately and drills through with the same dates", async ({ page }) => {
   const errors = watchConsole(page);
   test.skip(!appConfig.nav.some((item) => item.href === "/overview"), "No Overview view");
-  await page.goto(`/overview?store=sample-store-a&${period}&sales_channel=Amazon`);
+  await page.goto(`/overview?store=sample-store-a&${period}&sales_channel=amazon`);
   await page.getByRole("button", { name: /^Store:/ }).click();
   await page
     .getByRole("dialog", { name: "Switch store" })
