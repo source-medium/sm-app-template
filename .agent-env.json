@@ -2,23 +2,10 @@
   "version": 1,
   "component": "sm-app-template",
   "python": null,
-  "tools": [
-    "git",
-    "just",
-    "gcloud",
-    "node",
-    "corepack"
-  ],
-  "bootstrap": [
-    [
-      "node",
-      "scripts/setup-agent.mjs"
-    ]
-  ],
+  "tools": ["git", "just", "gcloud", "node", "corepack"],
+  "bootstrap": [["node", "scripts/setup-agent.mjs"]],
   "required_env": [],
-  "checks": [
-    "pnpm check"
-  ],
+  "checks": ["pnpm check"],
   "network_domains": [
     "sts.googleapis.com",
     "iamcredentials.googleapis.com",
