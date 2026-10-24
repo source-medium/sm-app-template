@@ -513,5 +513,7 @@ test("sidebar links carry shared store and dates, start the next report fresh, a
   expect(next.get("compare")).toBe(other.comparisons ? "off" : null);
   await page.goBack();
   await expect(page).toHaveURL(/sales_channel=Amazon/);
+  // The applied control and its streamed replacement briefly coexist while the report re-renders.
+  await expect(page.getByLabel("Sales channel", { exact: true })).toHaveCount(1);
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("Amazon");
 });

@@ -50,6 +50,14 @@ export async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
   // App Router streams route metadata after a filter navigation. Assert that
   // the title arrived before scanning the completed report, without skipping it.
   await expect(page).toHaveTitle(/\S/);
+  // Dialogs, menus and sheets animate open and closed. axe's target-size rule
+  // reads geometry at scan time, so a half-open overlay can look like it
+  // obscures a control behind it. Let running animations finish first.
+  await page
+    .waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== "running"), null, {
+      timeout: 5000,
+    })
+    .catch(() => undefined);
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();
