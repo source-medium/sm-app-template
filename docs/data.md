@@ -349,7 +349,7 @@ sources. A listed store with neither shows an error rather than a guessed date.
 In a view, take today and the zone from `ReportContext.today` and
 `ReportContext.timeZone`; a route handler calls `resolveReportStore()` in
 `src/lib/data/stores.server.ts`, as `csvExport()` does. Moments such as
-**Queried at** and an order's created time show in the store's zone, named.
+**Loaded at** and an order's created time show in the store's zone, named.
 Never use the server clock's date or UTC.
 
 Date presets include Yesterday, Last 7/28/90 days, Last full week
@@ -406,8 +406,9 @@ missing, never zero, and a range including today may be incomplete.
 
 To add comparisons to a view, opt into `ReportPage comparisons` and read
 `plan` from the report context: `planRanges(plan)` gives both slots' dates for
-a query, `slotChanges(plan, coverage)` says for each slot whether changes can
-show, and `comparison` is the active slot for an overlay. Query every period
+a query (typed `BaselineRanges`), `slotChanges(plan, coverage)` says for each
+slot whether changes can show, `comparison` is the active slot for an overlay,
+and `planParams(plan)` carries both slots into links and exports. Query every period
 with the same store and dimension filters. Copy Overview's `getOverviewReport`
 to run the existing bounded query once per period in parallel, keeping current
 data visible if a comparison query fails, or compare in one pass as Products,
@@ -417,10 +418,13 @@ Paid marketing, Geography and All stores do: group with `periodSql()`, select
 bounded ranges, never the span between the earliest and latest date, so a
 partition filter prunes each one; a DATETIME partition column uses
 `dateTimeRows(column)`. Columns come back as `name`, `previous_name` and
-`second_name`. Show both slots on KPI cards with `KpiCard deltas`
-(`kpiDelta(..., baselineLabel(slot))`, or `unavailableDelta(slot)` for a slot
-with no change to show), and render the per-slot variant of a table or chart
-inside `ActiveBaseline` so the caption's switch can show either one.
+`second_name`; `slotColumn(slot, name)` names a slot's column. Show both slots
+on KPI cards with `KpiCard deltas={slotDeltas(plan, changes, (label, slot) =>
+kpiDelta(...))}` (`patterns/kpi-delta.ts`): it skips a slot that is off and
+explains one whose changes are hidden. Render the per-slot variant of a table
+or chart inside `ActiveBaseline` so the caption's switch can show either one,
+and pass `ComparisonCaption switchable={false}` when nothing on the view has a
+per-slot variant.
 Ratios are recomputed from each period's totals, not averaged from daily ratios.
 
 `lib/comparison.ts` owns date rules and arithmetic; `patterns/kpi-delta.ts`
@@ -432,7 +436,9 @@ neutral; a feature must explicitly choose whether higher or lower is better.
 Overview uses higher-is-better for net revenue, Summary orders, MER and
 website sessions. Percentage-valued metrics should label absolute changes as
 percentage points, distinct from relative percent changes. Product gainers and
-decliners rank against the first slot. Targets and custom baselines are
+decliners are ranked in SQL against the first slot, so that list has one
+variant and offers no switch; choose last year as the first comparison to rank
+against it. Targets and custom baselines are
 intentionally left for apps that need them.
 
 ## Summary tables and ranked breakdowns
@@ -452,7 +458,9 @@ counting. The download re-runs one bounded Overview query and fails on truncatio
 Paid marketing's **Spend breakdown** ranks channels, campaigns, published campaign types or tactics with
 `?breakdown=channel|campaign|type|tactic`. It adds one bounded SQL query that reads the
 selected and comparison periods with identical store/channel filters. Comparison
-Off excludes baseline rows. Shares use full-query spend before the top-10 limit;
+Off excludes baseline rows. Only groups with spend in the selected period are
+ranked; one active only in a comparison period is left out rather than listed
+with no spend. Shares use full-query spend before the top-10 limit;
 the caption identifies top-10 results. Zero totals and negative spend suppress
 shares; absent baseline values stay absent, not zero. The comparison control
 applies to this breakdown; the existing delivery chart and campaign table show
@@ -476,6 +484,10 @@ actions, with host and credential validation; URLs are never constructed from ID
 
 Reuse `RankedBreakdown` for another dimension: the feature owns SQL ranking,
 totals, shares and changes; the component owns the horizontal chart and table.
+A ranking that reads comparison windows groups rows from every period, so sort
+the selected value `NULLS LAST` and drop rows without one after the query, as
+Products and the spend breakdown do; otherwise items seen only in a comparison
+period pad a short list.
 `ChartCard` supports dashed comparison series and horizontal bars, and
 `DataTable` accepts server-computed totals. Keep allowed SQL dimensions and
 calendar expressions in fixed maps. Do not build a general query builder.
@@ -538,8 +550,9 @@ profit is net revenue minus product cost, not profit after shipping, fulfillment
 or payment fees. Refund quantities reduce net units. Amounts use the canonical
 reporting-currency fields, not `original_*` amounts.
 
-One query covers both selected and comparison periods, with identical validity
-store and sales-channel predicates. Ranking uses a fixed measure map; full-period totals and
+One query covers the selected and both comparison periods, with identical validity
+store and sales-channel predicates. Products without a value in the selected
+period are not ranked. Ranking uses a fixed measure map; full-period totals and
 the share denominator are calculated before the top-10 limit. Negative members
 or a zero total suppress shares. Missing comparisons stay missing. The date
 predicate uses `order_processed_at_local_datetime` directly for partition pruning.
@@ -758,8 +771,11 @@ metadata is documentation, never executable SQL.
 **Explore your data** (`/data`) lists every published metric from
 `dim_semantic_metric_catalog` once: alias rows (`is_abbreviation`) fold into
 their `preferred_metric_name`, so "AOV" finds Average order value. Rows carry
-the published `metric_category` (an older catalog falls back to the metric's
-`underlying_model`), the display unit and whether a report shows the metric.
+the published `metric_category`, shown in words (`period_comparison` reads
+Period comparison; an older catalog without categories groups by the metric's
+`underlying_model`), the display unit and whether a report shows the metric. A
+name published with more than one definition is listed for source review and
+never shown, since neither definition can be picked.
 Search and category chips filter the loaded catalog locally and record the
 choice in the URL through native history, so they never start a warehouse
 request, and no metric value is ever queried to decorate a row. The drawer

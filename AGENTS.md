@@ -129,10 +129,11 @@ use theme classes (`bg-card`, `text-muted-foreground`), not raw colors. Charts
 use `--chart-1`…`--chart-8` in order, one y-axis, and keep the table view.
 Comparisons: opt into `ReportPage comparisons` only when querying every period the
 context's `plan` names (two slots: `compare`, `compare2`; `baseline=a|b` picks the
-overlay). Reuse `lib/comparison.ts` (`planRanges`, `slotChanges`), `lib/time-grain.ts`,
-and `patterns/kpi-delta.ts`; build one-query comparisons with `lib/data/period-sql.ts`;
-show a slot's changes only when `slotChanges()` allows, one `KpiCard deltas` row per
-slot, and per-slot tables or charts inside `ActiveBaseline` (docs/data.md#period-comparisons).
+overlay). Reuse `lib/comparison.ts` (`planRanges`, `slotChanges`, `planParams`), `lib/time-grain.ts`,
+and `patterns/kpi-delta.ts`; build one-query comparisons with `lib/data/period-sql.ts`
+(`slotColumn`); show a slot's changes only when `slotChanges()` allows, KPI rows with
+`KpiCard deltas={slotDeltas(...)}`, and per-slot tables or charts inside `ActiveBaseline`
+(docs/data.md#period-comparisons).
 Copy Products for simple pages and rankings, Overview for multi-measure summaries,
 Retention for `CohortMatrix`. Section titles use `patterns/section-header`; an empty region offers its way
 out through `DataRegion emptyAction`. Collapsible explanations use `components/ui/disclosure`.
