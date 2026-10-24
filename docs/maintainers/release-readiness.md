@@ -66,6 +66,12 @@ pnpm check:deploy
 pnpm test:browser --grep "<affected interaction>" --repeat-each=8
 ```
 
+If another checkout owns the default browser-test ports, leave its servers
+running and choose an unused offset, for example
+`SM_TEST_PORT_OFFSET=20000 pnpm check:deploy`. This moves the local browser
+servers together to ports 23105, 23106, 23108 and 23109 without reusing another
+checkout's server. The default offset is zero; hosted checks use no local ports.
+
 Record the commit, dependency versions, commands and results in the release
 notes. Recheck Linux and Windows CI for the final commit. Test removal of each
 example and all examples after changes to shared shell or test infrastructure.
