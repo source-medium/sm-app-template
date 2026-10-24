@@ -6,11 +6,10 @@
  * it never reads a partially loaded period as a decline.
  */
 import "server-only";
-import { compareValues, periodChanges, type Comparison, type MetricChange, type MetricValue } from "@/lib/comparison";
-import { rangeLength } from "@/lib/filters";
+import { compareValues, periodChanges, type Baseline, type MetricChange, type MetricValue } from "@/lib/comparison";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { presentOverviewMeasures } from "./measures";
-import type { OverviewFilters, OverviewReport } from "./queries";
+import type { OverviewFilters, OverviewSlice } from "./queries";
 
 function direction(change: Pick<MetricChange<MetricValue>, "direction" | "percent">) {
   const held = { verb: "held", amount: "", joiner: "at" };
@@ -23,28 +22,27 @@ function direction(change: Pick<MetricChange<MetricValue>, "direction" | "percen
 }
 
 export function overviewHeadline(
-  report: OverviewReport,
+  report: OverviewSlice,
   filters: OverviewFilters,
-  comparison: Comparison | undefined,
+  comparison: Baseline | undefined,
   currency: string | null,
 ): string | null {
   const baseline = comparison?.range;
   const previous = report.comparison?.data?.totals;
   const current = report.current.totals;
-  if (!baseline || !previous || !current || !periodChanges(filters.range, baseline, report.coverage).show) return null;
+  if (
+    !baseline ||
+    !previous ||
+    !current ||
+    !periodChanges(filters.range, baseline, report.coverage, comparison.alignment).show
+  )
+    return null;
   if (current.netRevenue === null || previous.netRevenue === null) return null;
 
   const revenue = direction(compareValues(current.netRevenue, previous.netRevenue));
   if (!revenue) return null;
-  const days = rangeLength(filters.range);
-  const against =
-    comparison.mode === "year"
-      ? "the same dates last year"
-      : days === 1
-        ? "the previous day"
-        : `the previous ${days} days`;
   const sentences = [
-    `Net revenue ${revenue.verb}${revenue.amount} ${revenue.joiner} ${formatMoney(current.netRevenue, currency)} against ${against}.`,
+    `Net revenue ${revenue.verb}${revenue.amount} ${revenue.joiner} ${formatMoney(current.netRevenue, currency)} against the ${comparison.label}.`,
   ];
 
   // Marketing efficiency comes from the same presentation as the KPI card, so the sentence and the card agree.

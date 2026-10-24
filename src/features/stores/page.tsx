@@ -7,6 +7,7 @@ import { LoadingState } from "@/components/patterns/data-states";
 import { StoreComparisonTable } from "./comparison-table";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { requireViewer } from "@/lib/auth/require-viewer";
+import { planRanges } from "@/lib/comparison";
 import { single, type SearchParams } from "@/lib/filters";
 import { storeReportPath, switchStoreHref } from "@/lib/store-navigation";
 import { STORES_RELATION } from "./rows";
@@ -39,37 +40,26 @@ export default async function StoresPage({ searchParams }: { searchParams: Promi
         },
       ]}
     >
-      {({ filters, comparison, timeZone, params: applied }) => {
-        const baseline = comparison?.range ?? null;
-        return (
-          <>
-            {comparison && <ComparisonCaption comparison={comparison} />}
-            <Suspense
-              key={`${filters.range.from}|${filters.range.to}|${comparison?.mode}`}
-              fallback={<LoadingState variant="table" label="Loading stores" />}
+      {({ filters, plan, timeZone, params: applied }) => (
+        <>
+          {plan && <ComparisonCaption plan={plan} />}
+          <Suspense
+            key={`${filters.range.from}|${filters.range.to}|${plan?.slots[0].mode}|${plan?.slots[1].mode}`}
+            fallback={<LoadingState variant="table" label="Loading stores" />}
+          >
+            <DataRegion
+              timestamp={timeZone}
+              load={() => getStoreComparison(filters.range, planRanges(plan))}
+              isEmpty={(data) => !data.length}
+              emptyMessage="No stores are available yet."
             >
-              <DataRegion
-                timestamp={timeZone}
-                load={() => getStoreComparison(filters.range, baseline)}
-                isEmpty={(data) => !data.length}
-                emptyMessage="No stores are available yet."
-              >
-                {(data) => {
-                  return (
-                    <StoreComparisonTable
-                      data={data}
-                      range={filters.range}
-                      baseline={baseline}
-                      params={applied}
-                      now={new Date()}
-                    />
-                  );
-                }}
-              </DataRegion>
-            </Suspense>
-          </>
-        );
-      }}
+              {(data) => (
+                <StoreComparisonTable data={data} range={filters.range} plan={plan} params={applied} now={new Date()} />
+              )}
+            </DataRegion>
+          </Suspense>
+        </>
+      )}
     </ReportPage>
   );
 }

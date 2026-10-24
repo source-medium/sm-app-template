@@ -10,6 +10,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import { COMPARISON_OPTIONS, type ComparisonMode } from "@/lib/comparison";
 import { dateRangeIssue, REPORT_FILTER_FORM_ID } from "@/lib/filters";
+import { LinkPending, SubmitAnnouncement, SubmitPending } from "./pending";
 
 export type FilterPreset = { label: string; href: string; active: boolean };
 
@@ -24,8 +25,10 @@ export function FilterBar({
   presets,
   dates = true,
   comparison,
+  comparison2,
   comparisonLabel = "Compare with",
   carriedComparison,
+  carriedComparison2,
   rangeLabel,
 }: {
   pathname: string;
@@ -37,9 +40,13 @@ export function FilterBar({
   maxDays?: number;
   presets: FilterPreset[];
   dates?: boolean;
+  /** The first and second comparison slots' modes; absent on a report without comparisons. */
   comparison?: ComparisonMode;
+  comparison2?: ComparisonMode;
   comparisonLabel?: string;
+  /** Another report's comparison choices, carried through a report that has none. */
   carriedComparison?: string;
+  carriedComparison2?: string;
   /** The applied range as text; on phones the date fields collapse behind it. */
   rangeLabel?: string;
 }) {
@@ -66,11 +73,12 @@ export function FilterBar({
       href={preset.href}
       aria-current={preset.active ? "true" : undefined}
       className={cn(
-        "flex min-h-9 items-center justify-center rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11",
+        "flex min-h-9 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11",
         preset.active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted",
       )}
     >
       {preset.label}
+      <LinkPending />
     </Link>
   );
   return (
@@ -105,6 +113,9 @@ export function FilterBar({
       {comparison === undefined && carriedComparison && (
         <input type="hidden" name="compare" value={carriedComparison} />
       )}
+      {comparison === undefined && carriedComparison2 && (
+        <input type="hidden" name="compare2" value={carriedComparison2} />
+      )}
       <input type="hidden" name="store" value={storeId} />
       {comparison !== undefined && (
         <div
@@ -121,6 +132,32 @@ export function FilterBar({
             id={`${id}-compare`}
             name="compare"
             defaultValue={comparison}
+            onChange={applyOnChange}
+          >
+            {COMPARISON_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
+      )}
+      {comparison2 !== undefined && (
+        <div
+          className={cn(
+            "flex min-w-0 flex-col gap-1.5 sm:order-2 sm:w-48",
+            dates && rangeLabel && !datesOpen && "max-sm:hidden",
+          )}
+        >
+          <label htmlFor={`${id}-compare2`} className="text-xs font-medium text-muted-foreground">
+            Second comparison
+          </label>
+          <NativeSelect
+            data-agent-element="Second comparison"
+            id={`${id}-compare2`}
+            name="compare2"
+            defaultValue={comparison2}
+            disabled={comparison === "off"}
             onChange={applyOnChange}
           >
             {COMPARISON_OPTIONS.map((option) => (
@@ -150,6 +187,9 @@ export function FilterBar({
             {comparison !== undefined && (
               <span id={`${id}-comparison-summary`} className="block text-xs text-muted-foreground">
                 {comparisonLabel}: {COMPARISON_OPTIONS.find((option) => option.value === comparison)?.label}
+                {comparison2 !== undefined &&
+                  comparison !== "off" &&
+                  `; and ${COMPARISON_OPTIONS.find((option) => option.value === comparison2)?.label?.toLowerCase()}`}
               </span>
             )}
           </span>
@@ -213,8 +253,9 @@ export function FilterBar({
         variant="secondary"
         className={cn("sm:order-3", dates && rangeLabel && !datesOpen && "max-sm:hidden")}
       >
-        Apply
+        <SubmitPending idle="Apply" pending="Updating…" />
       </Button>
+      <SubmitAnnouncement pending="Updating the report." />
       {error && (
         <p id={`${id}-error`} role="alert" className="col-span-full basis-full text-sm text-destructive sm:order-4">
           {error}

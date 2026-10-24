@@ -6,6 +6,7 @@ import { seededRandom, randomInt } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import type { ProductFilters, ProductsData } from "./queries";
 import { MAX_PRODUCTS, PRODUCTS_RELATION, ProductRow, type ProductCoverage } from "./rows";
+import type { BaselineRanges } from "@/lib/comparison";
 
 const MEASURES = ["revenue", "units", "profit", "refunds", "refunded_units"] as const;
 type Measure = (typeof MEASURES)[number];
@@ -82,8 +83,9 @@ export function sampleProductSource(storeId: string, range: DateRange): ProductS
 export function aggregateProducts(
   source: ProductSource[],
   filters: ProductFilters,
-  baseline: DateRange | null,
+  baselines: BaselineRanges,
 ): ProductsData {
+  const [baseline, second] = baselines;
   const groups = new Map<string, ProductSource[]>();
   const inRange = (date: string, range: DateRange | null) => range !== null && date >= range.from && date <= range.to;
   for (const row of source) {
@@ -91,7 +93,7 @@ export function aggregateProducts(
       row.storeId !== filters.storeId ||
       !row.valid ||
       !matchesSalesChannel(filters.channel, row.channel) ||
-      (!inRange(row.date, filters.range) && !inRange(row.date, baseline))
+      (!inRange(row.date, filters.range) && !inRange(row.date, baseline) && !inRange(row.date, second))
     )
       continue;
     const key = JSON.stringify([
@@ -127,13 +129,18 @@ export function aggregateProducts(
         MEASURES.flatMap((metric) => [
           [metric, sum(metric, filters.range)],
           [`previous_${metric}`, sum(metric, baseline)],
+          [`second_${metric}`, sum(metric, second)],
         ]),
-      ) as Record<Measure | `previous_${Measure}`, string | null>),
+      ) as Record<Measure | `previous_${Measure}` | `second_${Measure}`, string | null>),
     };
   });
   const latest = (range: DateRange | null) =>
     latestDate([...groups.values()].flat().flatMap((row) => (inRange(row.date, range) ? [row.date] : [])));
-  const coverage = { latest_date: latest(filters.range), previous_latest_date: latest(baseline) };
+  const coverage = {
+    latest_date: latest(filters.range),
+    previous_latest_date: latest(baseline),
+    second_latest_date: latest(second),
+  };
   const amounts = rows.flatMap((row) => (row[filters.metric] === null ? [] : [toUnits(row[filters.metric] as string)]));
   const minimum = amounts.length ? fromUnits(amounts.reduce((a, b) => (a < b ? a : b))) : null;
   const totals = {
@@ -141,6 +148,7 @@ export function aggregateProducts(
       MEASURES.flatMap((metric) => [
         [`total_${metric}`, sumDecimals(rows.map((row) => row[metric]))],
         [`total_previous_${metric}`, sumDecimals(rows.map((row) => row[`previous_${metric}`]))],
+        [`total_second_${metric}`, sumDecimals(rows.map((row) => row[`second_${metric}`]))],
       ]),
     ),
   };
@@ -161,23 +169,28 @@ export function aggregateProducts(
     const diff = (toUnits(right) - toUnits(left)) * (filters.ranking === "decliners" ? -1n : 1n);
     return diff > 0n ? 1 : diff < 0n ? -1 : a.product_key.localeCompare(b.product_key);
   });
+  // As live: products with no value in the selected period are not ranked.
+  const ranked = rows.filter((row) => row[filters.metric] !== null);
   return {
     rows: decodeRows(
       ProductRow,
-      rows.slice(0, MAX_PRODUCTS).map((row) => ({ ...row, ...totals, ...coverage, minimum_value: minimum })),
+      ranked.slice(0, MAX_PRODUCTS).map((row) => ({ ...row, ...totals, ...coverage, minimum_value: minimum })),
       PRODUCTS_RELATION,
     ),
-    hasMore: rows.length > MAX_PRODUCTS,
+    hasMore: ranked.length > MAX_PRODUCTS,
   };
 }
 
-export function sampleProducts(filters: ProductFilters, baseline: DateRange | null): ProductsData {
+export function sampleProducts(filters: ProductFilters, baselines: BaselineRanges): ProductsData {
   // Deduplicate overlapping date ranges before generating source rows.
-  const dates = new Set([...datesInRange(filters.range), ...(baseline ? datesInRange(baseline) : [])]);
+  const dates = new Set([
+    ...datesInRange(filters.range),
+    ...baselines.flatMap((baseline) => (baseline ? datesInRange(baseline) : [])),
+  ]);
   return aggregateProducts(
     [...dates].flatMap((date) => sampleProductSource(filters.storeId, { from: date, to: date })),
     filters,
-    baseline,
+    baselines,
   );
 }
 

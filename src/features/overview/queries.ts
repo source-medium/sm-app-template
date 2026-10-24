@@ -8,7 +8,7 @@ import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { TimeGrain } from "@/lib/time-grain";
 import type { DateRange, ReportFilters } from "@/lib/filters";
-import type { PeriodCoverage } from "@/lib/comparison";
+import type { PeriodCoverage, BaselineRanges } from "@/lib/comparison";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { queryOverview, queryOverviewChannels } from "./bigquery";
 import { sampleOverview } from "./sample";
@@ -76,34 +76,58 @@ export async function getOverviewChannels(filters: ReportFilters): Promise<strin
     : sampleSummaryChannels(filters.storeId, filters.range);
 }
 
+export type OverviewBaseline = { data: OverviewData; error: null } | { data: null; error: WarehouseError };
+
 export type OverviewReport = {
   current: OverviewData;
-  comparison: { data: OverviewData; error: null } | { data: null; error: WarehouseError } | null;
-  /**
-   * Each period's latest date with rows, for periodChanges(). Null when
-   * comparison is off or that query failed; the current report still stands.
-   */
+  /** One entry per comparison slot: its data, or why it failed; null when the slot has no dates. */
+  baselines: [OverviewBaseline | null, OverviewBaseline | null];
+  /** Each period's latest date with rows, for slotChanges(). */
+  coverage: PeriodCoverage;
+};
+
+/**
+ * One slot's view of the report, in the shape the headline, highlights and
+ * chart overlay read: the current period against that one baseline. `coverage`
+ * is null when the slot has no data, so periodChanges() hides its changes.
+ */
+export type OverviewSlice = {
+  current: OverviewData;
+  comparison: OverviewBaseline | null;
   coverage: PeriodCoverage | null;
 };
 
-/** Two bounded, independently aggregated periods; Off makes only the current-period query. */
-export async function getOverviewReport(filters: OverviewFilters, baseline: DateRange | null): Promise<OverviewReport> {
+export function overviewSlice(report: OverviewReport, slot: 0 | 1): OverviewSlice {
+  const comparison = report.baselines[slot];
+  const latest = slot === 0 ? report.coverage.previous_latest_date : (report.coverage.second_latest_date ?? null);
+  return {
+    current: report.current,
+    comparison,
+    coverage: comparison?.data ? { latest_date: report.coverage.latest_date, previous_latest_date: latest } : null,
+  };
+}
+
+/** Up to three bounded, independently aggregated periods, read side by side; Off makes only the current-period query. */
+export async function getOverviewReport(filters: OverviewFilters, baselines: BaselineRanges): Promise<OverviewReport> {
   await requireViewer({ storeId: filters.storeId });
-  const comparison = baseline
-    ? getOverview({ ...filters, range: baseline }).then(
-        (data) => ({ data, error: null }),
-        (error: unknown) => {
-          if (!(error instanceof WarehouseError)) throw error;
-          return { data: null, error };
-        },
-      )
-    : null;
-  const [current, compared] = await Promise.all([getOverview(filters), comparison]);
+  const load = (range: DateRange | null): Promise<OverviewBaseline> | null =>
+    range
+      ? getOverview({ ...filters, range }).then(
+          (data): OverviewBaseline => ({ data, error: null }),
+          (error: unknown): OverviewBaseline => {
+            if (!(error instanceof WarehouseError)) throw error;
+            return { data: null, error };
+          },
+        )
+      : null;
+  const [current, first, second] = await Promise.all([getOverview(filters), load(baselines[0]), load(baselines[1])]);
   return {
     current,
-    comparison: compared,
-    coverage: compared?.data
-      ? { latest_date: current.latestDate, previous_latest_date: compared.data.latestDate }
-      : null,
+    baselines: [first, second],
+    coverage: {
+      latest_date: current.latestDate,
+      previous_latest_date: first?.data?.latestDate ?? null,
+      second_latest_date: second?.data?.latestDate ?? null,
+    },
   };
 }

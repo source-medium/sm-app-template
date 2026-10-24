@@ -18,10 +18,20 @@ export function sampleCurrencyNote(): CurrencyNote {
   };
 }
 
-export function liveCurrencyNote(config: ReportingCurrencyConfig): CurrencyNote {
+/**
+ * `sourceCurrency` is the code the data source vouches for (a managed app's
+ * SourceMedium workspace setting); it labels stores app.config.ts leaves alone.
+ */
+export function liveCurrencyNote(config: ReportingCurrencyConfig, sourceCurrency: string | null = null): CurrencyNote {
   const ignored = config.invalidCurrency
     ? `app.config.ts sets "${config.invalidCurrency}", which is not a recognized ISO code, so it is ignored. `
     : "";
+  if (!config.currency && sourceCurrency) {
+    return {
+      status: `Amounts are labeled ${sourceCurrency}`,
+      detail: `SourceMedium's workspace reporting currency, as its data API publishes it${config.labeledStores ? `; ${count(config.labeledStores, "store uses its own code from app.config.ts", "stores use their own codes from app.config.ts")}` : ""}. ${ignored}${NEVER_DIM_STORES}`,
+    };
+  }
   if (config.currency) {
     const exceptions = [
       config.labeledStores

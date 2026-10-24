@@ -6,7 +6,7 @@
  * requireViewer(); there is no other route from a request to the warehouse.
  */
 import "server-only";
-import { BIGQUERY_IDENTIFIER, buildId, type LiveConfig } from "@/lib/config/env.server";
+import { BIGQUERY_IDENTIFIER, buildId, deploymentEnvironment, type LiveConfig } from "@/lib/config/env.server";
 import {
   runQuery,
   type BigQueryClient,
@@ -18,8 +18,13 @@ import { createTokenProvider } from "./google-token.server";
 import { assertStoreAccess, StoreAccessError } from "../auth/store-access";
 import { checkManagedConnection, checkWarehouseConnection } from "./connection.server";
 import { runManagedQuery, type ManagedApiClient, type ManagedContext } from "./managed-api.server";
+import { cachedQuery, type CacheScope } from "./query-cache.server";
+import { newRequestContext, type RequestContext } from "./request-context";
 import type { ConnectionReport } from "./connection-report";
 import type { WarehouseError } from "./warehouse-error";
+
+/** The deployment boundary a cached result belongs to; the environment keeps previews apart from production. */
+const environment = deploymentEnvironment;
 
 /** SourceMedium's two datasets by role, or any other dataset id in your warehouse project. */
 export type DatasetName = "transformed" | "metadata" | (string & {});
@@ -36,6 +41,12 @@ export type Warehouse = {
   table(name: string, dataset?: DatasetName): string;
   query(request: QueryRequest, options?: QueryOptions): Promise<QueryResult>;
   checkConnection(signal?: AbortSignal): Promise<ConnectionReport>;
+  /**
+   * The reporting currency the data source itself vouches for: SourceMedium's
+   * workspace setting for a managed app, null for a self-hosted warehouse,
+   * whose owner verifies it in app.config.ts instead.
+   */
+  reportingCurrency: string | null;
 };
 
 const clients = new Map<string, BigQueryClient>();
@@ -93,25 +104,42 @@ function tableIn(coordinates: {
   };
 }
 
-export function warehouseFor(live: LiveConfig, fixedStoreId: string | null = null): Warehouse {
+/**
+ * `request` is the current request's context (requireViewer() supplies it);
+ * scripts and tests may omit it and get a fresh one that never bypasses the cache.
+ */
+export function warehouseFor(
+  live: LiveConfig,
+  fixedStoreId: string | null = null,
+  request: RequestContext = newRequestContext(),
+): Warehouse {
   const client = bigQueryClientFor(live);
+  const scope: CacheScope = {
+    source: "bigquery",
+    environment: environment(),
+    applicationId: live.applicationId,
+    projectId: live.dataProjectId,
+    transformedDatasetId: live.transformedDatasetId,
+    metadataDatasetId: live.metadataDatasetId,
+  };
   const warehouse: Warehouse = {
     applicationId: live.applicationId,
+    reportingCurrency: null,
     table: tableIn({
       projectId: live.dataProjectId,
       transformedDatasetId: live.transformedDatasetId,
       metadataDatasetId: live.metadataDatasetId,
     }),
-    query: async (request, options) => {
+    query: async (query, options = {}) => {
       if (fixedStoreId !== null) {
-        const parameters = request.params?.filter((param) => param.name === "store_id") ?? [];
+        const parameters = query.params?.filter((param) => param.name === "store_id") ?? [];
         const parameter = parameters[0];
         if (parameters.length !== 1 || parameter?.type !== "STRING" || typeof parameter.value !== "string") {
           throw new StoreAccessError();
         }
         assertStoreAccess(fixedStoreId, parameter.value);
       }
-      return runQuery(client, request, options);
+      return cachedQuery(scope, request, query, options, (traced) => runQuery(client, query, traced));
     },
     checkConnection: (callerSignal) => {
       const timeout = AbortSignal.timeout(30_000);
@@ -134,11 +162,26 @@ export function warehouseFor(live: LiveConfig, fixedStoreId: string | null = nul
  * The app reads every store in its organization, so there is no store
  * restriction to enforce here.
  */
-export function managedWarehouse(client: ManagedApiClient, context: ManagedContext): Warehouse {
+export function managedWarehouse(
+  client: ManagedApiClient,
+  context: ManagedContext,
+  request: RequestContext = newRequestContext(),
+): Warehouse {
+  const scope: CacheScope = {
+    source: "managed",
+    environment: environment(),
+    applicationId: context.appId,
+    projectId: context.projectId,
+    transformedDatasetId: context.transformedDatasetId,
+    metadataDatasetId: context.metadataDatasetId,
+    allowedDatasets: context.allowedDatasets,
+  };
   const warehouse: Warehouse = {
     applicationId: context.appId,
+    reportingCurrency: context.reportingCurrency,
     table: tableIn(context),
-    query: (request, options) => runManagedQuery(client, request, options),
+    query: (query, options = {}) =>
+      cachedQuery(scope, request, query, options, (traced) => runManagedQuery(client, query, traced)),
     checkConnection: (callerSignal) => {
       const timeout = AbortSignal.timeout(30_000);
       const signal = callerSignal ? AbortSignal.any([timeout, callerSignal]) : timeout;
@@ -162,6 +205,7 @@ export function managedWarehouse(client: ManagedApiClient, context: ManagedConte
 export function refusedWarehouse(refusal: WarehouseError): Warehouse {
   return {
     applicationId: "", // No context was loaded, so there is no app id.
+    reportingCurrency: null,
     table: () => {
       throw refusal;
     },

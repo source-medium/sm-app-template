@@ -18,6 +18,7 @@ import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber } from "@/lib/data/decimal";
 import { parseTimeGrain, periodStart, periodRange, TIME_GRAINS } from "@/lib/time-grain";
+import { planRanges } from "@/lib/comparison";
 import { datesInRange, REPORT_FILTER_FORM_ID, parseChoice, withParams, type SearchParams } from "@/lib/filters";
 import {
   EMPTY_VALUE,
@@ -94,7 +95,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
       agentOmissions={names.error ? ["Invalid name filters prevented this report from loading."] : []}
       comparisonLabel="Compare spend breakdown with"
     >
-      {({ filters, comparison, params: applied, timeZone, currency, dataStatus }) => {
+      {({ filters, plan, params: applied, timeZone, currency, dataStatus }) => {
         const paidFilters: PaidMarketingFilters = { ...filters, channel, names: names.rules };
         const paidData = names.error ? null : getPaidMarketing(paidFilters);
         paidData?.catch(() => undefined); // Both regions handle the same query's failure.
@@ -197,12 +198,12 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                   options={[...BREAKDOWN_DIMENSIONS]}
                 />
                 <Suspense
-                  key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${comparison?.mode}|${breakdownDimension(params)}|${nameKey}`}
+                  key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${plan?.slots[0].mode}|${plan?.slots[1].mode}|${breakdownDimension(params)}|${nameKey}`}
                   fallback={<LoadingState variant="chart" label="Loading spend breakdown" />}
                 >
                   <DataRegion
                     timestamp={timeZone}
-                    load={() => getSpendBreakdown(paidFilters, breakdownDimension(params), comparison?.range ?? null)}
+                    load={() => getSpendBreakdown(paidFilters, breakdownDimension(params), planRanges(plan))}
                     isEmpty={(data) => data.rows.length === 0}
                     emptyMessage="No spend rows match these filters."
                   >
@@ -211,7 +212,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                         data={data}
                         filters={paidFilters}
                         dimension={breakdownDimension(params)}
-                        comparison={comparison}
+                        plan={plan}
                         params={applied}
                         currency={currency}
                       />

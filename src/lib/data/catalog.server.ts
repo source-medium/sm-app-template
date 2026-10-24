@@ -10,6 +10,7 @@
 import "server-only";
 import { z } from "zod";
 import { bq, decodeRows } from "./decode";
+import { CACHE_POLICY } from "./query-cache";
 import type { Warehouse } from "./warehouse.server";
 
 const DICTIONARY = "dim_data_dictionary";
@@ -48,6 +49,7 @@ export async function readDictionary(
   const result = await warehouse.query(
     {
       name: "data_dictionary",
+      cache: CACHE_POLICY.catalog,
       maxRows: limit,
       sql: `
       SELECT column_name, data_type, column_description, table_description

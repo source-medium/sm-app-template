@@ -158,3 +158,6 @@ active; ask a workspace admin.
   failure without a server response has no support code.
 - Report headers say when warehouse freshness or reporting currency is
   unknown. A successful query or connection check does not establish either.
+  When the data API publishes the workspace reporting currency with the app's
+  context, stores that `app.config.ts` leaves unset take that label, and the
+  Connection page says so; `app.config.ts` settings still take precedence.

@@ -57,15 +57,23 @@ export async function DataRegion<T>({
   }
   // Stamp only successful loads, including empty results, after every query and decoder finishes.
   const completedAt = new Date().toISOString();
+  // Results the query cache served this request so far: the region says how old the oldest may be.
+  const cached = access.mode === "live" ? access.request.provenance : null;
   return (
     <div className="flex flex-col gap-3">
       {isEmpty(data) ? <EmptyState message={emptyMessage} action={emptyAction} /> : children(data)}
       {timestamp !== false && (
         <p className="text-xs text-muted-foreground">
-          {access.mode === "live" ? "Queried at " : "Sample loaded at "}
+          {access.mode === "live" ? "Loaded at " : "Sample loaded at "}
           <time dateTime={completedAt} data-slot="data-loaded-at">
             {formatInstant(completedAt, timestamp, true)}
           </time>
+          {cached?.oldestQueriedAt && (
+            <span data-slot="data-cached-from">
+              {"; includes cached results queried at "}
+              <time dateTime={cached.oldestQueriedAt}>{formatInstant(cached.oldestQueriedAt, timestamp, true)}</time>
+            </span>
+          )}
         </p>
       )}
     </div>

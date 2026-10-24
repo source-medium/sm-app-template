@@ -9,6 +9,26 @@ export const DICTIONARY_FIELD_LIMIT = 500;
 export type AgentField = DictionaryField & { relation: string; origin: "sample" | "live" };
 export const USE_AGENT_FIELD = "sm:use-agent-field";
 
+/**
+ * A published metric handed to the composer from Explore your data: its
+ * canonical identity and reviewed definition, never row values.
+ */
+export type AgentMetric = {
+  name: string;
+  label: string | null;
+  description: string | null;
+  calculation: string | null;
+  filter: string | null;
+  model: string | null;
+  timeExpression: string | null;
+  unit: string | null;
+  dependencies: string[];
+  /** Report routes in this app that already present the metric, or none. */
+  reports: string[];
+  origin: "sample" | "live";
+};
+export const USE_AGENT_METRIC = "sm:use-agent-metric";
+
 /** A bounded report's raw JSON. INT64 stays decimal text, never a rounded JS number. */
 export function reportJsonResponse(filename: string, rawResults: unknown, context: unknown): Response {
   if (!/^[a-zA-Z0-9_.-]+\.json$/.test(filename)) throw new Error("Report filenames must be plain .json names.");

@@ -4,6 +4,7 @@ import { requireViewer } from "@/lib/auth/require-viewer";
 import { bq, decodeRows } from "@/lib/data/decode";
 import { z } from "zod";
 import type { PerformanceFilters } from "./queries";
+import { CACHE_POLICY } from "@/lib/data/query-cache";
 import {
   BUSINESS_FIELDS,
   BUSINESS_RELATION,
@@ -32,6 +33,7 @@ export async function queryBusiness(filters: PerformanceFilters) {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "performance_business",
+    cache: CACHE_POLICY.aggregate,
     maxRows: performanceRowLimit(filters.range, filters.grain),
     sql: `WITH scoped AS (
       SELECT DATE_TRUNC(date, ${GRAINS[filters.grain]}) AS period_date,
@@ -55,6 +57,7 @@ export async function queryPlatforms(filters: PerformanceFilters) {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "performance_platforms",
+    cache: CACHE_POLICY.aggregate,
     // Up to 25 platforms plus the combined group, each with period rows and a total.
     maxRows: performanceRowLimit(filters.range, filters.grain) * 26,
     sql: `WITH scoped AS (
@@ -81,6 +84,7 @@ export async function queryPerformanceChannels(filters: PerformanceFilters) {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "performance_channels",
+    cache: CACHE_POLICY.aggregate,
     maxRows: 50,
     sql: `SELECT DISTINCT channel FROM (
       SELECT IFNULL(sm_channel, '(none)') AS channel FROM ${warehouse.table(BUSINESS_RELATION)}

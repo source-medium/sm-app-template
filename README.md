@@ -12,13 +12,14 @@ rework a view, or build your next report. The app and its source code are yours.
 [Open the demo](https://sm-app-starter-demo.source-medium.workers.dev)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.jpg">
-  <source media="(prefers-color-scheme: light)" srcset="docs/images/overview-light.jpg">
-  <img alt="Overview: net revenue, summary orders, ad spend and marketing efficiency with period comparisons, a plain-English summary of what moved, and a selectable trend chart." src="docs/images/overview-light.jpg" width="1440">
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/images/reel-dark-still.webp">
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/images/reel-light-still.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/reel-dark.webp">
+  <img alt="A 21-second tour of the app: Overview cards compare each number with the previous period and the same period last year; switching the comparison updates the summary and trend chart without a new query; About this number shows the published definition and calculation; a map shows sales by shipping destination; and Vibe code prepares a change request for your coding agent." src="docs/images/reel-light.webp" width="1280">
 </picture>
 
-_Every screenshot uses synthetic sample data. The hosted demo reads SourceMedium's
-demo warehouse. No sign-in required._
+_Every screenshot and the tour use synthetic sample data. The hosted demo reads
+SourceMedium's demo warehouse. No sign-in required._
 
 ## What you get
 
@@ -40,9 +41,18 @@ demo warehouse. No sign-in required._
 - **Side-by-side creatives.** Compare two to four creatives at identical
   scope, with minimum-spend and minimum-conversion thresholds applied after
   aggregation.
-- **Data & definitions.** A searchable catalog of published metric definitions,
-  field documentation, and source availability, served from the same adapter
-  the reports use.
+- **Explore your data.** Every published metric in one searchable list,
+  grouped by SourceMedium's categories, with a plain-English drawer, a link to
+  the report that shows it, and a hand-off to the coding-agent composer; field
+  documentation and source availability sit beside it, served from the same
+  adapter the reports use.
+- **Two comparisons at once.** Every headline number compares with the previous
+  period and the same period last year (or 52 weeks earlier), aware of what the
+  range is: a full month against the previous month, a rolling week against the
+  week before, a single day against the same weekday.
+- **A query cache.** Repeated reads are served from a private cache inside the
+  app, in memory and optionally in Cloudflare KV, with hard expiry and a Refresh
+  button that bypasses it. Warm pages run no warehouse jobs.
 - **Exports with context.** CSV downloads keep raw values. A JSON export adds
   the filters, timezone, currency verification, metric identities, and
   limitations from the same request.
@@ -123,7 +133,7 @@ and light and dark modes are already in place.
 | **Retention**          | How do customers from each cohort return over time?                                  |
 | **Orders**             | What happened with a particular order, and why was it attributed where it was?       |
 | **Geography**          | Where are valid-order sales happening, and which shipping destinations are changing? |
-| **Data & definitions** | What do these metrics mean, and which evidence is available?                         |
+| **Explore your data**  | What do these metrics mean, where do they appear, and which evidence is available?   |
 
 ### Where sales are happening
 
@@ -151,7 +161,7 @@ changing a number.
 
 <p>
   <img src="docs/images/attribution.jpg" width="300" alt="Why attributed here? for one order: the published primary winner with its rank, marketing channel, canonical source and medium, and inference method, then contextual survey evidence listed separately.">
-  <img src="docs/images/data.jpg" width="640" alt="Data & definitions, Metrics tab, searching for revenue with the Order Net Revenue definition expanded: name, description, calculation, published filter, source, time expression, grains, dependencies, aliases, and display unit.">
+  <img src="docs/images/data.jpg" width="640" alt="Explore your data, searching for revenue with the Order Net Revenue drawer open: its plain-language definition, unit and source, View in Geography, Use in Vibe code, and technical details with the canonical name, calculation, published filter, time basis and grains.">
 </p>
 
 ### Compare creatives side by side

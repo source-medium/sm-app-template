@@ -1,56 +1,251 @@
-/** Calendar comparisons and exact changes, independent of any report or UI. */
+/**
+ * Calendar comparisons and exact changes, independent of any report or UI.
+ *
+ * A report compares its selected range with up to two baselines (a
+ * ComparisonPlan). What "previous period" means depends on what the range is:
+ * a full month compares with the previous full month even though the day
+ * counts differ, a rolling 28 days with the 28 days before it, a single day
+ * with the same weekday a week earlier. rangeIntent() reads that intent from
+ * the applied range itself, so nothing new travels in the URL.
+ */
 import { fromUnits, toUnits } from "@/lib/data/decimal";
 import { addDays, datesInRange, parseChoice, rangeLength, type DateRange, type SearchParams } from "@/lib/filters";
 
 export const COMPARISON_OPTIONS = [
   { value: "previous", label: "Previous period" },
-  { value: "year", label: "Same dates last year" },
+  { value: "year", label: "Same period last year" },
+  { value: "weekday", label: "52 weeks earlier" },
   { value: "off", label: "Off" },
 ] as const;
 export type ComparisonMode = (typeof COMPARISON_OPTIONS)[number]["value"];
-export type Comparison = { mode: ComparisonMode; range: DateRange | null };
+/**
+ * `position` lines dates up by their place in the period and requires equal
+ * lengths; `calendar` lines them up by calendar date (a month with last year's
+ * month, March with February) and lets the lengths differ.
+ */
+export type Alignment = "position" | "calendar";
+/** One baseline as a view uses it: its dates and how they line up with the selected ones. */
+export type Comparison = { mode: ComparisonMode; range: DateRange | null; alignment?: Alignment };
+export type Baseline = Comparison & {
+  alignment: Alignment;
+  /** How the caption and KPI rows name it: "previous 28 days", "same period last year". */
+  label: string;
+  /** Why there is no range, when there is none. */
+  note: string | null;
+};
+export type RangeIntent =
+  "single_day" | "rolling" | "full_month" | "month_to_date" | "full_quarter" | "quarter_to_date" | "custom";
+/** Each slot's dates for a query; null for a slot that is off or has no matching dates. */
+export type BaselineRanges = [DateRange | null, DateRange | null];
+export type ComparisonPlan = {
+  range: DateRange;
+  intent: RangeIntent;
+  slots: [Baseline, Baseline];
+  /** The slot whose overlay and change columns show; KPI cards always show both. */
+  active: 0 | 1;
+};
 
-/** Calendar year shift, clamping Feb 29 to Feb 28; never silently rolls into March. */
+const MODES = COMPARISON_OPTIONS.map((option) => option.value);
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+function daysInMonth(year: number, month: number): number {
+  return [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] ?? 31;
+}
+const year = (date: string) => Number(date.slice(0, 4));
+const month = (date: string) => Number(date.slice(5, 7));
+const day = (date: string) => Number(date.slice(8, 10));
+const iso = (y: number, m: number, d: number) =>
+  `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+const monthStart = (date: string) => `${date.slice(0, 8)}01`;
+const monthEnd = (date: string) => iso(year(date), month(date), daysInMonth(year(date), month(date)));
+/** The first day of the month `offset` months before (or after) `date`'s month. */
+function shiftMonth(date: string, offset: number): string {
+  const index = year(date) * 12 + (month(date) - 1) + offset;
+  return iso(Math.floor(index / 12), (index % 12) + 1, 1);
+}
+const quarterStart = (date: string) => iso(year(date), Math.floor((month(date) - 1) / 3) * 3 + 1, 1);
+const quarterEnd = (date: string) => monthEnd(shiftMonth(quarterStart(date), 2));
+const monthName = (date: string) => `${MONTHS[month(date) - 1]} ${year(date)}`;
+
+/** The same calendar date a year earlier, or null for Feb 29, which has none. */
+function sameDateLastYear(date: string): string | null {
+  const shifted = `${String(year(date) - 1).padStart(4, "0")}${date.slice(4)}`;
+  return new Date(`${shifted}T00:00:00Z`).toISOString().slice(0, 10) === shifted ? shifted : null;
+}
+
+/** Calendar year shift for a period boundary, clamping Feb 29 to Feb 28; never silently rolls into March. */
 function lastYear(date: string): string {
-  const year = Number(date.slice(0, 4)) - 1;
-  const shifted = `${String(year).padStart(4, "0")}${date.slice(4)}`;
-  return new Date(`${shifted}T00:00:00Z`).toISOString().slice(0, 10) === shifted
-    ? shifted
-    : `${String(year).padStart(4, "0")}-02-28`;
+  return sameDateLastYear(date) ?? `${String(year(date) - 1).padStart(4, "0")}-02-28`;
 }
 
-export function comparisonRange(range: DateRange, mode: ComparisonMode): DateRange | null {
-  if (mode === "off") return null;
-  if (mode === "year") return range.from < "0002-01-01" ? null : { from: lastYear(range.from), to: lastYear(range.to) };
-  const length = rangeLength(range);
-  const from = addDays(range.from, -length);
-  return from < "0001-01-01" ? null : { from, to: addDays(range.from, -1) };
-}
-
-export function parseComparison(params: SearchParams, range: DateRange): Comparison {
-  const mode = parseChoice(
-    params,
-    "compare",
-    COMPARISON_OPTIONS.map((option) => option.value),
-    "previous",
-  );
-  return { mode, range: comparisonRange(range, mode) };
-}
-
-/** Align prior-period days by position, or last-year days by calendar date. An unmatched leap day stays a gap. */
-export function comparisonDates(range: DateRange, comparison: Comparison): (string | null)[] {
-  return datesInRange(range).map((date, index) => {
-    if (!comparison.range) return null;
-    if (comparison.mode === "previous") return addDays(comparison.range.from, index);
-    if (comparison.mode === "year") {
-      const shifted = `${Number(date.slice(0, 4)) - 1}`.padStart(4, "0") + date.slice(4);
-      return new Date(`${shifted}T00:00:00Z`).toISOString().slice(0, 10) === shifted ? shifted : null;
-    }
-    return null;
-  });
+/** What the applied range is, judged against the store's current date. */
+export function rangeIntent(range: DateRange, today: string): RangeIntent {
+  const yesterday = addDays(today, -1);
+  if (range.from === range.to) return "single_day";
+  if (range.from === monthStart(range.from)) {
+    if (range.to === monthEnd(range.from)) return "full_month";
+    if (range.to === yesterday && range.to.slice(0, 7) === range.from.slice(0, 7)) return "month_to_date";
+  }
+  if (range.from === quarterStart(range.from)) {
+    if (range.to === quarterEnd(range.from)) return "full_quarter";
+    if (range.to === yesterday && quarterStart(range.to) === range.from) return "quarter_to_date";
+  }
+  return range.to === yesterday ? "rolling" : "custom";
 }
 
 const dayCount = (days: number) => (days === 1 ? "1 day" : `${days} days`);
+/** No range before year one, which the warehouse cannot hold either. */
+const supported = (range: DateRange): DateRange | null => (range.from < "0001-01-01" ? null : range);
+
+/** The baseline a mode names for this range, given what the range is. */
+export function baselineFor(range: DateRange, intent: RangeIntent, mode: ComparisonMode): Baseline {
+  const length = rangeLength(range);
+  const make = (
+    label: string,
+    alignment: Alignment,
+    candidate: DateRange | null,
+    note: string | null = null,
+  ): Baseline => ({
+    mode,
+    label,
+    alignment,
+    range: candidate ? supported(candidate) : null,
+    note: candidate && supported(candidate) === null ? "The comparison period is before any supported date." : note,
+  });
+  if (mode === "off") return make("off", "position", null);
+  if (mode === "weekday") {
+    const label = intent === "single_day" ? "same weekday 52 weeks earlier" : "same weekdays 52 weeks earlier";
+    return make(label, "position", { from: addDays(range.from, -364), to: addDays(range.to, -364) });
+  }
+  if (mode === "year") {
+    const label = intent === "single_day" ? "same date last year" : "same period last year";
+    if (intent === "single_day" && range.from.slice(5) === "02-29")
+      return make(label, "calendar", null, "There is no February 29 in the previous year.");
+    if (range.from < "0002-01-01") return make(label, "calendar", null, "There is no earlier year to compare with.");
+    return make(label, "calendar", { from: lastYear(range.from), to: lastYear(range.to) });
+  }
+  // mode === "previous"
+  switch (intent) {
+    case "single_day":
+      return make("same weekday last week", "position", { from: addDays(range.from, -7), to: addDays(range.to, -7) });
+    case "full_month": {
+      const start = shiftMonth(range.from, -1);
+      return make("previous month", "calendar", { from: start, to: monthEnd(start) });
+    }
+    case "month_to_date": {
+      const start = shiftMonth(range.from, -1);
+      const elapsed = day(range.to);
+      const available = daysInMonth(year(start), month(start));
+      if (elapsed > available)
+        return make(
+          "previous month to date",
+          "calendar",
+          null,
+          `${monthName(start)} has only ${available} days, so there is no matching month-to-date period for ${dayCount(elapsed)}.`,
+        );
+      return make("previous month to date", "calendar", { from: start, to: iso(year(start), month(start), elapsed) });
+    }
+    case "full_quarter": {
+      const start = shiftMonth(range.from, -3);
+      return make("previous quarter", "calendar", { from: start, to: quarterEnd(start) });
+    }
+    case "quarter_to_date": {
+      const start = shiftMonth(range.from, -3);
+      const to = addDays(start, length - 1);
+      if (to > quarterEnd(start))
+        return make(
+          "previous quarter to date",
+          "position",
+          null,
+          `The previous quarter has fewer days than the ${dayCount(length)} selected, so there is no matching quarter-to-date period.`,
+        );
+      return make("previous quarter to date", "position", { from: start, to });
+    }
+    default:
+      return make(length === 1 ? "previous day" : `previous ${dayCount(length)}`, "position", {
+        from: addDays(range.from, -length),
+        to: addDays(range.from, -1),
+      });
+  }
+}
+
+const sameRange = (a: DateRange, b: DateRange) => a.from === b.from && a.to === b.to;
+
+/**
+ * Both baselines from the URL: `compare` (the first; it accepts the same
+ * values as before, `previous` now follows what the range is, and `off` turns
+ * both off), `compare2` (the second, defaulting to
+ * last year unless the first already is) and `baseline=a|b` (which one the
+ * charts and tables show). A second slot that resolves to the first's dates
+ * is not queried; it says it matches instead.
+ */
+export function parseComparisonPlan(params: SearchParams, range: DateRange, today: string): ComparisonPlan {
+  const intent = rangeIntent(range, today);
+  const first = parseChoice(params, "compare", MODES, "previous");
+  const second =
+    first === "off" ? "off" : parseChoice(params, "compare2", MODES, first === "year" ? "previous" : "year");
+  const a = baselineFor(range, intent, first);
+  let b = baselineFor(range, intent, second);
+  if (a.range && b.range && sameRange(a.range, b.range))
+    b = { ...b, range: null, note: "This matches the first comparison, so it is shown once." };
+  const requested = parseChoice(params, "baseline", ["a", "b"] as const, "a");
+  const active: 0 | 1 = requested === "b" && b.range ? 1 : a.range || !b.range ? 0 : 1;
+  return { range, intent, slots: [a, b], active };
+}
+
+/** Each slot's dates for a query, or two nulls when the report has no plan. */
+export function planRanges(plan: ComparisonPlan | undefined): BaselineRanges {
+  return plan ? [plan.slots[0].range, plan.slots[1].range] : [null, null];
+}
+
+/** Both slots' modes as URL parameters, so links and exports keep the plan they were made from. */
+export function planParams(plan: ComparisonPlan | undefined): { compare: ComparisonMode; compare2: ComparisonMode } {
+  return { compare: plan?.slots[0].mode ?? "off", compare2: plan?.slots[1].mode ?? "off" };
+}
+
+/** The slot a view overlays and tabulates; its mode is kept even without a range, so copy can say why. */
+export function activeComparison(plan: ComparisonPlan): Comparison {
+  return plan.slots[plan.active];
+}
+
+/**
+ * The baseline date each selected date lines up with, or null for a gap:
+ * position-aligned periods by index, last year by calendar date, a previous
+ * calendar month by day of month (so March 29 to 31 have no February match).
+ */
+export function comparisonDates(range: DateRange, comparison: Comparison): (string | null)[] {
+  const baseline = comparison.range;
+  return datesInRange(range).map((date, index) => {
+    if (!baseline || comparison.mode === "off") return null;
+    if (comparison.mode === "year") return sameDateLastYear(date);
+    const oneMonth =
+      baseline.from.slice(0, 7) === baseline.to.slice(0, 7) && range.from.slice(0, 7) === range.to.slice(0, 7);
+    if (comparison.alignment === "calendar" && oneMonth) {
+      const matched = iso(year(baseline.from), month(baseline.from), day(date));
+      return day(date) <= daysInMonth(year(baseline.from), month(baseline.from)) && matched <= baseline.to
+        ? matched
+        : null;
+    }
+    const matched = addDays(baseline.from, index);
+    return matched <= baseline.to ? matched : null;
+  });
+}
 
 /** Days at the end of a period after its latest date with rows: all of them when it has none. */
 function trailingDays(range: DateRange, latest: string | null): number {
@@ -62,18 +257,20 @@ function trailingDays(range: DateRange, latest: string | null): number {
  * so a day that has not loaded yet is missing from the end of the selected
  * period, where it would read as a decline. Earlier gaps are not unloaded
  * days, so they do not hide changes. `latest` and `baselineLatest` are each
- * period's latest date with rows, or null. Returns why changes are hidden, or
- * null when they can show.
+ * period's latest date with rows, or null. Position-aligned periods must also
+ * have equal lengths; calendar-aligned ones (a month against the previous
+ * month) may not. Returns why changes are hidden, or null when they can show.
  */
 export function coverageIssue(
   range: DateRange,
   baseline: DateRange,
   latest: string | null,
   baselineLatest: string | null,
+  alignment: Alignment = "position",
 ): string | null {
   const length = rangeLength(range);
   const baselineLength = rangeLength(baseline);
-  if (length !== baselineLength)
+  if (alignment === "position" && length !== baselineLength)
     return `Changes are hidden because the periods differ in length: ${dayCount(length)} selected, ${dayCount(baselineLength)} compared.`;
   const missing = trailingDays(range, latest);
   const baselineMissing = trailingDays(baseline, baselineLatest);
@@ -82,7 +279,13 @@ export function coverageIssue(
 }
 
 /** Each period's latest date with rows, as period-sql's PERIOD_COVERAGE selects them. */
-export type PeriodCoverage = { latest_date: string | null; previous_latest_date: string | null };
+export type PeriodCoverage = {
+  latest_date: string | null;
+  previous_latest_date: string | null;
+  second_latest_date?: string | null;
+};
+
+export type PeriodChanges = { show: boolean; issue: string | null };
 
 /**
  * Whether a view shows period changes (KPI deltas, change columns): only with a
@@ -93,10 +296,30 @@ export function periodChanges(
   range: DateRange,
   baseline: DateRange | null | undefined,
   coverage: PeriodCoverage | null | undefined,
-): { show: boolean; issue: string | null } {
+  alignment: Alignment = "position",
+): PeriodChanges {
   if (!baseline || !coverage) return { show: false, issue: null };
-  const issue = coverageIssue(range, baseline, coverage.latest_date, coverage.previous_latest_date);
+  const issue = coverageIssue(range, baseline, coverage.latest_date, coverage.previous_latest_date, alignment);
   return { show: issue === null, issue };
+}
+
+/** periodChanges() for each slot, from the coverage columns the slot's window produced. */
+export function slotChanges(
+  plan: ComparisonPlan,
+  coverage: PeriodCoverage | null | undefined,
+): [PeriodChanges, PeriodChanges] {
+  const [a, b] = plan.slots;
+  return [
+    periodChanges(plan.range, a.range, coverage, a.alignment),
+    periodChanges(
+      plan.range,
+      b.range,
+      coverage
+        ? { latest_date: coverage.latest_date, previous_latest_date: coverage.second_latest_date ?? null }
+        : coverage,
+      b.alignment,
+    ),
+  ];
 }
 
 export type MetricValue = string | bigint | number;

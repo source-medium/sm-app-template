@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { compareValues, comparisonRange, coverageIssue, parseComparison, periodChanges } from "@/lib/comparison";
-import { rangeLength } from "@/lib/filters";
+import {
+  baselineFor,
+  compareValues,
+  coverageIssue,
+  parseComparisonPlan,
+  periodChanges,
+  type ComparisonMode,
+} from "@/lib/comparison";
+import { rangeLength, type DateRange } from "@/lib/filters";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { formatCount, formatMoney } from "@/lib/format";
+
+/** A range with no calendar intent, compared the way any custom range is. */
+const comparisonRange = (range: DateRange, mode: ComparisonMode) => baselineFor(range, "custom", mode).range;
 
 describe("comparison dates", () => {
   it("uses the immediately preceding equal-length inclusive period across year and DST boundaries", () => {
@@ -34,9 +44,10 @@ describe("comparison dates", () => {
 
   it("defaults invalid modes, supports Off, and never creates unsupported earlier dates", () => {
     const range = { from: "2026-09-01", to: "2026-09-07" };
-    expect(parseComparison({ compare: "injected" }, range).mode).toBe("previous");
-    expect(parseComparison({ compare: ["year", "off"] }, range).mode).toBe("year");
-    expect(parseComparison({ compare: "off" }, range)).toEqual({ mode: "off", range: null });
+    const first = (compare: string | string[]) => parseComparisonPlan({ compare }, range, "2026-10-05").slots[0];
+    expect(first("injected").mode).toBe("previous");
+    expect(first(["year", "off"]).mode).toBe("year");
+    expect(first("off")).toMatchObject({ mode: "off", range: null });
     for (const mode of ["previous", "year"] as const) {
       expect(comparisonRange({ from: "0001-01-01", to: "0001-01-01" }, mode)).toBeNull();
     }
@@ -75,7 +86,9 @@ describe("metric changes", () => {
       comparedTo: "100.00",
       direction: "up",
       good: true,
+      label: "vs comparison",
     });
+    expect(kpiDelta("150", "100", formatMoney, "higher", "vs previous 28 days").label).toBe("vs previous 28 days");
     expect(kpiDelta("150", "100", formatMoney)).toMatchObject({ good: null });
     expect(kpiDelta(5n, 10n, formatCount, "lower")).toMatchObject({ good: true });
     expect(kpiDelta(0n, 0n, formatCount, "higher")).toMatchObject({

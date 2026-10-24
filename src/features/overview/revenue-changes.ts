@@ -1,11 +1,12 @@
 import { compareValues, comparisonDates, periodChanges, type Comparison } from "@/lib/comparison";
 import { toUnits } from "@/lib/data/decimal";
 import { datesInRange } from "@/lib/filters";
-import type { OverviewFilters, OverviewReport } from "./queries";
+import type { OverviewFilters, OverviewSlice } from "./queries";
 
 /** Descriptive day-by-day contributions, not claims about why the business changed. */
-export function largestRevenueChanges(report: OverviewReport, filters: OverviewFilters, comparison?: Comparison) {
-  if (!comparison || !periodChanges(filters.range, comparison.range, report.coverage).show) return [];
+export function largestRevenueChanges(report: OverviewSlice, filters: OverviewFilters, comparison?: Comparison) {
+  if (!comparison || !periodChanges(filters.range, comparison.range, report.coverage, comparison.alignment).show)
+    return [];
   const aligned = comparisonDates(filters.range, comparison);
   const dates = datesInRange(filters.range);
   const current = new Map(report.current.days.map((day) => [day.date, day.netRevenue]));

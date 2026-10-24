@@ -14,8 +14,12 @@ export const GeographyRow = z.object({
   previous_records: bq.int64(),
   previous_orders: bq.int64(),
   previous_revenue: bq.numeric().nullable(),
+  second_records: bq.int64(),
+  second_orders: bq.int64(),
+  second_revenue: bq.numeric().nullable(),
   latest_date: bq.date().nullable(),
   previous_latest_date: bq.date().nullable(),
+  second_latest_date: bq.date().nullable(),
 });
 export type GeographyRow = z.output<typeof GeographyRow>;
 export function toGeographyData(wire: unknown[]): GeographyData {
@@ -33,11 +37,15 @@ export function toGeographyData(wire: unknown[]): GeographyData {
 export function geographicReconciliation(data: GeographyData): boolean {
   const equal = (a: string | null, b: string | null) =>
     a === null || b === null ? a === b : toUnits(a) === toUnits(b);
+  const counts = (key: "orders" | "records" | "previous_orders" | "second_orders") =>
+    data.groups.reduce((sum, row) => sum + row[key], 0n) === data.total[key];
   return (
-    data.groups.reduce((sum, row) => sum + row.orders, 0n) === data.total.orders &&
-    data.groups.reduce((sum, row) => sum + row.records, 0n) === data.total.records &&
-    data.groups.reduce((sum, row) => sum + row.previous_orders, 0n) === data.total.previous_orders &&
+    counts("orders") &&
+    counts("records") &&
+    counts("previous_orders") &&
+    counts("second_orders") &&
     equal(sumDecimals(data.groups.map((row) => row.revenue)), data.total.revenue) &&
-    equal(sumDecimals(data.groups.map((row) => row.previous_revenue)), data.total.previous_revenue)
+    equal(sumDecimals(data.groups.map((row) => row.previous_revenue)), data.total.previous_revenue) &&
+    equal(sumDecimals(data.groups.map((row) => row.second_revenue)), data.total.second_revenue)
   );
 }

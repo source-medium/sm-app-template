@@ -14,7 +14,7 @@ async function expectLiveReport(page: Page, timestamp = true) {
   await expect(page.getByRole("status")).toHaveCount(0, { timeout: 30_000 });
   // Next's route announcer also has role="alert", so use the app's error marker.
   await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
-  if (timestamp) await expect(page.getByText("Queried at").first()).toBeVisible();
+  if (timestamp) await expect(page.getByText("Loaded at").first()).toBeVisible();
 }
 
 function emptyRetention(page: Page) {

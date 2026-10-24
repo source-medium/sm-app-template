@@ -28,6 +28,6 @@ export function allStoresHref(pathname: string, params: SearchParams): string {
   return withParams(
     pathname,
     {},
-    Object.fromEntries(["store", "from", "to", "compare"].map((key) => [key, single(params, key) ?? null])),
+    Object.fromEntries(["store", "from", "to", "compare", "compare2"].map((key) => [key, single(params, key) ?? null])),
   );
 }

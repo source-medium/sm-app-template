@@ -7,7 +7,25 @@ import { dryRunQuery, getDatasetMetadata, getTableMetadata, type BigQueryClient 
 import { readDictionary, readMetricCatalog } from "./catalog.server";
 import { queryStoreRoster, ROSTER_RELATION, LEGACY_ROSTER_RELATION, storeRosterQuery } from "./store-roster.server";
 import type { ManagedContext } from "./managed-api.server";
+import { CACHE_POLICY } from "./query-cache";
+import { queryCacheTiers } from "./query-cache.server";
 import { WarehouseError } from "./warehouse-error";
+
+/** Which query-cache tiers this runtime has; memory alone is a working setup, not a failure. */
+export function queryCacheCheck(): ConnectionCheck {
+  const minutes = Math.round(CACHE_POLICY.aggregate.maxAgeSeconds / 60);
+  return queryCacheTiers().includes("kv")
+    ? {
+        name: "Query cache",
+        status: "pass",
+        message: `Repeated report queries are served from this Worker's memory and its APP_QUERY_CACHE store for up to ${minutes} minutes.`,
+      }
+    : {
+        name: "Query cache",
+        status: "pass",
+        message: `Repeated report queries are served from server memory for up to ${minutes} minutes. Add the APP_QUERY_CACHE KV binding to keep them across restarts and locations (docs/cloud.md#query-cache).`,
+      };
+}
 
 /**
  * One named check at a time; a failure records only the safe title and
@@ -145,6 +163,7 @@ export async function checkWarehouseConnection(
     "The data dictionary is readable.",
   );
   await step("Metric catalog", () => readMetricCatalog(warehouse, 1), "The metric catalog is readable.");
+  checks.push(queryCacheCheck());
   return report;
 }
 
@@ -217,5 +236,6 @@ export async function checkManagedConnection(
     "The data dictionary is readable.",
   );
   await step("Metric catalog", () => readMetricCatalog(warehouse, 1), "The metric catalog is readable.");
+  checks.push(queryCacheCheck());
   return report;
 }

@@ -22,7 +22,7 @@ describe("paid marketing fixture contract", () => {
     expect(toUnits(sumDecimals(data.channelDays.map((row) => row.spend)) ?? "0")).toBe(expected);
     expect(toUnits(sumDecimals(data.campaigns.map((row) => row.spend)) ?? "0")).toBe(expected);
     const baseline = { from: "2026-08-01", to: "2026-08-14" };
-    const breakdown = await sampleSpendBreakdown(filters, "campaign", baseline);
+    const breakdown = await sampleSpendBreakdown(filters, "campaign", [baseline, null]);
     const previous =
       samplePaidSource(filters.storeId, baseline)
         .filter((row) => row.campaign.id === "cmp-1002" && row.names.ad === "UGC | evergreen")

@@ -24,9 +24,12 @@ export function SupportCode({ requestId }: { requestId?: string | null }) {
 export function LoadingState({
   variant,
   label,
+  rows = 6,
 }: {
   variant: "kpis" | "chart" | "table" | "grid" | "control";
   label: string;
+  /** Table rows to reserve, so the loaded list lands where the skeleton stood. */
+  rows?: number;
 }) {
   return (
     <div role="status" aria-live="polite" aria-label={label} className="flex flex-col gap-4">
@@ -41,7 +44,7 @@ export function LoadingState({
       {variant === "chart" && <Skeleton className="h-72 rounded-xl" />}
       {variant === "table" && (
         <div className="flex flex-col gap-2">
-          {[0, 1, 2, 3, 4, 5].map((index) => (
+          {Array.from({ length: rows }, (_, index) => (
             <Skeleton key={index} className="h-10 rounded-md" />
           ))}
         </div>
