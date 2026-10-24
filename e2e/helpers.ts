@@ -50,9 +50,12 @@ export async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
   // App Router streams route metadata after a filter navigation. Assert that
   // the title arrived before scanning the completed report, without skipping it.
   await expect(page).toHaveTitle(/\S/);
-  // Dialogs, menus and sheets animate open and closed. axe's target-size rule
-  // reads geometry at scan time, so a half-open overlay can look like it
-  // obscures a control behind it. Let running animations finish first.
+  // axe's target-size rule reads geometry at scan time. A control scrolled
+  // partly under the sticky top bar reports as "partially obscured", and a
+  // half-open overlay can look like it covers a control behind it. Scan from
+  // the top of the page after running animations finish, so results depend on
+  // the layout rather than on where the test happened to scroll.
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page
     .waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== "running"), null, {
       timeout: 5000,
