@@ -12,13 +12,14 @@ rework a view, or build your next report. The app and its source code are yours.
 [Open the demo](https://sm-app-starter-demo.source-medium.workers.dev)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.jpg">
-  <source media="(prefers-color-scheme: light)" srcset="docs/images/overview-light.jpg">
-  <img alt="Overview: net revenue, summary orders, ad spend and marketing efficiency with period comparisons, a plain-English summary of what moved, and a selectable trend chart." src="docs/images/overview-light.jpg" width="1440">
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/images/reel-dark-still.webp">
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/images/reel-light-still.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/reel-dark.webp">
+  <img alt="A 21-second tour of the app: Overview cards compare each number with the previous period and the same period last year; switching the comparison updates the summary and trend chart without a new query; About this number shows the published definition and calculation; a map shows sales by shipping destination; and Vibe code prepares a change request for your coding agent." src="docs/images/reel-light.webp" width="1280">
 </picture>
 
-_Every screenshot uses synthetic sample data. The hosted demo reads SourceMedium's
-demo warehouse. No sign-in required._
+_Every screenshot and the tour use synthetic sample data. The hosted demo reads
+SourceMedium's demo warehouse. No sign-in required._
 
 ## What you get
 
