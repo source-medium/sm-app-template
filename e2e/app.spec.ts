@@ -402,7 +402,9 @@ test("copy link freezes applied defaults and ignores unapplied filter edits", as
     from,
     to,
     ...((await compare.count()) ? { compare: await compare.inputValue() } : {}),
-    ...(["/overview", "/performance"].includes(home) ? { sales_channel: "" } : {}),
+    ...(["/overview", "/performance"].includes(home)
+      ? { sales_channel: '["amazon","online_dtc","retail","tiktok_shop","wholesale"]' }
+      : {}),
   });
   await page.goto(copied.href);
   await expect(page.getByRole("button", { name: /^Store:/ })).toHaveAttribute("data-store-id", store ?? "");

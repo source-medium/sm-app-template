@@ -40,17 +40,22 @@ The example uses these formulas: net revenue is
 `SUM(order_net_revenue)`, revenue per summary order is net revenue ÷ summary
 orders, MER is
 net revenue ÷ ad spend, CPC is spend ÷ clicks, and platform ROAS is
-platform-reported revenue ÷ spend. Overview implements the all-channel sums
-used by the catalog's Executive Summary metrics (`order_net_revenue_summary`, `order_count_summary`,
-`total_ad_spend_summary`), which sum every `sm_channel` row. **Sales channel** defaults to **All sales channels**;
-select one to apply the same scope to KPIs, trends, comparisons, summaries and CSV.
-The options are queried for the selected store and dates. The Looker template may
-open on `online_dtc`, so match its channel before comparing numbers. This is an implementation
-match, not an independent numerical reconciliation. Summary orders include
-excluded, draft and exchanged channels when published and can differ from
-valid orders in `obt_orders`. The UI labels that count and its revenue ratio
-explicitly; do not present the ratio as valid-order AOV without reconciling the
-definitions, dates and store.
+platform-reported revenue ÷ spend. Overview applies the catalog's Executive Summary metrics
+(`order_net_revenue_summary`, `order_count_summary`, `total_ad_spend_summary`) to a sales-channel
+scope. The catalog formulas sum every row they are given, and the relation publishes
+`draft_orders`, `exchanged`, `excluded` and `*_via_shopify` rows beside sales. Those channels
+are not valid orders, and `*_via_shopify` repeats orders already counted in their direct
+channel, so an unscoped sum overstates revenue and orders. **Sales channel** therefore
+defaults to **Valid sales channels**, the five channels SourceMedium counts as valid
+(`VALID_SALES_CHANNELS` in `src/lib/sales-channels.ts`): `amazon`, `online_dtc`, `retail`,
+`tiktok_shop` and `wholesale`. **All channels, including non-valid** remains an explicit
+choice, and any selection applies the same scope to KPIs, trends, comparisons, summaries and
+CSV. Stores uses the same default. Change `defaultSalesChannels` in `app.config.ts` only to a
+verified alternative. The Looker template may open on `online_dtc`, so match its channel before
+comparing numbers. This is an implementation match, not an independent numerical
+reconciliation. Summary orders are published order measures and can differ from valid orders
+in `obt_orders`. The UI labels that count and its revenue ratio explicitly; do not present the
+ratio as valid-order AOV without reconciling the definitions, dates and store.
 
 Overview's ad spend reads `rpt_executive_summary_daily`; Paid marketing and
 Creatives read `rpt_ad_performance_daily`. The two published relations can

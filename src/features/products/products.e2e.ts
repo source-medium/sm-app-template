@@ -70,14 +70,14 @@ test("products: sales-channel scope changes totals and survives the other contro
   const totals = page.getByRole("region", { name: "All product totals" }).locator('[data-slot="kpi-value"]');
   await expect(totals).toHaveCount(2);
   const all = await totals.allTextContents();
-  await page.getByLabel("Sales channel", { exact: true }).selectOption("Amazon");
-  await expect(page).toHaveURL(/sales_channel=Amazon/);
+  await page.getByLabel("Sales channel", { exact: true }).selectOption("amazon");
+  await expect(page).toHaveURL(/sales_channel=amazon/);
   await expect(totals.first()).not.toHaveText(all[0] ?? "");
   await page.getByLabel("Group by", { exact: true }).selectOption("variant");
   await expect(page).toHaveURL(/dimension=variant/);
   await page.getByLabel("Rank by", { exact: true }).selectOption("profit");
   await expect(page).toHaveURL(/metric=profit/);
-  await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("Amazon");
+  await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("amazon");
   expect(new URL(page.url()).searchParams.get("compare")).toBe("year");
   await page.goto("/products?store=sample-store-a&sales_channel=unknown");
   await expect(

@@ -2,6 +2,7 @@ import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { ReportFilters } from "@/lib/filters";
 import type { TimeGrain } from "@/lib/time-grain";
+import { sampleSummaryChannels } from "@/lib/sample/executive-summary";
 import { queryBusiness, queryPlatforms, queryPerformanceChannels } from "./bigquery";
 import { sampleBusiness, samplePlatforms } from "./sample";
 
@@ -16,5 +17,8 @@ export async function getPlatforms(filters: PerformanceFilters) {
 }
 export async function getPerformanceChannels(filters: PerformanceFilters) {
   const access = await requireViewer({ storeId: filters.storeId });
-  return access.mode === "live" ? queryPerformanceChannels(filters) : ["Online DTC", "Amazon"];
+  // Sample platform channels are a subset of the summary's, so it lists every option, as the live union does.
+  return access.mode === "live"
+    ? queryPerformanceChannels(filters)
+    : sampleSummaryChannels(filters.storeId, filters.range);
 }

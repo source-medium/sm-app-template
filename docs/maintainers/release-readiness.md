@@ -367,7 +367,9 @@ connectivity and rendering, not the independent number comparison below.
 
 ## Reconcile Overview before claiming business equivalence
 
-Overview preserves the catalog's all-channel sum. Its order count and revenue
+Overview applies the catalog's summary sums to SourceMedium's valid sales channels by
+default; **All channels, including non-valid** adds draft, exchanged, excluded and
+`*_via_shopify` rows. Its order count and revenue
 ratio are labeled **Summary orders** and **Revenue per summary order**. They
 must not be presented as valid-order count or valid-order AOV.
 

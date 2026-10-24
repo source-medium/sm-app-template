@@ -44,8 +44,8 @@ test("overview: revenue detail is opt-in and preserves signed deductions and com
     .filter({ hasText: /^Revenue and deductions$/ })
     .click();
   await expect(revenue).toBeHidden();
-  await choose(page, "Sales channel", "Online DTC");
-  await expect(page).toHaveURL(/sales_channel=Online/);
+  await choose(page, "Sales channel", "online_dtc");
+  await expect(page).toHaveURL(/sales_channel=online_dtc/);
   await expect(page.getByRole("region", { name: "Acquisition economics", exact: true })).toHaveCount(0);
 });
 import { appConfig } from "@/app.config";
@@ -190,8 +190,8 @@ test("overview: KPI trends expose daily values and purchase measures follow filt
   const revenueText = await first.getByRole("cell").nth(1).innerText();
   // selectOption sets the value programmatically, even while inert blocks real pointer/keyboard input.
   await expect(page.getByLabel("Sales channel", { exact: true })).not.toHaveAttribute("inert");
-  await choose(page, "Sales channel", "Amazon");
-  await expect(page).toHaveURL(/sales_channel=Amazon/);
+  await choose(page, "Sales channel", "amazon");
+  await expect(page).toHaveURL(/sales_channel=amazon/);
   await openDisclosure(page, "Secondary metrics and business details");
   await expect(first.getByRole("cell").nth(1)).not.toHaveText(revenueText);
   await choose(page, "Compare with", "off");
@@ -270,8 +270,8 @@ test("overview: comparison dates and the dashed baseline survive the table toggl
 
 test("overview: channel and grain filter the summary and raw export together", async ({ page, request }) => {
   await page.goto("/overview?store=sample-store-a&from=2026-09-02&to=2026-09-08&compare=year");
-  await choose(page, "Sales channel", "Amazon");
-  await expect(page).toHaveURL(/sales_channel=Amazon/);
+  await choose(page, "Sales channel", "amazon");
+  await expect(page).toHaveURL(/sales_channel=amazon/);
   await page.getByText("Business summary and CSV", { exact: true }).click();
   await choose(page, "Summary rows", "week");
   await expect(page).toHaveURL(/grain=week/);
@@ -288,8 +288,8 @@ test("overview: channel and grain filter the summary and raw export together", a
   const lines = (await response.text()).trimEnd().split("\r\n");
   expect(lines).toHaveLength(4);
   expect(lines[0]).toContain('"row_type","period_from","period_to","net_revenue"');
-  expect(lines[1]).toContain('"Amazon","week","period","2026-09-02","2026-09-06"');
-  expect(lines[3]).toContain('"Amazon","week","total","2026-09-02","2026-09-08"');
+  expect(lines[1]).toContain('"amazon","week","period","2026-09-02","2026-09-06"');
+  expect(lines[3]).toContain('"amazon","week","total","2026-09-02","2026-09-08"');
   await expect(page).toHaveTitle(/Overview/);
   await expectNoSeriousA11yViolations(page);
 });
@@ -307,9 +307,9 @@ test("overview: date and channel drafts apply together, and invalid ranges never
   await page.goto("/overview?store=sample-store-a&from=2026-09-09&to=2026-09-28");
   await page.getByLabel("From", { exact: true }).fill("2026-09-01");
   await expect(page).toHaveURL(/from=2026-09-09/);
-  await choose(page, "Sales channel", "Amazon");
+  await choose(page, "Sales channel", "amazon");
   await expect(page).toHaveURL(
-    (url) => url.searchParams.get("from") === "2026-09-01" && url.searchParams.get("sales_channel") === "Amazon",
+    (url) => url.searchParams.get("from") === "2026-09-01" && url.searchParams.get("sales_channel") === "amazon",
   );
   await page.getByLabel("From", { exact: true }).fill("2026-09-30");
   await choose(page, "Sales channel", "");
@@ -499,7 +499,7 @@ test("sidebar links carry shared store and dates, start the next report fresh, a
     test.skip(true, "No other report remains");
     return;
   }
-  await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&sales_channel=Amazon&compare=off");
+  await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&sales_channel=amazon&compare=off");
   await page.getByRole("link", { name: other.label, exact: true }).click();
   await expect(page).toHaveURL(
     (url) =>
@@ -512,8 +512,21 @@ test("sidebar links carry shared store and dates, start the next report fresh, a
   expect(next.has("sales_channel")).toBe(false);
   expect(next.get("compare")).toBe(other.comparisons ? "off" : null);
   await page.goBack();
-  await expect(page).toHaveURL(/sales_channel=Amazon/);
+  await expect(page).toHaveURL(/sales_channel=amazon/);
   // The applied control and its streamed replacement briefly coexist while the report re-renders.
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveCount(1);
-  await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("Amazon");
+  await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("amazon");
+});
+
+test("overview: the geography link carries the default channel scope and names it", async ({ page }) => {
+  test.skip(!appConfig.nav.some((item) => item.href === "/geography"), "No Geography view");
+  await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  await openDisclosure(page, "Explore sales by geography");
+  await page.getByRole("link", { name: "Open valid-order geography", exact: true }).click();
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === "/geography" &&
+      url.searchParams.get("sales_channel") === '["amazon","online_dtc","retail","tiktok_shop","wholesale"]',
+  );
+  await expect(page.getByText("Sales channels: Valid sales channels.")).toBeVisible();
 });

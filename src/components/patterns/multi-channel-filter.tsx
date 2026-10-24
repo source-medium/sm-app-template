@@ -4,7 +4,11 @@ import { createContext, useContext, useId, useRef, useState, type Dispatch, type
 import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import { Disclosure } from "@/components/ui/disclosure";
-import { encodeSalesChannels, REPORT_FILTER_FORM_ID, salesChannelValues } from "@/lib/filters";
+import { encodeSalesChannels, REPORT_FILTER_FORM_ID, salesChannelLabel, salesChannelValues } from "@/lib/filters";
+import { VALID_SALES_CHANNELS } from "@/lib/sales-channels";
+
+const VALID = encodeSalesChannels(VALID_SALES_CHANNELS) ?? "";
+const ALL = salesChannelLabel(null);
 
 const ChannelScope = createContext<{
   applied: string[];
@@ -24,7 +28,7 @@ export function SalesChannelFilter({ value, children }: { value?: string | null;
         selected,
         setSelected,
         apply: (value) => {
-          setSelected(value ? [value] : []);
+          setSelected(salesChannelValues(value));
           if (hidden.current) {
             hidden.current.value = value;
             hidden.current.form?.requestSubmit();
@@ -44,13 +48,17 @@ export function SalesChannelFilter({ value, children }: { value?: string | null;
   );
 }
 
-/** Draft several choices, then apply the whole report form once. Unknown applied values remain visible. */
+/**
+ * Draft several choices, then apply the whole report form once. Unknown applied values remain visible.
+ * Valid sales channels is a named choice; the empty choice sums every published row.
+ */
 export function MultiChannelFilter({ channels }: { channels: string[] }) {
   const id = useId();
   const scope = useContext(ChannelScope);
   if (!scope) throw new Error("Wrap channel choices in SalesChannelFilter so scope survives loading.");
   const { applied, selected, setSelected, apply } = scope;
-  const pending = encodeSalesChannels(selected) !== encodeSalesChannels(applied);
+  const appliedValue = encodeSalesChannels(applied);
+  const pending = encodeSalesChannels(selected) !== appliedValue;
   const options = [...new Set([...applied, ...selected, ...channels])].sort();
   return (
     <div className="max-w-full min-w-0 rounded-lg border bg-card px-3 py-1" data-agent-target="Sales channels">
@@ -60,15 +68,16 @@ export function MultiChannelFilter({ channels }: { channels: string[] }) {
       <NativeSelect
         id={`${id}-quick`}
         aria-label="Sales channel"
-        value={applied.length > 1 ? "__multiple" : (applied[0] ?? "")}
+        value={appliedValue === VALID ? VALID : applied.length > 1 ? "__multiple" : (applied[0] ?? "")}
         onChange={(event) => {
           const value = event.currentTarget.value;
           if (value === "__multiple") return;
           apply(value);
         }}
       >
-        <option value="">All sales channels</option>
-        {applied.length > 1 && <option value="__multiple">{applied.length} selected</option>}
+        <option value={VALID}>{salesChannelLabel(VALID)}</option>
+        <option value="">{ALL}</option>
+        {applied.length > 1 && appliedValue !== VALID && <option value="__multiple">{applied.length} selected</option>}
         {options.map((channel) => (
           <option key={channel} value={channel}>
             {channel}
@@ -85,7 +94,7 @@ export function MultiChannelFilter({ channels }: { channels: string[] }) {
           <legend className="sr-only">Sales channels</legend>
           <label className="flex min-h-9 items-center gap-2 text-sm" htmlFor={`${id}-all`}>
             <input id={`${id}-all`} type="checkbox" checked={!selected.length} onChange={() => setSelected([])} />
-            All sales channels
+            {ALL}
           </label>
           <div className="grid max-h-64 gap-1 overflow-y-auto">
             {options.map((channel, index) => (

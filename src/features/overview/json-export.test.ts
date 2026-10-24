@@ -5,14 +5,14 @@ import { parseCsv } from "../../../scripts/lib/reconciliation";
 import { goLive } from "../../../tests/helpers/live";
 it("exports raw values and context from the same scoped result without changing CSV", async () => {
   const url =
-    "https://example.test/overview/export.json?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=off&sales_channel=Amazon&grain=week";
+    "https://example.test/overview/export.json?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=off&sales_channel=amazon&grain=week";
   const response = await GET(new Request(url));
   expect(response.headers.get("cache-control")).toBe("private, no-store");
   const body = await response.json();
   expect(body.context.filters).toMatchObject({
     storeId: "sample-store-a",
     range: { from: "2026-09-01", to: "2026-09-07" },
-    channel: "Amazon",
+    channel: "amazon",
     grain: "week",
   });
   expect(body.context.query.immutableSnapshot).toBe(false);

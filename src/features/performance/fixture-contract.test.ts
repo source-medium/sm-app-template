@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sumDecimals, fromUnits } from "@/lib/data/decimal";
+import { sumDecimals, fromUnits, toUnits } from "@/lib/data/decimal";
 import { sampleSummarySource } from "@/lib/sample/executive-summary";
 import { performanceRowLimit } from "./rows";
 import { periodRange } from "@/lib/time-grain";
@@ -38,10 +38,14 @@ describe("performance fixtures", () => {
   });
   it("keeps sales channels separate and returns no rows for unknown stores or channels", () => {
     const all = present(sampleBusiness(filters).find((row) => row.is_total));
-    const dtc = present(sampleBusiness({ ...filters, channel: "Online DTC" }).find((row) => row.is_total));
-    const amazon = present(sampleBusiness({ ...filters, channel: "Amazon" }).find((row) => row.is_total));
+    const dtc = present(sampleBusiness({ ...filters, channel: "online_dtc" }).find((row) => row.is_total));
+    const amazon = present(sampleBusiness({ ...filters, channel: "amazon" }).find((row) => row.is_total));
+    const exchanged = present(sampleBusiness({ ...filters, channel: "exchanged" }).find((row) => row.is_total));
+    // Non-valid rows publish orders without sales, so they change order measures and not revenue.
+    expect(toUnits(exchanged.revenue ?? "")).toBe(0n);
+    expect(present(exchanged.orders)).toBeGreaterThan(0);
     expect(sumDecimals([dtc.revenue, amazon.revenue])).toBe(all.revenue);
-    expect(present(dtc.orders) + present(amazon.orders)).toBe(all.orders);
+    expect(present(dtc.orders) + present(amazon.orders) + present(exchanged.orders)).toBe(all.orders);
     for (const sample of [sampleBusiness, samplePlatforms]) {
       expect(sample({ ...filters, storeId: "missing" })).toEqual([]);
       expect(sample({ ...filters, channel: "missing" })).toEqual([]);
@@ -67,8 +71,8 @@ describe("performance fixtures", () => {
   });
   it("adds every platform measure across disjoint sales channels", () => {
     const all = samplePlatforms(filters);
-    const dtc = samplePlatforms({ ...filters, channel: "Online DTC" });
-    const amazon = samplePlatforms({ ...filters, channel: "Amazon" });
+    const dtc = samplePlatforms({ ...filters, channel: "online_dtc" });
+    const amazon = samplePlatforms({ ...filters, channel: "amazon" });
     for (const [index, row] of all.entries()) {
       const a = present(dtc[index]);
       const b = present(amazon[index]);
@@ -101,11 +105,11 @@ describe("performance fixtures", () => {
 });
 
 it("multi-selection adds the same reviewed channels without broadening unknown choices", () => {
-  const selected = { ...filters, channel: '["Amazon","Online DTC"]' };
+  const selected = { ...filters, channel: '["amazon","exchanged","online_dtc"]' };
   expect(sampleBusiness(selected)).toEqual(sampleBusiness(filters));
   expect(samplePlatforms(selected)).toEqual(samplePlatforms(filters));
-  expect(sampleBusiness({ ...filters, channel: '["missing","Amazon"]' })).toEqual(
-    sampleBusiness({ ...filters, channel: "Amazon" }),
+  expect(sampleBusiness({ ...filters, channel: '["missing","amazon"]' })).toEqual(
+    sampleBusiness({ ...filters, channel: "amazon" }),
   );
 });
 it("bounds each grain and includes its full total", () => {

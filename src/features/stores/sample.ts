@@ -1,7 +1,7 @@
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits } from "@/lib/data/decimal";
 import type { StoreOption } from "@/lib/data/stores.server";
-import type { DateRange } from "@/lib/filters";
+import { defaultSalesChannel, matchesSalesChannel, type DateRange } from "@/lib/filters";
 import { sampleSummarySource } from "@/lib/sample/executive-summary";
 import { STORES_RELATION, StoreSummaryRow } from "./rows";
 
@@ -12,7 +12,10 @@ export function sampleStoreComparison(
   today?: string,
 ) {
   function totals(storeId: string, period: DateRange | null) {
-    const rows = period ? sampleSummarySource(storeId, period, today) : [];
+    const channel = defaultSalesChannel();
+    const rows = period
+      ? sampleSummarySource(storeId, period, today).filter((row) => matchesSalesChannel(channel, row.sm_channel))
+      : [];
     return {
       revenue: rows.length
         ? fromUnits(rows.reduce((sum, row) => sum + row.order_net_revenue_cents, 0n) * 10_000_000n)

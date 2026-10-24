@@ -60,8 +60,8 @@ export function samplePlatforms(filters: PerformanceFilters) {
   if (!scale) return [];
   const channels = (
     [
-      ["Online DTC", 1],
-      ["Amazon", 0.2],
+      ["online_dtc", 1],
+      ["amazon", 0.2],
     ] as const
   ).filter(([channel]) => matchesSalesChannel(filters.channel, channel));
   if (!channels.length) return [];
