@@ -379,6 +379,11 @@ describe("store-scope", () => {
   it("catches each example query once its store predicate is removed", () => {
     for (const path of readdirSync("src/features").map((name) => `src/features/${name}/bigquery.ts`)) {
       const text = readFileSync(path, "utf8");
+      // Metadata-only examples delegate to the shared guarded adapter and have no inline SQL to mutate.
+      if (!text.includes("warehouse.query(")) {
+        expect(findAuthGaps([{ path, text }]), path).toEqual([]);
+        continue;
+      }
       const stripped = text.replaceAll(
         /sm_store_id (?:= @store_id|IN UNNEST\(JSON_VALUE_ARRAY\(@store_ids\)\))( AND)?/g,
         "TRUE$1",

@@ -10,6 +10,7 @@ export function ModeChip({ mode }: { mode: "sample" | "live" }) {
   const sample = mode === "sample";
   return (
     <Link
+      prefetch={false}
       href="/connection"
       title="Connection details and diagnostics"
       data-testid="mode-chip"

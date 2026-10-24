@@ -13,8 +13,8 @@ The home page redirects to the first `nav` entry, so removing Overview just
 makes the next entry the home page. Keep at least one entry, or replace
 `src/app/(app)/page.tsx` with your own home page.
 
-To remove all eight, repeat the steps for `overview`, `performance`, `stores`, `paid-marketing`,
-`creatives`, `products`, `retention`, and `orders`, and add your own page first. Keep the shell
+To remove all ten, repeat the steps for `overview`, `performance`, `stores`, `paid-marketing`,
+`creatives`, `products`, `retention`, `orders`, `geography`, and `data`, and add your own page first. Keep the shell
 (`src/components/shell`), the patterns (`src/components/patterns`,
 `src/components/charts`), and `src/lib`; they are what new pages use.
 
@@ -42,3 +42,5 @@ Unused sample images live in `public/sample-creatives/`; delete them with
 Creatives.
 
 `performance` owns its business/platform queries, fixtures, tables and CSV route. Remove `src/app/(app)/performance` and its feature and navigation entry together. Summary date bounds and multi-channel controls are shared with Overview and remain useful without Performance.
+
+`geography` owns its maps, provenance, export and tests. Removing it also removes the guarded Overview geography link when its nav entry is removed. `data` owns its source allowlist and example tabs. Shared metadata/binding helpers and AboutData do not import either feature. Keep the vendored metric fixture while any remaining example uses it.

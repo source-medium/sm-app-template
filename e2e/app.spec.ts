@@ -30,7 +30,12 @@ test("report documentation loads on demand and hands a field to the existing age
   await expect(panel).toContainText("bundled schema snapshot");
   if (definitions.length) {
     await panel.getByText("Report metric definitions", { exact: true }).click();
-    for (const definition of definitions) await expect(panel).toContainText(definition);
+    const structured = panel.getByRole("region", { name: "Structured metric definitions" });
+    if (await structured.count()) {
+      await structured.locator("summary").first().click();
+      await expect(structured.getByText("Reviewed published definition", { exact: true }).first()).toBeVisible();
+      await expect(structured.getByText("Report population", { exact: true }).first()).toBeVisible();
+    } else for (const definition of definitions) await expect(panel).toContainText(definition);
   }
   await expect(page).toHaveTitle(/.+/);
   await expectNoSeriousA11yViolations(page);
@@ -95,14 +100,73 @@ test("dictionary failure and missing documentation leave the report usable", asy
   await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
 });
 
+for (const width of [320, 1280])
+  for (const theme of ["Light", "Dark"]) {
+    test(`metadata states remain usable at ${width}px in ${theme}`, async ({ page }, info) => {
+      await page.setViewportSize({ width, height: 900 });
+      let response: "waiting" | "failed" | "empty" | "partial" = "waiting";
+      let release!: () => void;
+      const ready = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await page.route("**/data-dictionary?*", async (route) => {
+        if (response === "waiting") await ready;
+        if (response === "partial") {
+          const original = await route.fetch();
+          const payload = await original.json();
+          return route.fulfill({ json: { ...payload, fields: payload.fields.slice(0, 1), truncated: true } });
+        }
+        return route.fulfill({
+          status: response === "failed" ? 503 : 200,
+          json: response === "failed" ? { error: "Unavailable" } : { mode: "sample", fields: [], truncated: false },
+        });
+      });
+      try {
+        await page.goto(home);
+        const about = page.getByRole("button", { name: "About this data", exact: true });
+        test.skip((await about.count()) === 0, "No report sources remain");
+        await page.getByRole("button", { name: /^Appearance:/ }).click();
+        await page.getByRole("menuitemradio", { name: theme, exact: true }).click();
+        await about.click();
+        const panel = page.getByRole("dialog", { name: "About this data", exact: true });
+        const capture = async (state: string) => {
+          expect(await panel.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+          await page.screenshot({ path: info.outputPath(`${state}-${width}-${theme}.png`), fullPage: true });
+        };
+        await expect(panel.getByText("Loading field documentation…", { exact: true })).toBeVisible();
+        await capture("loading");
+        response = "failed";
+        release();
+        await expect(panel.getByRole("status")).toContainText("Your report is still available");
+        await capture("error");
+        response = "empty";
+        await panel.getByRole("button", { name: "Try again" }).click();
+        await expect(panel).toContainText("No field documentation is published");
+        await capture("empty");
+        await page.keyboard.press("Escape");
+        await expect(about).toBeFocused();
+        response = "partial";
+        await about.click();
+        await expect(panel.getByText(/Search covers only these fields/)).toBeVisible();
+        await capture("partial");
+        await expectNoSeriousA11yViolations(page);
+        await page.keyboard.press("Escape");
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      } finally {
+        release();
+      }
+    });
+  }
+
 for (const item of appConfig.nav) {
-  test(`${item.href} renders sample data accessibly`, async ({ page }) => {
+  test(`${item.href} renders sample data accessibly`, async ({ page }, info) => {
     const problems = watchConsole(page);
     await page.goto(item.href);
     await expect(page.getByTestId("mode-chip")).toHaveText("Sample data");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("status")).toHaveCount(0);
     await expectNoSeriousA11yViolations(page);
+    await page.screenshot({ path: info.outputPath("desktop-light.png"), fullPage: true });
     const report = page.locator("main [data-agent-page]");
     if (await report.count()) {
       const context = JSON.parse((await report.getAttribute("data-agent-page")) ?? "{}");
@@ -240,10 +304,11 @@ test("responses carry the private-app headers", async ({ request }) => {
 test.describe("dark mode", () => {
   test.use({ colorScheme: "dark" });
   for (const item of appConfig.nav) {
-    test(`${item.href} is accessible in dark mode`, async ({ page }) => {
+    test(`${item.href} is accessible in dark mode`, async ({ page }, info) => {
       await page.goto(item.href);
       await expect(page.getByTestId("mode-chip")).toBeVisible();
       await expectNoSeriousA11yViolations(page);
+      await page.screenshot({ path: info.outputPath("desktop-dark.png"), fullPage: true });
     });
   }
 });

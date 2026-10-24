@@ -167,7 +167,13 @@ export async function sampleCreatives(filters: CreativesFilters): Promise<Creati
         ctr: impressions === 0n ? null : String(Number(clicks) / Number(impressions)),
       },
     ];
-  });
+  }).filter(
+    (row) =>
+      (!filters.minimumSpend || toUnits(row.spend) >= toUnits(filters.minimumSpend)) &&
+      (!filters.minimumConversions || Number(row.conversions) >= Number(filters.minimumConversions)) &&
+      (!filters.selection ||
+        filters.selection.some(([channel, id]) => row.channel === channel && row.creative_id === id)),
+  );
 
   const sortValue = (row: (typeof rows)[number], sort: CreativeSort) => {
     const value = row[sort];

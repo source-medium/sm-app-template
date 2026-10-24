@@ -154,3 +154,47 @@ it("scopes the complete channel roster to store/date and refuses a truncated pic
   truncate = true;
   await expect(getOrderChannels(FILTERS)).rejects.toMatchObject({ kind: "result_too_large" });
 });
+
+it("explicit processed uses canonical fallback; created never prunes on processed; legacy remains unchanged", async () => {
+  for (const dateBasis of ["created", "processed"] as const) {
+    const fake = await goLive({ submit: () => rowsResponse(FIELDS, []) });
+    const { queryOrders } = await import("./bigquery");
+    await queryOrders({ ...FILTERS, dateBasis, validOnly: true, country: "US", region: "CA" });
+    const body = fake.calls.find((call) => call.kind === "submit")?.body as Submit;
+    expect(body.query).toContain("is_order_sm_valid = TRUE");
+    expect(body.query).toContain("@region");
+    expect(body.query).toContain("@country");
+    if (dateBasis === "created") {
+      expect(body.query).toContain("order_created_at_local_datetime >= DATETIME(@start_date)");
+      expect(body.query).not.toContain("order_processed_at_local_datetime >=");
+    } else {
+      // The catalog fallback is written over the bare columns so the processed partition prunes.
+      expect(body.query).toContain("order_processed_at_local_datetime >= DATETIME(@start_date)");
+      expect(body.query).toContain(
+        "order_processed_at_local_datetime IS NULL AND order_created_at_local_datetime >= DATETIME(@start_date)",
+      );
+      expect(body.query).not.toContain(
+        "COALESCE(order_processed_at_local_datetime, order_created_at_local_datetime) >=",
+      );
+      expect(body.query).toContain(
+        "ORDER BY COALESCE(order_processed_at_local_datetime, order_created_at_local_datetime) DESC",
+      );
+    }
+  }
+});
+it("attribution is lazy, verifies order membership, and selects no raw signals or revenue", async () => {
+  const fake = await goLive({ submit: () => rowsResponse([], []) });
+  const { queryOrderAttribution } = await import("./bigquery");
+  expect(await queryOrderAttribution("store-1", "private-order")).toMatchObject({ winnerCount: 0n, signals: [] });
+  const body = fake.calls.find((call) => call.kind === "submit")?.body as Submit;
+  expect(body.query.match(/sm_store_id = @store_id/g)).toHaveLength(2);
+  expect(body.query).toContain("EXISTS (SELECT 1 FROM");
+  expect(body.query).toContain("COUNTIF(sm_utm_final_source_priority = 1) OVER ()");
+  expect(body.query).toContain("LIMIT 101");
+  expect(body.query).not.toMatch(/raw_|gclid|fbclid|survey_answer|order_net_revenue/);
+  vi.stubEnv("APP_STORE_ID", "other");
+  // A fresh request is needed because authorization is request-scoped.
+  const { requestHeaders } = await import("../../../tests/helpers/live");
+  requestHeaders.current = new Headers(requestHeaders.current);
+  await expect(queryOrderAttribution("store-1", "private-order")).rejects.toThrow("This store is not available");
+});

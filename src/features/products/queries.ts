@@ -1,6 +1,6 @@
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
-import { parseChoice, type DateRange, type ReportFilters, type SearchParams } from "@/lib/filters";
+import { parseChoice, single, type DateRange, type ReportFilters, type SearchParams } from "@/lib/filters";
 import { queryProductChannels, queryProducts, queryProductCoverage } from "./bigquery";
 import type { Product, ProductCoverage } from "./rows";
 import { sampleProductSource, sampleProducts, aggregateProductCoverage } from "./sample";
@@ -22,11 +22,15 @@ export type ProductFilters = ReportFilters & {
   dimension: ProductDimension;
   metric: ProductMetric;
   channel?: string | null;
+  entity?: string | null;
+  ranking?: "value" | "gainers" | "decliners";
 };
 export type ProductsData = { rows: Product[]; hasMore: boolean };
 
 export function productOptions(params: SearchParams) {
   return {
+    entity: single(params, "entity")?.slice(0, 2000) || null,
+    ranking: parseChoice(params, "ranking", ["value", "gainers", "decliners"] as const, "value"),
     dimension: parseChoice(
       params,
       "dimension",
@@ -61,7 +65,7 @@ export async function getProductChannels(filters: ReportFilters): Promise<string
 }
 
 export async function getProductCoverage(
-  filters: ReportFilters & { channel?: string | null },
+  filters: ReportFilters & Partial<Pick<ProductFilters, "channel" | "entity" | "dimension">>,
 ): Promise<ProductCoverage> {
   const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live"

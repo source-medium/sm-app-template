@@ -112,7 +112,13 @@ export function AgentTargetPicker({
         const next = event.shiftKey ? (index === -1 ? items.length - 1 : index - 1) : index + 1;
         const item = items[next];
         if (item) {
-          item.element.scrollIntoView({ block: "center", behavior: "instant" });
+          const rect = item.element.getBoundingClientRect();
+          const visibleAtCenter = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          // Centering an already-visible sticky control scrolls the report behind
+          // its header. Keep visible targets in place; reveal offscreen targets.
+          if (rect.top < 0 || rect.bottom > window.innerHeight || !item.element.contains(visibleAtCenter)) {
+            item.element.scrollIntoView({ block: "center", behavior: "instant" });
+          }
           show(item);
           outline.current?.focus({ preventScroll: true });
         } else {

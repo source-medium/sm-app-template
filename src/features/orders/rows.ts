@@ -1,3 +1,4 @@
+import { WarehouseError } from "@/lib/data/warehouse-error";
 import { z } from "zod";
 import { bq } from "@/lib/data/decode";
 import type { OrderDetail, OrderSummary } from "./queries";
@@ -21,7 +22,8 @@ export const OrderChannelRow = z.object({ channel: bq.string() });
 export const OrderSummaryRow = z.object({
   order_key: bq.string(),
   order_name: bq.string().nullable(),
-  order_processed_at_local_datetime: bq.string().regex(DATETIME),
+  order_processed_at_local_datetime: bq.string().regex(DATETIME).nullable(),
+  scope_local: bq.string().regex(DATETIME).optional(),
   sm_channel: bq.string().nullable(),
   sm_sub_channel: bq.string().nullable(),
   sm_order_type: bq.string().nullable(),
@@ -80,10 +82,13 @@ export const OrderDetailRow = OrderSummaryRow.extend({
 });
 
 export function toOrderSummary(row: z.output<typeof OrderSummaryRow>): OrderSummary {
+  const scopeLocal = row.scope_local ?? row.order_processed_at_local_datetime;
+  if (!scopeLocal) throw WarehouseError.incompatible(ORDERS_RELATION, "order date basis");
   return {
     key: row.order_key,
     name: row.order_name,
     processedLocal: row.order_processed_at_local_datetime,
+    scopeLocal,
     channel: row.sm_channel,
     subChannel: row.sm_sub_channel,
     orderType: row.sm_order_type,

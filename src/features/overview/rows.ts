@@ -10,7 +10,19 @@ import type { OverviewData } from "./queries";
 export const OVERVIEW_RELATION = "rpt_executive_summary_daily";
 export const OverviewChannelRow = z.object({ channel: bq.string() });
 
+const Contributions = z
+  .array(
+    z.object({
+      channel: z.string().nullable(),
+      sub_channel: z.string().nullable(),
+      revenue: bq.numeric().nullable(),
+      remainder: z.boolean(),
+    }),
+  )
+  .max(201);
+
 export const OverviewRow = z.object({
+  contributions_json: z.string().nullable().optional(),
   date: bq.date(),
   net_revenue: bq.numeric().nullable(),
   order_count: bq.float64().nullable(),
@@ -43,7 +55,9 @@ export type OverviewRowData = z.output<typeof OverviewRow>;
 
 export function toOverviewData(rows: OverviewRowData[]): OverviewData {
   const first = rows[0];
+  const parsed = first?.contributions_json ? Contributions.safeParse(JSON.parse(first.contributions_json)) : null;
   return {
+    ...(first?.contributions_json ? { contributions: parsed?.success ? parsed.data : null } : {}),
     revenue: first
       ? {
           gross: first.total_gross,

@@ -38,6 +38,7 @@ it("reads only bound, store-scoped dictionary fields through the real guard and 
   expect(body.queryParameters).toEqual([
     { name: "store_id", parameterType: { type: "STRING" }, parameterValue: { value: "store-a" } },
     { name: "relation", parameterType: { type: "STRING" }, parameterValue: { value: "obt_orders" } },
+    { name: "dataset", parameterType: { type: "STRING" }, parameterValue: { value: "sm_transformed_v2" } },
     { name: "limit", parameterType: { type: "INT64" }, parameterValue: { value: "501" } },
   ]);
 });
@@ -117,4 +118,18 @@ it("cancels a known metadata job when its caller closes the panel", async () => 
   expect(response.status).toBe(503);
   expect(fake.count("submit")).toBe(1);
   expect(fake.count("cancel")).toBe(1);
+});
+
+it("qualifies duplicate table names by dataset using bound values", async () => {
+  const fake = await goLive({ submit: () => rowsResponse(fields, [entry]) });
+  expect(
+    (await GET(new Request(url.replace("relation=obt_orders", "relation=customized_views.obt_orders")))).status,
+  ).toBe(200);
+  const body = fake.calls.find((call) => call.kind === "submit")?.body as {
+    query: string;
+    queryParameters: { name: string; parameterValue: { value: string } }[];
+  };
+  expect(body.query).toContain("dataset_name = @dataset");
+  expect(body.query).not.toContain("customized_views");
+  expect(body.queryParameters.find((p) => p.name === "dataset")?.parameterValue.value).toBe("customized_views");
 });

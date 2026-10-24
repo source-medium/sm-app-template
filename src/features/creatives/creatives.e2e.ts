@@ -124,3 +124,32 @@ test("creatives: Vibe code targets one card's metric without copying its content
   expect(await dialog.getByLabel("Prompt").inputValue()).not.toContain(title);
   await expect(dialog.getByLabel("Your request")).toHaveValue("Make this metric easier to read.");
 });
+
+test("creatives defaults to Performance, preserves explicit views and compares compound selections", async ({
+  page,
+}) => {
+  await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  await expect(page.getByLabel("View", { exact: true })).toHaveValue("returns");
+  await expect(
+    page.getByRole("list", { name: "Ad creatives" }).getByText("Platform ROAS", { exact: true }).first(),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Compare creative", exact: true }).first().click();
+  await expect(page.getByRole("heading", { name: "Creative comparison (1/4)", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Compare creative", exact: true }).first().click();
+  await expect(page.getByRole("heading", { name: "Creative comparison (2/4)", exact: true })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Selected creatives" })).toBeVisible();
+  const ids = new URL(page.url()).searchParams.get("selection");
+  expect(JSON.parse(ids ?? "[]")).toHaveLength(2);
+  await page.getByRole("button", { name: "Vibe code", exact: true }).click();
+  const prompt = await page.getByRole("dialog", { name: "Vibe code" }).getByLabel("Prompt").inputValue();
+  expect(prompt).not.toContain(ids);
+  await page.getByRole("dialog", { name: "Vibe code" }).getByRole("button", { name: "Close", exact: true }).click();
+  await page.reload();
+  await expect(page.getByRole("list", { name: "Selected creatives" })).toBeVisible();
+  await page.goto("/creatives?view=delivery");
+  await expect(page.getByLabel("View", { exact: true })).toHaveValue("delivery");
+  await page.goto("/creatives?view=returns&min_spend=999999999&min_conversions=1.5");
+  await expect(page.getByLabel("View", { exact: true })).toHaveValue("returns");
+  await expect(page.getByLabel("Minimum conversions", { exact: true })).toHaveValue("1.5");
+  await expect(page.getByRole("list", { name: "Ad creatives" })).toHaveCount(0);
+});

@@ -13,6 +13,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -20,7 +21,12 @@ import {
 } from "@/components/ui/sidebar";
 import { AppName } from "./app-name";
 
-/** Filters every view shares; carrying them keeps the same store and dates when switching views. */
+/**
+ * Filters every view shares; carrying them keeps the same store and dates when
+ * switching views. Report-specific filters stay with their report: a sidebar
+ * link starts the destination report fresh, while supporting detail links inside
+ * a report (lib/drill-down.ts) carry a compatible investigation across.
+ */
 const SHARED_FILTERS = ["store", "from", "to", "compare"];
 
 export function AppSidebar({ fixedStore = false }: { fixedStore?: boolean }) {
@@ -31,34 +37,42 @@ export function AppSidebar({ fixedStore = false }: { fixedStore?: boolean }) {
     const value = searchParams.get(name);
     if (value) shared.set(name, value);
   }
-  const suffix = shared.size > 0 ? `?${shared.toString()}` : "";
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-3 py-4">
         <AppName />
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {appConfig.nav
-                .filter((item) => !fixedStore || item.scope !== "all-stores")
-                .map((item) => {
-                  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
-                        <Link href={`${item.href}${suffix}`} aria-current={active ? "page" : undefined}>
-                          <item.icon aria-hidden />
-                          <span>{item.label}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {[...new Set(appConfig.nav.map((item) => item.group ?? "Reports"))].map((group) => (
+          <SidebarGroup key={group}>
+            <SidebarGroupLabel>{group}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {appConfig.nav
+                  .filter((item) => (item.group ?? "Reports") === group && (!fixedStore || item.scope !== "all-stores"))
+                  .map((item) => {
+                    const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    const target = new URLSearchParams(shared);
+                    // A report without period comparisons cannot apply one; dropping it is not a lost filter.
+                    if (!item.comparisons) target.delete("compare");
+                    const href = active
+                      ? `${pathname}?${searchParams.toString()}`
+                      : `${item.href}${target.size ? `?${target}` : ""}`;
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+                          <Link prefetch={false} href={href} aria-current={active ? "page" : undefined}>
+                            <item.icon aria-hidden />
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
       {appConfig.showSourceMediumAttribution && (
         <SidebarFooter className="px-4 py-3 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">

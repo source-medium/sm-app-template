@@ -1,0 +1,28 @@
+[
+  {
+    "asset": "countries.json",
+    "source": "https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_countries.zip",
+    "version": "5.1.1",
+    "license": "Public domain",
+    "license_url": "https://www.naturalearthdata.com/about/terms-of-use/",
+    "source_sha256": "0f243aeac8ac6cf26f0417285b0bd33ac47f1b5bdb719fd3e0df37d03ea37110",
+    "asset_sha256": "9a4a127ed08746637be060e9df29242ebdf85821b91c38cb0d05b9ab211844e2",
+    "gzip_bytes": 42530,
+    "projection": "Equirectangular lon/lat; US has separately scaled Alaska and Hawaii insets. Coordinates rounded to 0.1 SVG units.",
+    "crosswalk": "ISO_A2_EH",
+    "codes": 175
+  },
+  {
+    "asset": "us-states.json",
+    "source": "https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_1_states_provinces.zip",
+    "version": "5.1.1",
+    "license": "Public domain",
+    "license_url": "https://www.naturalearthdata.com/about/terms-of-use/",
+    "source_sha256": "82f8e4db91152e98884c00704de31be618d8bd8c84dade2123e72e948d74e195",
+    "asset_sha256": "bd9ddffb0531b046a0f241311774fac14230bbbe0c0008795cd57828c1bc5c96",
+    "gzip_bytes": 8784,
+    "projection": "Equirectangular lon/lat; US has separately scaled Alaska and Hawaii insets. Coordinates rounded to 0.1 SVG units.",
+    "crosswalk": "postal where iso_a2=US",
+    "codes": 51
+  }
+]

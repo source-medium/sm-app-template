@@ -107,6 +107,9 @@ describe("creatives, live", () => {
       "channel",
       "campaign",
       "limit",
+      "minimum_spend",
+      "minimum_conversions",
+      "selection",
     ]);
   });
 
@@ -199,4 +202,45 @@ it("bounds matching-name inspection and guards its shared live read", async () =
   const before = fake.calls.length;
   await expect(queryAdNameMatches(FILTERS, true)).rejects.toThrow("This store is not available in this app.");
   expect(fake.calls).toHaveLength(before);
+});
+
+it("applies fractional thresholds after aggregation before ranking, and fetches bounded selected identities independently", async () => {
+  const fake = await goLive({ submit: () => rowsResponse(FIELDS, [ROW]) });
+  const { getCreatives } = await import("./queries");
+  await getCreatives({
+    ...FILTERS,
+    sort: "cpo",
+    minimumSpend: "0.1",
+    minimumConversions: "0.25",
+    selection: [
+      ["Meta", "outside-top-list"],
+      ["Google", "outside-top-list"],
+    ],
+  });
+  const query = fake.calls.find((call) => call.kind === "submit")?.body as Submitted;
+  expect(query.query.indexOf("GROUP BY creative_id")).toBeLessThan(query.query.indexOf("HAVING"));
+  expect(query.query.indexOf("HAVING")).toBeLessThan(query.query.indexOf("ORDER BY cpo"));
+  expect(query.query).toContain("ORDER BY cpo ASC NULLS LAST");
+  expect(query.query).toContain("CAST(NULLIF(@minimum_spend, '') AS NUMERIC)");
+  expect(query.query).toContain("CAST(NULLIF(@minimum_conversions, '') AS FLOAT64)");
+  expect(query.query).toContain("JSON_VALUE(selected, '$[0]')");
+  expect(query.query).toContain("JSON_VALUE(selected, '$[1]')");
+  expect(query.query).not.toContain("outside-top-list");
+  expect(query.queryParameters).toContainEqual({
+    name: "limit",
+    parameterType: { type: "INT64" },
+    parameterValue: { value: "5" },
+  });
+  expect(query.queryParameters).toContainEqual({
+    name: "minimum_conversions",
+    parameterType: { type: "STRING" },
+    parameterValue: { value: "0.25" },
+  });
+  await expect(
+    getCreatives({
+      ...FILTERS,
+      sort: "spend",
+      selection: Array.from({ length: 5 }, (_, i) => ["Meta", String(i)] as const),
+    }),
+  ).rejects.toThrow("Invalid creative selection");
 });

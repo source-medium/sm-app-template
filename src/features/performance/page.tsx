@@ -36,6 +36,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
   const channel = summarySalesChannel(params);
   return (
     <ReportPage
+      dataStatusAfterControls
       maxDays={appConfig.summaryMaxDays}
       title="Performance tables"
       description="Review business and platform performance over time, using one calendar grain and explicit sales-channel scope."
@@ -58,7 +59,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
         },
       ]}
     >
-      {({ filters, timeZone, currency }) => {
+      {({ filters, timeZone, currency, dataStatus }) => {
         const selected: PerformanceFilters = { ...filters, grain, channel };
         const scope = `${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`;
         const applied = <MultiChannelFilter channels={[]} />;
@@ -99,7 +100,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
           </>
         );
         return (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 sm:gap-6">
             <ReportControls summary={`${reportLabel}, ${grainLabel}. ${channelLabel}.`}>
               <SelectFilter
                 name="view"
@@ -149,6 +150,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
                 </Suspense>
               )}
             </ReportControls>
+            {dataStatus}
             {view === "business" ? (
               <Suspense
                 key={`business|${scope}|${grain}|${group}`}

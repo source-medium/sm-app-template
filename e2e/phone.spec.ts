@@ -2,6 +2,29 @@ import { expect, test } from "@playwright/test";
 import { appConfig } from "../app.config";
 import { watchConsole, expectNoSeriousA11yViolations, choose } from "./helpers";
 
+test("Overview fits a 320px viewport before chart hydration", async ({ page }) => {
+  test.skip(!appConfig.nav.some((item) => item.href === "/overview"), "Example view removed");
+  await page.setViewportSize({ width: 320, height: 740 });
+  let releaseScripts!: () => void;
+  const scriptsReady = new Promise<void>((resolve) => {
+    releaseScripts = resolve;
+  });
+  await page.route("**/_next/static/**/*.js", async (route) => {
+    await scriptsReady;
+    await route.continue();
+  });
+  try {
+    await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-28", { waitUntil: "commit" });
+    await expect(page.locator('[data-slot="kpi-value"]').first()).toBeVisible();
+    await expect(page.getByLabel("Compare with", { exact: true })).toHaveAttribute("inert");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  } finally {
+    releaseScripts();
+  }
+  await expect(page.getByLabel("Compare with", { exact: true })).not.toHaveAttribute("inert");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+});
+
 for (const route of ["overview", "performance"]) {
   test(`${route}: results appear before the fold and collapsed filters preserve drafts`, async ({ page }) => {
     test.skip(!appConfig.nav.some((item) => item.href === `/${route}`), "Example view removed");
@@ -23,6 +46,7 @@ for (const route of ["overview", "performance"]) {
     const appliedURL = page.url();
     const csv = page.getByRole("link", {
       name: route === "overview" ? "Download CSV" : "Download business CSV",
+      includeHidden: true,
       exact: true,
     });
     const appliedCSV = await csv.getAttribute("href");

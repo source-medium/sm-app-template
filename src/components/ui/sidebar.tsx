@@ -303,6 +303,19 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+function SidebarGroupLabel({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="sidebar-group-label"
+      className={cn(
+        "px-2 py-2 text-xs font-medium text-muted-foreground group-data-[collapsible=icon]:sr-only",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 function SidebarGroupContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -378,7 +391,7 @@ function SidebarMenuButton({
     />
   );
 
-  if (!tooltip) {
+  if (!tooltip || isMobile || state !== "collapsed") {
     return button;
   }
 
@@ -391,7 +404,7 @@ function SidebarMenuButton({
   return (
     <Tooltip>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent side="right" align="center" hidden={state !== "collapsed" || isMobile} {...tooltip} />
+      <TooltipContent side="right" align="center" {...tooltip} />
     </Tooltip>
   );
 }
@@ -402,6 +415,7 @@ export {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,

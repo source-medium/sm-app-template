@@ -4,6 +4,8 @@
  */
 import { ArrowDownRight, ArrowUpRight, Info, Minus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import type { MetricBinding } from "@/lib/metric-binding";
+import { MetricDefinition, type MetricScope } from "@/components/patterns/metric-definition";
 import { cn } from "@/lib/utils";
 import { KpiTrend, type KpiTrendData } from "@/components/charts/kpi-trend";
 
@@ -17,13 +19,19 @@ export type KpiDelta = {
 export function KpiCard({
   label,
   value,
+  fullValue,
   period,
   delta,
   description,
   trend,
+  binding,
+  scope,
 }: {
+  binding?: MetricBinding;
+  scope?: MetricScope;
   label: string;
   value: string;
+  fullValue?: string;
   period: string;
   delta?: KpiDelta;
   /** A short, query-specific definition. Native details works with touch, keyboard, and no JavaScript. */
@@ -35,13 +43,18 @@ export function KpiCard({
   return (
     <Card data-agent-target={label} data-agent-component="KpiCard" className="gap-2 py-5">
       <CardContent className="flex flex-col gap-1 px-5">
-        {description ? (
+        {description || binding ? (
           <details className="text-sm text-muted-foreground">
-            <summary className="flex min-h-6 cursor-pointer list-none items-center gap-1.5 rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
               <span data-slot="kpi-label">{label}</span>
               <Info className="size-3.5 shrink-0" aria-hidden />
-              <span className="sr-only">definition</span>
+              <span className="sr-only">definition. About this number</span>
             </summary>
+            {binding && (
+              <div className="py-3">
+                <MetricDefinition binding={binding} scope={scope} />
+              </div>
+            )}
             <p data-metric-definition={label} className="pt-1 pb-2 text-xs leading-relaxed">
               {description}
             </p>
@@ -51,8 +64,9 @@ export function KpiCard({
             {label}
           </span>
         )}
-        <span data-slot="kpi-value" className="text-3xl font-semibold tracking-tight tabular-nums">
-          {value}
+        <span title={fullValue} data-slot="kpi-value" className="text-3xl font-semibold tracking-tight tabular-nums">
+          <span aria-hidden={fullValue && fullValue !== value ? true : undefined}>{value}</span>
+          {fullValue && fullValue !== value && <span className="sr-only">{fullValue}</span>}
         </span>
         <span className="text-xs text-muted-foreground">{period}</span>
         {delta && (

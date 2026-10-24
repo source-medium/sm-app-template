@@ -36,6 +36,7 @@ export type ChartDatum = { label: string } & Record<string, string | number | nu
 export type ChartCardProps = {
   title: string;
   description?: string;
+  definition?: React.ReactNode;
   kind: "line" | "bar";
   horizontal?: boolean;
   series: ChartSeries[];
@@ -53,6 +54,7 @@ export type ChartCardProps = {
 export function ChartCard({
   title,
   description,
+  definition,
   kind,
   horizontal = false,
   series,
@@ -76,6 +78,14 @@ export function ChartCard({
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
+        {definition && (
+          <details className="text-sm">
+            <summary className="cursor-pointer rounded py-1 text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring">
+              About this number
+            </summary>
+            <div className="py-3">{definition}</div>
+          </details>
+        )}
         <CardAction>
           {plottable && (
             <div role="group" aria-label={`${title} display`} className="flex rounded-md bg-muted p-1">

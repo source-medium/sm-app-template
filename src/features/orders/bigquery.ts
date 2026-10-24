@@ -5,6 +5,9 @@ import { SALES_CHANNEL_PREDICATE } from "@/lib/data/channel-sql";
  * the partition column keeps each page's scan to the selected months.
  */
 import "server-only";
+import { ATTRIBUTION_RELATION, MAX_SIGNALS, toOrderAttribution, type OrderAttribution } from "./attribution";
+import { orderDateEquals, orderDateExpression, orderDateWindow } from "@/lib/order-scope";
+import { COUNTRY_SQL, REGION_SQL } from "@/lib/shipping-geography";
 import type { ReportFilters } from "@/lib/filters";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { QueryParameter } from "@/lib/data/bigquery-rest.server";
@@ -23,16 +26,24 @@ import {
 
 export async function queryOrders(filters: OrdersFilters): Promise<OrdersPage> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
+  const at = orderDateExpression(filters.dateBasis);
   const params: QueryParameter[] = [
     { name: "store_id", type: "STRING", value: filters.storeId },
     { name: "start_date", type: "DATE", value: filters.range.from },
     { name: "end_date", type: "DATE", value: filters.range.to },
     { name: "limit", type: "INT64", value: PAGE_SIZE + 1 },
   ];
-  const predicates = [
-    "order_processed_at_local_datetime >= DATETIME(@start_date)",
-    "order_processed_at_local_datetime < DATETIME(DATE_ADD(@end_date, INTERVAL 1 DAY))",
-  ];
+  const predicates = [orderDateWindow(filters.dateBasis, "@start_date", "@end_date")];
+  if (filters.validOnly) predicates.push("is_order_sm_valid = TRUE");
+  for (const [name, value, expression] of [
+    ["country", filters.country, COUNTRY_SQL],
+    ["region", filters.region, REGION_SQL],
+  ] as const) {
+    if (value) {
+      params.push({ name, type: "STRING", value });
+      predicates.push(`${expression} = @${name}`);
+    }
+  }
   if (filters.channel) {
     params.push({ name: "channel", type: "STRING", value: filters.channel });
     predicates.push(SALES_CHANNEL_PREDICATE);
@@ -49,19 +60,19 @@ export async function queryOrders(filters: OrdersFilters): Promise<OrdersPage> {
     params.push({ name: "cursor_at", type: "DATETIME", value: filters.cursor.processedLocal });
     params.push({ name: "cursor_key", type: "STRING", value: filters.cursor.key });
     predicates.push(`(
-      order_processed_at_local_datetime < @cursor_at
-      OR (order_processed_at_local_datetime = @cursor_at AND sm_order_key < @cursor_key))`);
+      ${at} < @cursor_at
+      OR (${at} = @cursor_at AND sm_order_key < @cursor_key))`);
   }
 
   const result = await warehouse.query({
     name: "orders_page",
     maxRows: PAGE_SIZE + 1,
     sql: `
-      SELECT ${SUMMARY_COLUMNS}
+      SELECT ${SUMMARY_COLUMNS}${filters.dateBasis ? `, ${at} AS scope_local` : ""}
       FROM ${warehouse.table(ORDERS_RELATION)}
       WHERE sm_store_id = @store_id
         AND ${predicates.join("\n        AND ")}
-      ORDER BY order_processed_at_local_datetime DESC, sm_order_key DESC
+      ORDER BY ${at} DESC, sm_order_key DESC
       LIMIT @limit`,
     params,
   });
@@ -70,7 +81,14 @@ export async function queryOrders(filters: OrdersFilters): Promise<OrdersPage> {
   const last = page.at(-1);
   return {
     orders: page,
-    nextCursor: orders.length > PAGE_SIZE && last ? { processedLocal: last.processedLocal, key: last.key } : null,
+    nextCursor:
+      orders.length > PAGE_SIZE && last
+        ? {
+            processedLocal: last.scopeLocal,
+            key: last.key,
+            ...(filters.dateBasis ? { dateBasis: filters.dateBasis } : {}),
+          }
+        : null,
   };
 }
 
@@ -80,10 +98,10 @@ export async function queryOrderDetail(storeId: string, ref: OrderRef): Promise<
     name: "order_detail",
     maxRows: 1,
     sql: `
-      SELECT ${DETAIL_COLUMNS}
+      SELECT ${DETAIL_COLUMNS}${ref.dateBasis ? `, ${orderDateExpression(ref.dateBasis)} AS scope_local` : ""}
       FROM ${warehouse.table(ORDERS_RELATION)}
       WHERE sm_store_id = @store_id
-        AND order_processed_at_local_datetime = @processed_at
+        AND ${orderDateEquals(ref.dateBasis, "@processed_at")}
         AND sm_order_key = @order_key
       LIMIT 1`,
     params: [
@@ -97,7 +115,9 @@ export async function queryOrderDetail(storeId: string, ref: OrderRef): Promise<
 }
 
 /** Options span the date range before search and pagination; Orders intentionally includes invalid orders too. */
-export async function queryOrderChannels(filters: ReportFilters): Promise<string[]> {
+export async function queryOrderChannels(
+  filters: ReportFilters & Pick<OrdersFilters, "dateBasis" | "validOnly" | "country" | "region">,
+): Promise<string[]> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "order_channels",
@@ -105,14 +125,44 @@ export async function queryOrderChannels(filters: ReportFilters): Promise<string
     sql: `SELECT DISTINCT IFNULL(sm_channel, '(none)') AS channel
       FROM ${warehouse.table(ORDERS_RELATION)}
       WHERE sm_store_id = @store_id
-        AND order_processed_at_local_datetime >= DATETIME(@start_date)
-        AND order_processed_at_local_datetime < DATETIME(DATE_ADD(@end_date, INTERVAL 1 DAY))
+        AND ${orderDateWindow(filters.dateBasis, "@start_date", "@end_date")}
+        ${filters.validOnly ? "AND is_order_sm_valid = TRUE" : ""}
+        ${filters.country ? `AND ${COUNTRY_SQL} = @country` : ""}
+        ${filters.region ? `AND ${REGION_SQL} = @region` : ""}
       ORDER BY channel`,
     params: [
+      { name: "valid_only", type: "BOOL", value: filters.validOnly ?? false },
+      { name: "country", type: "STRING", value: filters.country ?? "" },
+      { name: "region", type: "STRING", value: filters.region ?? "" },
       { name: "store_id", type: "STRING", value: filters.storeId },
       { name: "start_date", type: "DATE", value: filters.range.from },
       { name: "end_date", type: "DATE", value: filters.range.to },
     ],
   });
   return decodeRows(OrderChannelRow, result.rows, ORDERS_RELATION).map((row) => row.channel);
+}
+
+/** On demand only. The membership EXISTS is scoped independently from the signals read. */
+export async function queryOrderAttribution(storeId: string, orderKey: string): Promise<OrderAttribution> {
+  const { warehouse } = await requireViewer({ live: true, storeId });
+  const result = await warehouse.query({
+    name: "order_attribution",
+    maxRows: MAX_SIGNALS,
+    partial: true,
+    sql: `SELECT evidence_type, evidence_source, sm_marketing_channel, sm_utm_source, sm_utm_medium,
+      sm_attribution_inference_method, sm_utm_final_source_priority,
+      COUNTIF(sm_utm_final_source_priority = 1) OVER () AS winner_count,
+      COUNT(*) OVER () AS signal_count
+      FROM ${warehouse.table(ATTRIBUTION_RELATION)}
+      WHERE sm_store_id = @store_id AND sm_order_key = @order_key
+        AND EXISTS (SELECT 1 FROM ${warehouse.table(ORDERS_RELATION)}
+          WHERE sm_store_id = @store_id AND sm_order_key = @order_key)
+      ORDER BY sm_utm_final_source_priority ASC NULLS LAST, evidence_type, evidence_source, sm_utm_source, sm_utm_medium
+      LIMIT ${MAX_SIGNALS + 1}`,
+    params: [
+      { name: "store_id", type: "STRING", value: storeId },
+      { name: "order_key", type: "STRING", value: orderKey },
+    ],
+  });
+  return toOrderAttribution(result.rows, result.truncated);
 }

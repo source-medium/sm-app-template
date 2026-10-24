@@ -38,7 +38,9 @@ const SORTS = {
 } as const;
 
 /** Count costs on real lines only; retain order-summary adjustments in unit totals. */
-export async function queryProductCoverage(filters: ReportFilters & { channel?: string | null }) {
+export async function queryProductCoverage(
+  filters: ReportFilters & Partial<Pick<ProductFilters, "channel" | "entity" | "dimension">>,
+) {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "product_cost_coverage",
@@ -51,10 +53,12 @@ export async function queryProductCoverage(filters: ReportFilters & { channel?: 
       FROM ${warehouse.table(PRODUCTS_RELATION)}
       WHERE sm_store_id = @store_id AND is_order_sm_valid = TRUE
         AND ${SALES_CHANNEL_PREDICATE}
+        ${filters.entity ? `AND ${DIMENSIONS[filters.dimension ?? "product"].key} = @entity` : ""}
         AND order_processed_at_local_datetime >= DATETIME(@start_date)
         AND order_processed_at_local_datetime < DATETIME(DATE_ADD(@end_date, INTERVAL 1 DAY))`,
     params: [
       { name: "store_id", type: "STRING", value: filters.storeId },
+      ...(filters.entity ? [{ name: "entity", type: "STRING" as const, value: filters.entity }] : []),
       { name: "channel", type: "STRING", value: filters.channel ?? "" },
       { name: "start_date", type: "DATE", value: filters.range.from },
       { name: "end_date", type: "DATE", value: filters.range.to },
@@ -90,10 +94,12 @@ export async function queryProducts(filters: ProductFilters, baseline: DateRange
     SELECT ${PERIOD_COVERAGE},
       ${measures.flatMap(([name]) => [`SUM(${name}) OVER () AS total_${name}`, `SUM(previous_${name}) OVER () AS total_previous_${name}`]).join(",\n")},
       MIN(${sort}) OVER () AS minimum_value
-    FROM grouped ORDER BY ${sort} DESC NULLS LAST, product_key LIMIT ${MAX_PRODUCTS + 1}`,
+    FROM grouped ${filters.entity ? "WHERE product_key = @entity" : ""}
+    ORDER BY ${filters.ranking === "gainers" ? `${sort} - previous_${sort} DESC` : filters.ranking === "decliners" ? `${sort} - previous_${sort} ASC` : `${sort} DESC`} NULLS LAST, product_key LIMIT ${MAX_PRODUCTS + 1}`,
     params: [
       { name: "store_id", type: "STRING", value: filters.storeId },
       { name: "channel", type: "STRING", value: filters.channel ?? "" },
+      ...(filters.entity ? [{ name: "entity", type: "STRING" as const, value: filters.entity }] : []),
       ...periodParams(filters.range, baseline),
     ],
   });

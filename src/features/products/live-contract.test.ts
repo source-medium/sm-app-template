@@ -176,3 +176,19 @@ it("aggregates exact cost coverage for the full selected scope in a narrow indep
     parameterValue: { value: filters.channel },
   });
 });
+
+it("scopes detail totals before windows and ranks changes before the bounded limit", async () => {
+  const fake = await goLive({ submit: () => rowsResponse(fields, []) });
+  const { getProducts } = await import("./queries");
+  const identity = 'compound-identity" OR TRUE --';
+  await getProducts({ ...filters, entity: identity, ranking: "decliners" }, { from: "2026-08-01", to: "2026-08-02" });
+  const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string; queryParameters: unknown[] };
+  expect(body.query).toContain("FROM grouped WHERE product_key = @entity");
+  expect(body.query).toContain("ORDER BY units - previous_units ASC NULLS LAST, product_key LIMIT 11");
+  expect(body.query).not.toContain(identity);
+  expect(body.queryParameters).toContainEqual({
+    name: "entity",
+    parameterType: { type: "STRING" },
+    parameterValue: { value: identity },
+  });
+});

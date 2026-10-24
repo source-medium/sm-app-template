@@ -7,6 +7,8 @@
  * fonts, radius) and the app icon at src/app/icon.svg.
  */
 import {
+  BookOpen,
+  Map,
   ImageIcon,
   LayoutDashboard,
   Megaphone,
@@ -18,7 +20,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type NavItem = { href: `/${string}`; label: string; icon: LucideIcon; scope?: "all-stores" };
+export type NavItem = {
+  href: `/${string}`;
+  label: string;
+  icon: LucideIcon;
+  scope?: "all-stores";
+  group?: string;
+  comparisons?: boolean;
+};
 
 export const appConfig = {
   name: "Store Insights",
@@ -43,14 +52,16 @@ export const appConfig = {
   reportingCurrencies: {} as Record<string, string | null>,
   /** The first entry is the home page. A page also needs a feature folder and a route; see the sm-add-page skill. */
   nav: [
-    { href: "/overview", label: "Overview", icon: LayoutDashboard },
-    { href: "/performance", label: "Performance tables", icon: Table2 },
-    { href: "/stores", label: "All stores", icon: Store, scope: "all-stores" },
-    { href: "/paid-marketing", label: "Paid marketing", icon: Megaphone },
-    { href: "/creatives", label: "Creatives", icon: ImageIcon },
-    { href: "/products", label: "Products", icon: Package },
-    { href: "/retention", label: "Retention", icon: Repeat2 },
-    { href: "/orders", label: "Orders", icon: ShoppingBag },
+    { group: "Business", href: "/overview", comparisons: true, label: "Overview", icon: LayoutDashboard },
+    { group: "Business", href: "/performance", comparisons: true, label: "Performance tables", icon: Table2 },
+    { group: "Business", href: "/stores", comparisons: true, label: "All stores", icon: Store, scope: "all-stores" },
+    { group: "Marketing", href: "/paid-marketing", comparisons: true, label: "Paid marketing", icon: Megaphone },
+    { group: "Marketing", href: "/creatives", label: "Creatives", icon: ImageIcon },
+    { group: "Sales", href: "/products", comparisons: true, label: "Products", icon: Package },
+    { group: "Sales", href: "/retention", label: "Retention", icon: Repeat2 },
+    { group: "Sales", href: "/geography", comparisons: true, label: "Geography", icon: Map },
+    { group: "Sales", href: "/orders", label: "Orders", icon: ShoppingBag },
+    { href: "/data", label: "Data & definitions", icon: BookOpen, group: "Reference" },
   ] satisfies NavItem[] as NavItem[],
   /** Optional overrides for dim_stores.store_name. Names and brand groups otherwise come from SourceMedium. */
   storeLabels: {} as Record<string, string>,

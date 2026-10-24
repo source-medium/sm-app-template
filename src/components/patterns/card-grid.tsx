@@ -14,6 +14,10 @@ export type GridCard = {
   imageUrl: string | null;
   metrics: { label: string; display: string }[];
   action?: { href: string; label: string };
+  footer?: React.ReactNode;
+  definition?: React.ReactNode;
+  /** Names the number the definition explains when a card shows several. */
+  definitionLabel?: string;
 };
 
 export function CardGrid({ cards, label }: { cards: GridCard[]; label: string }) {
@@ -42,6 +46,15 @@ export function CardGrid({ cards, label }: { cards: GridCard[]; label: string })
                   </div>
                 ))}
               </dl>
+              {card.definition && (
+                <details>
+                  <summary className="cursor-pointer py-2 text-sm underline">
+                    {card.definitionLabel ?? "About this number"}
+                  </summary>
+                  <div className="mt-2">{card.definition}</div>
+                </details>
+              )}
+              {card.footer}
               {card.action && (
                 <a
                   href={card.action.href}

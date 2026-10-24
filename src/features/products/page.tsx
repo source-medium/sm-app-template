@@ -1,9 +1,12 @@
+import Link from "next/link";
+import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
+import { drillDown } from "@/lib/drill-down";
 import { PRODUCTS_RELATION } from "./rows";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ReportPage } from "@/components/shell/report-page";
 import { DataRegion } from "@/components/patterns/data-region";
-import { LoadingState } from "@/components/patterns/data-states";
+import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { KpiCard } from "@/components/patterns/kpi-card";
 import { ComparisonCaption, ComparisonIssue } from "@/components/patterns/comparison-caption";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
@@ -38,6 +41,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         : null;
   return (
     <ReportPage
+      dataStatusAfterControls
       sources={[
         {
           relation: PRODUCTS_RELATION,
@@ -49,10 +53,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       description="Product and variant performance from valid-order lines, in reporting currency."
       pathname="/products"
       params={params}
-      agentFilters={{ sales_channel: channel, dimension: options.dimension, metric: options.metric }}
+      agentFilters={{
+        sales_channel: channel,
+        dimension: options.dimension,
+        metric: options.metric,
+        ranking: options.ranking,
+      }}
+      agentOmissions={options.entity ? ["Selected product or variant identity"] : []}
       comparisons
     >
-      {({ filters, comparison, timeZone, currency }) => {
+      {({ filters, comparison, timeZone, currency, dataStatus }) => {
         const baseline = comparison?.range ?? null;
         const money = formatMoneyIn(currency);
         const format = options.metric === "units" || options.metric === "refunded_units" ? formatMeasure : money;
@@ -73,14 +83,40 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                   {(channels) => <ChannelFilter value={channel} channels={channels} />}
                 </DataRegion>
               </Suspense>
+              {!options.entity && (
+                <SelectFilter
+                  name="dimension"
+                  label="Group by"
+                  value={options.dimension}
+                  options={[...PRODUCT_DIMENSIONS]}
+                />
+              )}
+              {options.entity && (
+                <>
+                  <input type="hidden" name="entity" value={options.entity} form={REPORT_FILTER_FORM_ID} />
+                  <input type="hidden" name="dimension" value={options.dimension} form={REPORT_FILTER_FORM_ID} />
+                  <Link
+                    prefetch={false}
+                    className="py-2 text-sm underline"
+                    href={withParams("/products", params, { entity: null })}
+                  >
+                    Clear selected {options.dimension}
+                  </Link>
+                </>
+              )}
               <SelectFilter
-                name="dimension"
-                label="Group by"
-                value={options.dimension}
-                options={[...PRODUCT_DIMENSIONS]}
+                name="ranking"
+                label="Ranking"
+                value={options.ranking}
+                options={[
+                  { value: "value", label: "Largest value" },
+                  { value: "gainers", label: "Period gainers" },
+                  { value: "decliners", label: "Period decliners" },
+                ]}
               />
               <SelectFilter name="metric" label="Rank by" value={options.metric} options={[...PRODUCT_METRICS]} />
             </div>
+            {dataStatus}
             <Disclosure summary="About product metrics" className="text-sm text-muted-foreground">
               <p data-metric-definition="Product metrics" className="max-w-prose">
                 Valid orders only. Net units subtract refunded quantities. Product gross profit subtracts product cost
@@ -91,8 +127,17 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               </p>
             </Disclosure>
             {comparison && <ComparisonCaption comparison={comparison} />}
+            {options.ranking !== "value" && (
+              <p className="text-sm text-muted-foreground">
+                Gainers and decliners rank absolute period changes, using the same valid-order line population. Missing
+                comparison values sort last. Changes remain hidden when comparison coverage is insufficient.
+              </p>
+            )}
+            {options.entity && (
+              <p className="text-sm">All totals below are scoped to the selected {options.dimension} identity.</p>
+            )}
             <Suspense
-              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${options.dimension}|${options.metric}|${comparison?.mode}|${channel}`}
+              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${options.dimension}|${options.metric}|${options.entity}|${options.ranking}|${comparison?.mode}|${channel}`}
               fallback={<LoadingState variant="chart" label="Loading products" />}
             >
               <DataRegion
@@ -115,8 +160,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                   return (
                     <div className="flex flex-col gap-6">
                       <ComparisonIssue issue={issue} />
-                      <section aria-label="All product totals" className="grid gap-4 sm:grid-cols-3">
-                        {PRODUCT_METRICS.slice(0, 3).map((item) => {
+                      <section aria-label="All product totals" className="grid gap-4 sm:grid-cols-2">
+                        {PRODUCT_METRICS.slice(0, 2).map((item) => {
                           const formatValue = item.value === "units" ? formatMeasure : money;
                           return (
                             <KpiCard
@@ -140,12 +185,19 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                       </section>
                       {diagnostic && (
                         <Suspense
-                          key={`coverage|${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${diagnostic}`}
+                          key={`coverage|${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${diagnostic}|${options.entity}|${options.dimension}`}
                           fallback={<LoadingState variant="control" label="Loading product diagnostics" />}
                         >
                           <DataRegion
                             timestamp={false}
-                            load={() => getProductCoverage({ ...filters, channel })}
+                            load={() =>
+                              getProductCoverage({
+                                ...filters,
+                                channel,
+                                entity: options.entity,
+                                dimension: options.dimension,
+                              })
+                            }
                             isEmpty={(data) => data.lines === 0n}
                             emptyMessage="No valid-order lines for product diagnostics."
                           >
@@ -153,25 +205,63 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                           </DataRegion>
                         </Suspense>
                       )}
-                      <RankedBreakdown
-                        title={`${metricLabel} by ${options.dimension}`}
-                        valueLabel={metricLabel}
-                        description="Top 10 by the selected measure. Shares and headline totals include all matching products. Shares are unavailable for zero totals or negative values."
-                        hasMore={data.hasMore}
-                        comparisonLabel={compare ? "Change vs comparison" : undefined}
-                        rows={data.rows.map((row) => ({
-                          id: row.product_key,
-                          label: `${row.label} (${row.reference})`,
-                          chartLabel: row.label,
-                          value: { value: decimalToNumber(row[options.metric]), display: format(row[options.metric]) },
-                          share: formatPercent(
-                            nonnegativeShare(row[options.metric], row[`total_${options.metric}`], row.minimum_value),
-                          ),
-                          change: compare
-                            ? kpiDelta(row[options.metric], row[`previous_${options.metric}`], format).display
-                            : undefined,
-                        }))}
-                      />
+                      {options.ranking !== "value" && !compare ? (
+                        <ErrorState
+                          title="Period ranking unavailable"
+                          remedy="Choose a comparison with sufficient matching coverage to rank period gainers or decliners, or select Largest value."
+                          tone="warning"
+                        />
+                      ) : (
+                        <RankedBreakdown
+                          title={`${metricLabel} by ${options.dimension}`}
+                          valueLabel={metricLabel}
+                          description={
+                            options.ranking === "value"
+                              ? "Top 10 by the selected measure. Shares and headline totals include all matching products. Shares are unavailable for zero totals or negative values."
+                              : `Top 10 ${options.ranking} by absolute change in the selected measure. Shares and headline totals use the same full scoped population; a missing comparison is not zero.`
+                          }
+                          hasMore={data.hasMore}
+                          comparisonLabel={compare ? "Change vs comparison" : undefined}
+                          rows={data.rows.map((row) => ({
+                            id: row.product_key,
+                            label: `${row.label} (${row.reference})`,
+                            chartLabel: row.label,
+                            href:
+                              drillDown(
+                                {
+                                  store: filters.storeId,
+                                  ...filters.range,
+                                  dateBasis: "processed-only",
+                                  population: "valid-order lines",
+                                  comparison: comparison?.mode,
+                                  filters: { sales_channel: channel, entity: row.product_key },
+                                },
+                                {
+                                  pathname: "/products",
+                                  dateBasis: "processed-only",
+                                  population: "valid-order lines",
+                                  supportsComparison: true,
+                                  filters: { sales_channel: "sales_channel", entity: "entity" },
+                                  required: {
+                                    dimension: options.dimension,
+                                    metric: options.metric,
+                                    ranking: options.ranking,
+                                  },
+                                },
+                              ).href ?? undefined,
+                            value: {
+                              value: decimalToNumber(row[options.metric]),
+                              display: format(row[options.metric]),
+                            },
+                            share: formatPercent(
+                              nonnegativeShare(row[options.metric], row[`total_${options.metric}`], row.minimum_value),
+                            ),
+                            change: compare
+                              ? kpiDelta(row[options.metric], row[`previous_${options.metric}`], format).display
+                              : undefined,
+                          }))}
+                        />
+                      )}
                     </div>
                   );
                 }}

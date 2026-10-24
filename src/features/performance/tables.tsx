@@ -125,7 +125,6 @@ export function BusinessTable({
         id="business-table-heading"
         title={label}
         description="Newest periods first. Weeks start Monday; edge weeks and months include only the selected dates. Totals cover the full selection."
-        actions={actions}
       />
       <DataTable
         caption={label}
@@ -153,6 +152,7 @@ export function BusinessTable({
           );
         })}
       />
+      {actions && <div className="flex flex-wrap items-end gap-3">{actions}</div>}
       <p className="text-sm text-muted-foreground">
         Summary orders are published order measures. New and repeat purchases are not unique customers.
       </p>

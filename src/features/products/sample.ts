@@ -99,6 +99,7 @@ export function aggregateProducts(
       row.productId,
       ...(filters.dimension === "variant" ? [row.variantId] : []),
     ]);
+    if (filters.entity && key !== filters.entity) continue;
     const group = groups.get(key) ?? [];
     group.push(row);
     groups.set(key, group);
@@ -144,11 +145,20 @@ export function aggregateProducts(
     ),
   };
   rows.sort((a, b) => {
-    const left = a[filters.metric],
-      right = b[filters.metric];
+    const amount = (row: typeof a) => {
+      const current = row[filters.metric],
+        previous = row[`previous_${filters.metric}`];
+      return filters.ranking && filters.ranking !== "value"
+        ? current === null || previous === null
+          ? null
+          : fromUnits(toUnits(current) - toUnits(previous))
+        : current;
+    };
+    const left = amount(a),
+      right = amount(b);
     if (left === null || right === null)
       return left === right ? a.product_key.localeCompare(b.product_key) : left === null ? 1 : -1;
-    const diff = toUnits(right) - toUnits(left);
+    const diff = (toUnits(right) - toUnits(left)) * (filters.ranking === "decliners" ? -1n : 1n);
     return diff > 0n ? 1 : diff < 0n ? -1 : a.product_key.localeCompare(b.product_key);
   });
   return {
@@ -173,7 +183,7 @@ export function sampleProducts(filters: ProductFilters, baseline: DateRange | nu
 
 export function aggregateProductCoverage(
   source: ProductSource[],
-  filters: ReportFilters & { channel?: string | null },
+  filters: ReportFilters & Partial<Pick<ProductFilters, "channel" | "entity" | "dimension">>,
 ): ProductCoverage {
   const rows = source.filter(
     (row) =>
@@ -181,7 +191,10 @@ export function aggregateProductCoverage(
       row.valid &&
       row.date >= filters.range.from &&
       row.date <= filters.range.to &&
-      matchesSalesChannel(filters.channel, row.channel),
+      matchesSalesChannel(filters.channel, row.channel) &&
+      (!filters.entity ||
+        JSON.stringify([row.source, row.productId, ...(filters.dimension === "variant" ? [row.variantId] : [])]) ===
+          filters.entity),
   );
   const productLines = rows.filter((row) => row.orderLineId !== null);
   return {

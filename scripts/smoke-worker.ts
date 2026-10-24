@@ -205,6 +205,21 @@ if (appConfig.nav.some((item) => item.href === "/paid-marketing")) {
   ]);
 }
 
+// New examples exercise real Workers rendering/downloads and the same fixed-store guard.
+for (const [feature, path, content] of [
+  ["/geography", "/geography", "Shipping destinations"],
+  ["/geography", "/geography/export", '"valid_orders"'],
+  ["/overview", "/overview/export.json", '"report":"overview"'],
+  ["/data", "/data", "Availability &amp; health"],
+] as const) {
+  if (!appConfig.nav.some((item) => item.href === feature)) continue;
+  const scope = "from=2026-09-01&to=2026-09-07";
+  modes[0]?.checks.push([`${path}?store=sample-store-a&${scope}`, {}, 200, content]);
+  modes[1]?.checks.push([path, {}, 401]);
+  fixedStoreMode.checks.push([`${path}?store=sample-store-a&${scope}`, { headers: signedIn }, 403]);
+  fixedStoreMode.checks.push([`${path}?${scope}`, { headers: signedIn }, 200, content]);
+}
+
 const failures: string[] = [];
 const configPath = join(root, "wrangler.jsonc");
 const configs = {

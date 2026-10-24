@@ -30,9 +30,11 @@ test("paid marketing: return intervals, classifications, and campaign creative d
     view: "returns",
   });
   expect(params.get("campaign")).toMatch(/^cmp-/);
-  await expect(page.getByText("Platform ROAS", { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "Ad creatives", exact: true }).getByText("Platform ROAS", { exact: true }).first(),
+  ).toBeVisible();
   await choose(page, "View", "table");
-  const returns = page.getByRole("table", { name: "Creative returns", exact: true });
+  const returns = page.getByRole("table", { name: "Creative performance", exact: true });
   await expect(returns).toBeVisible();
   await returns.getByRole("button", { name: "Platform ROAS", exact: true }).click();
   await expect(returns.getByRole("columnheader", { name: "Platform ROAS", exact: true })).toHaveAttribute(
@@ -115,8 +117,8 @@ test("paid marketing: each picker replaces its own value and preserves the other
   await expect(page).toHaveURL(/metric=clicks/);
   // Let the clicks view render before the next choice, so its render cannot replace the channel picker mid-change.
   await expect(page.getByText("Clicks by channel over time", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Channel", { exact: true })).not.toHaveAttribute("inert");
-  await choose(page, "Channel", "Meta");
+  await expect(page.getByLabel("Ad platform", { exact: true })).not.toHaveAttribute("inert");
+  await choose(page, "Ad platform", "Meta");
   await expect(page).toHaveURL(/channel=Meta/);
   const params = new URL(page.url()).searchParams;
   expect(params.getAll("metric")).toEqual(["clicks"]);
@@ -129,7 +131,7 @@ test("paid marketing: each picker replaces its own value and preserves the other
 
 test("paid marketing: a channel filter narrows the campaigns", async ({ page }) => {
   await page.goto("/paid-marketing");
-  await choose(page, "Channel", "Google");
+  await choose(page, "Ad platform", "Google");
   await expect(page).toHaveURL(/channel=Google/);
   await expect(page.getByRole("heading", { name: "Campaigns in Google" })).toBeVisible();
   const channels = await page
@@ -141,11 +143,11 @@ test("paid marketing: a channel filter narrows the campaigns", async ({ page }) 
 
 test("paid marketing: an unmatched channel has a clear empty result and recovery", async ({ page }) => {
   await page.goto("/paid-marketing?store=sample-store-a&channel=Unknown");
-  await expect(page.getByLabel("Channel", { exact: true })).toHaveValue("Unknown");
+  await expect(page.getByLabel("Ad platform", { exact: true })).toHaveValue("Unknown");
   await expect(page.getByText("No ad delivery matches this channel and date range.")).toBeVisible();
   await expect(page.getByRole("img", { name: "Spend by channel over time chart", exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Show all channels", exact: true }).click();
-  await expect(page.getByLabel("Channel", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Ad platform", { exact: true })).toHaveValue("");
   await expect(page.getByRole("table", { name: "Campaigns by spend", exact: true })).toBeVisible();
 });
 

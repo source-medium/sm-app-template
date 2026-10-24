@@ -7,12 +7,26 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useCopy } from "@/lib/use-copy";
 
 /** href already contains the applied store and dates, including defaults. */
-export function CopyReportLink({ href }: { href: string }) {
+export function CopyReportLink({
+  href,
+  clientPresentationParams = [],
+}: {
+  href: string;
+  clientPresentationParams?: readonly string[];
+}) {
   const { state, copy } = useCopy();
   const [manualLink, setManualLink] = useState("");
 
   async function copyLink() {
-    const link = new URL(href, window.location.origin).href;
+    const resolved = new URL(href, window.location.origin);
+    const current = new URL(window.location.href);
+    // Features may change presentation through native history without a server
+    // request. Only those declared keys override the resolved report context.
+    for (const key of clientPresentationParams) {
+      resolved.searchParams.delete(key);
+      for (const value of current.searchParams.getAll(key)) resolved.searchParams.append(key, value);
+    }
+    const link = resolved.href;
     setManualLink(link);
     await copy(link);
   }

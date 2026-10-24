@@ -10,6 +10,11 @@ export function switchStoreHref(pathname: string, params: SearchParams, storeId:
   return withParams(pathname, params, {
     store: storeId,
     campaign: null,
+    selection: null,
+    entity: null,
+    evidence: null,
+    product: null,
+    variant: null,
     order: null,
     cursor: null,
     q: null,

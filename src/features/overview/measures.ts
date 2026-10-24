@@ -3,11 +3,12 @@
  * table. Descriptions and sparklines stay with the card. CSV export stays raw.
  */
 import "server-only";
+import { overviewBindings } from "./metrics";
 import { appConfig } from "@/app.config";
 import type { MetricValue } from "@/lib/comparison";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
-import { formatCount, formatMeasure, formatMoney, formatMultiple } from "@/lib/format";
+import { formatCount, formatMeasure, formatMetricValue, formatMoney, formatMultiple } from "@/lib/format";
 import type { OverviewMeasures } from "./queries";
 
 export const OVERVIEW_MEASURE_KEYS = ["revenue", "orders", "average", "spend", "mer", "sessions"] as const;
@@ -45,14 +46,19 @@ export function presentOverviewMeasures(
   const mer = ratio(revenue, spend);
   return {
     revenue: {
-      display: formatMoney(measures?.netRevenue ?? null, currency),
+      display: formatMetricValue(
+        measures?.netRevenue ?? null,
+        "currency",
+        overviewBindings[0].canonical.value_format,
+        currency,
+      ),
       sort: revenue,
       amount: measures?.netRevenue ?? null,
       format: money,
       better: "higher",
     },
     orders: {
-      display: formatMeasure(orders),
+      display: formatMetricValue(orders, "count", overviewBindings[1].canonical.value_format, currency),
       sort: orders,
       amount: orders,
       format: measure,

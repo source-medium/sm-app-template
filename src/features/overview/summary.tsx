@@ -1,4 +1,6 @@
 import "server-only";
+import { overviewBindings } from "./metrics";
+import { MetricDefinition } from "@/components/patterns/metric-definition";
 import { Download } from "lucide-react";
 import { DataTable, type DataTableRow } from "@/components/patterns/data-table";
 import { SelectFilter } from "@/components/patterns/select-filter";
@@ -28,10 +30,12 @@ export function OverviewSummary({
   data,
   filters,
   currency,
+  timeZone,
 }: {
   data: OverviewData;
   filters: OverviewFilters;
   currency: string | null;
+  timeZone: string;
 }) {
   const records = overviewSummaryRows(data, filters);
   const rows = records
@@ -70,15 +74,36 @@ export function OverviewSummary({
       />
       <DataTable
         caption="Business summary"
-        columns={[
-          { key: "period", header: "Period", sortable: false },
-          { key: "revenue", header: "Net revenue", align: "right" },
-          { key: "orders", header: "Summary orders", align: "right" },
-          { key: "average", header: "Revenue / summary order", align: "right" },
-          { key: "spend", header: "Ad spend", align: "right" },
-          { key: "mer", header: "MER", align: "right" },
-          { key: "sessions", header: "Sessions", align: "right" },
-        ]}
+        columns={(
+          [
+            { key: "period", header: "Period", sortable: false },
+            { key: "revenue", header: "Net revenue", align: "right" },
+            { key: "orders", header: "Summary orders", align: "right" },
+            { key: "average", header: "Revenue / summary order", align: "right" },
+            { key: "spend", header: "Ad spend", align: "right" },
+            { key: "mer", header: "MER", align: "right" },
+            { key: "sessions", header: "Sessions", align: "right" },
+          ] as const
+        ).map((column) => {
+          const binding = overviewBindings.find((binding) => binding.id === column.key);
+          return {
+            ...column,
+            ...(binding
+              ? {
+                  definition: (
+                    <MetricDefinition
+                      binding={binding}
+                      scope={{
+                        filters: { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? null },
+                        currency,
+                        timeZone,
+                      }}
+                    />
+                  ),
+                }
+              : {}),
+          };
+        })}
         rows={rows}
         totals={data.totals ? { id: "total", cells: cells("Selected period total", data.totals, currency) } : undefined}
       />

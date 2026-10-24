@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const storeId = params.get("store");
   if (
     !relation ||
-    !/^[A-Za-z0-9_]{1,200}$/.test(relation) ||
+    !/^(?:[A-Za-z0-9_]{1,200}\.)?[A-Za-z0-9_]{1,200}$/.test(relation) ||
     !storeId ||
     storeId.length > 200 ||
     params.getAll("relation").length !== 1 ||
@@ -27,7 +27,13 @@ export async function GET(request: Request) {
     const access = await requireViewer({ storeId });
     const fields =
       access.mode === "sample"
-        ? (Object.entries(snapshot.relations).find(([name]) => name === relation)?.[1].columns ?? []).map((column) => ({
+        ? (
+            Object.entries(snapshot.relations).find(
+              ([name]) =>
+                name === relation ||
+                `${snapshot.relations[name as keyof typeof snapshot.relations].dataset}.${name}` === relation,
+            )?.[1].columns ?? []
+          ).map((column) => ({
             name: column.name,
             type: column.type,
             description: "description" in column ? (column.description ?? null) : null,

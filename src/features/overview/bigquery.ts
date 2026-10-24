@@ -26,7 +26,23 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
     name: "overview_daily",
     maxRows: Math.min(MAX_ROWS, rangeLength(filters.range)),
     sql: `
-      WITH daily AS (
+      WITH scoped AS (
+        SELECT date, sm_channel, sm_sub_channel, order_gross_revenue, order_discounts, order_refunds,
+          order_net_revenue, order_count, website_sessions, ad_clicks, ad_spend,
+          new_customer_order_net_revenue, new_customer_order_count,
+          repeat_customer_order_net_revenue, repeat_customer_order_count
+        FROM ${warehouse.table(OVERVIEW_RELATION)}
+        WHERE sm_store_id = @store_id AND date BETWEEN @start_date AND @end_date
+          AND ${SALES_CHANNEL_PREDICATE}
+      ), contributions AS (
+        SELECT sm_channel AS channel, sm_sub_channel AS sub_channel, SUM(order_net_revenue) AS revenue,
+          ROW_NUMBER() OVER (ORDER BY ABS(SUM(order_net_revenue)) DESC NULLS LAST, sm_channel, sm_sub_channel) AS rank
+        FROM scoped GROUP BY sm_channel, sm_sub_channel
+      ), contribution_rows AS (
+        SELECT channel, sub_channel, CAST(revenue AS STRING) AS revenue, FALSE AS remainder FROM contributions WHERE rank <= 200
+        UNION ALL
+        SELECT CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(SUM(revenue) AS STRING), TRUE FROM contributions WHERE rank > 200 HAVING COUNT(*) > 0
+      ), daily AS (
         SELECT
           date,
           SUM(order_gross_revenue) AS gross,
@@ -41,10 +57,7 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
           SUM(new_customer_order_count) AS first_orders,
           SUM(repeat_customer_order_net_revenue) AS repeat_revenue,
           SUM(repeat_customer_order_count) AS repeat_orders
-        FROM ${warehouse.table(OVERVIEW_RELATION)}
-        WHERE sm_store_id = @store_id
-          AND date BETWEEN @start_date AND @end_date
-          AND ${SALES_CHANNEL_PREDICATE}
+        FROM scoped
         GROUP BY date
       )
       SELECT
@@ -72,6 +85,9 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
         SUM(first_orders) OVER () AS total_first_orders,
         SUM(repeat_revenue) OVER () AS total_repeat_revenue,
         SUM(repeat_orders) OVER () AS total_repeat_orders,
+        IF(ROW_NUMBER() OVER (ORDER BY date) = 1,
+          (SELECT TO_JSON_STRING(ARRAY_AGG(STRUCT(channel, sub_channel, revenue, remainder) ORDER BY remainder, channel, sub_channel)) FROM contribution_rows),
+          NULL) AS contributions_json,
         MAX(date) OVER () AS latest_date
       FROM daily
       WINDOW period AS (PARTITION BY DATE_TRUNC(date, ${GRAIN_SQL[filters.grain ?? "day"]}))

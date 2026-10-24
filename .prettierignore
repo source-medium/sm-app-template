@@ -13,3 +13,6 @@ cloudflare-env.d.ts
 
 # Vendored byte for byte from urchin specs/contracts/managed-app-v1.
 contracts/
+
+# Generated SVG paths retain the checksums in provenance.json.
+src/features/geography/assets/

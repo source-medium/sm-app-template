@@ -4,6 +4,7 @@
  * hydration warning can appear. Do not format in client components.
  */
 import "server-only";
+import type { ValueFormat } from "./metric-binding";
 import { appConfig } from "@/app.config";
 import { fromUnits, toUnits } from "@/lib/data/decimal";
 
@@ -176,4 +177,49 @@ export function isCurrency(code: string): boolean {
     if (error instanceof RangeError) return false;
     throw error;
   }
+}
+
+/** Published units apply only when they agree with the feature's reviewed binding. */
+export function formatMetricValue(
+  value: string | number | bigint | null,
+  reviewed: ValueFormat,
+  published: string | null | undefined,
+  currency: string | null,
+): string {
+  const unit = published === reviewed ? published : reviewed;
+  if (value === null) return EMPTY_VALUE;
+  if (unit === "identifier") return String(value);
+  if (unit === "currency") return formatMoney(typeof value === "bigint" ? String(value) : value, currency);
+  if (unit === "count" || unit === "number")
+    return typeof value === "bigint" ? formatCount(value) : formatMeasure(value);
+  const number = Number(value);
+  if (!Number.isFinite(number)) return EMPTY_VALUE;
+  return unit === "percent" ? formatPercent(number) : formatMultiple(number);
+}
+
+/** Approximate compact display only; callers retain the exact formatted value for accessible text. */
+export function compactHeadline(
+  value: string | number | bigint | null,
+  full: string,
+  unit: ValueFormat,
+  currency: string | null,
+): string {
+  if (value === null || !["currency", "count", "number"].includes(unit)) return full;
+  const number = Number(value);
+  if (!Number.isFinite(number) || Math.abs(number) < 1_000_000) return full;
+  return new Intl.NumberFormat(appConfig.locale, {
+    notation: "compact",
+    maximumFractionDigits: 2,
+    ...(unit === "currency" && currency ? { style: "currency", currency } : {}),
+  }).format(number);
+}
+
+/** Fractional platform credit must not look like zero after display rounding. */
+export function formatAttributedConversions(value: number | null): string {
+  if (value === null) return EMPTY_VALUE;
+  if (value !== 0 && Math.abs(value) < 0.01) {
+    if (Math.abs(value) < 0.000001) return value < 0 ? ">−0.000001" : "<0.000001";
+    return new Intl.NumberFormat(appConfig.locale, { maximumFractionDigits: 6 }).format(value);
+  }
+  return formatMeasure(value);
 }

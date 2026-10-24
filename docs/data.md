@@ -729,3 +729,81 @@ No naming taxonomy is inferred, and filters never rewrite warehouse names.
 Overview and Performance tables opt into `appConfig.summaryMaxDays` (366 by default) while detail views retain `dateRange.maxDays` (90). Pass the same maximum to ReportPage and csvExport so the URL, browser validation and download agree. Quarter-to-date and year-to-date presets appear only when they fit the report's bound. Performance uses a grain-specific aggregate row bound and rejects excess platform groups rather than truncating totals.
 
 For multiple sales channels, copy Overview's `SalesChannelFilter` wrapper outside Suspense and `MultiChannelFilter` inside it. The wrapper owns one form value while the roster loads or fails. The shared `SALES_CHANNEL_PREDICATE` accepts bound legacy single-channel values and canonical JSON selections. Keep explicit All selections in links and exports as `sales_channel=` so customer defaults cannot reapply. See [reconciliation.md](reconciliation.md) for metric definitions and reference parity.
+
+## Dashboard definitions and evidence
+
+The optional `bindings` on `ReportPage` are feature-owned presentation bindings,
+not a metric registry. `src/lib/metric-binding.ts` compares their reviewed
+`contracts/dashboard-metrics-v1/definitions.json` producer snapshots with the
+store-free published catalog. Exact dependency IDs, missing definitions, cycles
+and changed calculations/filters/time expressions produce findings. They never
+change developer-authored SQL. Report-specific calculations omit `canonical` and
+continue working. Definition agreement does not prove numerical reconciliation.
+
+`loadReportMetadata` probes optional metadata capabilities, then reads one bounded
+batch, with request deduplication and a shared 2.5-second deadline. It adds at most
+two initial jobs to a report. Dictionary identity is dataset + table + actual store;
+repeated column-level table statistics are deduplicated, never summed. Conflicts
+stay inconsistent. Permission errors stay denied, while older missing optional
+formats retain reviewed formatting. Catalog update time is definition publication,
+not business freshness. Coarse flags and dictionary dates do not establish a
+successful load, delivery, selected-period completeness or quality-check result.
+
+The status strip is independent of business results. Features with their own
+controls set `dataStatusAfterControls` and render the supplied `dataStatus` after
+those controls. `/data` reuses the adapter for bounded searchable metrics and
+health evidence; Fields reuses AboutData's on-demand dictionary and Use this field.
+No generic categorical samples, free text, raw addresses or identifiers are exposed.
+
+## Shipping geography and order date basis
+
+`/geography` reads valid orders from `obt_orders`, by shipping country code and
+country-scoped state. It is neither customer residence nor ad-delivery geography.
+Explicit `date_basis=processed` uses the canonical processed timestamp with a
+created timestamp fallback; `created` is a clearly report-specific time scope.
+Orders URLs without the parameter retain their original processed-only behavior.
+Created-date SQL has no processed-date pruning predicate. Date ranges use local
+warehouse calendar dates, not an implicit UTC conversion.
+
+One aggregate query supplies independent full-population totals, up to 500 groups,
+an explicit remainder, comparison evidence and the selected-population trend.
+Unknown and unmapped locations remain in the table. Mapped-order coverage uses the
+same filtered count, never a top-N denominator. Geography has no ROAS or AOV.
+The Orders link preserves validity, geographic filters and date basis; unsupported
+comparison transitions are explained before opening selected-period details.
+
+Maps are local Natural Earth 5.1.1 public-domain SVG paths, with provenance,
+checksums, projection and code crosswalks in the feature's `assets/provenance.json`.
+Only country maps and US state maps ship. Other countries use regional tables.
+Geometry loads only within Geography, and only after opting in on mobile. Table
+links provide equivalent keyboard selection. Regenerate reviewed assets with
+`scripts/build-geography-maps.py`; see its arguments and the provenance sources.
+
+## Performance exploration and attribution
+
+Creatives defaults to Performance (`view=returns` remains compatible). Minimum
+spend and fractional conversions apply after period aggregation, before ranking.
+Compound platform/creative selections are bounded to four and read independently
+of top-N cards. Platform models, attribution windows and conversion-event settings
+are unknown unless separately verified. Selection identities are excluded from
+automatic agent context. Paid marketing links platform to campaign to creative.
+
+Order detail's Why attributed here reads safe fields from
+`fct_order_attribution_signals` only on request, verifies store/order membership and
+bounds signals to 100 with truncation disclosure. Priority 1 is the published
+per-order winner, not a reusable source code. Missing or multiple winners remain
+explicit; contextual evidence never receives invented revenue credit. Click IDs,
+full URLs, customer details and survey answers are excluded.
+
+`drillDown` is a pure scope check with explicit destination mappings. It never
+infers that sales channel means ad platform. Unsupported filters, populations,
+comparisons and date bases require an explanation or a correctly scoped panel.
+Sidebar links carry only the shared store, dates and a supported comparison; a new report starts fresh. Store changes clear
+entity identities, cursors, searches and creative/order selections.
+
+Overview's optional `/overview/export.json` produces raw results and context from
+one request, preserving exact decimal strings and INT64 strings. It includes
+filters, population, metric/source identities, timezone, currency verification,
+attribution, query times and unknown evidence. It is not an immutable snapshot.
+Existing CSV columns and raw values are unchanged. `/geography/export` adds a new
+scoped raw CSV with an independently aggregated total.

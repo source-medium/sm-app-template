@@ -26,8 +26,8 @@ export async function queryCreatives(filters: CreativesFilters): Promise<Creativ
   const names = adNamePredicate(filters.names);
   const result = await warehouse.query({
     name: "creatives",
-    partial: true,
-    maxRows: MAX_CREATIVES,
+    partial: !filters.selection,
+    maxRows: filters.selection ? 4 : MAX_CREATIVES,
     sql: `
       SELECT
         ad_creative_id AS creative_id,
@@ -54,7 +54,11 @@ export async function queryCreatives(filters: CreativesFilters): Promise<Creativ
         AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
         AND (@campaign = '' OR ad_campaign_id = @campaign)
         AND ${names.sql}
+        AND (@selection = '' OR EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(@selection)) AS selected
+          WHERE IFNULL(sm_channel, '(none)') = JSON_VALUE(selected, '$[0]') AND ad_creative_id = JSON_VALUE(selected, '$[1]')))
       GROUP BY creative_id, channel
+      HAVING (@minimum_spend = '' OR SUM(ad_spend) >= CAST(NULLIF(@minimum_spend, '') AS NUMERIC))
+        AND (@minimum_conversions = '' OR SUM(ad_platform_reported_conversions) >= CAST(NULLIF(@minimum_conversions, '') AS FLOAT64))
       ORDER BY ${ORDER_BY[filters.sort]} NULLS LAST, creative_id, channel
       LIMIT @limit`,
     params: [
@@ -63,7 +67,10 @@ export async function queryCreatives(filters: CreativesFilters): Promise<Creativ
       { name: "end_date", type: "DATE", value: filters.range.to },
       { name: "channel", type: "STRING", value: filters.channel ?? "" },
       { name: "campaign", type: "STRING", value: filters.campaign ?? "" },
-      { name: "limit", type: "INT64", value: MAX_CREATIVES + 1 },
+      { name: "limit", type: "INT64", value: filters.selection ? 5 : MAX_CREATIVES + 1 },
+      { name: "minimum_spend", type: "STRING", value: filters.minimumSpend ?? "" },
+      { name: "minimum_conversions", type: "STRING", value: filters.minimumConversions ?? "" },
+      { name: "selection", type: "STRING", value: filters.selection ? JSON.stringify(filters.selection) : "" },
       ...names.params,
     ],
   });

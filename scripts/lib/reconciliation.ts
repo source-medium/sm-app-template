@@ -6,7 +6,7 @@ import { salesChannelValues } from "../../src/lib/filters";
 const decimal = z.string().regex(/^-?\d+(?:\.\d{1,9})?$/);
 export const Reference = z
   .object({
-    report: z.enum(["overview", "business", "platforms"]),
+    report: z.enum(["overview", "business", "platforms", "geography"]),
     source: z.string().min(1).max(1000),
     store: z.string().min(1),
     from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -15,6 +15,9 @@ export const Reference = z
     channels: z.array(z.string().min(1)).max(50),
     grain: z.enum(["day", "week", "month"]),
     platform: z.string().default(""),
+    date_basis: z.enum(["created", "processed"]).optional(),
+    country: z.string().optional(),
+    region: z.string().optional(),
     metrics: z
       .array(
         z
@@ -28,7 +31,11 @@ export const Reference = z
       )
       .min(1),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.report === "geography" && !value.date_basis)
+      context.addIssue({ code: "custom", message: "Geography requires an explicit date basis" });
+  });
 
 /** CSV quoting, escaped quotes and embedded newlines, for bounded app exports. */
 export function parseCsv(text: string): Record<string, string>[] {
@@ -79,7 +86,12 @@ export function reconcile(reference: z.output<typeof Reference>, rows: Record<st
         row.reporting_currency !== reference.currency ||
         row.grain !== reference.grain ||
         JSON.stringify(salesChannelValues(row.sales_channels ?? row.sales_channel)) !== JSON.stringify(channels) ||
-        (reference.report === "platforms" && row.platform !== (reference.platform || "combined")),
+        (reference.report === "platforms" && row.platform !== (reference.platform || "combined")) ||
+        (reference.report === "geography" &&
+          (row.date_basis !== reference.date_basis ||
+            row.population !== "valid" ||
+            row.country !== (reference.country ?? "") ||
+            row.region !== (reference.region ?? ""))),
     )
   )
     throw new Error(

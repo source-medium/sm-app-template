@@ -1,30 +1,32 @@
 /**
  * Orders' data contract, from obt_orders (one row per order). Orders are
- * listed by when they were processed, in store-local time
- * (order_processed_at_local_datetime): SourceMedium partitions obt_orders on
- * that column, so the date filter prunes partitions instead of scanning
- * every order. Pages are keyset-paginated in SQL (newest first, then by
+ * listed by processed store-local time by default. Explicit processed uses
+ * the canonical created-time fallback; explicit created uses created local time.
+ * Only the legacy processed-only query prunes the processed partition directly. Pages are keyset-paginated in SQL (newest first, then by
  * order key) because a BigQuery page token cannot span requests. Search is a
  * bounded, parameterized match on the order name, number, or id. Money is in
  * the warehouse's reporting currency.
  */
 import "server-only";
+import type { OrderAttribution } from "./attribution";
+import type { OrderDateBasis } from "@/lib/order-scope";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { Instant } from "@/lib/data/decode";
 import type { ReportFilters } from "@/lib/filters";
-import { queryOrderChannels, queryOrderDetail, queryOrders } from "./bigquery";
-import { sampleOrderChannels, sampleOrderDetail, sampleOrders } from "./sample";
+import { queryOrderAttribution, queryOrderChannels, queryOrderDetail, queryOrders } from "./bigquery";
+import { sampleOrderAttribution, sampleOrderChannels, sampleOrderDetail, sampleOrders } from "./sample";
 
 export const PAGE_SIZE = 25;
 
 /** A position in the list, or one order: its processed wall time and its key. */
-export type OrderRef = { processedLocal: string; key: string };
+export type OrderRef = { processedLocal: string; key: string; dateBasis?: OrderDateBasis };
 
 export type OrderSummary = {
   key: string;
   name: string | null;
   /** Store-local wall time as published (DATETIME), such as "2026-10-04T13:22:11". */
-  processedLocal: string;
+  processedLocal: string | null;
+  scopeLocal: string;
   channel: string | null;
   subChannel: string | null;
   orderType: string | null;
@@ -60,7 +62,15 @@ export type OrderDetail = OrderSummary & {
   isValidOrder: boolean | null;
 };
 
-export type OrdersFilters = ReportFilters & { search: string | null; cursor: OrderRef | null; channel?: string | null };
+export type OrdersFilters = ReportFilters & {
+  search: string | null;
+  cursor: OrderRef | null;
+  channel?: string | null;
+  dateBasis?: OrderDateBasis | null;
+  validOnly?: boolean;
+  country?: string | null;
+  region?: string | null;
+};
 export type OrdersPage = { orders: OrderSummary[]; nextCursor: OrderRef | null };
 
 export async function getOrders(filters: OrdersFilters): Promise<OrdersPage> {
@@ -78,7 +88,9 @@ const DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?$/;
 
 /** An order reference as base64url JSON for the URL. */
 export function encodeRef(ref: OrderRef): string {
-  const json = JSON.stringify([ref.processedLocal, ref.key]);
+  const json = JSON.stringify(
+    ref.dateBasis ? [ref.processedLocal, ref.key, ref.dateBasis] : [ref.processedLocal, ref.key],
+  );
   const bytes = new TextEncoder().encode(json);
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -91,17 +103,26 @@ export function decodeRef(value: string | undefined): OrderRef | null {
   try {
     const binary = atob(value.replace(/-/g, "+").replace(/_/g, "/"));
     const json: unknown = JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0))));
-    if (!Array.isArray(json) || json.length !== 2) return null;
-    const [processedLocal, key] = json as unknown[];
+    if (!Array.isArray(json) || (json.length !== 2 && json.length !== 3)) return null;
+    const [processedLocal, key, dateBasis] = json as unknown[];
     if (typeof processedLocal !== "string" || !DATETIME.test(processedLocal)) return null;
     if (typeof key !== "string" || key.length === 0 || key.length > 200) return null;
-    return { processedLocal, key };
+    if (dateBasis !== undefined && dateBasis !== "created" && dateBasis !== "processed") return null;
+    return { processedLocal, key, ...(dateBasis ? { dateBasis } : {}) };
   } catch {
     return null;
   }
 }
 
-export async function getOrderChannels(filters: ReportFilters): Promise<string[]> {
+export async function getOrderChannels(
+  filters: ReportFilters & Pick<OrdersFilters, "dateBasis" | "validOnly" | "country" | "region">,
+): Promise<string[]> {
   const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live" ? queryOrderChannels(filters) : sampleOrderChannels(filters);
+}
+
+export async function getOrderAttribution(storeId: string, ref: OrderRef): Promise<OrderAttribution> {
+  const access = await requireViewer({ storeId });
+  if (access.mode === "live") return queryOrderAttribution(storeId, ref.key);
+  return sampleOrderAttribution(storeId, ref);
 }

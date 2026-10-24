@@ -33,7 +33,7 @@ export function StoreComparisonTable({
     if (issue) notes.push({ id: store.id, label: store.label, issue });
     const status = !summary?.latest_date
       ? "No rows in selected period"
-      : `Rows through ${formatDate(summary.latest_date)}${incomplete ? " · Today may be incomplete" : coverage.issue ? " · Changes hidden" : ""}`;
+      : `Latest recorded summary date: ${formatDate(summary.latest_date)}${incomplete ? " · Today may be incomplete" : coverage.issue ? " · Changes hidden" : ""}`;
     return {
       id: store.id,
       cells: {
@@ -78,10 +78,10 @@ export function StoreComparisonTable({
           ...(data.some(({ store }) => store.brand) ? [{ key: "brand", header: "Brand" }] : []),
           { key: "currency", header: "Currency" },
           { key: "revenue", header: "Net revenue", align: "right", sortable: false },
-          ...(baseline ? [{ key: "change", header: "Revenue change", align: "right" as const }] : []),
+          ...(baseline ? [{ key: "change", header: "Revenue change", align: "right" as const, sortable: false }] : []),
           { key: "orders", header: "Summary orders", align: "right" },
           { key: "spend", header: "Ad spend", align: "right", sortable: false },
-          { key: "status", header: "Period coverage", sortable: false },
+          { key: "status", header: "Selected-period records", sortable: false },
         ]}
       />
       {!!notes.length && (
@@ -96,7 +96,8 @@ export function StoreComparisonTable({
         </Disclosure>
       )}
       <p className="text-xs text-muted-foreground">
-        Period coverage describes rows in the selected dates, not warehouse freshness.{" "}
+        Selected-period records describe rows in the selected dates, not warehouse freshness. Pipeline freshness, period
+        completeness and quality checks are not published for any store.{" "}
         {data.some(({ store }) => store.timeZone === null) &&
           "Some stores have no known time zone; their current-day completeness is unknown."}
       </p>

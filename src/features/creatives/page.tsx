@@ -1,3 +1,7 @@
+import { creativeBindings, creativeBinding } from "./metrics";
+import { MetricDefinition } from "@/components/patterns/metric-definition";
+import { Input } from "@/components/ui/input";
+import { parseCreativeThreshold, parseCreativeSelection, type CreativeIdentity } from "./filters";
 import { CREATIVE_RELATION } from "./rows";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -14,7 +18,7 @@ import { AdNameMatches } from "@/components/patterns/ad-name-matches";
 import { parseAdNameFilters, serializeAdNameFilters } from "@/lib/ad-name-filters";
 import { ReportPage } from "@/components/shell/report-page";
 import { parseChoice, single, withParams, REPORT_FILTER_FORM_ID, type SearchParams } from "@/lib/filters";
-import { formatCount, formatMeasure, formatMoney, formatPercent, formatMultiple } from "@/lib/format";
+import { formatCount, formatAttributedConversions, formatMoney, formatPercent, formatMultiple } from "@/lib/format";
 import { Disclosure } from "@/components/ui/disclosure";
 import {
   CREATIVE_SORTS,
@@ -43,12 +47,20 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
   const params = await searchParams;
   const channel = single(params, "channel")?.slice(0, 100) || null;
   const campaign = single(params, "campaign")?.slice(0, 200) || null;
-  const view = parseChoice(params, "view", ["delivery", "returns", "table"] as const, "delivery");
+  const view = parseChoice(params, "view", ["delivery", "returns", "table"] as const, "returns");
+  const minimumSpend = parseCreativeThreshold(single(params, "min_spend"));
+  const minimumConversions = parseCreativeThreshold(single(params, "min_conversions"));
+  const thresholdError =
+    (single(params, "min_spend") && minimumSpend === null) ||
+    (single(params, "min_conversions") && minimumConversions === null);
+  const selection = parseCreativeSelection(params);
   const sort = parseChoice(params, "sort", CREATIVE_SORTS, "spend");
   const names = parseAdNameFilters(params);
   const nameKey = serializeAdNameFilters(names.rules);
   return (
     <ReportPage
+      bindings={creativeBindings}
+      dataStatusAfterControls
       sources={[
         {
           relation: CREATIVE_RELATION,
@@ -57,13 +69,24 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
         },
       ]}
       title="Creatives"
-      description="Creative delivery and platform-reported returns for the selected dates."
+      description="Explore creative performance with spend, platform attribution and conversion volume together."
       pathname={PATHNAME}
       params={params}
-      agentFilters={{ channel, sort, campaign, view, names: nameKey }}
-      agentOmissions={names.error ? ["Invalid name filters prevented this report from loading."] : []}
+      agentFilters={{
+        channel,
+        sort,
+        campaign,
+        view,
+        names: nameKey,
+        min_spend: minimumSpend,
+        min_conversions: minimumConversions,
+      }}
+      agentOmissions={[
+        ...(names.error ? ["Invalid name filters prevented this report from loading."] : []),
+        ...(single(params, "selection") ? ["Selected creative identities"] : []),
+      ]}
     >
-      {({ filters, timeZone, currency, params: applied }) => (
+      {({ filters, timeZone, currency, params: applied, dataStatus }) => (
         <div className="flex flex-col gap-4">
           <AdNameFilter
             pathname={PATHNAME}
@@ -75,12 +98,54 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
           {campaign && (
             <p className="text-sm">
               Campaign: {campaign}.{" "}
-              <Link className="underline underline-offset-4" href={withParams(PATHNAME, params, { campaign: null })}>
+              <Link
+                prefetch={false}
+                className="underline underline-offset-4"
+                href={withParams(PATHNAME, params, { campaign: null })}
+              >
                 Show all campaigns
               </Link>
             </p>
           )}
-          {!names.error && (
+          {selection.error && (
+            <p role="status">
+              {selection.error}{" "}
+              <Link prefetch={false} className="underline" href={withParams(PATHNAME, applied, { selection: null })}>
+                Clear selection
+              </Link>
+            </p>
+          )}
+          <div className="flex flex-wrap gap-4">
+            <label htmlFor="creative-min-spend" className="space-y-1 text-sm">
+              Minimum spend
+              <Input
+                id="creative-min-spend"
+                name="min_spend"
+                inputMode="decimal"
+                defaultValue={minimumSpend ?? ""}
+                form={REPORT_FILTER_FORM_ID}
+                placeholder="No minimum"
+              />
+            </label>
+            <label htmlFor="creative-min-conversions" className="space-y-1 text-sm">
+              Minimum conversions
+              <Input
+                id="creative-min-conversions"
+                name="min_conversions"
+                inputMode="decimal"
+                defaultValue={minimumConversions ?? ""}
+                form={REPORT_FILTER_FORM_ID}
+                placeholder="No minimum"
+              />
+            </label>
+          </div>
+          {thresholdError && (
+            <p role="status">
+              Minimums must be non-negative decimal amounts with at most nine decimal places. Correct or clear the
+              minimum to load this report.
+            </p>
+          )}
+          {!names.error && !thresholdError && (
             <>
               {names.rules.length > 0 && (
                 <Disclosure summary="Matching names">
@@ -106,8 +171,8 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                   value={view}
                   options={[
                     { value: "delivery", label: "Delivery cards" },
-                    { value: "returns", label: "Returns cards" },
-                    { value: "table", label: "Returns table" },
+                    { value: "returns", label: "Performance cards" },
+                    { value: "table", label: "Performance table" },
                   ]}
                 />
                 <Suspense
@@ -138,13 +203,101 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                   options={CREATIVE_SORTS.map((value) => ({ value, label: SORT_LABELS[value] }))}
                 />
               </div>
+              {dataStatus}
+              {selection.items.length > 0 && (
+                <input
+                  type="hidden"
+                  name="selection"
+                  value={JSON.stringify(selection.items)}
+                  form={REPORT_FILTER_FORM_ID}
+                />
+              )}
+              {selection.items.length > 0 && (
+                <section aria-labelledby="creative-comparison-heading" className="space-y-3">
+                  <h2 id="creative-comparison-heading" className="text-lg font-semibold">
+                    Creative comparison ({selection.items.length}/4)
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Choose two to four creatives. Every value uses the same store, dates and filters. Platform-reported
+                    conversions can be fractional; attribution models, windows and conversion-event settings are
+                    unverified. Different platforms do not establish comparable winners.
+                  </p>
+                  <Link
+                    prefetch={false}
+                    className="text-sm underline"
+                    href={withParams(PATHNAME, applied, { selection: null })}
+                  >
+                    Clear selection
+                  </Link>
+                  {selection.items.length >= 2 && (
+                    <Suspense
+                      key={JSON.stringify([
+                        filters,
+                        channel,
+                        campaign,
+                        nameKey,
+                        minimumSpend,
+                        minimumConversions,
+                        selection.items,
+                      ])}
+                      fallback={<LoadingState variant="table" label="Loading selected creatives" />}
+                    >
+                      <DataRegion
+                        timestamp={timeZone}
+                        load={() =>
+                          getCreatives({
+                            ...filters,
+                            sort,
+                            channel,
+                            campaign,
+                            names: names.rules,
+                            minimumSpend,
+                            minimumConversions,
+                            selection: selection.items,
+                          })
+                        }
+                        isEmpty={(data) => data.creatives.length === 0}
+                        emptyMessage="None of the selected creatives match the applied scope and thresholds."
+                      >
+                        {(data) => (
+                          <>
+                            <p className="text-sm">
+                              {data.creatives.length} of {selection.items.length} selected creatives match. Missing
+                              selections are not zero.
+                            </p>
+                            <CreativesView
+                              data={data}
+                              currency={currency}
+                              timeZone={timeZone}
+                              view="returns"
+                              selection={selection.items}
+                              params={{ ...applied, ...filters.range }}
+                              comparison
+                            />
+                          </>
+                        )}
+                      </DataRegion>
+                    </Suspense>
+                  )}
+                </section>
+              )}
               <Suspense
-                key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${sort}|${channel}|${campaign}|${view}|${nameKey}`}
+                key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${sort}|${channel}|${campaign}|${view}|${nameKey}|${minimumSpend}|${minimumConversions}`}
                 fallback={<LoadingState variant="grid" label="Loading creatives" />}
               >
                 <DataRegion
                   timestamp={timeZone}
-                  load={() => getCreatives({ ...filters, sort, channel, campaign, names: names.rules })}
+                  load={() =>
+                    getCreatives({
+                      ...filters,
+                      sort,
+                      channel,
+                      campaign,
+                      names: names.rules,
+                      minimumSpend,
+                      minimumConversions,
+                    })
+                  }
                   isEmpty={(data) => data.creatives.length === 0}
                   emptyMessage={
                     names.rules.length
@@ -159,7 +312,16 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                         : undefined
                   }
                 >
-                  {(data) => <CreativesView data={data} currency={currency} view={view} />}
+                  {(data) => (
+                    <CreativesView
+                      data={data}
+                      currency={currency}
+                      timeZone={timeZone}
+                      view={view}
+                      selection={selection.items}
+                      params={{ ...applied, ...filters.range }}
+                    />
+                  )}
                 </DataRegion>
               </Suspense>
             </>
@@ -173,10 +335,18 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
 function CreativesView({
   data,
   currency,
+  timeZone,
   view,
+  selection,
+  params,
+  comparison = false,
 }: {
+  selection: readonly CreativeIdentity[];
+  params: SearchParams;
+  comparison?: boolean;
   data: CreativesData;
   currency: string | null;
+  timeZone: string;
   view: "delivery" | "returns" | "table";
 }) {
   return (
@@ -190,7 +360,7 @@ function CreativesView({
       </Disclosure>
       {view === "table" ? (
         <DataTable
-          caption="Creative returns"
+          caption="Creative performance"
           truncated={data.truncated}
           columns={[
             { key: "name", header: "Creative" },
@@ -208,7 +378,7 @@ function CreativesView({
               channel: { display: c.channel ?? "(none)" },
               spend: { display: formatMoney(c.spend, currency), sort: decimalToNumber(c.spend) },
               revenue: { display: formatMoney(c.revenue, currency), sort: c.revenue },
-              conversions: { display: formatMeasure(c.conversions), sort: c.conversions },
+              conversions: { display: formatAttributedConversions(c.conversions), sort: c.conversions },
               roas: { display: formatMultiple(c.roas), sort: c.roas },
               cpo: { display: formatMoney(c.cpo, currency), sort: c.cpo },
             },
@@ -216,7 +386,7 @@ function CreativesView({
         />
       ) : (
         <CardGrid
-          label="Ad creatives"
+          label={comparison ? "Selected creatives" : "Ad creatives"}
           cards={data.creatives.map((creative) => ({
             id: JSON.stringify([creative.channel, creative.creativeId]),
             title: creative.title ?? creative.body ?? `Creative ${creative.creativeId}`,
@@ -226,21 +396,66 @@ function CreativesView({
                 .join(" · ") || null,
             badge: creative.channel,
             imageUrl: creative.imageUrl,
+            definitionLabel: "About platform ROAS",
+            definition: (
+              <MetricDefinition
+                binding={creativeBinding("roas")}
+                scope={{
+                  filters: {
+                    store: single(params, "store") ?? null,
+                    from: single(params, "from") ?? null,
+                    to: single(params, "to") ?? null,
+                    channel: creative.channel,
+                    campaign: single(params, "campaign") ?? null,
+                    min_spend: single(params, "min_spend") ?? null,
+                    min_conversions: single(params, "min_conversions") ?? null,
+                  },
+                  currency,
+                  timeZone,
+                }}
+              />
+            ),
+            footer: (() => {
+              const identity: CreativeIdentity = [creative.channel ?? "(none)", creative.creativeId];
+              const selected = selection.some(([channel, id]) => channel === identity[0] && id === identity[1]);
+              if (!selected && selection.length >= 4)
+                return <span className="text-sm text-muted-foreground">Four selected</span>;
+              const next = selected
+                ? selection.filter(([channel, id]) => channel !== identity[0] || id !== identity[1])
+                : [...selection, identity];
+              return (
+                <Link
+                  prefetch={false}
+                  className="text-sm underline underline-offset-4"
+                  href={withParams(PATHNAME, params, { selection: next.length ? JSON.stringify(next) : null })}
+                >
+                  {selected ? "Remove from comparison" : "Compare creative"}
+                </Link>
+              );
+            })(),
             action: creative.adUrl ? { href: creative.adUrl, label: "Open ad" } : undefined,
             metrics:
               view === "returns"
                 ? [
-                    { label: "Spend", display: formatMoney(creative.spend, currency) },
-                    { label: "Platform revenue", display: formatMoney(creative.revenue, currency) },
+                    {
+                      label: "Spend",
+                      display: formatMoney(creative.spend, currency),
+                    },
                     { label: "Platform ROAS", display: formatMultiple(creative.roas) },
                     { label: "Cost / conversion", display: formatMoney(creative.cpo, currency) },
-                    { label: "Conversions", display: formatMeasure(creative.conversions) },
-                  ]
-                : [
-                    { label: "Spend", display: formatMoney(creative.spend, currency) },
+                    { label: "Conversions", display: formatAttributedConversions(creative.conversions) },
+                    { label: "Platform revenue", display: formatMoney(creative.revenue, currency) },
                     { label: "Impressions", display: formatCount(creative.impressions) },
                     { label: "CTR", display: formatPercent(creative.ctr) },
-                    { label: "Conversions", display: formatMeasure(creative.conversions) },
+                  ]
+                : [
+                    {
+                      label: "Spend",
+                      display: formatMoney(creative.spend, currency),
+                    },
+                    { label: "Impressions", display: formatCount(creative.impressions) },
+                    { label: "CTR", display: formatPercent(creative.ctr) },
+                    { label: "Conversions", display: formatAttributedConversions(creative.conversions) },
                   ],
           }))}
         />

@@ -2,6 +2,12 @@ import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { KpiCard } from "@/components/patterns/kpi-card";
 
+it("exposes the full value as text when the visual headline is compact", () => {
+  render(<KpiCard label="Revenue" value="$1.23M" fullValue="$1,234,567.89" period="Selected dates" />);
+  expect(screen.getByText("$1.23M")).toHaveAttribute("aria-hidden", "true");
+  expect(screen.getByText("$1,234,567.89")).toHaveClass("sr-only");
+});
+
 function card(values: (number | bigint | null)[]) {
   return render(
     <KpiCard label="Revenue" value="1.00" period="Selected dates" trend={{ values, tableHref: "#daily" }} />,

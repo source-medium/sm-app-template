@@ -2,13 +2,50 @@
 
 ## Start with a working dashboard. Make it yours.
 
-Seven commerce reports for your SourceMedium warehouse, ready to run. Use
-Codex or Claude Code to change a metric, rework a view, or build your next report.
-The app and its source code are yours.
+Ten commerce reports for your SourceMedium warehouse, ready to run, with every
+number linked to its published definition, its supporting records, and what the
+data can and cannot tell you. Use Codex or Claude Code to change a metric,
+rework a view, or build your next report. The app and its source code are yours.
 
 **[Run it locally](#run-it-locally)** ·
-[Explore the reports](#eight-reports-to-start-from) ·
+[See the reports](#ten-reports-to-start-from) ·
 [Open the demo](https://sm-app-starter-demo.source-medium.workers.dev)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.jpg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/overview-light.jpg">
+  <img alt="Overview: net revenue, summary orders, ad spend and marketing efficiency with period comparisons, a plain-English summary of what moved, and a selectable trend chart." src="docs/images/overview-light.jpg" width="1440">
+</picture>
+
+_Every screenshot uses synthetic sample data. The hosted demo reads SourceMedium's
+demo warehouse. No sign-in required._
+
+## What you get
+
+- **Reports that lead with the answer.** Four primary metrics, a one-sentence
+  readout of what moved, one large trend you switch without a new query, and
+  the biggest changes by sales channel, all on one screen.
+- **Sales by geography.** Valid-order revenue by shipping country and U.S.
+  state on bundled, public-domain maps. No tiles, no map API keys, no
+  geocoding. Every map group reconciles to an independently queried total.
+- **Every number explains itself.** "About this number" on cards, charts, and
+  table columns shows the published SourceMedium definition, the exact
+  calculation, population, date basis, currency, and attribution behind it.
+- **Attribution you can inspect.** Open any order and ask "Why attributed
+  here?" to see the published winning source, its rank, and the supporting
+  evidence, without raw click IDs or survey text.
+- **Honest data status.** A compact strip under the filters says what the
+  warehouse actually published about freshness, completeness, and quality,
+  and never infers "all current" from a recent record date.
+- **Side-by-side creatives.** Compare two to four creatives at identical
+  scope, with minimum-spend and minimum-conversion thresholds applied after
+  aggregation.
+- **Data & definitions.** A searchable catalog of published metric definitions,
+  field documentation, and source availability, served from the same adapter
+  the reports use.
+- **Exports with context.** CSV downloads keep raw values. A JSON export adds
+  the filters, timezone, currency verification, metric identities, and
+  limitations from the same request.
 
 ### A report should answer your question
 
@@ -20,7 +57,7 @@ and describe the change:
 **Before: impressions. After: cost per conversion.**
 
 <p>
-  <img src="docs/images/customize-before.jpg" width="390" alt="Before: the default creative card shows $5,456.90 spend, 477,662 impressions, 1.24% CTR, and 249.5 conversions.">
+  <img src="docs/images/customize-before.jpg" width="390" alt="Before: the default Delivery card shows $5,456.90 spend, 477,662 impressions, 1.24% CTR, and 249.5 conversions.">
   <img src="docs/images/customize-after.jpg" width="390" alt="After customization: the same card shows $21.87 cost per conversion in place of impressions. The other metrics stay the same.">
 </p>
 
@@ -34,10 +71,10 @@ default card; this example shows what you can change._
 <details>
 <summary><strong>See the prompt and the code change</strong></summary>
 
-<img src="docs/images/vibe-code.jpg" width="448" alt="Vibe code with the request written out and Ad creatives, Card 1 selected as its target.">
+<img src="docs/images/vibe-code.jpg" width="448" alt="Vibe code with the request written out and Ad creatives, Card 1, Impressions selected as its target.">
 
-The metric already exists in the Returns view. This customization reuses it in
-Delivery cards. In [`src/features/creatives/page.tsx`](src/features/creatives/page.tsx),
+The metric already exists in the Performance view. This customization reuses it
+in Delivery cards. In [`src/features/creatives/page.tsx`](src/features/creatives/page.tsx),
 replace the Impressions entry in the Delivery metrics:
 
 ```diff
@@ -45,9 +82,9 @@ replace the Impressions entry in the Delivery metrics:
 + { label: "Cost / conversion", display: formatMoney(creative.cpo, currency) },
 ```
 
-Remove the now-unused `formatCount` import. The existing calculation uses period
-spend / platform-reported conversions and shows an empty value when there are no
-conversions. No query or schema change is needed.
+The existing calculation uses period spend / platform-reported conversions and
+shows an empty value when there are no conversions. No query or schema change
+is needed.
 
 The Vibe code panel prepares context for an agent working in your repo. It does
 not run an agent inside the dashboard. See [more things to ask](docs/prompts.md).
@@ -69,31 +106,61 @@ Open **http://127.0.0.1:3000**. Sample data works immediately, with no credentia
 database setup, or AI API key. Or give your agent the [setup prompt](docs/cloud.md#your-first-message-in-either-agent)
 and let it guide you through connecting your warehouse and hosting the app.
 
-## Eight reports to start from
+## Ten reports to start from
 
 Store selection travels between reports, and report filters live in shareable
 URLs. Period comparisons, CSV exports where available, chart-to-table views,
 and light and dark modes are already in place.
 
+| Report                 | Start with this question                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------ |
+| **Overview**           | How did revenue, orders, and spend change, and which channels moved?                 |
+| **Performance tables** | How do business metrics and platform totals compare by day, week or month?           |
+| **All stores**         | Which stores are growing, and which need a look?                                     |
+| **Paid marketing**     | Where is spend going, and what returns do platforms report?                          |
+| **Creatives**          | Which ads are delivering, at what cost, and how do they compare side by side?        |
+| **Products**           | Which products and variants drive sales, and which gained or declined?               |
+| **Retention**          | How do customers from each cohort return over time?                                  |
+| **Orders**             | What happened with a particular order, and why was it attributed where it was?       |
+| **Geography**          | Where are valid-order sales happening, and which shipping destinations are changing? |
+| **Data & definitions** | What do these metrics mean, and which evidence is available?                         |
+
+### Where sales are happening
+
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.jpg">
-  <source media="(prefers-color-scheme: light)" srcset="docs/images/overview-light.jpg">
-  <img alt="Overview: revenue, orders, ad spend, and other headline metrics with sparklines and period comparisons." src="docs/images/overview-light.jpg" width="1440">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/geography-dark.jpg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/geography-light.jpg">
+  <img alt="Sales by geography: valid-order net revenue and order totals, a world map shaded by valid orders, and a ranked table of shipping destinations that reconciles to an independent total." src="docs/images/geography-light.jpg" width="1440">
 </picture>
 
-_All screenshots use synthetic sample data. The hosted demo reads SourceMedium's
-demo warehouse. No sign-in required._
+Select a country to see its regions, or a U.S. state to see its orders. The
+table offers the same selection by keyboard, mobile stays table-first with an
+optional map, and map geometry loads only on this page. Unknown and unmapped
+destinations stay visible, and mapped-order coverage is shown against the same
+population as the total.
 
-| Report                 | Start with this question                                                   |
-| ---------------------- | -------------------------------------------------------------------------- |
-| **Overview**           | How did revenue, orders, and spend change?                                 |
-| **Performance tables** | How do business metrics and platform totals compare by day, week or month? |
-| **All stores**         | Which stores are growing, and which need a look?                           |
-| **Paid marketing**     | Where is spend going, and what returns are reported?                       |
-| **Creatives**          | Which ads are delivering, and at what cost?                                |
-| **Products**           | Which products and variants drive sales?                                   |
-| **Retention**          | How do customers from each cohort return over time?                        |
-| **Orders**             | What happened with a particular order?                                     |
+### Every number explains itself
+
+<img src="docs/images/about-number.jpg" width="1440" alt="The net revenue trend chart with About this number open: canonical identity, the published definition, the report's calculation, source fields, grain, population, date basis, timezone, currency, attribution, and applied filters.">
+
+Definitions come from your warehouse's published semantic metric catalog, with
+the report's own population, filters, and date basis stated beside them. A
+report-specific calculation says so. If a published definition changes, the
+status strip raises a finding for maintainer review instead of silently
+changing a number.
+
+<p>
+  <img src="docs/images/attribution.jpg" width="300" alt="Why attributed here? for one order: the published primary winner with its rank, marketing channel, canonical source and medium, and inference method, then contextual survey evidence listed separately.">
+  <img src="docs/images/data.jpg" width="640" alt="Data & definitions, Metrics tab, searching for revenue with the Order Net Revenue definition expanded: name, description, calculation, published filter, source, time expression, grains, dependencies, aliases, and display unit.">
+</p>
+
+### Compare creatives side by side
+
+<img src="docs/images/creatives-compare.jpg" width="1084" alt="Creative comparison with two Meta creatives selected, showing spend, platform ROAS, cost per conversion, conversions, platform revenue, impressions, and CTR for each at identical scope.">
+
+Pick up to four creatives from the cards. The comparison fetches exactly those
+identities at the same store, dates, and filters, keeps platform-reported
+attribution labeled as such, and never declares a winner across platforms.
 
 <details>
 <summary><strong>Compare stores, then drill into one</strong></summary>
@@ -113,7 +180,7 @@ Filter campaign, ad set, or ad names by text such as `[retargeting]`. Combine
 contains, does not contain, equals, and starts with rules, then inspect matching
 names. Your text is treated literally, with no tag taxonomy to configure.
 
-![Creative cards filtered to campaign names containing “[retargeting]”.](docs/images/creatives.jpg)
+![Creative Performance cards filtered to campaign names containing “[retargeting]”, with minimum spend and minimum conversion thresholds available.](docs/images/creatives.jpg)
 
 Filters travel with the report link. Creative metrics reflect the matching
 ad delivery, including when one creative appears in several campaigns.
@@ -125,6 +192,7 @@ ad delivery, including when one creative appears in several campaigns.
 
 Compare cohorts at the same age, filter acquisition channels, and switch the
 matrix between retention, repeat purchase, revenue, and gross profit measures.
+Ages that are not yet observable are marked distinctly from months with no data.
 
 ![Retention curves and a cohort matrix, using synthetic sample data.](docs/images/retention.jpg)
 
@@ -134,6 +202,24 @@ Each view owns its queries, sample data, and presentation. Copy the closest one
 or [remove the examples](docs/removing-the-example.md). Change your name, logo,
 and navigation in [`app.config.ts`](app.config.ts), and your colors and fonts in
 [`src/styles/tokens.css`](src/styles/tokens.css).
+
+## Built to be trusted
+
+- **Numbers are exact.** Decimals stay exact through aggregation and export.
+  Ratios divide aggregated numerators and denominators, never averaged daily
+  ratios. Missing is never shown as zero, and fractional attributed conversions
+  stay fractional.
+- **Populations stay distinct.** Executive Summary orders are not valid-order
+  counts, revenue per summary order is not AOV, and platform ROAS is not store
+  marketing efficiency. The app says which one you are looking at.
+- **Scope travels, and nothing is dropped silently.** Drill-downs carry store,
+  dates, population, date basis, and compatible filters, and explain any
+  transition they cannot preserve.
+- **Access is enforced everywhere.** Every data function, route handler, and
+  export checks the viewer and the store scope. SQL is written by developers and
+  parameterized; browser input never becomes an identifier.
+- **Private by default.** Pages are `private, no-store`, queries run on the
+  server, and nothing sensitive reaches telemetry or agent prompts.
 
 ## Put your version online
 
@@ -161,7 +247,8 @@ If Dashboards & Apps says credentials are still being enabled, use sample data a
 The repo uses Next.js, React, TypeScript, shadcn/ui, Tailwind, and Recharts.
 It includes [agent instructions](AGENTS.md), skills for adding pages, querying
 data and deploying, and checks for auth, store scope, data contracts, and browser
-accessibility. Warehouse queries run on the server.
+accessibility (WCAG 2.2 AA with axe, keyboard, and 320px reflow coverage).
+Warehouse queries run on the server.
 
 ```sh
 pnpm check      # Format, lint, types, guardrails, and unit tests

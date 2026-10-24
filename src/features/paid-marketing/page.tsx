@@ -1,3 +1,4 @@
+import { drillDown } from "@/lib/drill-down";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { appConfig } from "@/app.config";
@@ -70,6 +71,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
 
   return (
     <ReportPage
+      dataStatusAfterControls
       sources={[
         {
           relation: AD_RELATION,
@@ -92,12 +94,12 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
       agentOmissions={names.error ? ["Invalid name filters prevented this report from loading."] : []}
       comparisonLabel="Compare spend breakdown with"
     >
-      {({ filters, comparison, params: applied, timeZone, currency }) => {
+      {({ filters, comparison, params: applied, timeZone, currency, dataStatus }) => {
         const paidFilters: PaidMarketingFilters = { ...filters, channel, names: names.rules };
         const paidData = names.error ? null : getPaidMarketing(paidFilters);
         paidData?.catch(() => undefined); // Both regions handle the same query's failure.
         const appliedChannel = (
-          <ChannelFilter name="channel" label="Channel" value={channel} channels={[]} allLabel="All channels" />
+          <ChannelFilter name="channel" label="Ad platform" value={channel} channels={[]} allLabel="All channels" />
         );
         return (
           <>
@@ -140,7 +142,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                       {(channels) => (
                         <ChannelFilter
                           name="channel"
-                          label="Channel"
+                          label="Ad platform"
                           value={channel}
                           channels={channels}
                           allLabel="All channels"
@@ -149,6 +151,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                     </DataRegion>
                   </Suspense>
                 </div>
+                {dataStatus}
                 {names.rules.length > 0 && (
                   <Disclosure summary="Matching names">
                     <Suspense
@@ -338,8 +341,9 @@ function PaidMarketingView({
             />
             <p className="text-xs text-muted-foreground">
               CSV includes all loaded campaigns, up to {MAX_CAMPAIGNS}, with raw values and a partial-results flag.
-              {hasCreatives && " Select a campaign to inspect its creatives."} Spend without a campaign ID appears as
-              (none) in the spend breakdown by campaign.
+              {hasCreatives &&
+                " Select an ad platform, then a campaign to inspect its creatives. Campaign links preserve the selected period and name filters; the separate spend-breakdown comparison does not apply to creative cards."}{" "}
+              Spend without a campaign ID appears as (none) in the spend breakdown by campaign.
             </p>
             <DataTable
               caption="Campaigns by spend"
@@ -366,21 +370,32 @@ function PaidMarketingView({
                     campaign: {
                       display: campaign.campaignName ?? campaign.campaignId,
                       href: hasCreatives
-                        ? withParams(
-                            "/creatives",
-                            {},
+                        ? (drillDown(
                             {
                               store: filters.storeId,
                               ...filters.range,
-                              channel: campaign.channel ?? "(none)",
-                              campaign: campaign.campaignId,
-                              view: "returns",
-                              names: serializeAdNameFilters(filters.names ?? []),
+                              dateBasis: "ad-date",
+                              population: "platform delivery",
+                              filters: {
+                                channel: campaign.channel ?? "(none)",
+                                campaign: campaign.campaignId,
+                                names: serializeAdNameFilters(filters.names ?? []),
+                              },
                             },
-                          )
+                            {
+                              pathname: "/creatives",
+                              dateBasis: "ad-date",
+                              population: "platform delivery",
+                              filters: { channel: "channel", campaign: "campaign", names: "names" },
+                              required: { view: "returns" },
+                            },
+                          ).href ?? undefined)
                         : undefined,
                     },
-                    channel: { display: campaign.channel ?? EMPTY_VALUE },
+                    channel: {
+                      display: campaign.channel ?? EMPTY_VALUE,
+                      href: withParams(PATHNAME, params, { channel: campaign.channel ?? "(none)" }),
+                    },
                     spend: { display: money(campaign.spend), sort: spend },
                     impressions: { display: formatCount(campaign.impressions), sort: impressions },
                     clicks: { display: formatCount(campaign.clicks), sort: clicks },

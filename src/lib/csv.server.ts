@@ -42,6 +42,7 @@ export type ExportScope = {
   mode: ViewerAccess["mode"];
   /** The verified reporting currency configured for this store, or null when unverified. */
   currency: string | null;
+  timeZone: string;
 };
 
 /**
@@ -75,6 +76,7 @@ export async function csvExport(
       range: parseDateRange(params, today, options.maxDays),
       mode,
       currency: store.currency,
+      timeZone: store.timeZone,
     });
   } catch (error) {
     if (error instanceof StoreAccessError) return failure(403, { title: error.message });

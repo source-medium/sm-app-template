@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 export type DataTableColumn = {
   key: string;
   header: string;
+  definition?: React.ReactNode;
   align?: "left" | "right";
   sortable?: boolean;
   /** Keep identifiers on one line on narrow screens. */
@@ -40,7 +41,12 @@ function DataCell({ row, column }: CellContext<DataTableRow, unknown>) {
   const cell = row.original.cells[column.id];
   if (!cell) return null;
   return cell.href ? (
-    <Link href={cell.href} scroll={false} className="font-medium text-primary underline-offset-4 hover:underline">
+    <Link
+      prefetch={false}
+      href={cell.href}
+      scroll={false}
+      className="font-medium text-primary underline-offset-4 hover:underline"
+    >
       {cell.display}
     </Link>
   ) : (
@@ -113,6 +119,7 @@ export function DataTable({
                 return (
                   <TableHead
                     key={header.id}
+                    aria-label={column?.definition ? column.header : undefined}
                     className={cn(column?.align === "right" && "text-right")}
                     aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
                   >
@@ -132,6 +139,14 @@ export function DataTable({
                       </button>
                     ) : (
                       flexRender(header.column.columnDef.header, header.getContext())
+                    )}
+                    {column?.definition && (
+                      <details className="text-left text-sm font-normal whitespace-normal">
+                        <summary className="cursor-pointer py-1 text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring">
+                          About this number
+                        </summary>
+                        <div className="max-w-prose min-w-48 py-3">{column.definition}</div>
+                      </details>
                     )}
                   </TableHead>
                 );

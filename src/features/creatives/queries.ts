@@ -5,6 +5,7 @@
  * cards.
  */
 import "server-only";
+import { parseCreativeSelection, type CreativeIdentity } from "./filters";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { ReportFilters } from "@/lib/filters";
 import type { AdNameMatches, AdNameRule } from "@/lib/ad-name-filters";
@@ -50,11 +51,19 @@ export type CreativesFilters = ReportFilters & {
   channel?: string | null;
   campaign?: string | null;
   names?: AdNameRule[];
+  minimumSpend?: string | null;
+  minimumConversions?: string | null;
+  selection?: readonly CreativeIdentity[];
 };
 export type CreativesData = { creatives: Creative[]; truncated: boolean };
 
 export async function getCreatives(filters: CreativesFilters): Promise<CreativesData> {
   const access = await requireViewer({ storeId: filters.storeId });
+  if (
+    filters.selection &&
+    (filters.selection.length === 0 || parseCreativeSelection({ selection: JSON.stringify(filters.selection) }).error)
+  )
+    throw new Error("Invalid creative selection");
   return access.mode === "live" ? queryCreatives(filters) : sampleCreatives(filters);
 }
 

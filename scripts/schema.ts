@@ -107,7 +107,9 @@ async function main(): Promise<void> {
       // Descriptions come from SourceMedium's data dictionary, which documents its own relations per store.
       const warehouse = warehouseFor(live);
       const documented = await queryStoreRoster(warehouse, config.storeId)
-        .then(({ stores }) => (stores[0] ? readDictionary(warehouse, stores[0].sm_store_id, table) : []))
+        .then(({ stores }) =>
+          stores[0] ? readDictionary(warehouse, stores[0].sm_store_id, `${dataset}.${table}`) : [],
+        )
         .catch(() => []);
       const descriptions = new Map(
         documented.map((entry) => [entry.column_name, entry.column_description ?? undefined]),
@@ -164,7 +166,15 @@ async function printManagedRelation(
       ...(row.is_nullable === "NO" ? { mode: "REQUIRED" } : {}),
     }));
     const documented = await queryStoreRoster(warehouse, null)
-      .then(({ stores }) => (stores[0] ? readDictionary(warehouse, stores[0].sm_store_id, table) : []))
+      .then(({ stores }) =>
+        stores[0]
+          ? readDictionary(
+              warehouse,
+              stores[0].sm_store_id,
+              `${warehouse.table(table, dataset).replaceAll("`", "").split(".")[1]}.${table}`,
+            )
+          : [],
+      )
       .catch(() => []);
     const descriptions = new Map(documented.map((entry) => [entry.column_name, entry.column_description ?? undefined]));
     printRelation(

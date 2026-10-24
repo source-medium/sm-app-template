@@ -38,7 +38,7 @@ test("products: diagnostics appear only for the relevant ranking", async ({ page
   await expect(page.getByRole("table", { name: "Refunded units by product details", exact: true })).toBeVisible();
   await expect(
     page.getByRole("region", { name: "All product totals", exact: true }).locator('[data-slot="kpi-value"]'),
-  ).toHaveCount(3);
+  ).toHaveCount(2);
   await expect(refunds).toBeVisible();
   await page.getByLabel("Rank by", { exact: true }).selectOption("units");
   await expect(page.getByRole("table", { name: "Net units by product details", exact: true })).toBeVisible();
@@ -68,7 +68,7 @@ test("products: ranking and variant filters preserve comparison dates and full t
 test("products: sales-channel scope changes totals and survives the other controls", async ({ page }) => {
   await page.goto("/products?store=sample-store-a&from=2026-09-01&to=2026-09-28&compare=year");
   const totals = page.getByRole("region", { name: "All product totals" }).locator('[data-slot="kpi-value"]');
-  await expect(totals).toHaveCount(3);
+  await expect(totals).toHaveCount(2);
   const all = await totals.allTextContents();
   await page.getByLabel("Sales channel", { exact: true }).selectOption("Amazon");
   await expect(page).toHaveURL(/sales_channel=Amazon/);
@@ -85,5 +85,5 @@ test("products: sales-channel scope changes totals and survives the other contro
   ).toBeVisible();
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("unknown");
   await page.getByLabel("Sales channel", { exact: true }).selectOption("");
-  await expect(totals).toHaveCount(3);
+  await expect(totals).toHaveCount(2);
 });

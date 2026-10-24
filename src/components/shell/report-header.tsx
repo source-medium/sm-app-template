@@ -1,3 +1,4 @@
+import type { MetricBinding } from "@/lib/metric-binding";
 /**
  * The report's title row: About this data, refresh, and a share link, with
  * the page's context for agent prompts on the element itself.
@@ -29,6 +30,9 @@ export function ReportHeader({
   agentFilters,
   agentOmissions,
   sources,
+  bindings = [],
+  clientPresentationParams = [],
+  timeZone,
   mode,
   storeId,
   currency = null,
@@ -43,6 +47,9 @@ export function ReportHeader({
   agentFilters: Record<string, string | null>;
   agentOmissions: string[];
   sources: readonly ReportSource[];
+  bindings?: readonly MetricBinding[];
+  clientPresentationParams?: readonly string[];
+  timeZone?: string;
   mode: ViewerAccess["mode"];
   /** Absent when no store can be shown; then the report is not loaded. */
   storeId?: string;
@@ -92,10 +99,19 @@ export function ReportHeader({
       </div>
       <div className="flex flex-wrap items-start gap-2">
         {sources.length > 0 && (
-          <AboutData key={JSON.stringify(agentContext)} context={agentContext} sources={sources} mode={mode} />
+          <AboutData
+            key={JSON.stringify(agentContext)}
+            context={agentContext}
+            sources={sources}
+            mode={mode}
+            bindings={bindings}
+            timeZone={timeZone}
+          />
         )}
         <RefreshReport />
-        {shareHref && <CopyReportLink key={shareHref} href={shareHref} />}
+        {shareHref && (
+          <CopyReportLink key={shareHref} href={shareHref} clientPresentationParams={clientPresentationParams} />
+        )}
       </div>
     </header>
   );

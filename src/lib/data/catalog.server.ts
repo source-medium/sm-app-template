@@ -44,6 +44,7 @@ export async function readDictionary(
   limit = 500,
   signal?: AbortSignal,
 ): Promise<DictionaryEntry[]> {
+  const [dataset, table] = dictionaryIdentity(warehouse, relation);
   const result = await warehouse.query(
     {
       name: "data_dictionary",
@@ -51,12 +52,13 @@ export async function readDictionary(
       sql: `
       SELECT column_name, data_type, column_description, table_description
       FROM ${warehouse.table(DICTIONARY, "metadata")}
-      WHERE sm_store_id = @store_id AND table_name = @relation
+      WHERE sm_store_id = @store_id AND table_name = @relation AND dataset_name = @dataset
       ORDER BY column_name
       LIMIT @limit`,
       params: [
         { name: "store_id", type: "STRING", value: storeId },
-        { name: "relation", type: "STRING", value: relation },
+        { name: "relation", type: "STRING", value: table },
+        { name: "dataset", type: "STRING", value: dataset },
         { name: "limit", type: "INT64", value: limit },
       ],
     },
@@ -78,4 +80,13 @@ export async function readMetricCatalog(warehouse: Warehouse, limit = 500): Prom
     params: [{ name: "limit", type: "INT64", value: limit }],
   });
   return decodeRows(MetricRow, result.rows, METRIC_CATALOG);
+}
+
+/** The browser's source is always a bound dictionary value, never a warehouse identifier. */
+export function dictionaryIdentity(warehouse: Warehouse, relation: string): [string, string] {
+  if (!/^(?:[A-Za-z0-9_]{1,200}\.)?[A-Za-z0-9_]{1,200}$/.test(relation)) throw new Error("Invalid dictionary source");
+  if (relation.includes(".")) return relation.split(".") as [string, string];
+  const dataset = warehouse.table("obt_orders").replaceAll("`", "").split(".")[1];
+  if (!dataset) throw new Error("Warehouse dataset unavailable");
+  return [dataset, relation];
 }

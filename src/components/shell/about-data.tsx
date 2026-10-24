@@ -1,5 +1,7 @@
 "use client";
 
+import type { MetricBinding } from "@/lib/metric-binding";
+import { MetricDefinition } from "@/components/patterns/metric-definition";
 import { useEffect, useId, useRef, useState } from "react";
 import { BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,10 +25,14 @@ export function AboutData({
   context,
   sources,
   mode,
+  bindings = [],
+  timeZone,
 }: {
   context: AgentReportContext;
   sources: readonly ReportSource[];
   mode: "sample" | "live";
+  bindings?: readonly MetricBinding[];
+  timeZone?: string;
 }) {
   const [open, setOpen] = useState(false);
   const pendingField = useRef<AgentField | null>(null);
@@ -85,7 +91,23 @@ export function AboutData({
                 ? "Data freshness unknown. Each report section shows when its query completed. Query time does not tell us when the warehouse last refreshed."
                 : "Synthetic sample data. Field documentation comes from the bundled schema snapshot; your warehouse may differ."}
             </p>
-            <LoadedDefinitions />
+            {bindings.length ? (
+              <Disclosure summary="Report metric definitions" className="rounded-md border p-3 text-sm">
+                <section aria-label="Structured metric definitions" className="space-y-3">
+                  {bindings.map((binding) => (
+                    <Disclosure key={binding.id} summary={binding.label} className="rounded-md border p-3 text-sm">
+                      <MetricDefinition
+                        binding={binding}
+                        scope={{ filters: context.filters, currency: context.currency, timeZone }}
+                      />
+                    </Disclosure>
+                  ))}
+                </section>
+                <LoadedDefinitions exclude={bindings.map((binding) => binding.label)} />
+              </Disclosure>
+            ) : (
+              <LoadedDefinitions />
+            )}
             <SourceDictionary
               sources={sources}
               storeId={context.filters.store}
@@ -109,7 +131,7 @@ function readDefinitions() {
   }));
 }
 
-function LoadedDefinitions() {
+function LoadedDefinitions({ exclude = [] }: { exclude?: string[] } = {}) {
   const [definitions, setDefinitions] = useState(readDefinitions);
   useEffect(() => {
     const main = document.querySelector("main");
@@ -118,11 +140,18 @@ function LoadedDefinitions() {
     observer.observe(main, { childList: true, subtree: true, characterData: true });
     return () => observer.disconnect();
   }, []);
-  if (!definitions.length) return null;
+  const fallback = definitions.filter((definition) => !exclude.includes(definition.label));
+  if (!fallback.length) return null;
   return (
-    <Disclosure summary="Report metric definitions" className="rounded-md border p-3 text-sm">
+    <Disclosure
+      summary={exclude.length ? "Other report definitions" : "Report metric definitions"}
+      className="rounded-md border p-3 text-sm"
+    >
+      <p className="mb-3 text-xs text-muted-foreground">
+        Report-specific definitions. These metrics have no declared canonical catalog binding.
+      </p>
       <dl className="space-y-3">
-        {definitions.map(({ label, text }, index) => (
+        {fallback.map(({ label, text }, index) => (
           <div key={`${label}|${index}`}>
             <dt className="font-medium">{label}</dt>
             <dd className="mt-1 text-xs leading-relaxed text-muted-foreground">{text}</dd>
@@ -133,7 +162,7 @@ function LoadedDefinitions() {
   );
 }
 
-function SourceDictionary({
+export function SourceDictionary({
   sources,
   storeId,
   onUseField,

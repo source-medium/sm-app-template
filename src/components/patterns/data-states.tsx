@@ -108,7 +108,11 @@ export function EmptyState({
     <StateFrame icon={<Inbox className="size-4" aria-hidden />} title={title} tone="neutral">
       <p>{message}</p>
       {action && (
-        <Link href={action.href} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-3")}>
+        <Link
+          prefetch={false}
+          href={action.href}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-3")}
+        >
           {action.label}
         </Link>
       )}

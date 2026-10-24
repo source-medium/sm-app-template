@@ -97,3 +97,27 @@ test("orders: agent prompts identify omitted search text without copying it", as
   expect(prompt).toContain("Not included: Search text");
   expect(prompt).not.toContain("PRIVATE_SEARCH_SENTINEL");
 });
+
+test("orders: attribution evidence is opt-in, safe and keyboard accessible", async ({ page }) => {
+  await page.goto("/orders?store=sample-store-a&from=2026-09-01&to=2026-09-28");
+  await page
+    .getByRole("table", { name: "Orders, newest first" })
+    .getByRole("row")
+    .filter({ hasText: "Paid Social" })
+    .first()
+    .getByRole("link")
+    .click();
+  const drawer = page.getByRole("dialog", { name: "Order details" });
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByRole("heading", { name: "Why attributed here?" })).toHaveCount(0);
+  const inspect = drawer.getByRole("link", { name: "Why attributed here?", exact: true });
+  await inspect.focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/evidence=attribution/);
+  await expect(drawer.getByRole("heading", { name: "Why attributed here?" })).toBeVisible();
+  await expect(drawer).toContainText("One published priority-1 traffic winner.");
+  await expect(drawer).toContainText("evidence, not allocated order revenue");
+  await expect(drawer).toContainText("Raw identifiers, URLs and survey answers are excluded.");
+  await page.keyboard.press("Escape");
+  await expect(page).not.toHaveURL(/order=|evidence=/);
+});

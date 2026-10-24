@@ -47,7 +47,12 @@ export function watchConsole(page: Page): string[] {
 }
 
 export async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
-  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  // App Router streams route metadata after a filter navigation. Assert that
+  // the title arrived before scanning the completed report, without skipping it.
+  await expect(page).toHaveTitle(/\S/);
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
   const serious = results.violations.filter(
     (violation) => violation.impact === "serious" || violation.impact === "critical",
   );
@@ -68,4 +73,16 @@ export async function choose(page: Page, label: string, value: Parameters<Locato
   const select = page.getByRole("combobox", { name: label, exact: true });
   await expect(select).not.toHaveAttribute("inert");
   await select.selectOption(value);
+}
+
+/** Disclosures are intentionally reset when a new filtered data region mounts. */
+export async function openDisclosure(page: Page, summary: string) {
+  const details = page
+    .locator("details")
+    .filter({ has: page.locator("summary").filter({ hasText: new RegExp(`^${summary}$`) }) })
+    .first();
+  await expect(details.locator(":scope > summary")).toBeVisible();
+  if (!(await details.evaluate((node) => (node as HTMLDetailsElement).open)))
+    await details.locator(":scope > summary").click();
+  await expect(details).toHaveAttribute("open", "");
 }

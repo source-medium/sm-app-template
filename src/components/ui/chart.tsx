@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import * as RechartsPrimitive from "recharts";
 import type { TooltipValueType } from "recharts";
 
-const INITIAL_DIMENSION = { width: 320, height: 200 } as const;
+// Reserve height in CSS and wait for measurement; a guessed width overflows narrow cards before hydration.
+const INITIAL_DIMENSION = { width: -1, height: -1 } as const;
 type TooltipNameType = number | string;
 
 export type ChartConfig = Record<

@@ -1,3 +1,6 @@
+import { Suspense } from "react";
+import type { MetricBinding } from "@/lib/metric-binding";
+import { DataStatus, PendingDataStatus } from "./data-status";
 /**
  * The frame every report view shares: title, the store and date filters
  * parsed from the URL, refresh and share controls, and a freshness footer.
@@ -32,6 +35,8 @@ export type ReportContext = {
   today: string;
   timeZone: string;
   currency: string | null;
+  /** Render immediately after feature controls when dataStatusAfterControls is enabled. */
+  dataStatus?: React.ReactNode;
 };
 
 export async function ReportPage({
@@ -47,6 +52,9 @@ export async function ReportPage({
   agentFilters = {},
   agentOmissions = [],
   sources = [],
+  bindings = [],
+  clientPresentationParams = [],
+  dataStatusAfterControls = false,
   defaults,
   children,
 }: {
@@ -70,6 +78,10 @@ export async function ReportPage({
   agentOmissions?: string[];
   /** Tables and query scope owned by this feature. Dictionary reads happen only on demand. */
   sources?: readonly ReportSource[];
+  bindings?: readonly MetricBinding[];
+  /** URL presentation keys a feature updates through native history, without a warehouse request. */
+  clientPresentationParams?: readonly string[];
+  dataStatusAfterControls?: boolean;
   /**
    * URL parameters a view derives from the store's date, such as a default
    * month. They apply like URL parameters: frozen in share links and listed
@@ -90,6 +102,8 @@ export async function ReportPage({
     agentFilters,
     agentOmissions,
     sources,
+    bindings,
+    clientPresentationParams,
     allStores,
     mode: access.mode,
   };
@@ -157,6 +171,12 @@ export async function ReportPage({
   const comparison = comparisons && dates ? parseComparison(params, range) : undefined;
   if (comparison) params = { ...params, compare: comparison.mode };
   const zoneLabel = /^[+-]/.test(timeZone) ? `UTC${timeZone}` : timeZone;
+  const dataStatus =
+    !issue && sources.length > 0 && !allStores ? (
+      <Suspense fallback={<PendingDataStatus />}>
+        <DataStatus storeId={storeId} sources={sources} bindings={bindings} />
+      </Suspense>
+    ) : null;
   return (
     <div className="flex flex-col gap-4">
       <ReportHeader
@@ -165,6 +185,7 @@ export async function ReportPage({
         storeId={storeId}
         currency={allStores ? null : currency}
         view={{ range, issue, comparison, derived }}
+        timeZone={timeZone}
       />
       <ReportFilterBar
         roster={roster}
@@ -180,6 +201,7 @@ export async function ReportPage({
         allStores={allStores}
         fixedStore={fixedStore}
       />
+      {!dataStatusAfterControls && dataStatus}
       {issue ? (
         <ErrorState
           tone="warning"
@@ -194,6 +216,7 @@ export async function ReportPage({
           today,
           timeZone,
           currency,
+          dataStatus,
         })
       )}
       <footer className="border-t pt-4 text-xs text-muted-foreground">

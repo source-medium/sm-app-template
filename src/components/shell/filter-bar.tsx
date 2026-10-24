@@ -60,6 +60,7 @@ export function FilterBar({
   const frequent = new Set(["Last 7 days", "Last 28 days"]);
   const presetLink = (preset: FilterPreset) => (
     <Link
+      prefetch={false}
       key={preset.label}
       data-agent-element={preset.label}
       href={preset.href}
@@ -74,6 +75,7 @@ export function FilterBar({
   );
   return (
     <Form
+      prefetch={false}
       id={REPORT_FILTER_FORM_ID}
       action={pathname}
       aria-label="Report filters"

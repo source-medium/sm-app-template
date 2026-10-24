@@ -55,3 +55,26 @@ it("parses the app's escaped CSV without treating commas, quotes or newlines as 
   ]);
   expect(() => parseCsv('"a","b"\n"unfinished')).toThrow("unfinished");
 });
+
+it("requires exact geographic population, date basis and destination for reconciliation", () => {
+  const geo = Reference.parse({
+    ...reference,
+    report: "geography",
+    date_basis: "processed",
+    country: "US",
+    region: "CA",
+  });
+  const row = {
+    ...total,
+    report: "geography",
+    date_basis: "processed",
+    population: "valid",
+    country: "US",
+    region: "CA",
+  };
+  expect(reconcile(geo, [row])[0]?.status).toBe("match");
+  for (const changed of [{ date_basis: "created" }, { population: "all" }, { country: "CA" }, { region: "" }]) {
+    expect(() => reconcile(geo, [{ ...row, ...changed }])).toThrow("Scope differs");
+  }
+  expect(() => Reference.parse({ ...reference, report: "geography" })).toThrow();
+});

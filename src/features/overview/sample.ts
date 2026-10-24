@@ -40,6 +40,7 @@ export function aggregateOverviewWire(
   channel: string | null = null,
 ) {
   const byDate = new Map<string, Sums>();
+  const contributions = new Map<string, { channel: string; sub_channel: string; revenue: bigint }>();
   let gross: bigint | null = null;
   let discounts: bigint | null = null;
   let refunds: bigint | null = null;
@@ -65,6 +66,14 @@ export function aggregateOverviewWire(
     if (row.repeat_customer_order_net_revenue_cents !== null)
       repeatRevenue = (repeatRevenue ?? 0n) + row.repeat_customer_order_net_revenue_cents;
     if (row.repeat_customer_order_count !== null) repeatOrders = (repeatOrders ?? 0) + row.repeat_customer_order_count;
+    const identity = JSON.stringify([row.sm_channel, row.sm_sub_channel]);
+    const contribution = contributions.get(identity) ?? {
+      channel: row.sm_channel,
+      sub_channel: row.sm_sub_channel,
+      revenue: 0n,
+    };
+    contribution.revenue += row.order_net_revenue_cents;
+    contributions.set(identity, contribution);
     const sums = byDate.get(row.date) ?? zero();
     add(sums, {
       revenue: row.order_net_revenue_cents,
@@ -92,6 +101,12 @@ export function aggregateOverviewWire(
     if (!total) throw new Error("Missing sample summary period");
     return {
       date,
+      contributions_json:
+        date === days[0]?.[0]
+          ? JSON.stringify(
+              [...contributions.values()].map((row) => ({ ...row, revenue: money(row.revenue), remainder: false })),
+            )
+          : null,
       net_revenue: money(sums.revenue),
       order_count: String(sums.orders),
       website_sessions: String(sums.sessions),

@@ -18,6 +18,7 @@ describe("orders fixture contract", () => {
     for (let page = 0; page < 50; page += 1) {
       const result = await sampleOrders({ ...FILTERS, cursor });
       for (const order of result.orders) {
+        if (!order.processedLocal) throw new Error("Expected processed sample date");
         expect(seen.has(order.key)).toBe(false);
         seen.add(order.key);
         if (previous !== null) expect(order.processedLocal <= previous).toBe(true);
@@ -43,7 +44,7 @@ describe("orders fixture contract", () => {
 
   it("reads one order's details, with amounts that add up exactly", async () => {
     const [order] = (await sampleOrders(FILTERS)).orders;
-    if (!order) throw new Error("expected an order");
+    if (!order?.processedLocal) throw new Error("expected an order with processed date");
     const detail = await sampleOrderDetail(FILTERS.storeId, { processedLocal: order.processedLocal, key: order.key });
     expect(detail?.key).toBe(order.key);
     expect(detail?.netRevenue).toBe(order.netRevenue);

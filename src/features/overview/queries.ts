@@ -41,7 +41,16 @@ export type RevenueDeductions = {
   net: string | null;
 };
 
+export type RevenueContribution = {
+  channel: string | null;
+  sub_channel: string | null;
+  revenue: string | null;
+  remainder: boolean;
+};
+
 export type OverviewData = {
+  /** Optional supporting breakdown; never used to compute the report totals. */
+  contributions?: RevenueContribution[] | null;
   revenue: RevenueDeductions | null;
   /** One entry per date that has rows; missing dates stay missing (gaps). */
   days: OverviewDay[];

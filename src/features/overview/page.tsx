@@ -1,13 +1,15 @@
+import { overviewBindings } from "./metrics";
 import { OVERVIEW_RELATION } from "./rows";
 import { appConfig } from "@/app.config";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ChartCard } from "@/components/charts/chart-card";
+import { OverviewTrendSelector } from "./trend-selector";
+import { Disclosure } from "@/components/ui/disclosure";
 import { DataRegion } from "@/components/patterns/data-region";
 import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { KpiCard } from "@/components/patterns/kpi-card";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
-import { cardGridStyles } from "@/components/ui/card";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { periodChanges, type Comparison } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
@@ -21,7 +23,8 @@ import {
   type SearchParams,
 } from "@/lib/filters";
 import { decimalToNumber } from "@/lib/data/decimal";
-import { formatDateRange } from "@/lib/format";
+import { MetricDefinition } from "@/components/patterns/metric-definition";
+import { compactHeadline, formatDateRange } from "@/lib/format";
 import { presentOverviewMeasures, type OverviewMeasureKey } from "./measures";
 import { getOverviewReport, type OverviewFilters, type OverviewReport } from "./queries";
 import { parseTimeGrain } from "@/lib/time-grain";
@@ -50,6 +53,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   );
   return (
     <ReportPage
+      dataStatusAfterControls
+      clientPresentationParams={["metric", "show_trends"]}
+      bindings={overviewBindings}
       maxDays={appConfig.summaryMaxDays}
       sources={[
         {
@@ -64,7 +70,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       agentFilters={{ sales_channel: channel, grain, trend: trendMode }}
       comparisons
     >
-      {({ filters, comparison, timeZone, currency }) => {
+      {({ filters, comparison, timeZone, currency, dataStatus }) => {
         const selected: OverviewFilters = { ...filters, channel, grain };
         return (
           <>
@@ -74,6 +80,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
               <OverviewControls filters={selected} />
               <SelectFilter name="trend" label="Trend values" value={trendMode} options={[...TREND_MODES]} />
             </ReportControls>
+            {dataStatus}
             <Suspense
               key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${comparison?.mode}|${channel}|${grain}`}
               fallback={<LoadingState variant="kpis" label="Loading the overview" />}
@@ -99,10 +106,56 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                     comparison={comparison}
                     currency={currency}
                     trendMode={trendMode}
+                    timeZone={timeZone}
                   />
                 )}
               </DataRegion>
             </Suspense>
+            <div className="flex flex-wrap gap-4 text-sm">
+              <a
+                className="underline"
+                href={withParams(
+                  "/overview/export.json",
+                  {},
+                  {
+                    store: filters.storeId,
+                    ...filters.range,
+                    sales_channel: channel ?? "",
+                    grain,
+                    compare: comparison?.mode ?? "off",
+                  },
+                )}
+              >
+                Download JSON with context
+              </a>
+              {appConfig.nav.some((item) => item.href === "/geography") && (
+                <Disclosure summary="Explore sales by geography">
+                  <p className="mb-2 max-w-prose text-muted-foreground">
+                    Geography uses valid-order sales and the canonical processed date with a created-date fallback.
+                    Executive Summary uses published summary totals and its own date basis. This transition preserves
+                    store, dates and sales channels but changes the population; geography does not reconcile summary
+                    revenue.
+                  </p>
+                  <Link
+                    prefetch={false}
+                    className="underline"
+                    href={withParams(
+                      "/geography",
+                      {},
+                      {
+                        store: filters.storeId,
+                        ...filters.range,
+                        sales_channel: channel ?? "",
+                        compare: comparison?.mode ?? "off",
+                        date_basis: "processed",
+                      },
+                    )}
+                  >
+                    Open valid-order geography
+                  </Link>
+                </Disclosure>
+              )}
+            </div>
           </>
         );
       }}
@@ -116,7 +169,9 @@ function OverviewView({
   comparison,
   currency,
   trendMode,
+  timeZone,
 }: {
+  timeZone: string;
   report: OverviewReport;
   filters: OverviewFilters;
   comparison?: Comparison;
@@ -197,17 +252,8 @@ function OverviewView({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* The sentence and the caption that qualifies its comparison read as one block. */}
+      {/* Keep comparison coverage beside the primary metrics. */}
       <div className="flex flex-col gap-2">
-        {headline && (
-          <p
-            data-agent-target="Summary"
-            data-agent-component="Headline"
-            className="max-w-prose font-display text-lg leading-snug text-balance sm:text-xl"
-          >
-            {headline}
-          </p>
-        )}
         {baseline && comparison && (
           <ComparisonCaption comparison={comparison} issue={issue}>
             <p>
@@ -247,36 +293,48 @@ function OverviewView({
           detail={report.comparison.error.detail}
         />
       )}
-      <section aria-label="Period totals" className={cardGridStyles}>
-        {cards.map((card) => {
-          const current = currentMeasures[card.key];
-          const previous = previousMeasures[card.key];
-          return (
-            <KpiCard
-              key={card.key}
-              label={card.label}
-              description={card.description}
-              value={current.display}
-              trend={trend(card.key)}
-              delta={showDelta ? kpiDelta(current.amount, previous.amount, current.format, current.better) : undefined}
-              period={period}
-            />
-          );
-        })}
+      <section aria-label="Period totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {cards
+          .filter((card) => ["revenue", "orders", "spend", "mer"].includes(card.key))
+          .map((card) => {
+            const current = currentMeasures[card.key];
+            const previous = previousMeasures[card.key];
+            return (
+              <KpiCard
+                key={card.key}
+                label={card.label}
+                description={card.description}
+                binding={overviewBindings.find((binding) => binding.id === card.key)}
+                scope={{
+                  filters: { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? null },
+                  currency,
+                  timeZone,
+                }}
+                value={compactHeadline(
+                  current.amount,
+                  current.display,
+                  overviewBindings.find((binding) => binding.id === card.key)?.format ?? "number",
+                  currency,
+                )}
+                fullValue={current.display}
+                trend={trend(card.key)}
+                delta={
+                  showDelta ? kpiDelta(current.amount, previous.amount, current.format, current.better) : undefined
+                }
+                period={period}
+              />
+            );
+          })}
       </section>
-      <OverviewHighlights report={report} filters={filters} comparison={comparison} currency={currency} />
-      <OverviewRevenue
-        current={data.revenue}
-        previous={compared?.revenue ?? null}
-        compare={showDelta}
-        currency={currency}
-      />
-      <OverviewPurchases
-        current={data.purchases}
-        previous={report.comparison?.data?.purchases ?? null}
-        comparedTo={showDelta && baseline ? formatDateRange(baseline) : undefined}
-        currency={currency}
-      />
+      {headline && (
+        <p
+          data-agent-target="Summary"
+          data-agent-component="Headline"
+          className="max-w-prose font-display text-lg leading-snug text-balance sm:text-xl"
+        >
+          {headline}
+        </p>
+      )}
       <section aria-labelledby="trends-heading" className="flex flex-col gap-3">
         <SectionHeader
           id="trends-heading"
@@ -287,31 +345,83 @@ function OverviewView({
               : undefined
           }
         />
-        <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-          {charts.map((chart) => (
-            <ChartCard
-              key={chart.key}
-              title={chart.title}
-              description={
-                showLines
-                  ? "Selected period and dashed comparison. Comparison dates appear in the table and tooltip."
-                  : "Selected period"
-              }
-              kind="line"
-              categoryHeader="Date"
-              series={[
-                { key: chart.key, label: chart.label, color: "var(--chart-1)" },
-                ...(showLines
-                  ? [{ key: `previous_${chart.key}`, label: "Comparison", color: "var(--chart-2)", dashed: true }]
-                  : []),
-              ]}
-              data={chart.data}
-              plottable={chart.plottable}
-            />
-          ))}
-        </div>
+        <OverviewTrendSelector
+          charts={charts.map((chart) => ({
+            ...chart,
+            definition: (
+              <MetricDefinition
+                binding={overviewBindings.find((binding) => binding.id === chart.key) ?? overviewBindings[0]}
+                scope={{
+                  filters: { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? null },
+                  currency,
+                  timeZone,
+                }}
+              />
+            ),
+            kind: "line",
+            categoryHeader: "Date",
+            description: showLines
+              ? "Selected period and dashed comparison. Comparison dates appear in the table and tooltip."
+              : "Selected period",
+            series: [
+              { key: chart.key, label: chart.label, color: "var(--chart-1)" },
+              ...(showLines
+                ? [{ key: `previous_${chart.key}`, label: "Comparison", color: "var(--chart-2)", dashed: true }]
+                : []),
+            ],
+          }))}
+        />
       </section>
-      <OverviewSummary data={data} filters={filters} currency={currency} />
+      <OverviewHighlights report={report} filters={filters} comparison={comparison} currency={currency} />
+      <Disclosure summary="Secondary metrics and business details">
+        <div className="space-y-6">
+          <section aria-label="Secondary metrics" className="grid gap-4 sm:grid-cols-2">
+            {cards
+              .filter((card) => ["average", "sessions"].includes(card.key))
+              .map((card) => (
+                <KpiCard
+                  key={card.key}
+                  label={card.label}
+                  value={currentMeasures[card.key].display}
+                  period={period}
+                  description={card.description}
+                  binding={overviewBindings.find((binding) => binding.id === card.key)}
+                  scope={{
+                    filters: { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? null },
+                    currency,
+                    timeZone,
+                  }}
+                  trend={trend(card.key)}
+                  delta={
+                    showDelta
+                      ? kpiDelta(
+                          currentMeasures[card.key].amount,
+                          previousMeasures[card.key].amount,
+                          currentMeasures[card.key].format,
+                          currentMeasures[card.key].better,
+                        )
+                      : undefined
+                  }
+                />
+              ))}
+          </section>
+          <OverviewPurchases
+            current={data.purchases}
+            previous={compared?.purchases ?? null}
+            comparedTo={showDelta && baseline ? formatDateRange(baseline) : undefined}
+            currency={currency}
+          />
+        </div>
+      </Disclosure>
+      <OverviewRevenue
+        current={data.revenue}
+        previous={compared?.revenue ?? null}
+        compare={showDelta}
+        currency={currency}
+      />
+      <Disclosure summary="Business summary and CSV" id="summary-details">
+        <OverviewSummary data={data} filters={filters} currency={currency} timeZone={timeZone} />
+      </Disclosure>
     </div>
   );
 }

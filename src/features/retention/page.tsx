@@ -24,6 +24,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
   const params = await searchParams;
   return (
     <ReportPage
+      dataStatusAfterControls
       sources={[
         {
           relation: RETENTION_RELATION,
@@ -52,7 +53,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
       ]}
       dates={false}
     >
-      {({ filters, today, timeZone, currency }) => {
+      {({ filters, today, timeZone, currency, dataStatus }) => {
         const options = retentionOptions(params, today);
         const metricLabel =
           RETENTION_METRICS.find((item) => item.value === options.metric)?.label ?? "Monthly retention";
@@ -123,6 +124,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                 options={[...RETENTION_METRICS]}
               />
             </div>
+            {dataStatus}
             <Disclosure summary="About these cohorts" className="text-sm text-muted-foreground">
               <p className="max-w-prose">
                 Twelve acquisition cohorts through {formatMonth(`${options.asOf}-01`)}. Month 0 is the acquisition
@@ -182,6 +184,13 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                         <div className="border-t pt-6">
                           <SectionHeader title="All twelve cohorts" />
                         </div>
+                        <p className="max-w-prose text-sm text-muted-foreground">
+                          Read across a row to follow one acquisition cohort; read down a column to compare cohorts at
+                          the same calendar-month age. Month 0 includes acquisition. A dash marks an age that is not yet
+                          observable; “No data” means an elapsed age has no published value. Shading repeats the numeric
+                          values, so color is not required to read the table. Acquisition segments can overlap and must
+                          not be added together.
+                        </p>
                         <Disclosure summary="About this measure" className="text-sm text-muted-foreground">
                           <div className="max-w-prose space-y-2">
                             <p data-metric-definition={metricLabel}>

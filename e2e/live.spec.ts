@@ -6,15 +6,15 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { appConfig } from "../app.config";
-import { watchConsole } from "./helpers";
+import { openDisclosure, watchConsole } from "./helpers";
 
 /** Empty results are successful queries; failed or missing regions are not. */
-async function expectLiveReport(page: Page) {
+async function expectLiveReport(page: Page, timestamp = true) {
   await expect(page.getByTestId("mode-chip")).toHaveText("Live data");
   await expect(page.getByRole("status")).toHaveCount(0, { timeout: 30_000 });
   // Next's route announcer also has role="alert", so use the app's error marker.
   await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
-  await expect(page.getByText("Queried at").first()).toBeVisible();
+  if (timestamp) await expect(page.getByText("Queried at").first()).toBeVisible();
 }
 
 function emptyRetention(page: Page) {
@@ -58,7 +58,9 @@ for (const item of appConfig.nav) {
   test(`${item.href} renders live data without errors`, async ({ page }) => {
     const problems = watchConsole(page);
     await page.goto(item.href);
-    await expectLiveReport(page);
+    await expectLiveReport(page, item.href !== "/data");
+    if (item.href === "/data")
+      await expect(page.getByRole("navigation", { name: "Data sections", exact: true })).toBeVisible();
     expect(problems).toEqual([]);
   });
 }
@@ -83,9 +85,11 @@ test("Overview summaries and exports work at each grain with a sales-channel fil
     "No Overview rows in the selected period; summary interactions require rows",
   );
   for (const grain of ["week", "month"]) {
+    await openDisclosure(page, "Business summary and CSV");
     await page.getByLabel("Summary rows", { exact: true }).selectOption(grain);
     await expect(page).toHaveURL(new RegExp(`grain=${grain}`));
     await expectLiveReport(page);
+    await openDisclosure(page, "Business summary and CSV");
     await expect(page.getByRole("table", { name: "Business summary", exact: true })).toBeVisible();
     const href = await page.getByRole("link", { name: "Download CSV" }).getAttribute("href");
     if (!href) throw new Error("Missing summary download");
@@ -299,8 +303,15 @@ test("All stores agrees with an individual store's Overview for the same applied
     const spend = await row.getByRole("cell").nth(spendIndex).innerText();
     await row.getByRole("link").click();
     await expectLiveReport(page);
-    await expect(page.locator('[data-agent-target="Net revenue"] [data-slot="kpi-value"]')).toHaveText(revenue);
-    await expect(page.locator('[data-agent-target="Ad spend"] [data-slot="kpi-value"]')).toHaveText(spend);
+    // Compare the full server-formatted values, not the compact headline plus its screen-reader text.
+    // Boolean assertions keep live amounts out of failure messages.
+    expect(
+      (await page.locator('[data-agent-target="Net revenue"] [data-slot="kpi-value"]').getAttribute("title")) ===
+        revenue,
+    ).toBe(true);
+    expect(
+      (await page.locator('[data-agent-target="Ad spend"] [data-slot="kpi-value"]').getAttribute("title")) === spend,
+    ).toBe(true);
     matched = true;
     break;
   }
