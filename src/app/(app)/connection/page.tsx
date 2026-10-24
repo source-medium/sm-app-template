@@ -119,7 +119,7 @@ export default async function ConnectionPage() {
               ? "This staging app uses a shared probe session with a fixed test viewer. SourceMedium operates its data access. Individual workspace sign-in is not enabled on this probe."
               : hosted
                 ? "SourceMedium manages this app's data access. Ask your workspace admin to review app availability and membership."
-                : "Manage this development token in the app's Agent setup in SourceMedium. See docs/managed.md in your repository. Never paste a token into an agent conversation."
+                : "A workspace admin or editor creates and revokes this development token in SourceMedium. See docs/managed.md in your repository. Never paste a token into an agent conversation."
             : "To replace or revoke the app credential, follow docs/connect.md in your repository. Enter credentials privately in the Worker's runtime settings, never in an agent conversation."}
         </p>
       )}

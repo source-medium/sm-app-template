@@ -9,7 +9,8 @@ that the person or token behind it still has access.
 This guide covers managed development and hosting. The data adapter and a
 manually deployed staging app with workspace sign-in are verified. Self-service
 repository creation, builds and the Agent setup panel are not available yet;
-ask the SourceMedium operator for a developer token and the data API address.
+until the panel exists, a workspace admin or editor creates the developer token
+([Local development](#local-development)).
 A self-hosted app keeps using [connect.md](connect.md); the two never mix.
 
 | Mode                    | Set by                               | Data                                                     |
@@ -51,9 +52,11 @@ The data API only reads. A query runs for at most 30 seconds, scans at most
 
 ## Local development
 
-1. Ask the SourceMedium operator to issue a developer token for "Local"
-   through the app management API. It is shown once. The planned **Agent
-   setup** panel will replace this operator step.
+1. A workspace admin or editor creates a developer token named "Local" with
+   SourceMedium's app management API, from a signed-in SourceMedium browser
+   session. It is shown once and carries that person's access. SourceMedium
+   staff cannot create one on a workspace's behalf. The planned **Agent
+   setup** panel will replace this manual step.
 2. Put these in `.env.local` (git-ignored), removing any self-hosted values:
 
    ```sh
@@ -62,7 +65,8 @@ The data API only reads. A query runs for at most 30 seconds, scans at most
    SM_DEVELOPER_TOKEN=smapp_…
    ```
 
-   Use the exact `SM_DATA_API_URL` supplied by the operator.
+   Use the SourceMedium address where the token was created, followed by
+   `/api/app-data/v1`.
 
 3. Run `pnpm diagnose`, then `pnpm dev`, and open http://127.0.0.1:3000.
 
@@ -132,11 +136,12 @@ and the first task does not depend on it.
 ## Token expired
 
 A token lasts 30 days. Expired, revoked and mistyped tokens all read as
-"SourceMedium did not accept the developer token". Ask the SourceMedium
-operator for a new token, replace `SM_DEVELOPER_TOKEN` (or the cloud environment's
+"SourceMedium did not accept the developer token". Ask a workspace admin or
+editor for a new token, replace `SM_DEVELOPER_TOKEN` (or the cloud environment's
 network secret), and run `pnpm diagnose`. A token also stops working when the
-person who created it is no longer a workspace admin or editor, or when the
-app is paused or removed; ask a workspace admin.
+person who created it no longer has direct, workspace-wide admin or editor
+access, or when the app is paused or removed or its workspace is no longer
+active; ask a workspace admin.
 
 ## Troubleshooting
 
