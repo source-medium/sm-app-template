@@ -38,7 +38,11 @@ never activates the element. Moving the pointer preserves a keyboard selection.
 Close returns keyboard focus to **Vibe code**. If copying fails, the preview
 opens and focuses the prompt for manual copying.
 
-To extend a report with an available warehouse field, open **About this data**,
+To add a published metric, open **Explore your data**, find it, and choose
+**Use in Vibe code** in its drawer. This starts an **Add something new** prompt
+with the metric's canonical name, reviewed definition, source model, time basis
+and dependencies, and tells the agent which views already present it. To extend
+a report with an available warehouse field, open **About this data**,
 search its source fields, and choose **Use this field**. This starts an
 **Add something new** prompt with the field's table, name, type and published
 description. Add what you want to build before copying. The agent must verify

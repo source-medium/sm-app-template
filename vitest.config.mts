@@ -51,13 +51,19 @@ export default defineConfig({
         resolve,
         plugins: [
           cloudflareTest({
-            miniflare: { compatibilityDate: "2026-06-30", compatibilityFlags: ["nodejs_compat"] },
+            miniflare: {
+              compatibilityDate: "2026-06-30",
+              compatibilityFlags: ["nodejs_compat"],
+              // The query cache's optional shared tier, for tests/workerd.
+              kvNamespaces: ["APP_QUERY_CACHE"],
+            },
           }),
         ],
         test: {
           name: "workerd",
           env: sampleEnvironment,
-          include: INVARIANTS,
+          // tests/workerd holds checks that need the Workers runtime itself, such as a KV namespace.
+          include: [...INVARIANTS, "tests/workerd/**/*.test.ts"],
           setupFiles: [SERVER_SETUP],
           testTimeout: 30_000,
         },

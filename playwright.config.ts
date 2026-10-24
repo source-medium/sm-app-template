@@ -131,6 +131,17 @@ export default defineConfig({
           testMatch: /protected\.spec\.ts/,
           use: { ...devices["Desktop Chrome"], baseURL: localURL(ports.protected) },
         },
+        // Maintainer timing on the sample server (pnpm test:timing); its numbers are local evidence, not percentiles.
+        ...(process.env.SM_TIMING === "1"
+          ? [
+              {
+                name: "timing",
+                testMatch: /e2e\/timing\.spec\.ts/,
+                retries: 0,
+                use: { ...devices["Desktop Chrome"], baseURL: localURL(ports.sample) },
+              },
+            ]
+          : []),
         {
           name: "fixed-store",
           testMatch: /e2e\/fixed-store\.spec\.ts/,

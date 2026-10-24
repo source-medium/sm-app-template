@@ -6,11 +6,11 @@ import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { adNamePredicate } from "@/lib/data/ad-name-sql";
 import { decodeRows } from "@/lib/data/decode";
-import type { DateRange } from "@/lib/filters";
 import type { BreakdownDimension, SpendBreakdown } from "./queries";
 import { PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
 import { SpendBreakdownRow, MAX_BREAKDOWN } from "./rows";
 import type { CampaignData, PaidMarketingData, PaidMarketingFilters } from "./queries";
+import { CACHE_POLICY } from "@/lib/data/query-cache";
 import {
   AD_RELATION,
   CampaignWireRow,
@@ -20,6 +20,7 @@ import {
   toCampaign,
   toChannelDay,
 } from "./rows";
+import type { BaselineRanges } from "@/lib/comparison";
 
 const BREAKDOWN_SQL = {
   type: {
@@ -42,7 +43,7 @@ const BREAKDOWN_SQL = {
 export async function querySpendBreakdown(
   filters: PaidMarketingFilters,
   dimension: BreakdownDimension,
-  baseline: DateRange | null,
+  baselines: BaselineRanges,
 ): Promise<SpendBreakdown> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const selection = BREAKDOWN_SQL[dimension];
@@ -50,6 +51,7 @@ export async function querySpendBreakdown(
   const names = adNamePredicate(filters.names);
   const result = await warehouse.query({
     name: "paid_spend_breakdown",
+    cache: CACHE_POLICY.aggregate,
     maxRows: MAX_BREAKDOWN + 1,
     sql: `WITH grouped AS (
       SELECT ${selection.key} AS dimension_key, MAX(${selection.label}) AS label,
@@ -68,11 +70,12 @@ export async function querySpendBreakdown(
     params: [
       { name: "store_id", type: "STRING", value: filters.storeId },
       { name: "channel", type: "STRING", value: filters.channel ?? "" },
-      ...periodParams(filters.range, baseline),
+      ...periodParams(filters.range, baselines[0], baselines[1]),
       ...names.params,
     ],
   });
-  const rows = decodeRows(SpendBreakdownRow, result.rows, AD_RELATION);
+  // Groups with spend only in a comparison period sort last; they have nothing to rank, so they never pad the list.
+  const rows = decodeRows(SpendBreakdownRow, result.rows, AD_RELATION).filter((row) => row.spend !== null);
   return { rows: rows.slice(0, MAX_BREAKDOWN), hasMore: rows.length > MAX_BREAKDOWN };
 }
 
@@ -84,6 +87,7 @@ export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise
   const [series, campaigns] = await Promise.all([
     warehouse.query({
       name: "paid_channel_daily",
+      cache: CACHE_POLICY.aggregate,
       maxRows: MAX_SERIES_ROWS,
       sql: `
         SELECT
@@ -122,6 +126,7 @@ export async function queryPaidCampaigns(filters: PaidMarketingFilters): Promise
   const names = adNamePredicate(filters.names);
   const campaigns = await warehouse.query({
     name: "paid_campaigns",
+    cache: CACHE_POLICY.aggregate,
     partial: true,
     maxRows: MAX_CAMPAIGNS,
     sql: `

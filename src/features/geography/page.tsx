@@ -7,15 +7,17 @@ import { ReportPage } from "@/components/shell/report-page";
 import { DataRegion } from "@/components/patterns/data-region";
 import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { SelectFilter } from "@/components/patterns/select-filter";
-import { KpiCard } from "@/components/patterns/kpi-card";
+import { KpiCard, type KpiDelta } from "@/components/patterns/kpi-card";
 import { DataTable } from "@/components/patterns/data-table";
 import { ChartCard } from "@/components/charts/chart-card";
-import { ComparisonCaption, ComparisonIssue } from "@/components/patterns/comparison-caption";
-import { kpiDelta } from "@/components/patterns/kpi-delta";
+import { ComparisonCaption } from "@/components/patterns/comparison-caption";
+import { ActiveBaseline } from "@/components/patterns/baseline-switch";
+import { kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
+import { slotColumn } from "@/lib/data/period-sql";
 import { Disclosure } from "@/components/ui/disclosure";
 import { formatCount, formatDate, formatMoneyIn, formatPercent } from "@/lib/format";
 import { decimalToNumber } from "@/lib/data/decimal";
-import { periodChanges } from "@/lib/comparison";
+import { planRanges, slotChanges } from "@/lib/comparison";
 import { drillDown } from "@/lib/drill-down";
 import { REPORT_FILTER_FORM_ID, datesInRange, salesChannelLabel, withParams, type SearchParams } from "@/lib/filters";
 import { UNKNOWN_LOCATION, US_STATES } from "@/lib/shipping-geography";
@@ -23,7 +25,7 @@ import { orderDateLabel } from "@/lib/order-scope";
 import countryNames from "./assets/countries-codes.json";
 import stateNames from "./assets/us-states-codes.json";
 import { getGeography } from "./queries";
-import { GEOGRAPHY_RELATION, geographicReconciliation } from "./rows";
+import { GEOGRAPHY_RELATION, geographicReconciliation, type GeographyRow } from "./rows";
 import { geographyBindings } from "./metrics";
 import { GeographyMap } from "./map";
 
@@ -51,8 +53,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
       agentFilters={{ date_basis: dateBasis, population: "valid", country, region, sales_channel: channel }}
       defaults={() => ({ date_basis: dateBasis })}
     >
-      {({ filters, comparison, currency, timeZone, params: applied, dataStatus }) => {
-        const baseline = comparison?.range ?? null;
+      {({ filters, plan, currency, timeZone, params: applied, dataStatus }) => {
         const scope = {
           filters: {
             store: filters.storeId,
@@ -72,7 +73,8 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
           ...filters.range,
           dateBasis,
           population: "valid",
-          comparison: comparison?.mode,
+          comparison: plan?.slots[0].mode,
+          comparison2: plan?.slots[1].mode,
           filters: { country, region, sales_channel: channel },
         };
         const destination = {
@@ -83,7 +85,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
           required: { date_basis: dateBasis, population: "valid" },
         };
         const orders = drillDown(context, destination);
-        const selectedOrders = drillDown({ ...context, comparison: "off" }, destination);
+        const selectedOrders = drillDown({ ...context, comparison: "off", comparison2: "off" }, destination);
         return (
           <>
             <div className="flex flex-wrap items-end gap-3">
@@ -132,17 +134,16 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
             >
               Download geographic sales CSV
             </Link>
-            {comparison && <ComparisonCaption comparison={comparison} />}
             {issue ? (
               <ErrorState title="Check geographic scope" remedy={issue} tone="warning" />
             ) : (
               <Suspense
-                key={JSON.stringify([filters, dateBasis, country, region, channel, baseline])}
+                key={JSON.stringify([filters, dateBasis, country, region, channel, planRanges(plan)])}
                 fallback={<LoadingState variant="chart" label="Loading geographic sales" />}
               >
                 <DataRegion
                   timestamp={timeZone}
-                  load={() => getGeography({ ...filters, dateBasis, country, region, channel }, baseline)}
+                  load={() => getGeography({ ...filters, dateBasis, country, region, channel }, planRanges(plan))}
                   isEmpty={(data) => data.total.records === 0n}
                   emptyMessage="No valid orders match these dates and shipping filters."
                   emptyAction={{
@@ -151,12 +152,33 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                   }}
                 >
                   {(data) => {
-                    const { show: compare, issue: comparisonIssue } = periodChanges(
-                      filters.range,
-                      baseline,
-                      data.total,
-                    );
+                    const changes = plan ? slotChanges(plan, data.total) : null;
                     const reconciled = geographicReconciliation(data);
+                    const slotValue = (row: GeographyRow, slot: 0 | 1, measure: "revenue" | "orders") =>
+                      measure === "revenue"
+                        ? row[slotColumn(slot, "revenue")]
+                        : String(row[slotColumn(slot, "orders")]);
+                    /** Both comparison rows for a total, in slot order; unreconciled totals show no change. */
+                    const deltas = (measure: "revenue" | "orders"): KpiDelta[] =>
+                      slotDeltas(plan, changes, (label, slot) =>
+                        !reconciled
+                          ? null
+                          : measure === "revenue"
+                            ? kpiDelta(
+                                data.total.revenue,
+                                slotValue(data.total, slot, "revenue"),
+                                money,
+                                "neutral",
+                                label,
+                              )
+                            : kpiDelta(
+                                String(data.total.orders),
+                                slotValue(data.total, slot, "orders"),
+                                (value) => formatCount(value === null ? null : BigInt(value)),
+                                "neutral",
+                                label,
+                              ),
+                      );
                     const mappedOrders = data.groups
                       .filter((row) => row.kind !== "remainder" && mappedCodes[row.location])
                       .reduce((sum, row) => sum + row.orders, 0n);
@@ -180,9 +202,54 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                             country ? { region: code } : { country: code, region: null },
                           );
                     const trends = new Map(data.trend.map((row) => [row.date, row]));
+                    /** The destination table for one comparison slot; both are rendered and the active one shows. */
+                    const table = (slot: 0 | 1) => {
+                      const baseline = plan?.slots[slot];
+                      const compare = Boolean(changes?.[slot].show && baseline?.range && reconciled);
+                      return (
+                        <DataTable
+                          caption={country ? `Shipping regions in ${country}` : "Shipping countries"}
+                          pageSize={15}
+                          columns={[
+                            { key: "location", header: "Shipping destination" },
+                            { key: "orders", header: "Valid orders", align: "right", sortable: false },
+                            { key: "revenue", header: "Net revenue", align: "right", sortable: false },
+                            ...(compare && baseline
+                              ? [
+                                  {
+                                    key: "change",
+                                    header: `Revenue change vs ${baseline.label}`,
+                                    align: "right" as const,
+                                    sortable: false,
+                                  },
+                                ]
+                              : []),
+                          ]}
+                          rows={data.groups.map((row) => ({
+                            id: row.location,
+                            cells: {
+                              location: { display: label(row.location), href: link(row.location) },
+                              orders: { display: formatCount(row.orders) },
+                              revenue: { display: row.records === 0n ? "No matching records" : money(row.revenue) },
+                              change: {
+                                display: kpiDelta(row.revenue, slotValue(row, slot, "revenue"), money).display,
+                              },
+                            },
+                          }))}
+                          totals={{
+                            id: "total",
+                            cells: {
+                              location: { display: "Independent total" },
+                              orders: { display: formatCount(data.total.orders) },
+                              revenue: { display: money(data.total.revenue) },
+                            },
+                          }}
+                        />
+                      );
+                    };
                     return (
                       <div className="space-y-6">
-                        <ComparisonIssue issue={comparisonIssue} />
+                        {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
                         {!reconciled && (
                           <ErrorState
                             title="Geographic totals disagree"
@@ -196,11 +263,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                             period="Selected shipping population"
                             binding={bindings[0]}
                             scope={scope}
-                            delta={
-                              compare && reconciled
-                                ? kpiDelta(data.total.revenue, data.total.previous_revenue, money)
-                                : undefined
-                            }
+                            deltas={deltas("revenue")}
                           />
                           <KpiCard
                             label="Valid orders"
@@ -208,13 +271,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                             period="Selected shipping population"
                             binding={bindings[1]}
                             scope={scope}
-                            delta={
-                              compare && reconciled
-                                ? kpiDelta(String(data.total.orders), String(data.total.previous_orders), (value) =>
-                                    formatCount(value === null ? null : BigInt(value)),
-                                  )
-                                : undefined
-                            }
+                            deltas={deltas("orders")}
                           />
                           <KpiCard
                             label="Mapped-order coverage"
@@ -235,42 +292,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                         </section>
                         <div className="grid min-w-0 gap-5 lg:grid-cols-2">
                           <section className="min-w-0 lg:order-2" aria-label="Ranked shipping destinations">
-                            <DataTable
-                              caption={country ? `Shipping regions in ${country}` : "Shipping countries"}
-                              pageSize={15}
-                              columns={[
-                                { key: "location", header: "Shipping destination" },
-                                { key: "orders", header: "Valid orders", align: "right", sortable: false },
-                                { key: "revenue", header: "Net revenue", align: "right", sortable: false },
-                                ...(compare && reconciled
-                                  ? [
-                                      {
-                                        key: "change",
-                                        header: "Revenue change",
-                                        align: "right" as const,
-                                        sortable: false,
-                                      },
-                                    ]
-                                  : []),
-                              ]}
-                              rows={data.groups.map((row) => ({
-                                id: row.location,
-                                cells: {
-                                  location: { display: label(row.location), href: link(row.location) },
-                                  orders: { display: formatCount(row.orders) },
-                                  revenue: { display: row.records === 0n ? "No matching records" : money(row.revenue) },
-                                  change: { display: kpiDelta(row.revenue, row.previous_revenue, money).display },
-                                },
-                              }))}
-                              totals={{
-                                id: "total",
-                                cells: {
-                                  location: { display: "Independent total" },
-                                  orders: { display: formatCount(data.total.orders) },
-                                  revenue: { display: money(data.total.revenue) },
-                                },
-                              }}
-                            />
+                            {plan ? <ActiveBaseline a={table(0)} b={table(1)} /> : table(0)}
                             <p className="mt-3 text-sm text-muted-foreground">
                               All groups, including unknown, unmapped and any remainder,{" "}
                               {reconciled ? "reconcile to the independent total" : "have an unreconciled difference"}.

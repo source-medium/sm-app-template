@@ -5,7 +5,10 @@ import type { ProductFilters } from "./queries";
 
 const fields = [
   ...["refunds", "refunded_units"].flatMap((name) =>
-    ["", "previous_", "total_", "total_previous_"].map((prefix) => ({ name: prefix + name, type: "NUMERIC" })),
+    ["", "previous_", "second_", "total_", "total_previous_", "total_second_"].map((prefix) => ({
+      name: prefix + name,
+      type: "NUMERIC",
+    })),
   ),
   ...["product_key", "label", "reference"].map((name) => ({ name, type: "STRING" })),
   ...[
@@ -15,15 +18,21 @@ const fields = [
     "previous_revenue",
     "previous_units",
     "previous_profit",
+    "second_revenue",
+    "second_units",
+    "second_profit",
     "total_revenue",
     "total_units",
     "total_profit",
     "total_previous_revenue",
     "total_previous_units",
     "total_previous_profit",
+    "total_second_revenue",
+    "total_second_units",
+    "total_second_profit",
     "minimum_value",
   ].map((name) => ({ name, type: "NUMERIC" })),
-  ...["latest_date", "previous_latest_date"].map((name) => ({ name, type: "DATE" })),
+  ...["latest_date", "previous_latest_date", "second_latest_date"].map((name) => ({ name, type: "DATE" })),
 ];
 const row = {
   product_key: "p1",
@@ -52,7 +61,7 @@ it("guards, parameterizes and aggregates valid product lines before the limit, r
       ),
   });
   const { getProducts } = await import("./queries");
-  const data = await getProducts(filters, { from: "2025-09-01", to: "2025-09-02" });
+  const data = await getProducts(filters, [{ from: "2025-09-01", to: "2025-09-02" }, null]);
   expect(data.rows).toHaveLength(10);
   expect(data.hasMore).toBe(true);
   expect(data.rows[0]?.revenue).toBe(row.revenue);
@@ -80,6 +89,15 @@ it("guards, parameterizes and aggregates valid product lines before the limit, r
     parameterValue: { value: filters.storeId },
   });
 });
+it("ranks only products with a selected-period value, so comparison-only products never pad the list", async () => {
+  // The warehouse sorts products without a selected-period value last (NULLS LAST).
+  const ranked = Array.from({ length: 3 }, (_, i) => ({ ...row, product_key: `p${i}` }));
+  await goLive({ submit: () => rowsResponse(fields, [...ranked, { ...row, product_key: "last-year", units: null }]) });
+  const { getProducts } = await import("./queries");
+  const data = await getProducts(filters, [null, { from: "2025-09-01", to: "2025-09-02" }]);
+  expect(data.rows.map((entry) => entry.product_key)).toEqual(["p0", "p1", "p2"]);
+  expect(data.hasMore).toBe(false);
+});
 it("rejects unexpected truncation instead of publishing uncertain totals", async () => {
   await goLive({
     submit: () =>
@@ -90,7 +108,7 @@ it("rejects unexpected truncation instead of publishing uncertain totals", async
       ),
   });
   const { getProducts } = await import("./queries");
-  await expect(getProducts(filters, null)).rejects.toMatchObject({ kind: "result_too_large" });
+  await expect(getProducts(filters, [null, null])).rejects.toMatchObject({ kind: "result_too_large" });
 });
 it("denies another store before either loader can query", async () => {
   const fake = await goLive({ submit: () => rowsResponse(fields, []) });
@@ -99,8 +117,8 @@ it("denies another store before either loader can query", async () => {
   const { queryProductCoverage, queryProductChannels, queryProducts } = await import("./bigquery");
   await expect(getProductCoverage(filters)).rejects.toThrow("This store is not available");
   await expect(queryProductCoverage(filters)).rejects.toThrow("This store is not available");
-  await expect(getProducts(filters, null)).rejects.toThrow("This store is not available");
-  await expect(queryProducts(filters, null)).rejects.toThrow("This store is not available");
+  await expect(getProducts(filters, [null, null])).rejects.toThrow("This store is not available");
+  await expect(queryProducts(filters, [null, null])).rejects.toThrow("This store is not available");
   await expect(getProductChannels(filters)).rejects.toThrow("This store is not available");
   await expect(queryProductChannels(filters)).rejects.toThrow("This store is not available");
   expect(fake.calls).toHaveLength(0);
@@ -181,7 +199,10 @@ it("scopes detail totals before windows and ranks changes before the bounded lim
   const fake = await goLive({ submit: () => rowsResponse(fields, []) });
   const { getProducts } = await import("./queries");
   const identity = 'compound-identity" OR TRUE --';
-  await getProducts({ ...filters, entity: identity, ranking: "decliners" }, { from: "2026-08-01", to: "2026-08-02" });
+  await getProducts({ ...filters, entity: identity, ranking: "decliners" }, [
+    { from: "2026-08-01", to: "2026-08-02" },
+    null,
+  ]);
   const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string; queryParameters: unknown[] };
   expect(body.query).toContain("FROM grouped WHERE product_key = @entity");
   expect(body.query).toContain("ORDER BY units - previous_units ASC NULLS LAST, product_key LIMIT 11");

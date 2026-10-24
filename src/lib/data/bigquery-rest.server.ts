@@ -14,8 +14,9 @@
  * One deadline spans the token exchange, every call, and every retry.
  */
 import "server-only";
-import { logEvent } from "./log";
+import { logEvent, type LogEvent } from "./log";
 import type { TokenProvider } from "./google-token.server";
+import type { CachePolicy } from "./query-cache";
 import { WarehouseError, classifyBigQueryError } from "./warehouse-error";
 
 const API_ROOT = "https://bigquery.googleapis.com/bigquery/v2";
@@ -62,6 +63,12 @@ export type QueryRequest = {
    * first maxRows with `truncated: true`, for a list that says it is partial.
    */
   partial?: boolean;
+  /**
+   * Let the query cache serve a repeat of this exact query for this long
+   * (`CACHE_POLICY.<kind>` in query-cache.ts). Absent for anything that lists
+   * individual orders, customers or evidence; those run on every request.
+   */
+  cache?: CachePolicy;
 };
 
 export type QueryOptions = {
@@ -69,6 +76,9 @@ export type QueryOptions = {
   signal?: AbortSignal;
   /** The caller handles a missing relation, so its 404 logs at info rather than warn. */
   missingRelationOk?: boolean;
+  /** Set by the Warehouse for its log line: the request's id and why the cache did not serve this query. */
+  requestId?: string;
+  appCache?: Extract<LogEvent["app_cache"], "miss" | "bypass">;
 };
 
 export type JobReference = { projectId: string; jobId: string; location: string };
@@ -81,7 +91,11 @@ export type QueryResult = {
   truncated: boolean;
   job: JobReference | null;
   bytesBilled: string | null;
+  /** BigQuery served its own cached result. A separate layer from the app's query cache. */
   cacheHit: boolean | null;
+  /** Set by the Warehouse: whether this result came from the app's query cache, and when its query completed. */
+  servedFrom?: "warehouse" | "app-cache";
+  queriedAt?: string;
 };
 
 type QueryResponse = {
@@ -137,6 +151,8 @@ export async function runQuery(
         maxResults: Math.min(maxRows, PAGE_ROWS),
       });
     }
+    // Statistics belong to the completed job: a submission that was still running reports none.
+    const completed = page;
 
     const fields = page.schema?.fields ?? first.schema?.fields ?? [];
     const rows: Record<string, unknown>[] = [];
@@ -166,8 +182,8 @@ export async function runQuery(
       rows,
       truncated,
       job,
-      bytesBilled: first.totalBytesBilled ?? null,
-      cacheHit: page.cacheHit ?? first.cacheHit ?? null,
+      bytesBilled: completed.totalBytesBilled ?? first.totalBytesBilled ?? null,
+      cacheHit: completed.cacheHit ?? first.cacheHit ?? null,
     };
     if (truncated && !request.partial) throw new WarehouseError("result_too_large", { reason: request.name });
     return result;
@@ -185,6 +201,8 @@ export async function runQuery(
       build: client.buildId,
       app: client.applicationId,
       query: request.name,
+      app_request_id: options.requestId ?? null,
+      app_cache: options.appCache ?? null,
       job_project: job?.projectId ?? client.jobProjectId,
       job_id: job?.jobId ?? null,
       location: job?.location ?? client.location,

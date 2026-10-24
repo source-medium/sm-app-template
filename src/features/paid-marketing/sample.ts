@@ -14,6 +14,7 @@ import type { PaidMarketingData, PaidMarketingFilters } from "./queries";
 import { AD_RELATION, CampaignWireRow, ChannelDayRow, MAX_CAMPAIGNS, toCampaign, toChannelDay } from "./rows";
 import { SpendBreakdownRow, MAX_BREAKDOWN } from "./rows";
 import type { BreakdownDimension, SpendBreakdown } from "./queries";
+import type { BaselineRanges } from "@/lib/comparison";
 
 const CAMPAIGNS = [
   {
@@ -142,13 +143,17 @@ const money = (cents: bigint) => fromUnits(cents * 10_000_000n);
 export async function sampleSpendBreakdown(
   filters: PaidMarketingFilters,
   dimension: BreakdownDimension,
-  baseline: DateRange | null,
+  baselines: BaselineRanges,
 ): Promise<SpendBreakdown> {
-  const grouped = new Map<string, { label: string; spend: bigint | null; previous: bigint | null }>();
-  const dates = { spend: new Set<string>(), previous: new Set<string>() };
+  const grouped = new Map<
+    string,
+    { label: string; spend: bigint | null; previous: bigint | null; second: bigint | null }
+  >();
+  const dates = { spend: new Set<string>(), previous: new Set<string>(), second: new Set<string>() };
   for (const [period, range] of [
     ["spend", filters.range],
-    ["previous", baseline],
+    ["previous", baselines[0]],
+    ["second", baselines[1]],
   ] as const) {
     if (!range) continue;
     for (const row of samplePaidSource(filters.storeId, range)) {
@@ -169,6 +174,7 @@ export async function sampleSpendBreakdown(
               : row.campaign[dimension],
         spend: null,
         previous: null,
+        second: null,
       };
       sums[period] = (sums[period] ?? 0n) + row.spendCents;
       grouped.set(key, sums);
@@ -195,11 +201,14 @@ export async function sampleSpendBreakdown(
       label: row.label,
       spend: row.spend === null ? null : money(row.spend),
       previous_spend: row.previous === null ? null : money(row.previous),
+      second_spend: row.second === null ? null : money(row.second),
       total_spend: total === null ? null : money(total),
       minimum_spend: minimum === null ? null : money(minimum),
       latest_date: latestDate(dates.spend),
       previous_latest_date: latestDate(dates.previous),
-    }));
+      second_latest_date: latestDate(dates.second),
+    }))
+    .filter((row) => row.spend !== null);
   return {
     rows: decodeRows(SpendBreakdownRow, wire.slice(0, MAX_BREAKDOWN), AD_RELATION),
     hasMore: wire.length > MAX_BREAKDOWN,

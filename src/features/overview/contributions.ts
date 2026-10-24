@@ -1,12 +1,17 @@
 import { compareValues, periodChanges, type Comparison } from "@/lib/comparison";
 import { fromUnits, sumDecimals, toUnits } from "@/lib/data/decimal";
-import type { OverviewFilters, OverviewReport, RevenueContribution } from "./queries";
+import type { OverviewFilters, OverviewSlice, RevenueContribution } from "./queries";
 
 /** Same summary population as the independent totals. A missing group has no recorded rows. */
-export function revenueContributions(report: OverviewReport, filters: OverviewFilters, comparison?: Comparison) {
+export function revenueContributions(report: OverviewSlice, filters: OverviewFilters, comparison?: Comparison) {
   const current = report.current.contributions;
   const previous = report.comparison?.data?.contributions;
-  if (!comparison || !periodChanges(filters.range, comparison.range, report.coverage).show || !current || !previous)
+  if (
+    !comparison ||
+    !periodChanges(filters.range, comparison.range, report.coverage, comparison.alignment).show ||
+    !current ||
+    !previous
+  )
     return null;
   // A ranked remainder may contain different entities in each period; do not assign its movement to named groups.
   if ([...current, ...previous].some((row) => row.remainder))

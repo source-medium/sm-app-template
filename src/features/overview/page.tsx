@@ -8,10 +8,11 @@ import { OverviewTrendSelector } from "./trend-selector";
 import { Disclosure } from "@/components/ui/disclosure";
 import { DataRegion } from "@/components/patterns/data-region";
 import { ErrorState, LoadingState } from "@/components/patterns/data-states";
-import { KpiCard } from "@/components/patterns/kpi-card";
+import { KpiCard, type KpiDelta } from "@/components/patterns/kpi-card";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
-import { kpiDelta } from "@/components/patterns/kpi-delta";
-import { periodChanges, type Comparison } from "@/lib/comparison";
+import { ActiveBaseline } from "@/components/patterns/baseline-switch";
+import { kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
+import { planParams, planRanges, slotChanges, type ComparisonPlan } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
 import {
   parseChoice,
@@ -26,7 +27,7 @@ import { decimalToNumber } from "@/lib/data/decimal";
 import { MetricDefinition } from "@/components/patterns/metric-definition";
 import { compactHeadline, formatDateRange } from "@/lib/format";
 import { presentOverviewMeasures, type OverviewMeasureKey } from "./measures";
-import { getOverviewReport, type OverviewFilters, type OverviewReport } from "./queries";
+import { getOverviewReport, overviewSlice, type OverviewFilters, type OverviewReport } from "./queries";
 import { parseTimeGrain } from "@/lib/time-grain";
 import { OverviewControls } from "./controls";
 import { OverviewSummary } from "./summary";
@@ -40,6 +41,7 @@ import { overviewHeadline } from "./headline";
 import { ReportControls } from "@/components/shell/report-controls";
 
 export const metadata: Metadata = { title: "Overview" };
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
@@ -71,8 +73,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       agentFilters={{ sales_channel: channel, grain, trend: trendMode }}
       comparisons
     >
-      {({ filters, comparison, timeZone, currency, dataStatus }) => {
+      {({ filters, plan, timeZone, currency, dataStatus }) => {
         const selected: OverviewFilters = { ...filters, channel, grain };
+        const comparisonParams = planParams(plan);
         return (
           <>
             <ReportControls
@@ -83,12 +86,12 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
             </ReportControls>
             {dataStatus}
             <Suspense
-              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${comparison?.mode}|${channel}|${grain}`}
+              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${comparisonParams.compare}|${comparisonParams.compare2}|${channel}|${grain}`}
               fallback={<LoadingState variant="kpis" label="Loading the overview" />}
             >
               <DataRegion
                 timestamp={timeZone}
-                load={() => getOverviewReport(selected, comparison?.range ?? null)}
+                load={() => getOverviewReport(selected, planRanges(plan))}
                 isEmpty={(report) => report.current.days.length === 0}
                 emptyMessage="No rows match this store, sales channel, and date range."
                 emptyAction={
@@ -104,7 +107,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                   <OverviewView
                     report={report}
                     filters={selected}
-                    comparison={comparison}
+                    plan={plan}
                     currency={currency}
                     trendMode={trendMode}
                     timeZone={timeZone}
@@ -123,7 +126,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                     ...filters.range,
                     sales_channel: channel ?? "",
                     grain,
-                    compare: comparison?.mode ?? "off",
+                    ...comparisonParams,
                   },
                 )}
               >
@@ -147,7 +150,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                         store: filters.storeId,
                         ...filters.range,
                         sales_channel: channel ?? "",
-                        compare: comparison?.mode ?? "off",
+                        ...comparisonParams,
                         date_basis: "processed",
                       },
                     )}
@@ -167,7 +170,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
 function OverviewView({
   report,
   filters,
-  comparison,
+  plan,
   currency,
   trendMode,
   timeZone,
@@ -175,27 +178,24 @@ function OverviewView({
   timeZone: string;
   report: OverviewReport;
   filters: OverviewFilters;
-  comparison?: Comparison;
+  plan?: ComparisonPlan;
   currency: string | null;
   trendMode: (typeof TREND_MODES)[number]["value"];
 }) {
   const data = report.current;
-  const compared = report.comparison?.data ?? null;
-  const baseline = comparison?.range;
-  const { show: showDelta, issue } = periodChanges(filters.range, baseline, report.coverage);
-  // Daily lines align date by date, so they still show; period totals change only when coverage allows.
-  const showLines = Boolean(baseline && compared);
+  const changes = plan ? slotChanges(plan, report.coverage) : null;
   const period = formatDateRange(filters.range);
-  const headline = overviewHeadline(report, filters, comparison, currency);
   const presentedDays = new Map(data.days.map((day) => [day.date, presentOverviewMeasures(day, currency)]));
   const currentMeasures = presentOverviewMeasures(data.totals, currency);
-  const previousMeasures = presentOverviewMeasures(compared?.totals ?? null, currency);
+  const baselineMeasures = report.baselines.map((entry) =>
+    presentOverviewMeasures(entry?.data?.totals ?? null, currency),
+  );
   // Every date in the range, so a date with no rows is a gap in the line, not a zero.
   const dates = datesInRange(filters.range);
   const dailyTableHref =
     filters.grain === "day"
       ? "#summary-heading"
-      : `${withParams("/overview", {}, { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? "", compare: comparison?.mode ?? null, grain: "day" })}#summary-heading`;
+      : `${withParams("/overview", {}, { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? "", ...planParams(plan), grain: "day" })}#summary-heading`;
   function trend(key: OverviewMeasureKey) {
     return {
       tableHref: dailyTableHref,
@@ -205,13 +205,33 @@ function OverviewView({
       }),
     };
   }
-  const charts = overviewTrends(
-    data.days,
-    filters.range,
-    trendMode,
+  /** One row per comparison slot: the change when coverage allows it, otherwise why not. */
+  function deltas(key: OverviewMeasureKey): KpiDelta[] {
+    const current = currentMeasures[key];
+    return slotDeltas(
+      plan,
+      changes,
+      (label, slot) =>
+        report.baselines[slot]?.data
+          ? kpiDelta(
+              current.amount,
+              baselineMeasures[slot]?.[key].amount ?? null,
+              current.format,
+              current.better,
+              label,
+            )
+          : null,
+      (slot) => {
+        const error = report.baselines[slot]?.error;
+        return error ? `Unavailable: ${error.title}` : undefined;
+      },
+    );
+  }
+  const scope = {
+    filters: { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? null },
     currency,
-    showLines && comparison && compared ? { period: comparison, days: compared.days } : undefined,
-  );
+    timeZone,
+  };
   const cards: { key: OverviewMeasureKey; label: string; description: string }[] = [
     {
       key: "revenue",
@@ -251,66 +271,113 @@ function OverviewView({
     },
   ];
 
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Keep comparison coverage beside the primary metrics. */}
-      <div className="flex flex-col gap-2">
-        {baseline && comparison && (
-          <ComparisonCaption comparison={comparison} issue={issue}>
-            <p>
-              {rangeLength(filters.range)} selected days vs {rangeLength(baseline)} comparison days.
-            </p>
-            {report.comparison?.data && (
-              <p>
-                Days with rows: {data.days.length}/{rangeLength(filters.range)} selected;{" "}
-                {report.comparison.data.days.length}/{rangeLength(baseline)} comparison. Missing days are not zeros; a
-                day with rows can still be incomplete.
-              </p>
-            )}
-            {comparison?.mode === "year" && (
-              <p>
-                Calendar dates, not matched weekdays. Period boundaries use Feb 28 when needed; unmatched leap days are
-                gaps in comparison lines.
-              </p>
-            )}
-          </ComparisonCaption>
-        )}
-      </div>
-      {showDelta &&
-        report.comparison?.data &&
-        (data.days.length < rangeLength(filters.range) ||
-          (baseline && report.comparison.data.days.length < rangeLength(baseline))) && (
+  /**
+   * Everything that reads one comparison slot: the headline, the chart
+   * overlay, the biggest changes and the detail tables. Both slots are
+   * rendered and the caption's switch shows one, so switching makes no request.
+   */
+  const slotView = (slot: 0 | 1) => {
+    const baseline = plan?.slots[slot];
+    const slice = overviewSlice(report, slot);
+    const compared = slice.comparison?.data ?? null;
+    const range = baseline?.range;
+    const showDelta = changes?.[slot]?.show ?? false;
+    // Daily lines align date by date, so they still show; period totals change only when coverage allows.
+    const showLines = Boolean(range && compared);
+    const charts = overviewTrends(
+      data.days,
+      filters.range,
+      trendMode,
+      currency,
+      showLines && baseline && compared ? { period: baseline, days: compared.days } : undefined,
+    );
+    const headline = overviewHeadline(slice, filters, baseline, currency);
+    return {
+      note:
+        showDelta &&
+        compared &&
+        (data.days.length < rangeLength(filters.range) || (range && compared.days.length < rangeLength(range))) ? (
           <p className="text-sm text-muted-foreground">
             Some dates have no rows. Compare period totals with care; missing days are not zeros.
           </p>
-        )}
-      {comparison && comparison.mode !== "off" && !baseline && (
-        <p>Comparison unavailable: the earlier period is outside supported warehouse dates.</p>
-      )}
-      {report.comparison?.error && (
-        <ErrorState
-          title={`Comparison unavailable: ${report.comparison.error.title}`}
-          remedy={report.comparison.error.remedy}
-          detail={report.comparison.error.detail}
+        ) : null,
+      headline: headline ? (
+        <p
+          data-agent-target="Summary"
+          data-agent-component="Headline"
+          className="max-w-prose font-display text-lg leading-snug text-balance sm:text-xl"
+        >
+          {headline}
+        </p>
+      ) : null,
+      charts: (
+        <OverviewTrendSelector
+          charts={charts.map((chart) => ({
+            ...chart,
+            definition: (
+              <MetricDefinition
+                binding={overviewBindings.find((binding) => binding.id === chart.key) ?? overviewBindings[0]}
+                scope={scope}
+              />
+            ),
+            kind: "line",
+            categoryHeader: "Date",
+            description: showLines
+              ? `Selected period and dashed comparison (${baseline?.label ?? "comparison"}). Comparison dates appear in the table and tooltip.`
+              : "Selected period",
+            series: [
+              { key: chart.key, label: chart.label, color: "var(--chart-1)" },
+              ...(showLines
+                ? [
+                    {
+                      key: `previous_${chart.key}`,
+                      label: capitalize(baseline?.label ?? "comparison"),
+                      color: "var(--chart-2)",
+                      dashed: true,
+                    },
+                  ]
+                : []),
+            ],
+          }))}
         />
-      )}
+      ),
+      highlights: <OverviewHighlights report={slice} filters={filters} comparison={baseline} currency={currency} />,
+      purchases: (
+        <OverviewPurchases
+          current={data.purchases}
+          previous={compared?.purchases ?? null}
+          comparedTo={showDelta && range ? formatDateRange(range) : undefined}
+          currency={currency}
+        />
+      ),
+      revenue: (
+        <OverviewRevenue
+          current={data.revenue}
+          previous={compared?.revenue ?? null}
+          compare={showDelta}
+          currency={currency}
+        />
+      ),
+    };
+  };
+  const views = [slotView(0), slotView(1)] as const;
+  const pick = (key: keyof (typeof views)[0]) =>
+    plan ? <ActiveBaseline a={views[0][key]} b={views[1][key]} /> : views[0][key];
+
+  return (
+    <div className="flex flex-col gap-6">
       <section aria-label="Period totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards
           .filter((card) => ["revenue", "orders", "spend", "mer"].includes(card.key))
           .map((card) => {
             const current = currentMeasures[card.key];
-            const previous = previousMeasures[card.key];
             return (
               <KpiCard
                 key={card.key}
                 label={card.label}
                 description={card.description}
                 binding={overviewBindings.find((binding) => binding.id === card.key)}
-                scope={{
-                  filters: { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? null },
-                  currency,
-                  timeZone,
-                }}
+                scope={scope}
                 value={compactHeadline(
                   current.amount,
                   current.display,
@@ -319,23 +386,52 @@ function OverviewView({
                 )}
                 fullValue={current.display}
                 trend={trend(card.key)}
-                delta={
-                  showDelta ? kpiDelta(current.amount, previous.amount, current.format, current.better) : undefined
-                }
+                deltas={deltas(card.key)}
                 period={period}
               />
             );
           })}
       </section>
-      {headline && (
-        <p
-          data-agent-target="Summary"
-          data-agent-component="Headline"
-          className="max-w-prose font-display text-lg leading-snug text-balance sm:text-xl"
-        >
-          {headline}
-        </p>
+      {/* Comparison coverage sits right under the primary metrics, so results stay above the fold. */}
+      {plan && (
+        <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)}>
+          <p>
+            {rangeLength(filters.range)} selected days
+            {plan.slots
+              .filter((slot) => slot.range)
+              .map((slot) => ` vs ${rangeLength(slot.range ?? filters.range)} days (${slot.label})`)
+              .join("")}
+            .
+          </p>
+          {report.baselines.map((entry, index) =>
+            entry?.data ? (
+              <p key={index}>
+                Days with rows ({plan.slots[index]?.label}): {data.days.length}/{rangeLength(filters.range)} selected;{" "}
+                {entry.data.days.length}/{rangeLength(plan.slots[index]?.range ?? filters.range)} comparison. Missing
+                days are not zeros; a day with rows can still be incomplete.
+              </p>
+            ) : null,
+          )}
+          {plan.slots.some((slot) => slot.mode === "year" && slot.range) && (
+            <p>
+              Last year compares calendar dates, not matched weekdays. Period boundaries use Feb 28 when needed;
+              unmatched leap days are gaps in comparison lines.
+            </p>
+          )}
+        </ComparisonCaption>
       )}
+      {pick("note")}
+      {report.baselines.map((entry, index) =>
+        entry?.error ? (
+          <ErrorState
+            key={index}
+            title={`Comparison unavailable (${plan?.slots[index]?.label ?? "comparison"}): ${entry.error.title}`}
+            remedy={entry.error.remedy}
+            detail={entry.error.detail}
+          />
+        ) : null,
+      )}
+      {pick("headline")}
       <section aria-labelledby="trends-heading" className="flex flex-col gap-3">
         <SectionHeader
           id="trends-heading"
@@ -346,34 +442,9 @@ function OverviewView({
               : undefined
           }
         />
-        <OverviewTrendSelector
-          charts={charts.map((chart) => ({
-            ...chart,
-            definition: (
-              <MetricDefinition
-                binding={overviewBindings.find((binding) => binding.id === chart.key) ?? overviewBindings[0]}
-                scope={{
-                  filters: { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? null },
-                  currency,
-                  timeZone,
-                }}
-              />
-            ),
-            kind: "line",
-            categoryHeader: "Date",
-            description: showLines
-              ? "Selected period and dashed comparison. Comparison dates appear in the table and tooltip."
-              : "Selected period",
-            series: [
-              { key: chart.key, label: chart.label, color: "var(--chart-1)" },
-              ...(showLines
-                ? [{ key: `previous_${chart.key}`, label: "Comparison", color: "var(--chart-2)", dashed: true }]
-                : []),
-            ],
-          }))}
-        />
+        {pick("charts")}
       </section>
-      <OverviewHighlights report={report} filters={filters} comparison={comparison} currency={currency} />
+      {pick("highlights")}
       <Disclosure summary="Secondary metrics and business details">
         <div className="space-y-6">
           <section aria-label="Secondary metrics" className="grid gap-4 sm:grid-cols-2">
@@ -387,39 +458,16 @@ function OverviewView({
                   period={period}
                   description={card.description}
                   binding={overviewBindings.find((binding) => binding.id === card.key)}
-                  scope={{
-                    filters: { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? null },
-                    currency,
-                    timeZone,
-                  }}
+                  scope={scope}
                   trend={trend(card.key)}
-                  delta={
-                    showDelta
-                      ? kpiDelta(
-                          currentMeasures[card.key].amount,
-                          previousMeasures[card.key].amount,
-                          currentMeasures[card.key].format,
-                          currentMeasures[card.key].better,
-                        )
-                      : undefined
-                  }
+                  deltas={deltas(card.key)}
                 />
               ))}
           </section>
-          <OverviewPurchases
-            current={data.purchases}
-            previous={compared?.purchases ?? null}
-            comparedTo={showDelta && baseline ? formatDateRange(baseline) : undefined}
-            currency={currency}
-          />
+          {pick("purchases")}
         </div>
       </Disclosure>
-      <OverviewRevenue
-        current={data.revenue}
-        previous={compared?.revenue ?? null}
-        compare={showDelta}
-        currency={currency}
-      />
+      {pick("revenue")}
       <Disclosure summary="Business summary and CSV" id="summary-details">
         <OverviewSummary data={data} filters={filters} currency={currency} timeZone={timeZone} />
       </Disclosure>

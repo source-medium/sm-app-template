@@ -14,6 +14,7 @@ import { decodeRows } from "@/lib/data/decode";
 import type { TimeGrain } from "@/lib/time-grain";
 import type { OverviewData, OverviewFilters } from "./queries";
 import { OVERVIEW_RELATION, OverviewChannelRow, OverviewRow, toOverviewData } from "./rows";
+import { CACHE_POLICY } from "@/lib/data/query-cache";
 
 /**
  * One row per date, so the longest allowed range bounds the result; past it is an error, not a shorter
@@ -26,6 +27,7 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "overview_daily",
+    cache: CACHE_POLICY.aggregate,
     maxRows: Math.min(MAX_ROWS, rangeLength(filters.range)),
     sql: `
       WITH scoped AS (
@@ -114,6 +116,7 @@ export async function queryOverviewChannels(filters: OverviewFilters): Promise<s
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "overview_channels",
+    cache: CACHE_POLICY.aggregate,
     maxRows: 50,
     sql: `SELECT DISTINCT IFNULL(sm_channel, '(none)') AS channel
       FROM ${warehouse.table(OVERVIEW_RELATION)}

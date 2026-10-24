@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { largestRevenueChanges } from "./revenue-changes";
-import type { OverviewData, OverviewDay, OverviewReport } from "./queries";
+import type { OverviewData, OverviewDay, OverviewSlice } from "./queries";
 
 const day = (date: string, netRevenue: string | null): OverviewDay => ({
   date,
@@ -20,7 +20,7 @@ const data = (days: OverviewDay[]): OverviewData => ({
 });
 const filters = { storeId: "sample-store-a", range: { from: "2026-09-01", to: "2026-09-04" } };
 const period = { mode: "previous" as const, range: { from: "2026-08-28", to: "2026-08-31" } };
-const report = (current: OverviewDay[], previous: OverviewDay[]): OverviewReport => ({
+const report = (current: OverviewDay[], previous: OverviewDay[]): OverviewSlice => ({
   current: data(current),
   comparison: { data: data(previous), error: null },
   coverage: { latest_date: "2026-09-04", previous_latest_date: "2026-08-31" },

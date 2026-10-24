@@ -51,7 +51,7 @@ test("paid marketing: ranked spend shares, dimension changes, and comparisons ho
   const region = page.getByRole("region", { name: "Spend breakdown", exact: true });
   const channelTable = region.getByRole("table", { name: "Spend by channel details", exact: true });
   await expect(channelTable.getByRole("columnheader", { name: "Share of total" })).toBeVisible();
-  await expect(channelTable.getByRole("columnheader", { name: "Change vs comparison" })).toBeVisible();
+  await expect(channelTable.getByRole("columnheader", { name: "Change vs same period last year" })).toBeVisible();
   await channelTable.getByRole("link", { name: "Meta", exact: true }).click();
   await expect(page).toHaveURL(/channel=Meta/);
   await choose(page, "Break down spend by", "campaign");
@@ -63,7 +63,7 @@ test("paid marketing: ranked spend shares, dimension changes, and comparisons ho
   await expect(campaignTable.locator("tbody tr")).toHaveCount(3);
   await choose(page, "Compare spend breakdown with", "off");
   await expect(page).toHaveURL(/compare=off/);
-  await expect(campaignTable.getByRole("columnheader", { name: "Change vs comparison" })).toHaveCount(0);
+  await expect(campaignTable.getByRole("columnheader", { name: /^Change vs/ })).toHaveCount(0);
   expect(new URL(page.url()).searchParams.get("breakdown")).toBe("campaign");
 });
 

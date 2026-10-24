@@ -11,7 +11,7 @@ import { FilterBar } from "@/components/shell/filter-bar";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { StoreOption } from "@/lib/data/stores.server";
 import { WarehouseError } from "@/lib/data/warehouse-error";
-import type { Comparison } from "@/lib/comparison";
+import type { ComparisonPlan } from "@/lib/comparison";
 import { datePresets, single, withParams, type DateRange, type SearchParams } from "@/lib/filters";
 import { formatDateRange } from "@/lib/format";
 
@@ -26,7 +26,8 @@ export type ReportFilterBarProps = {
   comparisonLabel?: string;
   dates: boolean;
   maxDays?: number;
-  comparison?: Comparison;
+  /** Present on reports that compare periods; its two slots are the comparison selects. */
+  plan?: ComparisonPlan;
   fixedStore: boolean;
   allStores?: boolean;
 };
@@ -73,7 +74,7 @@ function StoreFilterBar({
   today,
   comparisonLabel,
   dates,
-  comparison,
+  plan,
   fixedStore,
   allStores,
   maxDays,
@@ -97,7 +98,7 @@ function StoreFilterBar({
         allStores={allStores}
       />
       <FilterBar
-        key={`${storeId}|${range?.from}|${range?.to}|${comparison?.mode}`}
+        key={`${storeId}|${range?.from}|${range?.to}|${plan?.slots[0].mode}|${plan?.slots[1].mode}`}
         pathname={pathname}
         storeId={storeId}
         from={range?.from}
@@ -106,9 +107,11 @@ function StoreFilterBar({
         maxDays={maxDays}
         presets={presets}
         carriedComparison={single(params, "compare")}
+        carriedComparison2={single(params, "compare2")}
         comparisonLabel={comparisonLabel}
         dates={dates && today !== null}
-        comparison={comparison?.mode}
+        comparison={plan?.slots[0].mode}
+        comparison2={plan?.slots[1].mode}
         rangeLabel={range ? formatDateRange(range) : undefined}
       />
     </>

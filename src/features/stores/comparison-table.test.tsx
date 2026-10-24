@@ -3,9 +3,12 @@ import { render, screen, within } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { StoreComparisonTable } from "./comparison-table";
 import type { StoreComparison } from "./queries";
+import { parseComparisonPlan } from "@/lib/comparison";
 
 const range = { from: "2026-09-01", to: "2026-09-07" };
 const baseline = { from: "2026-08-25", to: "2026-08-31" };
+/** Previous 7 days (the baseline above) and the same dates last year, which have no rows in these fixtures. */
+const plan = parseComparisonPlan({ compare: "previous" }, range, "2026-10-01");
 const now = new Date("2026-10-01T12:00:00Z");
 function store(id: string, currency: string | null, latest = range.to): StoreComparison {
   return {
@@ -19,8 +22,12 @@ function store(id: string, currency: string | null, latest = range.to): StoreCom
       previous_spend: null,
       orders: 1.5,
       previous_orders: 1,
+      second_revenue: null,
+      second_orders: null,
+      second_spend: null,
       latest_date: latest,
       previous_latest_date: baseline.to,
+      second_latest_date: null,
     },
   };
 }
@@ -29,7 +36,7 @@ it("labels verified currencies per row, leaves unknown money unlabeled, and expo
     <StoreComparisonTable
       data={[store("US", "USD"), store("UK", "GBP"), store("Unknown", null)]}
       range={range}
-      baseline={baseline}
+      plan={plan}
       params={{ compare: "previous" }}
       now={now}
     />,
@@ -51,7 +58,7 @@ it("hides only the affected store's comparison and retains a store with no rows"
     <StoreComparisonTable
       data={[store("Ready", "USD"), store("Late", "USD", "2026-09-06"), { ...store("Empty", "USD"), summary: null }]}
       range={range}
-      baseline={baseline}
+      plan={plan}
       params={{}}
       now={now}
     />,
@@ -68,12 +75,12 @@ it("uses each store's local date for current-day completeness and omits comparis
     { ...store("West", "USD"), store: { ...store("West", "USD").store, timeZone: "America/Los_Angeles" } },
   ];
   const props = { data, range, params: {}, now: new Date("2026-09-08T05:00:00Z") };
-  const { rerender } = render(<StoreComparisonTable {...props} baseline={baseline} />);
+  const { rerender } = render(<StoreComparisonTable {...props} plan={plan} />);
   const rows = screen.getAllByRole("row");
   expect(rows[1]).toHaveTextContent("+23.46%");
   expect(rows[2]).toHaveTextContent("Hidden");
   expect(rows[2]).toHaveTextContent("Today may be incomplete");
-  rerender(<StoreComparisonTable {...props} baseline={null} />);
-  expect(screen.queryByRole("columnheader", { name: "Revenue change" })).not.toBeInTheDocument();
+  rerender(<StoreComparisonTable {...props} plan={undefined} />);
+  expect(screen.queryByRole("columnheader", { name: /Revenue change/ })).not.toBeInTheDocument();
   expect(screen.queryByText("Why some changes are hidden")).not.toBeInTheDocument();
 });

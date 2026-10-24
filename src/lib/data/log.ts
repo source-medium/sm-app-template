@@ -7,12 +7,18 @@
  */
 
 export type LogEvent = {
-  event: "bq_query" | "managed_context_refused" | "viewer_denied" | "config_error" | "token_exchange";
+  event: "bq_query" | "app_cache" | "managed_context_refused" | "viewer_denied" | "config_error" | "token_exchange";
   level: "info" | "warn" | "error";
   build?: string;
   app?: string | null;
   query?: string | null;
+  /** The data API's request id (a support code), when a managed call produced one. */
   request_id?: string | null;
+  /** This app's own per-request id, shared by every line the request produced. */
+  app_request_id?: string | null;
+  /** How the query cache handled a query: served (`hit`), ran (`miss`, `bypass`), or could not store (`skip`, `error`). */
+  app_cache?: "hit" | "miss" | "bypass" | "skip" | "error" | null;
+  cache_tier?: string | null;
   job_project?: string | null;
   job_id?: string | null;
   location?: string | null;
@@ -36,6 +42,9 @@ const KEYS = [
   "app",
   "query",
   "request_id",
+  "app_request_id",
+  "app_cache",
+  "cache_tier",
   "job_project",
   "job_id",
   "location",

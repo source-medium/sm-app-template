@@ -9,6 +9,7 @@ import { cache } from "react";
 import { appConfig } from "@/app.config";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { isCurrency, isTimeZone } from "@/lib/format";
+import { CACHE_POLICY } from "@/lib/data/query-cache";
 import { SAMPLE_STORES } from "@/lib/sample/stores";
 import { queryOrderTimeZone, queryStoreRoster } from "./store-roster.server";
 import { WarehouseError } from "./warehouse-error";
@@ -61,15 +62,20 @@ function storeLogo(logo: string | null): string | null {
   }
 }
 
-/** Verified reporting currency, never inferred from nominal warehouse metadata. */
-export function reportingCurrency(storeId: string, mode: "sample" | "live"): string | null {
-  return currencyCode(
-    mode === "sample"
-      ? SAMPLE_STORES.find((store) => store.id === storeId)?.currency
-      : Object.hasOwn(appConfig.reportingCurrencies, storeId)
-        ? appConfig.reportingCurrencies[storeId]
-        : appConfig.currency,
-  );
+/**
+ * Verified reporting currency, never inferred from nominal warehouse metadata:
+ * the store's app.config.ts override, else the deployment's setting, else the
+ * currency the data source vouches for (SourceMedium's workspace setting, for
+ * a managed app). Sample stores report in USD.
+ */
+export function reportingCurrency(
+  storeId: string,
+  access: { mode: "sample" } | { mode: "live"; warehouse: { reportingCurrency: string | null } },
+): string | null {
+  if (access.mode === "sample") return currencyCode(SAMPLE_STORES.find((store) => store.id === storeId)?.currency);
+  if (Object.hasOwn(appConfig.reportingCurrencies, storeId))
+    return currencyCode(appConfig.reportingCurrencies[storeId]);
+  return currencyCode(appConfig.currency ?? access.warehouse.reportingCurrency);
 }
 
 /** What app.config.ts establishes about live money labels, as reportingCurrency() will apply it. */
@@ -123,15 +129,17 @@ export const loadStores = cache(async (): Promise<StoreOption[]> => {
 });
 
 /**
- * Store time zones this server has resolved. These are store configuration,
- * not viewer data. Reusing them for an hour lets a report whose
- * link names its store start its queries without waiting for the store list,
- * while a changed zone or daylight-saving change in an order offset
- * still applies within the hour. The live report currency is resolved from
- * app.config.ts separately, so nominal store metadata never chooses its label.
+ * Store time zones this server has resolved, keyed by app and store. These are
+ * store configuration, not viewer data. Reusing them for an hour lets a report
+ * whose link names its store start its queries without waiting for the store
+ * list, while a changed zone or daylight-saving change in an order offset
+ * still applies within the hour. The roster and offset queries themselves go
+ * through the query cache (CACHE_POLICY.roster and storeTimeZone). The live
+ * report currency is resolved from app.config.ts separately, so nominal store
+ * metadata never chooses its label.
  */
 const knownStores = new Map<string, { zone: string; until: number }>();
-const REMEMBER_MS = 60 * 60 * 1000;
+const REMEMBER_MS = CACHE_POLICY.storeTimeZone.maxAgeSeconds * 1000;
 
 /**
  * The store's zone from one list read. The zone is
@@ -142,7 +150,7 @@ const REMEMBER_MS = 60 * 60 * 1000;
  */
 async function storeFacts(storeId: string, stores?: StoreOption[]): Promise<{ zone: string } | null> {
   const access = await requireViewer({ storeId });
-  const key = `${access.mode}|${storeId}`;
+  const key = `${access.mode}|${access.mode === "live" ? access.warehouse.applicationId : ""}|${storeId}`;
   const known = knownStores.get(key);
   if (known && known.until > Date.now()) return { zone: known.zone };
   let listed: StoreOption[] | null = null;
@@ -201,7 +209,7 @@ export async function resolveReportStore(supplied: string | undefined): Promise<
           status: "ready",
           storeId,
           timeZone: facts.zone,
-          currency: reportingCurrency(storeId, access.mode),
+          currency: reportingCurrency(storeId, access),
         };
   } catch (error) {
     if (!(error instanceof WarehouseError)) throw error;

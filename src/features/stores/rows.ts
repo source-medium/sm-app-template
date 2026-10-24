@@ -7,10 +7,13 @@ export const StoreSummaryRow = z.object({
   sm_store_id: bq.string(),
   revenue: bq.numeric().nullable(),
   previous_revenue: bq.numeric().nullable(),
+  second_revenue: bq.numeric().nullable(),
   orders: bq.float64().nullable(),
   previous_orders: bq.float64().nullable(),
+  second_orders: bq.float64().nullable(),
   spend: bq.numeric().nullable(),
   previous_spend: bq.numeric().nullable(),
+  second_spend: bq.numeric().nullable(),
   ...periodCoverageFields,
 });
 export type StoreSummary = z.infer<typeof StoreSummaryRow>;

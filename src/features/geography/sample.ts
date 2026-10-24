@@ -4,8 +4,13 @@ import { normalizeCountry, normalizeRegion } from "@/lib/shipping-geography";
 import { sumDecimals, toUnits } from "@/lib/data/decimal";
 import type { GeographyFilters, GeographyData } from "./queries";
 import { toGeographyData } from "./rows";
-export function sampleGeography(filters: GeographyFilters, baseline: DateRange | null): GeographyData {
-  const dates = new Set([...datesInRange(filters.range), ...(baseline ? datesInRange(baseline) : [])]);
+import type { BaselineRanges } from "@/lib/comparison";
+export function sampleGeography(filters: GeographyFilters, baselines: BaselineRanges): GeographyData {
+  const [baseline, second] = baselines;
+  const dates = new Set([
+    ...datesInRange(filters.range),
+    ...baselines.flatMap((period) => (period ? datesInRange(period) : [])),
+  ]);
   const sourceDates = new Set(dates);
   if (filters.dateBasis === "processed") for (const date of dates) sourceDates.add(addDays(date, -1));
   const rows = [...sourceDates]
@@ -28,9 +33,17 @@ export function sampleGeography(filters: GeographyFilters, baseline: DateRange |
         (!filters.country || row.country === filters.country) &&
         (!filters.region || row.region === filters.region),
     );
+  const within = (selected: typeof rows, period: DateRange | null) =>
+    selected.filter((row) => period && row.day >= period.from && row.day <= period.to);
+  const latest = (selected: typeof rows) =>
+    selected
+      .map((row) => row.day)
+      .sort()
+      .at(-1) ?? null;
   const aggregate = (selected: typeof rows) => {
-    const now = selected.filter((row) => row.day >= filters.range.from && row.day <= filters.range.to);
-    const before = selected.filter((row) => baseline && row.day >= baseline.from && row.day <= baseline.to);
+    const now = within(selected, filters.range);
+    const before = within(selected, baseline);
+    const earlier = within(selected, second);
     return {
       records: String(now.length),
       orders: String(now.filter((row) => row.order_key != null).length),
@@ -38,16 +51,12 @@ export function sampleGeography(filters: GeographyFilters, baseline: DateRange |
       previous_records: String(before.length),
       previous_orders: String(before.filter((row) => row.order_key != null).length),
       previous_revenue: sumDecimals(before.map((row) => row.order_net_revenue ?? null)),
-      latest_date:
-        now
-          .map((row) => row.day)
-          .sort()
-          .at(-1) ?? null,
-      previous_latest_date:
-        before
-          .map((row) => row.day)
-          .sort()
-          .at(-1) ?? null,
+      second_records: String(earlier.length),
+      second_orders: String(earlier.filter((row) => row.order_key != null).length),
+      second_revenue: sumDecimals(earlier.map((row) => row.order_net_revenue ?? null)),
+      latest_date: latest(now),
+      previous_latest_date: latest(before),
+      second_latest_date: latest(earlier),
     };
   };
   const locations = [...new Set(rows.map((row) => (filters.country ? row.region : row.country)))];

@@ -15,6 +15,7 @@ import { logEvent } from "@/lib/data/log";
 import { requestScoped } from "@/lib/request-scope";
 import { loadManagedContext } from "@/lib/data/managed-api.server";
 import { managedWarehouse, refusedWarehouse, warehouseFor, type Warehouse } from "@/lib/data/warehouse.server";
+import { newRequestContext, type RequestContext } from "@/lib/data/request-context";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { authenticateRequest, type Viewer } from "./authenticate";
 import { isLoopbackRequest } from "./loopback";
@@ -23,11 +24,13 @@ import { assertStoreAccess } from "./store-access";
 
 export type { Viewer } from "./authenticate";
 
-export type SampleAccess = { mode: "sample"; viewer: Viewer; storeId: string | null };
+export type SampleAccess = { mode: "sample"; viewer: Viewer; storeId: string | null; request: RequestContext };
 export type LiveAccess = {
   mode: "live";
   viewer: Viewer;
   storeId: string | null;
+  /** This request's id, cache bypass and what the cache served it (src/lib/data/request-context.ts). */
+  request: RequestContext;
   warehouse: Warehouse;
   /** A managed app's refused data context; `warehouse` raises it on every read. */
   refusal?: WarehouseError;
@@ -55,14 +58,15 @@ export class ViewerDeniedError extends Error {
  * itself only denies for sign-in or configuration, which middleware answers
  * before any handler runs, so every route handler can start with it unwrapped.
  */
-async function managedAccess(managed: ManagedApiConfig, viewer: Viewer): Promise<LiveAccess> {
+async function managedAccess(managed: ManagedApiConfig, viewer: Viewer, request: RequestContext): Promise<LiveAccess> {
   const client = { ...managed, buildId: buildId() };
   try {
     return {
       mode: "live",
       viewer,
       storeId: null,
-      warehouse: managedWarehouse(client, await loadManagedContext(client)),
+      request,
+      warehouse: managedWarehouse(client, await loadManagedContext(client), request),
     };
   } catch (error) {
     if (!(error instanceof WarehouseError)) throw error;
@@ -75,7 +79,7 @@ async function managedAccess(managed: ManagedApiConfig, viewer: Viewer): Promise
       error_reason: error.reason,
       http_status: error.status,
     });
-    return { mode: "live", viewer, storeId: null, warehouse: refusedWarehouse(error), refusal: error };
+    return { mode: "live", viewer, storeId: null, request, warehouse: refusedWarehouse(error), refusal: error };
   }
 }
 
@@ -86,6 +90,7 @@ const resolveViewer = requestScoped(async (requestHeaders): Promise<ViewerAccess
     logEvent({ event: "config_error", level: "error", variables: config.problems.map((p) => p.variable) });
     throw new ConfigurationError(config.problems);
   }
+  const request = newRequestContext();
   if (config.mode === "managed") {
     // SourceMedium's gateway is the only way in and sets this header on every
     // request; without it, nothing is served (no sample fallback).
@@ -94,14 +99,14 @@ const resolveViewer = requestScoped(async (requestHeaders): Promise<ViewerAccess
       logEvent({ event: "viewer_denied", level: "warn", guard: "sourcemedium", error_reason: "missing" });
       throw new ViewerDeniedError();
     }
-    return managedAccess(config.managed, viewer);
+    return managedAccess(config.managed, viewer, request);
   }
   if (config.mode === "managed-dev") {
     if (!isLoopbackRequest(requestHeaders)) {
       logEvent({ event: "viewer_denied", level: "warn", guard: "loopback", error_reason: "foreign_host" });
       throw new ViewerDeniedError();
     }
-    return managedAccess(config.managed, { kind: "developer" });
+    return managedAccess(config.managed, { kind: "developer" }, request);
   }
   const result = await authenticateRequest(config.guard, requestHeaders);
   if (!result.ok) {
@@ -113,9 +118,10 @@ const resolveViewer = requestScoped(async (requestHeaders): Promise<ViewerAccess
         mode: "live",
         viewer: result.viewer,
         storeId: config.storeId,
-        warehouse: warehouseFor(config.live, config.storeId),
+        request,
+        warehouse: warehouseFor(config.live, config.storeId, request),
       }
-    : { mode: "sample", viewer: result.viewer, storeId: config.storeId };
+    : { mode: "sample", viewer: result.viewer, storeId: config.storeId, request };
 });
 
 export async function requireViewer(options: { live: true; storeId?: string }): Promise<LiveAccess>;

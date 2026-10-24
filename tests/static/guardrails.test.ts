@@ -393,6 +393,23 @@ describe("store-scope", () => {
   });
 });
 
+describe("query cache", () => {
+  it("never stores Orders: individual orders, detail and attribution evidence run on every request", () => {
+    const text = readFileSync("src/features/orders/bigquery.ts", "utf8");
+    expect(text).not.toMatch(/\bcache:/);
+    expect(text).not.toContain("CACHE_POLICY");
+  });
+
+  it("names every policy an aggregate query may use from one place", () => {
+    for (const path of readdirSync("src/features").map((name) => `src/features/${name}/bigquery.ts`)) {
+      const text = readFileSync(path, "utf8");
+      for (const match of text.matchAll(/\bcache: ([^,\n]+),/g)) {
+        expect(match[1], `${path}: ${match[0]}`).toMatch(/^CACHE_POLICY\.[a-zA-Z]+$/);
+      }
+    }
+  });
+});
+
 describe("lint rules", () => {
   tester.run("no-client-locale-format", template.rules["no-client-locale-format"], {
     valid: ["const n = value.toLocaleString();", '"use client";\nconst s = String(value);'],

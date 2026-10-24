@@ -3,11 +3,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DataRegion } from "@/components/patterns/data-region";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 
-const viewer = vi.hoisted(() => ({ mode: "live" }));
-vi.mock("@/lib/auth/require-viewer", () => ({ requireViewer: async () => ({ mode: viewer.mode }) }));
+const viewer = vi.hoisted(() => ({
+  mode: "live",
+  provenance: { oldestQueriedAt: null as string | null, servedFromCache: 0 },
+}));
+vi.mock("@/lib/auth/require-viewer", () => ({
+  requireViewer: async () => ({
+    mode: viewer.mode,
+    request: { id: "r", bypassCache: false, provenance: viewer.provenance },
+  }),
+}));
 
 beforeEach(() => {
   viewer.mode = "live";
+  viewer.provenance = { oldestQueriedAt: null, servedFromCache: 0 };
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-06T12:00:00Z"));
 });
@@ -64,7 +73,8 @@ describe("DataRegion", () => {
     });
     const timestamp = screen.getByText("Oct 6, 2026, 8:00:17 AM EDT");
     expect(timestamp).toHaveAttribute("datetime", "2026-10-06T12:00:17.000Z");
-    expect(timestamp.parentElement).toHaveTextContent("Queried at");
+    expect(timestamp.parentElement).toHaveTextContent("Loaded at");
+    expect(screen.queryByText(/cached results/)).not.toBeInTheDocument();
   });
 
   it("names an order-offset zone, and skips the time for filter options", async () => {
@@ -87,21 +97,29 @@ describe("DataRegion", () => {
     });
     render(options);
     expect(screen.getByText("options")).toBeInTheDocument();
-    expect(screen.queryByText(/Queried at/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Loaded at/)).not.toBeInTheDocument();
   });
 
   it("labels a sample load without claiming a warehouse query", async () => {
     viewer.mode = "sample";
     await renderRegion(async () => ["a"]);
     expect(screen.getByText(/Sample loaded at/)).toBeInTheDocument();
-    expect(screen.queryByText(/Queried at/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Loaded at/)).not.toBeInTheDocument();
+  });
+
+  it("says how old cached results may be when the query cache served some of this request", async () => {
+    viewer.provenance = { oldestQueriedAt: "2026-10-06T11:58:00.000Z", servedFromCache: 2 };
+    await renderRegion(async () => ["a"]);
+    const note = screen.getByText(/includes cached results queried at/);
+    expect(note).toHaveTextContent("Oct 6, 2026, 7:58:00 AM EDT");
+    expect(screen.getByText(/Loaded at/)).toBeInTheDocument();
   });
 
   it("renders the empty state with its sentence", async () => {
     await renderRegion(async () => []);
     expect(screen.getByText("No data")).toBeInTheDocument();
     expect(screen.getByText("No rows for this store.")).toBeInTheDocument();
-    expect(screen.getByText(/Queried at/)).toBeInTheDocument();
+    expect(screen.getByText(/Loaded at/)).toBeInTheDocument();
   });
 
   it("renders a warehouse failure with the remedy, never sample data", async () => {
@@ -110,7 +128,7 @@ describe("DataRegion", () => {
     });
     expect(screen.getByRole("alert")).toHaveTextContent("Query allowance used up");
     expect(screen.getByRole("alert")).toHaveTextContent("rotating the key will not help");
-    expect(screen.queryByText(/Queried at|Sample loaded at/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Loaded at|Sample loaded at/)).not.toBeInTheDocument();
   });
 
   it("names the relation and column when the schema changed", async () => {
@@ -119,7 +137,7 @@ describe("DataRegion", () => {
     });
     expect(screen.getByRole("alert")).toHaveTextContent("website_sessions");
     expect(screen.getByRole("alert")).toHaveTextContent("pnpm schema rpt_executive_summary_daily");
-    expect(screen.queryByText(/Queried at|Sample loaded at/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Loaded at|Sample loaded at/)).not.toBeInTheDocument();
   });
 
   it("rethrows anything else to the route's error boundary", async () => {

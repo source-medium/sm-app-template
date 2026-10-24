@@ -2,10 +2,12 @@ import { SALES_CHANNEL_PREDICATE } from "@/lib/data/channel-sql";
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { decodeRows } from "@/lib/data/decode";
-import type { DateRange, ReportFilters } from "@/lib/filters";
+import type { ReportFilters } from "@/lib/filters";
 import { PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
 import type { ProductFilters, ProductsData } from "./queries";
 import { MAX_PRODUCTS, PRODUCTS_RELATION, ProductChannelRow, ProductRow, ProductCoverageRow } from "./rows";
+import { CACHE_POLICY } from "@/lib/data/query-cache";
+import type { BaselineRanges } from "@/lib/comparison";
 
 // Titles and SKUs can collide. Keys include source identity; unassigned lines remain a named group.
 const DIMENSIONS = {
@@ -44,6 +46,7 @@ export async function queryProductCoverage(
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "product_cost_coverage",
+    cache: CACHE_POLICY.aggregate,
     maxRows: 1,
     sql: `SELECT COUNTIF(order_line_id IS NOT NULL) AS lines,
       COUNTIF(order_line_id IS NOT NULL AND order_line_product_cost IS NULL) AS missing_cost_lines,
@@ -69,7 +72,7 @@ export async function queryProductCoverage(
   return row;
 }
 
-export async function queryProducts(filters: ProductFilters, baseline: DateRange | null): Promise<ProductsData> {
+export async function queryProducts(filters: ProductFilters, baselines: BaselineRanges): Promise<ProductsData> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const dimension = DIMENSIONS[filters.dimension];
   const sort = SORTS[filters.metric];
@@ -77,6 +80,7 @@ export async function queryProducts(filters: ProductFilters, baseline: DateRange
   const period = periodSql("DATE(order_processed_at_local_datetime)");
   const result = await warehouse.query({
     name: "products_ranked",
+    cache: CACHE_POLICY.aggregate,
     maxRows: MAX_PRODUCTS + 1,
     sql: `WITH grouped AS (
       SELECT ${dimension.key} AS product_key,
@@ -92,18 +96,20 @@ export async function queryProducts(filters: ProductFilters, baseline: DateRange
       GROUP BY product_key
     )
     SELECT ${PERIOD_COVERAGE},
-      ${measures.flatMap(([name]) => [`SUM(${name}) OVER () AS total_${name}`, `SUM(previous_${name}) OVER () AS total_previous_${name}`]).join(",\n")},
+      ${measures.flatMap(([name]) => [`SUM(${name}) OVER () AS total_${name}`, `SUM(previous_${name}) OVER () AS total_previous_${name}`, `SUM(second_${name}) OVER () AS total_second_${name}`]).join(",\n")},
       MIN(${sort}) OVER () AS minimum_value
     FROM grouped ${filters.entity ? "WHERE product_key = @entity" : ""}
+    -- Period gainers and decliners rank against the first comparison period.
     ORDER BY ${filters.ranking === "gainers" ? `${sort} - previous_${sort} DESC` : filters.ranking === "decliners" ? `${sort} - previous_${sort} ASC` : `${sort} DESC`} NULLS LAST, product_key LIMIT ${MAX_PRODUCTS + 1}`,
     params: [
       { name: "store_id", type: "STRING", value: filters.storeId },
       { name: "channel", type: "STRING", value: filters.channel ?? "" },
       ...(filters.entity ? [{ name: "entity", type: "STRING" as const, value: filters.entity }] : []),
-      ...periodParams(filters.range, baseline),
+      ...periodParams(filters.range, baselines[0], baselines[1]),
     ],
   });
-  const rows = decodeRows(ProductRow, result.rows, PRODUCTS_RELATION);
+  // Products with no value in the selected period sort last; they have nothing to rank, so they never pad the list.
+  const rows = decodeRows(ProductRow, result.rows, PRODUCTS_RELATION).filter((row) => row[filters.metric] !== null);
   return { rows: rows.slice(0, MAX_PRODUCTS), hasMore: rows.length > MAX_PRODUCTS };
 }
 
@@ -112,6 +118,7 @@ export async function queryProductChannels(filters: ReportFilters): Promise<stri
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "product_channels",
+    cache: CACHE_POLICY.aggregate,
     maxRows: 50,
     sql: `SELECT DISTINCT IFNULL(sm_channel, '(none)') AS channel
       FROM ${warehouse.table(PRODUCTS_RELATION)}

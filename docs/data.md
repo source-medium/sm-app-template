@@ -285,6 +285,16 @@ setting. Null or an unrecognized code leaves live amounts unlabeled; the footer
 says the currency is unverified. This is an operator-verified contract, not
 automatic currency detection. Synthetic sample amounts always use USD.
 These settings label amounts without converting them or changing calculations.
+A code counts as recognized only when it is a real ISO 4217 code the runtime
+publishes (`isCurrency` in `src/lib/format.ts`), not any three letters Intl
+would format. Formatting respects each currency's minor units (JPY has none,
+BHD has three) and disambiguates dollars (`CA$`, `A$`) in the configured locale.
+
+An app SourceMedium hosts reads a third source: the workspace reporting
+currency its data API publishes with the app's context (`reporting_currency`,
+an optional, additive field). It applies only to stores `app.config.ts` leaves
+unset, and the Connection page says where the label came from. An older data
+API publishes none, and amounts stay unlabeled as before.
 
 `store_timezone` is the store's SourceMedium time zone, which sets the
 store's dates in the app (see [dates](#dates)); it is not every source's date
@@ -350,41 +360,67 @@ the configured maximum range are omitted rather than silently shortened.
 
 ## Period comparisons
 
-Overview defaults to **Previous period**: the same number of calendar days,
-immediately before the selected range. **Same dates last year** shifts the
-calendar dates back one year, clamping Feb 29 to Feb 28 when needed. It does
-not match weekdays; leap years can change the day count. Both ranges are visible; expand the comparison period for day counts and alignment notes. **Off** skips the comparison query.
+Every time-based report compares the selected range with up to two baselines
+at once, and what a baseline means depends on what the range is
+(`rangeIntent()` in `src/lib/comparison.ts`, judged against the store's date):
 
-The setting lives in `?compare=previous|year|off`, survives filters and report
-links, and travels with navigation. Only views that implement comparisons
-show the control. Overview daily charts overlay the comparison as a dashed line,
-with the actual comparison date in the tooltip and table. Previous-period days
-align by position; yearly days align by month and day. Unmatched leap days stay
-gaps. Period totals still include every date in the displayed comparison range. Missing days stay missing, never zero. Days with rows do not
-prove complete data, and a range including today may be incomplete.
+| Selected range                   | Previous period                             | Same period last year       | 52 weeks earlier |
+| -------------------------------- | ------------------------------------------- | --------------------------- | ---------------- |
+| One day                          | Same weekday a week earlier                 | Same calendar date          | 364 days earlier |
+| Rolling N days ending yesterday  | The N days before                           | Both dates one year earlier | 364 days earlier |
+| A full calendar month            | The previous full month, lengths may differ | The same month last year    | 364 days earlier |
+| Month to date                    | The previous month through the same day     | The same dates last year    | 364 days earlier |
+| A full quarter / quarter to date | The previous quarter / its matching days    | The same quarter last year  | 364 days earlier |
+| Anything else                    | The equal-length range before               | Both dates one year earlier | 364 days earlier |
+
+Position-aligned baselines (previous N days, 52 weeks earlier, quarter to date)
+require equal day counts. Calendar-aligned ones (last year, a previous month or
+quarter) may differ in length; the caption shows both day counts, and daily
+overlays leave days the shorter period lacks as gaps. A previous month that is
+shorter than the elapsed days of a month-to-date range has no match and says so.
+February 29 has no exact last-year date. **Off** skips every comparison query.
+
+The settings live in the URL: `compare` is the first slot (`previous`, `year`,
+`weekday`, `off`; `off` turns both off). Older links keep working, but
+`previous` now follows the table above, so a link to a single day or a full
+month compares with a different period than it used to. `compare2` is the
+second slot (default `year`, or `previous` when the first is already last
+year), and `baseline=a|b` picks which slot the charts and tables show. A second
+slot that resolves to the same dates as the first is not queried; it says it
+matches. KPI cards show one change row per slot, each labelled with its baseline
+("vs previous 28 days") and exact dates. Charts overlay one baseline and tables
+show one change column; the caption's switch changes both without a request,
+because both slots' data arrive with the page. Comparison settings survive
+filters, report links and navigation. Only views that implement comparisons
+show the controls.
 
 Data loads in date order, so a day that has not loaded yet is missing from the
-end of the selected period, where it would read as a decline. Overview, Products
-and the Paid marketing spend breakdown hide period-total changes (KPI deltas and
-change columns) when the selected period has more days without rows at its end
-than the comparison, or when the periods differ in length (a leap day), and a
-visible note says why. Gaps earlier in a period do not hide changes. Per-day
-comparison lines still show, with gaps for missing days.
+end of the selected period, where it would read as a decline. Reports hide a
+slot's period-total changes (its KPI row and change column) when the selected
+period has more days without rows at its end than that baseline, or when a
+position-aligned pair differs in length, and the caption says why. Each slot
+decides independently; a failed last-year query never hides the current values
+or the other slot. Gaps earlier in a period do not hide changes. Per-day
+comparison lines still show, with gaps for missing days. Missing days stay
+missing, never zero, and a range including today may be incomplete.
 
-To add comparisons to a view, opt into `ReportPage comparisons`, use its
-`comparison.range`, and query each period with the same store and dimension
-filters. Copy Overview's `getOverviewReport`: it reuses the existing bounded
-query for each period in parallel, checks truncation, and keeps current data
-visible if the comparison query fails. This adds one query when enabled.
-To compare in one query instead, as Products and Paid marketing do, group with
-`periodSql()` and select `PERIOD_COVERAGE`, pass `periodParams()`, and decode
-with `periodCoverageFields`, all in `src/lib/data/period-sql.ts`. A DATETIME
-partition column uses `dateTimeRows(column)` in the WHERE clause. That is the
-same window as `DATE(column) BETWEEN` the period dates, and the column stays
-bare so the partition can prune. Either way, pass each period's latest date
-with rows to `periodChanges()` in `src/lib/comparison.ts`: show its `issue`,
-and show changes only when `show`. Overview takes that date from `MAX(date)`
-on each period query (`latestDate` and `coverage`), not from the day list.
+To add comparisons to a view, opt into `ReportPage comparisons` and read
+`plan` from the report context: `planRanges(plan)` gives both slots' dates for
+a query, `slotChanges(plan, coverage)` says for each slot whether changes can
+show, and `comparison` is the active slot for an overlay. Query every period
+with the same store and dimension filters. Copy Overview's `getOverviewReport`
+to run the existing bounded query once per period in parallel, keeping current
+data visible if a comparison query fails, or compare in one pass as Products,
+Paid marketing, Geography and All stores do: group with `periodSql()`, select
+`PERIOD_COVERAGE`, pass `periodParams(range, first, second)` and decode with
+`periodCoverageFields` (`src/lib/data/period-sql.ts`). The windows are an OR of
+bounded ranges, never the span between the earliest and latest date, so a
+partition filter prunes each one; a DATETIME partition column uses
+`dateTimeRows(column)`. Columns come back as `name`, `previous_name` and
+`second_name`. Show both slots on KPI cards with `KpiCard deltas`
+(`kpiDelta(..., baselineLabel(slot))`, or `unavailableDelta(slot)` for a slot
+with no change to show), and render the per-slot variant of a table or chart
+inside `ActiveBaseline` so the caption's switch can show either one.
 Ratios are recomputed from each period's totals, not averaged from daily ratios.
 
 `lib/comparison.ts` owns date rules and arithmetic; `patterns/kpi-delta.ts`
@@ -394,10 +430,10 @@ Zero, negative, and missing baselines have explicit states instead of a
 misleading percentage. Unchanged values are neutral. The default color is
 neutral; a feature must explicitly choose whether higher or lower is better.
 Overview uses higher-is-better for net revenue, Summary orders, MER and
-website sessions. Percentage-valued
-metrics should label absolute changes as percentage points, distinct from
-relative percent changes. Custom ranges, targets and weekday-aligned calendars
-are intentionally left for apps that need them.
+website sessions. Percentage-valued metrics should label absolute changes as
+percentage points, distinct from relative percent changes. Product gainers and
+decliners rank against the first slot. Targets and custom baselines are
+intentionally left for apps that need them.
 
 ## Summary tables and ranked breakdowns
 
@@ -582,15 +618,22 @@ delete its feature folder, route folder and navigation entry as usual.
 
 ## Refresh and freshness
 
-**Refresh data** re-reads the current report with the filters already applied
-in the URL. It keeps the report visible while loading and disables repeat clicks.
+**Refresh data** re-reads the current report from the warehouse with the filters
+already applied in the URL. Its server action (`src/lib/refresh.ts`) returns
+the re-rendered page in its own response and marks that one request to bypass
+the [query cache](#the-query-cache), so every query runs again and replaces what
+the cache held. It keeps the report visible while loading and disables repeat
+clicks.
 Unapplied filter edits are not submitted. Refreshing the app does not trigger
 SourceMedium's ingestion pipeline. Reports do not poll or refresh automatically.
 
-Each `DataRegion` shows **Queried at** only after its data loads successfully,
+Each `DataRegion` shows **Loaded at** only after its data loads successfully,
 including an empty result. The time is when the section finished loading, not
-when page rendering began. Errors get no success timestamp. Sample mode labels
-the time **Sample loaded at**, since it runs no warehouse query.
+when page rendering began. When the query cache served any result in that
+request, the line adds **includes cached results queried at** with the oldest
+origin time, so a cached number is never presented as newly queried. Errors get
+no success timestamp. Sample mode labels the time **Sample loaded at**, since it
+runs no warehouse query.
 
 Pages also show **Data freshness unknown**. The query time does not tell you
 how current the warehouse is. Do not use `MAX(date)` as
@@ -601,12 +644,59 @@ Showing a table's own snapshot time, labeled as such (for example "Inventory
 snapshot as of …" from `inventory_snapshot_at`), is fine: it describes that
 table, not how current the whole warehouse is.
 
-There is no shared app or CDN cache of report data. Repeated auth and store-list
-reads are deduplicated within one server render; credentials are reused until
-shortly before expiry. BigQuery can serve eligible repeated queries from its
-[native query cache](https://docs.cloud.google.com/bigquery/docs/cached-results).
-Refresh does not bypass that cache. Browser Back/Forward can restore a previous
-report; use **Refresh data** to re-read it.
+There is no cache of HTML or RSC output. Repeated auth and store-list reads are
+deduplicated within one server render; credentials are reused until shortly
+before expiry. BigQuery can serve eligible repeated queries from its
+[native query cache](https://docs.cloud.google.com/bigquery/docs/cached-results);
+that layer is separate from the app's own query cache below, is reported as
+`cache_hit` in the logs, and is not bypassed by Refresh. Browser Back/Forward
+can restore a previous report; use **Refresh data** to re-read it.
+
+## The query cache
+
+Repeated reads are served from a private cache inside the Warehouse
+(`src/lib/data/query-cache.server.ts`), below every feature loader and after
+`requireViewer()` and the fixed-store check. A query opts in with one field:
+
+```ts
+cache: CACHE_POLICY.aggregate, // src/lib/data/query-cache.ts
+```
+
+No field means the query runs on every request, which is the right default for
+anything that lists individual orders, customers or evidence rows; `pnpm check`
+fails if `src/features/orders` ever sets one. The policies are in one place:
+
+| Policy          | Age  | Used by                                                          |
+| --------------- | ---- | ---------------------------------------------------------------- |
+| `schema`        | 60 m | The metadata capability probe                                    |
+| `storeTimeZone` | 60 m | A store's order offset when `dim_stores` has no zone             |
+| `catalog`       | 15 m | Metric definitions, field documentation                          |
+| `roster`        | 5 m  | The store list                                                   |
+| `aggregate`     | 5 m  | Period totals, series, rankings and the option lists beside them |
+| `observation`   | 60 s | The dictionary's per-store observations behind the status strip  |
+
+Expiry is hard: nothing stale is served and nothing revalidates in the
+background. Entries hold rows in BigQuery's wire format, so decoders run after
+the cache and exact decimals survive it. Errors are never stored; a truncated
+result is stored only when the query declared `partial`. Results over 256 KiB
+serialized are served but not stored. The key is a digest of the deployment
+environment, app, project, datasets, query name, SQL, typed parameters and
+bounds, never a viewer or token: every signed-in viewer of a deployment sees
+the same data, and the checks that decide who is signed in and which store they
+may see run before the cache.
+
+Two tiers share that key. Memory (this isolate, bounded, with single-flight so
+concurrent identical requests run one job) is always on. The `APP_QUERY_CACHE`
+KV binding, when the Worker has one, keeps entries across isolate restarts and
+locations; see [docs/cloud.md](cloud.md#query-cache). Without it the Connection
+page says the cache is memory only. A KV failure logs a warning and the
+warehouse answers as before.
+
+Every query line in the logs carries `app_request_id` (one per request) and
+`app_cache` (`miss` or `bypass` when the warehouse ran; a separate `app_cache`
+event records `hit`, `skip` and `error`). Count warehouse jobs and
+`app_cache` values to see what the cache saves; BigQuery's `cache_hit` is its
+own layer.
 
 ## CSV downloads
 
@@ -664,6 +754,23 @@ These explain this app's calculations; published field descriptions can differ.
 **Use this field** passes its source, name, type, and documentation to the
 existing Vibe code composer. The prompt tells the agent to verify the schema;
 metadata is documentation, never executable SQL.
+
+**Explore your data** (`/data`) lists every published metric from
+`dim_semantic_metric_catalog` once: alias rows (`is_abbreviation`) fold into
+their `preferred_metric_name`, so "AOV" finds Average order value. Rows carry
+the published `metric_category` (an older catalog falls back to the metric's
+`underlying_model`), the display unit and whether a report shows the metric.
+Search and category chips filter the loaded catalog locally and record the
+choice in the URL through native history, so they never start a warehouse
+request, and no metric value is ever queried to decorate a row. The drawer
+explains a metric in plain words first and keeps the canonical name,
+calculation, filter, time basis and dependencies under **Technical details**.
+**View in report** links to the views whose `nav` entry in `app.config.ts`
+declares that canonical name in `metrics`; a metric no view presents says so and
+offers **Use in Vibe code**, which hands the canonical identity and reviewed
+definition (never row values) to the composer. **Fields** keeps the dictionary
+with **Use this field**, and **Data health** shows what the dictionary publishes
+per source, without inventing a status for what it does not.
 
 ## Check your numbers
 
@@ -746,9 +853,12 @@ and changed calculations/filters/time expressions produce findings. They never
 change developer-authored SQL. Report-specific calculations omit `canonical` and
 continue working. Definition agreement does not prove numerical reconciliation.
 
-`loadReportMetadata` probes optional metadata capabilities, then reads one bounded
-batch, with request deduplication and a shared 2.5-second deadline. It adds at most
-two initial jobs to a report. Dictionary identity is dataset + table + actual store;
+`loadReportMetadata` probes optional metadata capabilities, then reads the
+store-free catalog and the selected store's observations side by side, with
+request deduplication and a shared 2.5-second deadline. Each read is cached for
+its own policy (schema an hour, catalog fifteen minutes, observations a minute),
+so a cold isolate adds at most three parallel jobs to a report and a warm one
+adds none. Dictionary identity is dataset + table + actual store;
 repeated column-level table statistics are deduplicated, never summed. Conflicts
 stay inconsistent. Permission errors stay denied, while older missing optional
 formats retain reviewed formatting. Catalog update time is definition publication,

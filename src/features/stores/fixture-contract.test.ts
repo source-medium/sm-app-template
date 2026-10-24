@@ -9,7 +9,7 @@ import { sampleStoreComparison } from "./sample";
 const range = { from: "2026-09-01", to: "2026-09-07" };
 const baseline = { from: "2026-08-25", to: "2026-08-31" };
 it("aggregates each store and period independently with exact money and fractional order measures", () => {
-  const result = sampleStoreComparison([...SAMPLE_STORES], range, baseline, "2026-10-01");
+  const result = sampleStoreComparison([...SAMPLE_STORES], range, [baseline, null], "2026-10-01");
   expect(result).toHaveLength(2);
   for (const row of result) {
     for (const [prefix, period] of [
@@ -32,7 +32,7 @@ it("keeps missing values null and disables comparisons when off", () => {
   const rows = sampleStoreComparison(
     [{ id: "no-rows", label: "No rows", domain: null, logoUrl: null, brand: null, timeZone: null, currency: null }],
     range,
-    null,
+    [null, null],
     "2026-10-01",
   );
   expect(rows[0]).toMatchObject({
@@ -41,6 +41,7 @@ it("keeps missing values null and disables comparisons when off", () => {
     spend: null,
     latest_date: null,
     previous_revenue: null,
+    second_revenue: null,
   });
   expect(periodChanges(range, null, rows[0]).show).toBe(false);
 });

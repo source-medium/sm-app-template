@@ -17,6 +17,13 @@ export type PublishedMetric = {
   preferred_metric_name?: string | null;
   abbreviations_list?: string | null;
   catalog_updated_at?: string | null;
+  /** Published grouping, such as "Revenue" or "Marketing"; null when the catalog predates it. */
+  metric_category?: string | null;
+  metric_type?: string | null;
+  /** An alias row ("aov") whose preferred_metric_name is the primary metric. */
+  is_abbreviation?: boolean | null;
+  semantic_model_name?: string | null;
+  cumulative_settings?: string | null;
 };
 
 export type MetricBinding = {

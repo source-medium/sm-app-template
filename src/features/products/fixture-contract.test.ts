@@ -38,7 +38,7 @@ it("reverses signed refunds without masking reversals or mixing comparison perio
       { ...line, date: "2026-08-31", refunds: "-2", cost: null },
     ],
     { ...filters, metric: "refunds" },
-    { from: "2026-08-31", to: "2026-08-31" },
+    [{ from: "2026-08-31", to: "2026-08-31" }, null],
   ).rows;
   expect(rows[0]).toMatchObject({
     refunds: "10",
@@ -59,7 +59,7 @@ it("sums exact valid-order lines without merging duplicate titles, platforms, or
     { ...line, storeId: "other", revenue: "100" },
     { ...line, date: "2026-09-03", revenue: "100" },
   ];
-  const data = aggregateProducts(source, filters, null);
+  const data = aggregateProducts(source, filters, [null, null]);
   expect(data.rows).toHaveLength(3);
   expect(data.rows[0]).toMatchObject({
     revenue: "0.3",
@@ -69,7 +69,7 @@ it("sums exact valid-order lines without merging duplicate titles, platforms, or
     total_profit: "0.2",
     previous_revenue: null,
   });
-  expect(aggregateProducts(source, { ...filters, dimension: "variant" }, null).rows).toHaveLength(4);
+  expect(aggregateProducts(source, { ...filters, dimension: "variant" }, [null, null]).rows).toHaveLength(4);
 });
 
 it("keeps full totals before top ten and gives both periods the same product scope", () => {
@@ -79,24 +79,24 @@ it("keeps full totals before top ten and gives both periods the same product sco
     revenue: String(index + 1),
     profit: index === 0 ? "-1" : "1",
   }));
-  const data = aggregateProducts([...source, { ...line, date: "2026-08-31", revenue: "4" }], filters, {
-    from: "2026-08-30",
-    to: "2026-08-31",
-  });
+  const data = aggregateProducts([...source, { ...line, date: "2026-08-31", revenue: "4" }], filters, [
+    { from: "2026-08-30", to: "2026-08-31" },
+    null,
+  ]);
   expect(data.hasMore).toBe(true);
   expect(data.rows).toHaveLength(10);
   expect(data.rows[0]?.total_revenue).toBe("78");
   expect(sumDecimals(data.rows.map((row) => row.revenue))).toBe("75");
   expect(data.rows[0]?.total_previous_revenue).toBe("4");
-  expect(aggregateProducts(source, { ...filters, metric: "profit" }, null).rows[0]?.minimum_value).toBe("-1");
+  expect(aggregateProducts(source, { ...filters, metric: "profit" }, [null, null]).rows[0]?.minimum_value).toBe("-1");
 });
 
 it("provides deterministic sample rows for both stores and empty results for an unknown store", () => {
-  expect(sampleProducts(filters, null)).toEqual(sampleProducts(filters, null));
-  expect(sampleProducts({ ...filters, storeId: "sample-store-b" }, null).rows[0]?.total_revenue).not.toBe(
-    sampleProducts(filters, null).rows[0]?.total_revenue,
+  expect(sampleProducts(filters, [null, null])).toEqual(sampleProducts(filters, [null, null]));
+  expect(sampleProducts({ ...filters, storeId: "sample-store-b" }, [null, null]).rows[0]?.total_revenue).not.toBe(
+    sampleProducts(filters, [null, null]).rows[0]?.total_revenue,
   );
-  expect(sampleProducts({ ...filters, storeId: "unknown" }, null)).toEqual({ rows: [], hasMore: false });
+  expect(sampleProducts({ ...filters, storeId: "unknown" }, [null, null])).toEqual({ rows: [], hasMore: false });
 });
 
 it("filters channels before both period totals and leaves unknown channels empty", () => {
@@ -108,12 +108,14 @@ it("filters channels before both period totals and leaves unknown channels empty
     { ...line, channel: "Amazon", date: "2026-08-01", revenue: "200" },
     { ...line, channel: null, revenue: "4" },
   ];
-  expect(aggregateProducts(source, { ...filters, channel: "Online DTC" }, baseline).rows[0]).toMatchObject({
+  expect(aggregateProducts(source, { ...filters, channel: "Online DTC" }, [baseline, null]).rows[0]).toMatchObject({
     total_revenue: "0.1",
     total_previous_revenue: "0.2",
   });
-  expect(aggregateProducts(source, { ...filters, channel: "(none)" }, baseline).rows[0]?.total_revenue).toBe("4");
-  expect(aggregateProducts(source, { ...filters, channel: "unknown" }, baseline).rows).toEqual([]);
+  expect(aggregateProducts(source, { ...filters, channel: "(none)" }, [baseline, null]).rows[0]?.total_revenue).toBe(
+    "4",
+  );
+  expect(aggregateProducts(source, { ...filters, channel: "unknown" }, [baseline, null]).rows).toEqual([]);
 });
 
 it("returns each period's latest date with valid lines, for comparison coverage", () => {
@@ -123,9 +125,9 @@ it("returns each period's latest date with valid lines, for comparison coverage"
     { ...line, date: "2026-08-30" },
     { ...line, date: "2026-08-31", productId: "p3" },
   ];
-  const data = aggregateProducts(source, filters, { from: "2026-08-30", to: "2026-08-31" });
+  const data = aggregateProducts(source, filters, [{ from: "2026-08-30", to: "2026-08-31" }, null]);
   expect(data.rows[0]).toMatchObject({ latest_date: line.date, previous_latest_date: "2026-08-31" });
-  expect(aggregateProducts(source, filters, null).rows[0]).toMatchObject({ previous_latest_date: null });
+  expect(aggregateProducts(source, filters, [null, null]).rows[0]).toMatchObject({ previous_latest_date: null });
 });
 
 it("counts costs only on real lines while retaining summary adjustments in unit totals", () => {

@@ -8,9 +8,11 @@ import { periodParams, periodSql } from "@/lib/data/period-sql";
 import { validSales } from "@/lib/data/channel-sql";
 import type { DateRange } from "@/lib/filters";
 import { STORES_RELATION, StoreSummaryRow } from "./rows";
+import { CACHE_POLICY } from "@/lib/data/query-cache";
+import type { BaselineRanges } from "@/lib/comparison";
 
 /** One bounded query for the canonical roster, not one job per store. Never accepts browser-supplied IDs. */
-export async function queryStoreComparison(range: DateRange, baseline: DateRange | null) {
+export async function queryStoreComparison(range: DateRange, baselines: BaselineRanges) {
   const access = await requireViewer({ live: true });
   if (access.storeId !== null) throw new StoreAccessError();
   const stores = await loadStores();
@@ -19,6 +21,7 @@ export async function queryStoreComparison(range: DateRange, baseline: DateRange
   const period = periodSql("date");
   const result = await warehouse.query({
     name: "store_comparison",
+    cache: CACHE_POLICY.aggregate,
     maxRows: MAX_STORES,
     sql: `WITH stores AS (
       SELECT sm_store_id,
@@ -30,12 +33,13 @@ export async function queryStoreComparison(range: DateRange, baseline: DateRange
       WHERE sm_store_id IN UNNEST(JSON_VALUE_ARRAY(@store_ids)) AND ${period.rows}
       GROUP BY sm_store_id
     )
-    SELECT * EXCEPT (group_latest_date, group_previous_latest_date),
-      group_latest_date AS latest_date, group_previous_latest_date AS previous_latest_date
+    SELECT * EXCEPT (group_latest_date, group_previous_latest_date, group_second_latest_date),
+      group_latest_date AS latest_date, group_previous_latest_date AS previous_latest_date,
+      group_second_latest_date AS second_latest_date
     FROM stores ORDER BY sm_store_id`,
     params: [
       { name: "store_ids", type: "STRING", value: JSON.stringify(stores.map((store) => store.id)) },
-      ...periodParams(range, baseline),
+      ...periodParams(range, baselines[0], baselines[1]),
     ],
   });
   return { stores, rows: decodeRows(StoreSummaryRow, result.rows, STORES_RELATION) };

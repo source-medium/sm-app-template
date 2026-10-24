@@ -93,10 +93,14 @@ A deployment never falls back to sample data when live data fails.
 ## Logs
 
 The server writes one JSON line per event with a fixed set of keys
-(`src/lib/data/log.ts`): `bq_query` for every query (app id, query name, job
-id, duration, bytes billed, rows, truncation, error kind), `viewer_denied`, and
-`config_error`. They never contain SQL, rows, keys, passwords, or headers.
-Managed queries also log the data API's `request_id`. Refused managed context
+(`src/lib/data/log.ts`): `bq_query` for every query the warehouse ran (app id,
+query name, job id, duration, bytes billed, BigQuery `cache_hit`, rows,
+truncation, error kind, and `app_cache` set to `miss` or `bypass`), `app_cache`
+when the query cache served a result (`hit`), could not store one (`skip`) or
+its KV tier failed (`error`), `viewer_denied`, and `config_error`. Every line a
+request produces shares its `app_request_id`. They never contain SQL, rows,
+keys, passwords, headers or cache keys. Managed queries also log the data API's
+`request_id`. Refused managed context
 loads emit `managed_context_refused` with the request ID, status and error
 kind, even though the explanation page intentionally returns HTTP 200.
 Search that event as well as query errors; HTTP status alone misses it.

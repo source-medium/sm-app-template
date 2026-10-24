@@ -52,7 +52,7 @@ describe("overview, live", () => {
     const fake = await goLive({ submit: () => rowsResponse(FIELDS, []) });
     const { getOverviewReport } = await import("./queries");
     const channel = "online_dtc' OR TRUE --";
-    await getOverviewReport({ ...FILTERS, channel, grain: "week" }, { from: "2025-09-01", to: "2025-09-02" });
+    await getOverviewReport({ ...FILTERS, channel, grain: "week" }, [{ from: "2025-09-01", to: "2025-09-02" }, null]);
     for (const call of fake.calls.filter((call) => call.kind === "submit")) {
       const body = call.body as { query: string; queryParameters: unknown[] };
       expect(body.query).toContain("DATE_TRUNC(date, WEEK(MONDAY))");
@@ -79,10 +79,14 @@ describe("overview, live", () => {
       },
     });
     const { getOverviewReport } = await import("./queries");
-    const report = await getOverviewReport(FILTERS, { from: "2025-09-01", to: "2025-09-02" });
+    const report = await getOverviewReport(FILTERS, [{ from: "2025-09-01", to: "2025-09-02" }, null]);
     expect(report.current.totals?.netRevenue).toBe("100.01");
-    expect(report.comparison?.data?.totals?.netRevenue).toBe("80.01");
-    expect(report.coverage).toEqual({ latest_date: "2026-09-01", previous_latest_date: "2025-09-01" });
+    expect(report.baselines[0]?.data?.totals?.netRevenue).toBe("80.01");
+    expect(report.coverage).toEqual({
+      latest_date: "2026-09-01",
+      previous_latest_date: "2025-09-01",
+      second_latest_date: null,
+    });
     const submits = fake.calls.filter((call) => call.kind === "submit");
     expect(submits).toHaveLength(2);
     const bodies = submits.map(
@@ -103,9 +107,9 @@ describe("overview, live", () => {
   it("makes only one query when comparison is off", async () => {
     const fake = await goLive({ submit: () => rowsResponse(FIELDS, []) });
     const { getOverviewReport } = await import("./queries");
-    const report = await getOverviewReport(FILTERS, null);
-    expect(report.comparison).toBeNull();
-    expect(report.coverage).toBeNull();
+    const report = await getOverviewReport(FILTERS, [null, null]);
+    expect(report.baselines).toEqual([null, null]);
+    expect(report.coverage.previous_latest_date).toBeNull();
     expect(fake.count("submit")).toBe(1);
   });
 
@@ -141,9 +145,9 @@ describe("overview, live", () => {
       });
       const { getOverviewReport } = await import("./queries");
       expect(rangeLength(range)).toBe(length);
-      const report = await getOverviewReport({ ...FILTERS, range }, baseline);
-      expect(report.comparison?.error).toBeNull();
-      expect(report.comparison?.data?.days).toHaveLength(baselineLength);
+      const report = await getOverviewReport({ ...FILTERS, range }, [baseline, null]);
+      expect(report.baselines[0]?.error).toBeNull();
+      expect(report.baselines[0]?.data?.days).toHaveLength(baselineLength);
     },
   );
 
@@ -162,18 +166,18 @@ describe("overview, live", () => {
       },
     });
     const { getOverviewReport } = await import("./queries");
-    const report = await getOverviewReport(FILTERS, { from: "2025-09-01", to: "2025-09-02" });
+    const report = await getOverviewReport(FILTERS, [{ from: "2025-09-01", to: "2025-09-02" }, null]);
     expect(report.current.totals?.netRevenue).toBe("0.3");
-    expect(report.comparison?.data).toBeNull();
-    expect(report.comparison?.error).toMatchObject({ kind: "result_too_large" });
-    expect(report.coverage).toBeNull();
+    expect(report.baselines[0]?.data).toBeNull();
+    expect(report.baselines[0]?.error).toMatchObject({ kind: "result_too_large" });
+    expect(report.coverage.previous_latest_date).toBeNull();
   });
 
   it("does not turn an empty baseline into zero totals", async () => {
     await goLive({ submit: () => rowsResponse(FIELDS, []) });
     const { getOverviewReport } = await import("./queries");
-    const report = await getOverviewReport(FILTERS, { from: "2025-09-01", to: "2025-09-02" });
-    expect(report.comparison).toEqual({
+    const report = await getOverviewReport(FILTERS, [{ from: "2025-09-01", to: "2025-09-02" }, null]);
+    expect(report.baselines[0]).toEqual({
       data: {
         days: [],
         summaries: [],
@@ -184,7 +188,7 @@ describe("overview, live", () => {
       },
       error: null,
     });
-    expect(report.coverage).toEqual({ latest_date: null, previous_latest_date: null });
+    expect(report.coverage).toEqual({ latest_date: null, previous_latest_date: null, second_latest_date: null });
   });
 
   it("queries one store and range, and decodes exact totals", async () => {

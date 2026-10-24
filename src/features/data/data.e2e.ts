@@ -1,24 +1,71 @@
 import { expect, test } from "@playwright/test";
 import { expectNoSeriousA11yViolations } from "../../../e2e/helpers";
-test("data definitions search stays in the URL and preserves the existing field composer workflow", async ({
-  page,
-}) => {
-  const prefetches: string[] = [];
+
+test("explore your data: find a metric, understand it, and open its report in three interactions", async ({ page }) => {
+  const requests: string[] = [];
   page.on("request", (request) => {
-    if (request.headers()["next-router-prefetch"]) prefetches.push(request.url());
+    if (["fetch", "xhr", "document"].includes(request.resourceType())) requests.push(request.url());
   });
-  await page.goto("/data?store=sample-store-a&tab=metrics");
-  await page.getByLabel("Search metrics", { exact: true }).fill("valid orders");
-  await page.getByRole("button", { name: "Search metrics", exact: true }).click();
-  await expect(page).toHaveURL(/q=valid/);
-  await page.reload();
-  await expect(page.getByLabel("Search metrics", { exact: true })).toHaveValue("valid orders");
-  await expect(page.getByText(/Definition matches do not establish/)).toBeVisible();
-  await page.getByRole("link", { name: "Availability & health", exact: true }).click();
-  await expect(page.getByText(/Sample data: health is not assessed/)).toBeVisible();
-  await expect(page.getByText("Unknown", { exact: true })).toHaveCount(3);
+  await page.goto("/data?store=sample-store-a");
+  const list = page.getByRole("list", { name: "Published metrics" });
+  await expect(list.getByRole("listitem")).toHaveCount(15);
+  requests.length = 0;
+  // 1. Search filters the loaded catalog locally and records the search in the URL.
+  await page.getByLabel("Search metrics", { exact: true }).fill("net revenue");
+  // Two revenue metrics plus MER, whose description names net revenue.
+  await expect(list.getByRole("listitem")).toHaveCount(3);
+  await expect(page).toHaveURL(/q=net\+revenue/);
+  // 2. Open the metric: plain meaning first, technical details on request.
+  await list.getByRole("button", { name: /Net Revenue \(Executive Summary\)/ }).click();
+  const drawer = page.getByRole("dialog", { name: "Net Revenue (Executive Summary)" });
+  await expect(drawer.getByText(/Net revenue from executive summary data/)).toBeVisible();
+  await expect(drawer.getByText("order_net_revenue_summary", { exact: true })).toBeHidden();
+  await drawer.getByText("Technical details", { exact: true }).click();
+  await expect(drawer.getByText("order_net_revenue_summary", { exact: true })).toBeVisible();
+  expect(requests, "search and the drawer must not query the warehouse").toEqual([]);
+  // 3. View in report carries the store.
+  const view = drawer.getByRole("link", { name: "View in Overview" });
+  await expect(view).toHaveAttribute("href", "/overview?store=sample-store-a");
+  await view.click();
+  await expect(page).toHaveURL(/\/overview\?store=sample-store-a/);
+});
+
+test("explore your data: categories, aliases, Vibe code, fields and health stay honest", async ({ page }) => {
+  await page.goto("/data?store=sample-store-a");
+  const list = page.getByRole("list", { name: "Published metrics" });
+  const requests: string[] = [];
+  page.on("request", (request) => {
+    if (["fetch", "xhr", "document"].includes(request.resourceType())) requests.push(request.url());
+  });
+  // The bundled catalog predates published categories, so its models stand in as groups.
+  const chips = page.getByRole("group", { name: "Metric categories" });
+  await chips.getByRole("button", { name: /rpt_ad_performance_daily/ }).click();
+  await expect(list.getByRole("listitem")).toHaveCount(8);
+  await expect(page).toHaveURL(/category=/);
+  await page.getByLabel("Search metrics", { exact: true }).fill("ctr");
+  await expect(list.getByRole("listitem")).toHaveCount(1);
+  await list.getByRole("button", { name: /Click-Through Rate/ }).click();
+  const drawer = page.getByRole("dialog", { name: "Click-Through Rate (CTR)" });
+  await expect(drawer.getByText("View in Creatives")).toBeVisible();
+  await drawer.getByRole("button", { name: "Use in Vibe code" }).click();
+  const composer = page.getByRole("dialog", { name: "Vibe code" });
+  await expect(composer.getByText("Selected metric:")).toBeVisible();
+  await expect(composer.getByText("click_through_rate", { exact: true })).toBeVisible();
+  expect(await composer.getByLabel("Prompt", { exact: true }).inputValue()).toContain("Selected published metric");
+  await page.keyboard.press("Escape");
+  expect(requests).toEqual([]);
+  await page.getByLabel("Search metrics", { exact: true }).fill("no such metric");
+  await expect(page.getByText("No metrics match")).toBeVisible();
+  await page.getByRole("button", { name: "Show all metrics" }).click();
+  await expect(list.getByRole("listitem")).toHaveCount(15);
+  await page.getByRole("link", { name: "Data health", exact: true }).click();
+  await expect(page.getByText("Sample data: not assessed.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Unknown", { exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Fields", exact: true }).click();
   await expect(page.getByLabel("Published source", { exact: true })).toHaveValue("obt_orders");
+  await expect(page.getByLabel("Search fields")).toBeVisible();
   await expectNoSeriousA11yViolations(page);
-  expect(prefetches, "Unvisited metadata tabs must not start warehouse requests").toEqual([]);
+  // The old metrics tab still opens Explore.
+  await page.goto("/data?store=sample-store-a&tab=metrics&q=sessions");
+  await expect(list.getByRole("listitem")).toHaveCount(1);
 });

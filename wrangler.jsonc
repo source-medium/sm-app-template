@@ -26,6 +26,10 @@
   "workers_dev": true,
   "preview_urls": false,
   "vars": { "APP_ENVIRONMENT": "production" },
+  // Optional: keep the query cache across Worker restarts and locations
+  // (docs/cloud.md#query-cache). Create the namespace, paste its id, and
+  // uncomment. Without it the cache is memory only; nothing else changes.
+  // "kv_namespaces": [{ "binding": "APP_QUERY_CACHE", "id": "<id from wrangler kv namespace create>" }],
   // Previews and optional agent debugging share the Development app credential.
   // Set its complete block in <name>-preview > Settings > Previews Base once.
   // Branch previews receive those secrets when created, not on every update.
@@ -36,6 +40,7 @@
       "workers_dev": false,
       "preview_urls": true,
       "vars": { "APP_REQUIRE_LIVE": "true", "APP_ENVIRONMENT": "preview" },
+      // "kv_namespaces": [{ "binding": "APP_QUERY_CACHE", "id": "<id from wrangler kv namespace create --env preview>" }],
       "previews": {
         "vars": { "APP_REQUIRE_LIVE": "true", "APP_ENVIRONMENT": "preview" },
       },

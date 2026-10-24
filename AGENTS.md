@@ -27,7 +27,7 @@ Also: `pnpm diagnose`, `pnpm test:e2e`, `pnpm build`, `pnpm build:cloudflare`. U
 ## Repo map
 
 ```text
-app.config.ts                 Name, logo, navigation, store labels, currency, date defaults
+app.config.ts                 Name, logo, navigation (with each view's canonical metrics), store labels, currency, date defaults
 src/app/(app)/<route>/page.tsx  One line re-exporting a feature's page
 src/features/<view>/          One view: queries.ts (contract), rows.ts (row schema),
                               bigquery.ts (live SQL), sample.ts (fixtures), page.tsx
@@ -74,7 +74,8 @@ docs/                         Guides (index below)
    SQL through `warehouse.query`), `sample.ts` (deterministic fixtures in
    BigQuery's wire format), and `page.tsx` using `ReportPage`.
 2. Add `src/app/(app)/<route>/page.tsx`: `export { default, metadata } from "@/features/<name>/page";`
-3. Add one entry to `nav` in `app.config.ts`.
+3. Add one entry to `nav` in `app.config.ts`; list the canonical metric names the view
+   presents in its `metrics` so Explore your data can link to it.
 4. Wrap each data region in `<Suspense key={…the filters it reads…} fallback={<LoadingState …/>}>`
    and `<DataRegion timestamp={timeZone}>` (from the `ReportPage` context), so it
    has loading, empty, error, and incompatible-schema states. A bounded aggregate view may opt into `maxDays={appConfig.summaryMaxDays}`; pass the same maximum to its `csvExport`. Keep detail views at the shorter default. A view with no date
@@ -115,7 +116,7 @@ to delete any of them.
 - Dates are each store's calendar dates in its SourceMedium time zone. Take
   today and times from `ReportContext.today` and `timeZone` (or `resolveReportStore()`), never
   the server clock's date or UTC.
-- Show "Queried at" and "Data freshness unknown"; never claim freshness from `MAX(date)`.
+- Show "Loaded at" (with the origin time of any cached result) and "Data freshness unknown"; never claim freshness from `MAX(date)`.
 
 ## UI
 
@@ -124,10 +125,12 @@ Use the shadcn primitives in `components/ui` and the patterns in
 `components/patterns`. Colors and fonts come only from `src/styles/tokens.css`;
 use theme classes (`bg-card`, `text-muted-foreground`), not raw colors. Charts
 use `--chart-1`…`--chart-8` in order, one y-axis, and keep the table view.
-Comparisons: opt into `ReportPage comparisons` only when querying both periods.
-Reuse `lib/comparison.ts`, `lib/time-grain.ts`, and `patterns/kpi-delta.ts`;
-build one-query comparisons with `lib/data/period-sql.ts`, and show period changes
-only when `periodChanges()` allows.
+Comparisons: opt into `ReportPage comparisons` only when querying every period the
+context's `plan` names (two slots: `compare`, `compare2`; `baseline=a|b` picks the
+overlay). Reuse `lib/comparison.ts` (`planRanges`, `slotChanges`), `lib/time-grain.ts`,
+and `patterns/kpi-delta.ts`; build one-query comparisons with `lib/data/period-sql.ts`;
+show a slot's changes only when `slotChanges()` allows, one `KpiCard deltas` row per
+slot, and per-slot tables or charts inside `ActiveBaseline` (docs/data.md#period-comparisons).
 Copy Products for simple pages and rankings, Overview for multi-measure summaries,
 Retention for `CohortMatrix`. Section titles use `patterns/section-header`; an empty region offers its way
 out through `DataRegion emptyAction`. Collapsible explanations use `components/ui/disclosure`.
@@ -158,8 +161,13 @@ acts for a person needs a real per-person authorization design first.
   `readConfig()`. Never read configuration at module scope or build time.
 - Use plain `<img>` for remote images (no `next/image` optimization on Workers);
   any https image host is allowed (`src/lib/security-headers.ts`).
-- Pages are dynamic and private (`Cache-Control: private, no-store`); do not add
-  shared caches of query results.
+- Pages are dynamic and private (`Cache-Control: private, no-store`); never cache
+  HTML or RSC. Query results are cached only through the Warehouse's query cache
+  (`src/lib/data/query-cache.server.ts`): a query opts in with
+  `cache: CACHE_POLICY.<kind>`, expiry is hard, and Orders, detail rows, evidence
+  and authorization are never cached. Add the `APP_QUERY_CACHE` KV binding to
+  share entries across isolates (docs/cloud.md#query-cache); without it the
+  cache is memory only.
 
 ## Guides
 

@@ -32,6 +32,7 @@
     "prepare": "simple-git-hooks",
     "smoke:worker": "tsx scripts/smoke-worker.ts",
     "test:live": "next build && SM_LIVE_E2E=1 playwright test",
+    "test:timing": "SM_TIMING=1 node scripts/test-browser.mjs --project timing",
     "test:hosted": "node scripts/test-hosted.mjs",
     "check:deploy": "node scripts/check-deploy.mjs",
     "reconcile": "tsx scripts/reconcile.ts",
