@@ -219,24 +219,25 @@ def identity_token(audience):
     account = os.environ.get("SM_AGENT_IDENTITY", "")
     if not re.fullmatch(r"[a-z][a-z0-9-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com", account):
         raise SetupError("SM_AGENT_IDENTITY must be the dedicated profile service account")
-    access_token = run(["gcloud", "auth", "print-access-token"], capture=True)
-    req = urllib.request.Request(
-        f"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/{account}:generateIdToken",
-        method="POST",
-        data=json.dumps({"audience": audience, "includeEmail": True}).encode(),
-        headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
+    # Native OIDC connections can expose provider-scoped identity handles, not
+    # portable OAuth tokens. Let the supported CLI mint the ID token instead of
+    # exporting an access token and rebuilding its IAM request ourselves.
+    token = run(
+        [
+            "gcloud",
+            "auth",
+            "print-identity-token",
+            f"--impersonate-service-account={account}",
+            f"--audiences={audience}",
+            "--include-email",
+        ],
+        capture=True,
     )
-    try:
-        with urllib.request.build_opener(NoRedirect).open(req, timeout=30) as response:
-            return json.load(response)["token"]
-    except urllib.error.HTTPError as error:
+    if not token:
         raise SetupError(
-            f"profile ID-token mint returned HTTP {error.code}; verify the OIDC connection"
-        ) from None
-    except (TimeoutError, urllib.error.URLError):
-        raise SetupError(
-            "profile ID-token mint unavailable; verify Google IAM connectivity"
-        ) from None
+            "profile ID-token mint returned an empty token; verify the OIDC connection"
+        )
+    return token
 
 
 def request(method, route, body=None):
@@ -250,7 +251,6 @@ def request(method, route, body=None):
         data=json.dumps(body).encode() if body is not None else None,
         headers={
             "Authorization": f"Bearer {token}",
-            "X-Serverless-Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         },
     )
