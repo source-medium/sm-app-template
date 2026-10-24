@@ -22,9 +22,12 @@ export type RequestContext = {
   provenance: CacheProvenance;
 };
 
-export function newRequestContext(): RequestContext {
+export function newRequestContext(gatewayRequestId?: string | null): RequestContext {
   return {
-    id: crypto.randomUUID(),
+    id:
+      gatewayRequestId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(gatewayRequestId)
+        ? gatewayRequestId
+        : crypto.randomUUID(),
     bypassCache: false,
     provenance: { oldestQueriedAt: null, servedFromCache: 0 },
   };
