@@ -100,15 +100,11 @@ read-only warehouse checks. Then run pnpm diagnose and the relevant schema and
 live tests yourself. For local development, I will fill .env.local privately;
 run pnpm diagnose without reading that file. Never print environment values.
 Never ask for secrets in chat. If provisioning is unavailable, explain that prerequisite and
-keep sample mode; do not invent a configuration block. Confirm the workspace
-reporting currency and that every included store and money source reports in
-it, following docs/data.md. Set the verified reporting code in app.config.ts
-currency, with reportingCurrencies overrides if stores need different codes.
-Leave unverified live amounts unlabeled. Do not infer reporting currency from
-dim_stores.store_currency_code, the locale, or order_currency_code, and do not
-add client-side FX. Store names, brand groups, time zones, and nominal currency
-metadata come from dim_stores automatically;
-use storeLabels only for a deliberate display override.
+keep sample mode; do not invent a configuration block. Store names, brand groups,
+time zones and reporting currency come from dim_stores automatically. Use
+storeLabels or reportingCurrencies only for a deliberate display override.
+Leave missing or invalid currency codes unlabeled. Do not infer a currency from
+the locale or add client-side FX.
 If sources differ, resolve that upstream before trusting combined totals or
 MER. Run pnpm check and report separately whether live connection was actually
 verified.

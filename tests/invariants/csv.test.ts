@@ -54,7 +54,17 @@ describe("CSV downloads", () => {
 describe("CSV export scope", () => {
   const ok = async () => new Response("ok");
 
-  it("exports the verified reporting currency rather than nominal store currency", async () => {
+  it("exports the store metadata currency without configuration", async () => {
+    await goLive({ submit: withStores(() => rowsResponse([], []), ["csv-metadata-currency"], "UTC", "EUR") });
+    const build = vi.fn(ok);
+    await csvExport(
+      new Request("https://example.test/x/export?store=csv-metadata-currency&from=2026-09-01&to=2026-09-02"),
+      build,
+    );
+    expect(build).toHaveBeenCalledWith(expect.objectContaining({ currency: "EUR" }));
+  });
+
+  it("retains an explicit currency override in exports", async () => {
     const original = appConfig.reportingCurrencies;
     appConfig.reportingCurrencies = { "csv-report-currency": "CAD" };
     try {

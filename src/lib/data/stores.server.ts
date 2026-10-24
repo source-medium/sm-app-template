@@ -1,8 +1,8 @@
 /**
  * The store picker's roster, shared by every view's filter bar, and the store
- * time zone each report or export uses. Names and domains come from dim_stores; reporting
- * currency comes from verified app.config.ts settings. There is no cross-store total anywhere in
- * the example.
+ * time zone each report or export uses. Names, domains and reporting
+ * currencies come from dim_stores; app.config.ts can explicitly override a
+ * label. There is no cross-store total anywhere in the example.
  */
 import "server-only";
 import { cache } from "react";
@@ -17,7 +17,7 @@ import { WarehouseError } from "./warehouse-error";
 /**
  * `timeZone` is dim_stores.store_timezone, when this runtime knows that zone.
  * `currency` is dim_stores.store_currency_code, trimmed and uppercased, when
- * Intl accepts it. This is nominal store metadata, not a report currency.
+ * Intl accepts it. This is the source of truth for the store’s reporting currency.
  * A missing or unrecognized code is null.
  */
 export type StoreOption = {
@@ -62,20 +62,15 @@ function storeLogo(logo: string | null): string | null {
   }
 }
 
-/**
- * Verified reporting currency, never inferred from nominal warehouse metadata:
- * the store's app.config.ts override, else the deployment's setting, else the
- * currency the data source vouches for (SourceMedium's workspace setting, for
- * a managed app). Sample stores report in USD.
- */
+/** Store metadata supplies the reporting unit; explicit app customizations retain precedence. */
 export function reportingCurrency(
-  storeId: string,
-  access: { mode: "sample" } | { mode: "live"; warehouse: { reportingCurrency: string | null } },
+  store: Pick<StoreOption, "id" | "currency">,
+  access: { mode: "sample" | "live" },
 ): string | null {
-  if (access.mode === "sample") return currencyCode(SAMPLE_STORES.find((store) => store.id === storeId)?.currency);
-  if (Object.hasOwn(appConfig.reportingCurrencies, storeId))
-    return currencyCode(appConfig.reportingCurrencies[storeId]);
-  return currencyCode(appConfig.currency ?? access.warehouse.reportingCurrency);
+  if (access.mode === "sample") return currencyCode(store.currency);
+  if (Object.hasOwn(appConfig.reportingCurrencies, store.id))
+    return currencyCode(appConfig.reportingCurrencies[store.id]);
+  return currencyCode(appConfig.currency) ?? currencyCode(store.currency);
 }
 
 /** What app.config.ts establishes about live money labels, as reportingCurrency() will apply it. */
@@ -129,14 +124,9 @@ export const loadStores = cache(async (): Promise<StoreOption[]> => {
 });
 
 /**
- * Store time zones this server has resolved, keyed by app and store. These are
- * store configuration, not viewer data. Reusing them for an hour lets a report
- * whose link names its store start its queries without waiting for the store
- * list, while a changed zone or daylight-saving change in an order offset
- * still applies within the hour. The roster and offset queries themselves go
- * through the query cache (CACHE_POLICY.roster and storeTimeZone). The live
- * report currency is resolved from app.config.ts separately, so nominal store
- * metadata never chooses its label.
+ * Store zones are configuration, not viewer data, and retain their existing
+ * one-hour reuse policy. Currency always comes from the current roster,
+ * whose query cache expires after five minutes and supports Refresh data.
  */
 const knownStores = new Map<string, { zone: string; until: number }>();
 const REMEMBER_MS = CACHE_POLICY.storeTimeZone.maxAgeSeconds * 1000;
@@ -148,11 +138,13 @@ const REMEMBER_MS = CACHE_POLICY.storeTimeZone.maxAgeSeconds * 1000;
  * list failed. Null for an unlisted store with neither zone. Never a guess: a
  * listed store with neither zone throws, as does a failed store list.
  */
-async function storeFacts(storeId: string, stores?: StoreOption[]): Promise<{ zone: string } | null> {
+async function storeFacts(
+  storeId: string,
+  stores?: StoreOption[],
+): Promise<{ zone: string; currency: string | null } | null> {
   const access = await requireViewer({ storeId });
   const key = `${access.mode}|${access.mode === "live" ? access.warehouse.applicationId : ""}|${storeId}`;
   const known = knownStores.get(key);
-  if (known && known.until > Date.now()) return { zone: known.zone };
   let listed: StoreOption[] | null = null;
   let failure: WarehouseError | null = null;
   try {
@@ -162,11 +154,14 @@ async function storeFacts(storeId: string, stores?: StoreOption[]): Promise<{ zo
     failure = error;
   }
   const store = listed?.find((option) => option.id === storeId);
-  const zone = store?.timeZone ?? (access.mode === "live" ? await queryOrderTimeZone(access.warehouse, storeId) : null);
+  const zone =
+    (known && known.until > Date.now() ? known.zone : null) ??
+    store?.timeZone ??
+    (access.mode === "live" ? await queryOrderTimeZone(access.warehouse, storeId) : null);
   if (zone) {
     const facts = { zone };
-    knownStores.set(key, { ...facts, until: Date.now() + REMEMBER_MS });
-    return facts;
+    if (!known || known.until <= Date.now()) knownStores.set(key, { ...facts, until: Date.now() + REMEMBER_MS });
+    return { ...facts, currency: store?.currency ?? null };
   }
   if (failure) throw failure;
   if (!store) return null;
@@ -209,7 +204,7 @@ export async function resolveReportStore(supplied: string | undefined): Promise<
           status: "ready",
           storeId,
           timeZone: facts.zone,
-          currency: reportingCurrency(storeId, access),
+          currency: reportingCurrency({ id: storeId, currency: facts.currency }, access),
         };
   } catch (error) {
     if (!(error instanceof WarehouseError)) throw error;

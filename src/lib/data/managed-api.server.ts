@@ -51,12 +51,6 @@ export type ManagedContext = {
   transformedDatasetId: string;
   metadataDatasetId: string;
   allowedDatasets: readonly string[];
-  /**
-   * The workspace's verified reporting currency, when the data API publishes
-   * it (an optional, additive field; older producers send none). Null means
-   * unverified, and app.config.ts settings take precedence either way.
-   */
-  reportingCurrency: string | null;
 };
 
 const field: z.ZodType<BigQueryField> = z.lazy(() =>
@@ -93,8 +87,6 @@ const contextResponse = z.object({
     transformed_dataset: z.string(),
     metadata_dataset: z.string(),
     allowed_datasets: z.array(z.string()),
-    /** Proposed additive field: the workspace reporting currency as SourceMedium configured it. */
-    reporting_currency: z.string().nullable().optional(),
   }),
 });
 
@@ -369,7 +361,6 @@ export async function loadManagedContext(
         transformedDatasetId: warehouse.transformed_dataset,
         metadataDatasetId: warehouse.metadata_dataset,
         allowedDatasets: warehouse.allowed_datasets,
-        reportingCurrency: warehouse.reporting_currency?.trim().toUpperCase() || null,
       };
     }
   } catch (error) {

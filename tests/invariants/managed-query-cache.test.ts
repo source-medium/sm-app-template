@@ -5,7 +5,8 @@ import { requireViewer } from "@/lib/auth/require-viewer";
 import { CACHE_POLICY } from "@/lib/data/query-cache";
 import { resetQueryCache, setQueryCacheEnabled, setQueryCacheStore } from "@/lib/data/query-cache.server";
 import { setLogEmitter, type LogEvent } from "@/lib/data/log";
-import { requestHeaders } from "../helpers/live";
+import { resolveReportStore } from "@/lib/data/stores.server";
+import { requestHeaders, ROSTER_FIELDS, storeRow } from "../helpers/live";
 
 vi.unmock("@/lib/request-scope");
 
@@ -111,4 +112,23 @@ it("does not trust malformed correlation headers", async () => {
   );
   nextRequest("forged\tvalue");
   expect((await requireViewer({ live: true })).request.id).toMatch(/^[0-9a-f-]{36}$/);
+});
+
+it("resolves hosted report currency from dim_stores without a workspace currency field or app override", async () => {
+  const fetch = vi.fn(async (url: string | URL | Request) =>
+    String(url).endsWith("/context")
+      ? Response.json(context)
+      : Response.json({
+          contract_version: 1,
+          request_id: crypto.randomUUID(),
+          fields: ROSTER_FIELDS.map((field) => ({ ...field, mode: "NULLABLE" })),
+          rows: [storeRow("democo-metadata", "America/New_York", "USD")],
+          truncated: false,
+          receipt: { job: null, query_id: null, bytes_billed: null, cache_hit: null },
+        }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  nextRequest();
+  expect(await resolveReportStore("democo-metadata")).toMatchObject({ status: "ready", currency: "USD" });
+  expect(fetch.mock.calls.filter(([url]) => String(url).endsWith("/query"))).toHaveLength(1);
 });

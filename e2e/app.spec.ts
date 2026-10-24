@@ -558,10 +558,10 @@ test("connection checks run on demand and produce a safe, accessible sample repo
   await page.getByTestId("mode-chip").click();
   await expect(page.getByRole("heading", { name: "Connection", exact: true })).toBeVisible();
   await expect(page).toHaveTitle(/^Connection · /);
-  // The currency note describes the contract the code implements: labels come from app.config.ts, never dim_stores.
+  // The currency note describes the metadata source used after connecting live data.
   const currencyNote = page.getByRole("region", { name: "Reporting currency", exact: true });
   await expect(currencyNote).toContainText("Sample stores report in USD");
-  await expect(currencyNote).toContainText("app.config.ts");
+  await expect(currencyNote).toContainText("dim_stores");
   expect(checks).toBe(0);
   await page.getByRole("button", { name: "Check connection", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Sample mode is ready.");

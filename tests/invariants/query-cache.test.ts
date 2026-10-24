@@ -135,21 +135,17 @@ it("coalesces separate concurrent requests into one job and traces every consume
   release();
   const results = await Promise.all(promises);
   expect(results.map((result) => result.rows[0]?.total)).toEqual(["7", "7", "7"]);
-  expect(results.map((result) => result.servedFrom)).toEqual(["warehouse", "app-cache", "app-cache"]);
+  expect(results.map((result) => result.servedFrom).sort()).toEqual(["app-cache", "app-cache", "warehouse"]);
+  const consumers = viewers.filter((_viewer, index) => results[index]?.servedFrom === "app-cache");
   expect(fake.calls.filter((call) => call.kind === "submit")).toHaveLength(1);
   expect(
     lines
       .filter((line) => line.event === "app_cache")
       .map((line) => line.app_request_id)
       .sort(),
-  ).toEqual(
-    viewers
-      .slice(1)
-      .map((viewer) => viewer.request.id)
-      .sort(),
-  );
+  ).toEqual(consumers.map((viewer) => viewer.request.id).sort());
   expect(lines.filter((line) => line.event === "app_cache").every((line) => line.cache_tier === "inflight")).toBe(true);
-  expect(viewers.slice(1).map((viewer) => viewer.request.provenance)).toEqual(
+  expect(consumers.map((viewer) => viewer.request.provenance)).toEqual(
     Array.from({ length: 2 }, () => ({ oldestQueriedAt: results[0]?.queriedAt, servedFromCache: 1 })),
   );
 });

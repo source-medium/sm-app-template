@@ -16,7 +16,7 @@ this work.
 | S3    | Pending indicators on preset links, sidebar links and the Apply button (`useLinkStatus`, `useFormStatus`); a polite announcement beside the form; the `timing` Playwright project                                                                                                                   | Implemented and measured                                                                                                                                                            |
 | S4    | `ComparisonPlan` with two slots, range intent, calendar alignment, `compare2` and `baseline=a                                                                                                                                                                                                       | b`; third window in `period-sql`; Overview, Products, Paid marketing, Geography and All stores show both slots on KPI cards and switch overlay and change columns without a request | Implemented and tested |
 | S5    | Explore your data: searchable, categorised metric list folded over aliases, drawer with plain meaning first, View in report through `nav[].metrics`, Use in Vibe code; Fields and Data health kept and trimmed                                                                                      | Implemented and tested on the bundled catalog                                                                                                                                       |
-| S6    | `isCurrency` checks real ISO 4217 codes; minor-unit and dollar-prefix tests; managed apps read an optional `reporting_currency` from the data API context, below `app.config.ts`                                                                                                                    | Consumer implemented; producer field pending in urchin                                                                                                                              |
+| S6    | `isCurrency` checks real ISO 4217 codes; minor-unit and dollar-prefix tests; reports read `dim_stores.store_currency_code` in managed and self-hosted modes, below explicit `app.config.ts` overrides                                                                                               | Implemented in the template; no producer context field required                                                                                                                     |
 | S7    | Gates, measurements, this record                                                                                                                                                                                                                                                                    | See below                                                                                                                                                                           |
 
 ## Decisions recorded
@@ -43,7 +43,7 @@ this work.
   the catalog's own `metric_category`, falling back to the model for a catalog
   that predates the column. No app-side taxonomy.
 - **No app-side currency detection.** The app labels money only from
-  `app.config.ts` or from the currency the data source vouches for. Mixed
+  `dim_stores.store_currency_code` or an explicit `app.config.ts` override. Mixed
   currencies cannot be observed in the summary and advertising tables, so
   suppression stays a producer question.
 
@@ -55,10 +55,9 @@ this work.
   bundled sample catalog groups like a live one. The template reader already
   accepts them as optional columns; the vendored `dashboard-metrics-v1` fixture
   is unchanged here so the smstack contract pair stays byte-identical.
-- `urchin` managed data API: publish `warehouse.reporting_currency` (nullable)
-  in the `/context` response and the `managed-app-v1` schema and examples. The
-  template reads it when present and tolerates its absence; the vendored
-  contract here is unchanged until the producer lands it.
+- Currency metadata is consumed from `dim_stores`; the earlier proposal for a
+  workspace-wide data API context field was removed. It is not needed for
+  per-store reporting labels.
 - Create the `APP_QUERY_CACHE` KV namespaces for the demo and managed deploys
   (`pnpm exec wrangler kv namespace create APP_QUERY_CACHE`, once per Worker)
   and paste the ids into `wrangler.jsonc`. Without them the cache is memory only.

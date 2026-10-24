@@ -163,6 +163,6 @@ active; ask a workspace admin.
   requests sharing one query each record their own cache use.
 - Report headers say when warehouse freshness or reporting currency is
   unknown. A successful query or connection check does not establish either.
-  When the data API publishes the workspace reporting currency with the app's
-  context, stores that `app.config.ts` leaves unset take that label, and the
-  Connection page says so; `app.config.ts` settings still take precedence.
+  Reports use each store's `dim_stores.store_currency_code` automatically,
+  through the same data API as other metadata. Missing or invalid codes stay
+  unlabeled. Explicit `app.config.ts` overrides retain precedence.
