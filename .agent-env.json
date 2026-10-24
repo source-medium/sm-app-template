@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "component": "sm-app-template",
+  "python": null,
+  "tools": ["git", "just", "gcloud", "node", "corepack"],
+  "bootstrap": [["node", "scripts/setup-agent.mjs"]],
+  "required_env": [],
+  "checks": ["pnpm check"],
+  "network_domains": [
+    "sts.googleapis.com",
+    "iamcredentials.googleapis.com",
+    "oauth2.googleapis.com",
+    "www.googleapis.com",
+    "bigquery.googleapis.com",
+    "logging.googleapis.com",
+    "monitoring.googleapis.com",
+    "run.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "storage.googleapis.com",
+    "api.github.com",
+    "cdn.playwright.dev"
+  ],
+  "integrations": [],
+  "node": "24.7.0"
+}

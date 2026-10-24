@@ -1,5 +1,7 @@
 # AGENTS.md
 
+SourceMedium maintainer cloud-agent setup (customer copies keep their own access): [docs/cloud-agents.md](docs/cloud-agents.md). Use the portable `python3 scripts/agent_env.py` bootstrap and the dedicated Observer or Operator environment; bootstrap must never invoke `doctor`.
+
 This customer-owned Next.js app reads a SourceMedium BigQuery warehouse on the server for trusted viewers.
 Every viewer sees the same data; optional runtime `APP_STORE_ID` restricts a deployment to one store. Without configuration it runs on clearly labeled sample data.
 
