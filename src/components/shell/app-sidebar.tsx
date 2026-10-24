@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { appConfig } from "@/app.config";
+import { LinkPending } from "./pending";
 import {
   Sidebar,
   SidebarContent,
@@ -27,7 +28,7 @@ import { AppName } from "./app-name";
  * link starts the destination report fresh, while supporting detail links inside
  * a report (lib/drill-down.ts) carry a compatible investigation across.
  */
-const SHARED_FILTERS = ["store", "from", "to", "compare"];
+const SHARED_FILTERS = ["store", "from", "to", "compare", "compare2"];
 
 export function AppSidebar({ fixedStore = false }: { fixedStore?: boolean }) {
   const pathname = usePathname();
@@ -54,7 +55,10 @@ export function AppSidebar({ fixedStore = false }: { fixedStore?: boolean }) {
                     const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                     const target = new URLSearchParams(shared);
                     // A report without period comparisons cannot apply one; dropping it is not a lost filter.
-                    if (!item.comparisons) target.delete("compare");
+                    if (!item.comparisons) {
+                      target.delete("compare");
+                      target.delete("compare2");
+                    }
                     const href = active
                       ? `${pathname}?${searchParams.toString()}`
                       : `${item.href}${target.size ? `?${target}` : ""}`;
@@ -64,6 +68,7 @@ export function AppSidebar({ fixedStore = false }: { fixedStore?: boolean }) {
                           <Link prefetch={false} href={href} aria-current={active ? "page" : undefined}>
                             <item.icon aria-hidden />
                             <span>{item.label}</span>
+                            <LinkPending className="ml-auto" />
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>

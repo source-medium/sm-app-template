@@ -397,11 +397,13 @@ test("copy link freezes applied defaults and ignores unapplied filter edits", as
   expect(copied.origin).toBe(new URL(page.url()).origin);
   expect(copied.pathname).toBe(home);
   const compare = page.locator('select[name="compare"]');
+  const compare2 = page.locator('select[name="compare2"]');
   expect(Object.fromEntries(copied.searchParams)).toEqual({
     store,
     from,
     to,
     ...((await compare.count()) ? { compare: await compare.inputValue() } : {}),
+    ...((await compare2.count()) ? { compare2: await compare2.inputValue() } : {}),
     ...(["/overview", "/performance"].includes(home) ? { sales_channel: "" } : {}),
   });
   await page.goto(copied.href);
@@ -505,7 +507,9 @@ test("refresh re-reads the report, shows progress, and keeps applied filters", a
   const from = page.getByLabel("From", { exact: true });
   if (await from.count()) await from.fill("2020-01-01");
 
-  // Hold the real server response so pending behavior is observable without a timing race.
+  // Hold the real server response so pending behavior is observable without a timing race. Refresh is
+  // one server action whose response carries the re-rendered page; a second page request would be a
+  // second render.
   let release = () => {};
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -513,11 +517,9 @@ test("refresh re-reads the report, shows progress, and keeps applied filters", a
   let refreshRequests = 0;
   await page.route("**/*", async (route) => {
     const request = route.request();
-    if (
-      request.headers().rsc === "1" &&
-      request.headers()["next-router-prefetch"] !== "1" &&
-      new URL(request.url()).pathname === home
-    ) {
+    const action = request.method() === "POST" && Boolean(request.headers()["next-action"]);
+    const render = request.headers().rsc === "1" && request.headers()["next-router-prefetch"] !== "1";
+    if ((action || render) && new URL(request.url()).pathname === home) {
       refreshRequests += 1;
       const response = await route.fetch();
       await held;

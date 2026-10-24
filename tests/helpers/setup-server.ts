@@ -7,6 +7,10 @@
  */
 import { afterEach, vi } from "vitest";
 import { requestHeaders } from "./live";
+import { resetQueryCache, setQueryCacheEnabled } from "@/lib/data/query-cache.server";
+
+// Feature tests script one response per query; only the cache's own tests turn the query cache on.
+setQueryCacheEnabled(false);
 
 // Keep fixture expectations independent of the customer's reporting currency.
 // Currency-specific tests set their own verified code.
@@ -27,4 +31,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   requestHeaders.current = new Headers();
+  // The query cache outlives a request by design; a test's results must not outlive the test.
+  resetQueryCache();
+  setQueryCacheEnabled(false);
 });

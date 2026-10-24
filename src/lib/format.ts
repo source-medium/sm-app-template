@@ -168,8 +168,26 @@ export function isTimeZone(timeZone: string): boolean {
   }
 }
 
-/** Whether Intl can format this ISO 4217 code. Callers uppercase and trim first. */
+/**
+ * The ISO 4217 codes this runtime knows, as Intl publishes them. Intl's
+ * formatter accepts any well-formed three-letter code ("ABC" formats as
+ * "ABC 1.00"), so the published list is the check, with the formatter as the
+ * fallback where a runtime lacks it.
+ */
+const KNOWN_CURRENCIES: ReadonlySet<string> | null = (() => {
+  try {
+    const values = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.(
+      "currency",
+    );
+    return values?.length ? new Set(values) : null;
+  } catch {
+    return null;
+  }
+})();
+
+/** Whether this is a real ISO 4217 code the runtime can label money with. Callers uppercase and trim first. */
 export function isCurrency(code: string): boolean {
+  if (KNOWN_CURRENCIES) return KNOWN_CURRENCIES.has(code);
   try {
     new Intl.NumberFormat("en-US", { style: "currency", currency: code });
     return true;

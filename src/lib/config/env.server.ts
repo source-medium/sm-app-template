@@ -544,6 +544,11 @@ export function describeConfig(config: AppConfig): string {
   return `${data}, ${guard}${config.storeId !== null ? ", restricted to one store" : ""}`;
 }
 
+/** The deployment boundary (APP_ENVIRONMENT: production, staging, preview), or "local". Cached results never cross it. */
+export function deploymentEnvironment(): string {
+  return process.env.APP_ENVIRONMENT?.trim() || "local";
+}
+
 /** Safe instance metadata. These values never include a credential or warehouse coordinate. */
 export function instanceInfo() {
   return {

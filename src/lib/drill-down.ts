@@ -6,7 +6,9 @@ export type Investigation = {
   to: string;
   dateBasis: string;
   population: string;
+  /** The first and second comparison modes (`compare`, `compare2`), carried together. */
   comparison?: string | null;
+  comparison2?: string | null;
   /** Applied material filters only. Presentation choices and row cursors are not scope. */
   filters: Readonly<Record<string, string | null | undefined>>;
 };
@@ -48,7 +50,9 @@ export function drillDown(
         store: context.store,
         from: context.from,
         to: context.to,
-        ...(destination.supportsComparison ? { compare: context.comparison ?? null } : {}),
+        ...(destination.supportsComparison
+          ? { compare: context.comparison ?? null, compare2: context.comparison2 ?? null }
+          : {}),
       },
     ),
     reasons,

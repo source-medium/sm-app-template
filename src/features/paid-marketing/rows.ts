@@ -15,6 +15,7 @@ export const SpendBreakdownRow = z.object({
   label: bq.string(),
   spend: bq.numeric().nullable(),
   previous_spend: bq.numeric().nullable(),
+  second_spend: bq.numeric().nullable(),
   total_spend: bq.numeric().nullable(),
   minimum_spend: bq.numeric().nullable(),
   ...periodCoverageFields,

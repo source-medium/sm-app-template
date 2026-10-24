@@ -8,13 +8,14 @@ import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { AdNameMatches, AdNameRule } from "@/lib/ad-name-filters";
 import { queryAdNameMatches } from "@/lib/data/ad-name-matches.server";
-import { parseChoice, single, type DateRange, type ReportFilters, type SearchParams } from "@/lib/filters";
+import { parseChoice, single, type ReportFilters, type SearchParams } from "@/lib/filters";
 import type { z } from "zod";
 import type { SpendBreakdownRow } from "./rows";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { toChartNumber } from "@/lib/data/decode";
 import { queryPaidCampaigns, queryPaidMarketing, querySpendBreakdown } from "./bigquery";
 import { samplePaidMarketing, sampleSpendBreakdown, samplePaidNames } from "./sample";
+import type { BaselineRanges } from "@/lib/comparison";
 
 export const BREAKDOWN_DIMENSIONS = [
   { value: "channel", label: "Channel" },
@@ -36,12 +37,12 @@ export function breakdownDimension(params: SearchParams): BreakdownDimension {
 export async function getSpendBreakdown(
   filters: PaidMarketingFilters,
   dimension: BreakdownDimension,
-  baseline: DateRange | null,
+  baselines: BaselineRanges,
 ): Promise<SpendBreakdown> {
   const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live"
-    ? querySpendBreakdown(filters, dimension, baseline)
-    : sampleSpendBreakdown(filters, dimension, baseline);
+    ? querySpendBreakdown(filters, dimension, baselines)
+    : sampleSpendBreakdown(filters, dimension, baselines);
 }
 
 export const PAID_METRICS = ["spend", "impressions", "clicks", "conversions", "revenue", "roas", "cpo"] as const;

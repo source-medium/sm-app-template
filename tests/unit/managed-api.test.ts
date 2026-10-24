@@ -294,8 +294,16 @@ describe("context", () => {
       transformedDatasetId: context.warehouse.transformed_dataset,
       metadataDatasetId: context.warehouse.metadata_dataset,
       allowedDatasets: context.warehouse.allowed_datasets,
+      reportingCurrency: null,
     });
     expect((fetch.mock.calls[0] as unknown as [string])[0]).toBe(`${API}/context`);
+  });
+
+  it("reads the optional workspace reporting currency when the producer publishes it", async () => {
+    const published = { ...context, warehouse: { ...context.warehouse, reporting_currency: " eur " } };
+    await expect(loadManagedContext(client(reply(published)))).resolves.toMatchObject({ reportingCurrency: "EUR" });
+    const blank = { ...context, warehouse: { ...context.warehouse, reporting_currency: null } };
+    await expect(loadManagedContext(client(reply(blank)))).resolves.toMatchObject({ reportingCurrency: null });
   });
 
   it("retries one transient failure, being idempotent", async () => {
@@ -320,6 +328,7 @@ describe("managed connection checks", () => {
     const denied = example(examples.error, "access_denied");
     const warehouse: Warehouse = {
       applicationId: "app",
+      reportingCurrency: null,
       table: (name) => `\`project.dataset.${name}\``,
       query: async () => {
         throw managedApiError(denied.status ?? 403, denied.value);
@@ -334,6 +343,7 @@ describe("managed connection checks", () => {
       transformedDatasetId: "dataset",
       metadataDatasetId: "metadata",
       allowedDatasets: ["dataset", "metadata"],
+      reportingCurrency: null,
     };
     const report = await checkManagedConnection(context, warehouse, new AbortController().signal);
     const failed = report.checks.find((check) => check.status === "fail");

@@ -8,7 +8,7 @@ export async function GET(request: Request): Promise<Response> {
   return csvExport(request, async ({ params, storeId, range, mode, currency }) => {
     const { issue, ...options } = geographyOptions(params);
     if (issue) return new Response(issue, { status: 400, headers: { "Cache-Control": "private, no-store" } });
-    const data = await getGeography({ storeId, range, ...options }, null);
+    const data = await getGeography({ storeId, range, ...options }, [null, null]);
     return csvResponse(
       `${mode}-geography-${range.from}-${range.to}.csv`,
       [

@@ -17,7 +17,14 @@ import { DataStatus, PendingDataStatus } from "./data-status";
 import { EmptyState, ErrorState } from "@/components/patterns/data-states";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { loadStores, resolveReportStore } from "@/lib/data/stores.server";
-import { parseComparison, type Comparison } from "@/lib/comparison";
+import {
+  activeComparison,
+  parseComparisonPlan,
+  planParams,
+  type Comparison,
+  type ComparisonPlan,
+} from "@/lib/comparison";
+import { BaselineProvider } from "@/components/patterns/baseline-switch";
 import { calendarDate } from "@/lib/format";
 import { dateRangeIssue, parseDateRange, single, type ReportFilters, type SearchParams } from "@/lib/filters";
 import type { ReportSource } from "@/lib/report-data";
@@ -31,7 +38,10 @@ import { ReportHeader } from "./report-header";
 export type ReportContext = {
   filters: ReportFilters;
   params: SearchParams;
+  /** The comparison slot whose overlay and change columns show (plan.slots[plan.active]). */
   comparison?: Comparison;
+  /** Both comparison slots; KPI cards show a row for each. */
+  plan?: ComparisonPlan;
   today: string;
   timeZone: string;
   currency: string | null;
@@ -168,8 +178,11 @@ export async function ReportPage({
   params = { ...params, ...derived };
   const range = parseDateRange(params, today, maxDays);
   const issue = dates ? dateRangeIssue(params, today, maxDays) : null;
-  const comparison = comparisons && dates ? parseComparison(params, range) : undefined;
-  if (comparison) params = { ...params, compare: comparison.mode };
+  const plan = comparisons && dates ? parseComparisonPlan(params, range, today) : undefined;
+  const comparison = plan ? activeComparison(plan) : undefined;
+  if (plan) params = { ...params, ...planParams(plan) };
+  // Which slot the charts and tables show is a presentation choice made without a request.
+  const presentationParams = plan ? [...clientPresentationParams, "baseline"] : clientPresentationParams;
   const zoneLabel = /^[+-]/.test(timeZone) ? `UTC${timeZone}` : timeZone;
   const dataStatus =
     !issue && sources.length > 0 && !allStores ? (
@@ -181,10 +194,11 @@ export async function ReportPage({
     <div className="flex flex-col gap-4">
       <ReportHeader
         {...header}
+        clientPresentationParams={presentationParams}
         params={params}
         storeId={storeId}
         currency={allStores ? null : currency}
-        view={{ range, issue, comparison, derived }}
+        view={{ range, issue, plan, derived }}
         timeZone={timeZone}
       />
       <ReportFilterBar
@@ -197,7 +211,7 @@ export async function ReportPage({
         maxDays={maxDays}
         comparisonLabel={comparisonLabel}
         dates={dates}
-        comparison={comparison}
+        plan={plan}
         allStores={allStores}
         fixedStore={fixedStore}
       />
@@ -209,15 +223,18 @@ export async function ReportPage({
           remedy={`${issue} The dates above show a suggested range. Apply it or pick another range to load the report.`}
         />
       ) : (
-        children({
-          filters: { storeId, range },
-          params: { ...params, store: storeId },
-          comparison,
-          today,
-          timeZone,
-          currency,
-          dataStatus,
-        })
+        <BaselineProvider initial={plan?.active ?? 0}>
+          {children({
+            filters: { storeId, range },
+            params: { ...params, store: storeId },
+            comparison,
+            plan,
+            today,
+            timeZone,
+            currency,
+            dataStatus,
+          })}
+        </BaselineProvider>
       )}
       <footer className="border-t pt-4 text-xs text-muted-foreground">
         {access.mode === "sample"

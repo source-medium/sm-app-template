@@ -17,7 +17,7 @@ import {
   type AgentTarget,
 } from "@/lib/agent-prompt";
 import { useCopy } from "@/lib/use-copy";
-import { USE_AGENT_FIELD, type AgentField } from "@/lib/report-data";
+import { USE_AGENT_FIELD, USE_AGENT_METRIC, type AgentField, type AgentMetric } from "@/lib/report-data";
 import { AgentTargetPicker, readAgentTargets } from "./agent-target-picker";
 import { Disclosure } from "@/components/ui/disclosure";
 import { STORE_SWITCHER_SLOT } from "@/lib/store-navigation";
@@ -42,9 +42,10 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
   const [previewOpen, setPreviewOpen] = useState(false);
   const [contextNotice, setContextNotice] = useState("");
   const [field, setField] = useState<AgentField>();
+  const [metric, setMetric] = useState<AgentMetric>();
   const { state, copy } = useCopy();
   const target = page.targets.find((item) => targetKey(item) === targetId);
-  const prompt = composeAgentPrompt(intentId, request, { ...page, mode, build }, target, field);
+  const prompt = composeAgentPrompt(intentId, request, { ...page, mode, build }, target, field, metric);
   const copyState = state === "copied" && lastCopied !== prompt ? "idle" : state;
 
   const refreshPage = useCallback(() => {
@@ -57,6 +58,7 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
       setRequest("");
       setTargetId("");
       setField(undefined);
+      setMetric(undefined);
     } else {
       if (snapshot.filters.store !== previous.filters.store) setField(undefined);
       setTargetId((selected) => {
@@ -83,8 +85,20 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
       setRequest("");
       setOpen(true);
     }
+    function onUseMetric(event: Event) {
+      refreshPage();
+      setMetric((event as CustomEvent<AgentMetric>).detail);
+      setIntentId("add");
+      setTargetId("");
+      setRequest("");
+      setOpen(true);
+    }
     window.addEventListener(USE_AGENT_FIELD, onUseField);
-    return () => window.removeEventListener(USE_AGENT_FIELD, onUseField);
+    window.addEventListener(USE_AGENT_METRIC, onUseMetric);
+    return () => {
+      window.removeEventListener(USE_AGENT_FIELD, onUseField);
+      window.removeEventListener(USE_AGENT_METRIC, onUseMetric);
+    };
   }, [refreshPage]);
 
   useEffect(() => {
@@ -137,6 +151,7 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
       { ...snapshot, mode, build },
       selected?.item && !sameScope ? undefined : selected,
       snapshot.filters.store === page.filters.store ? field : undefined,
+      metric,
     );
     setLastCopied(latestPrompt);
     await copy(latestPrompt);
@@ -241,6 +256,17 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
                   <p className="text-xs text-muted-foreground">{field.relation}</p>
                   <Button variant="ghost" size="sm" onClick={() => setField(undefined)}>
                     Remove field
+                  </Button>
+                </div>
+              )}
+              {metric && (
+                <div className="rounded-md border p-3 text-sm break-words">
+                  <p>
+                    Selected metric: <strong>{metric.label ?? metric.name}</strong>
+                  </p>
+                  <p className="font-mono text-xs text-muted-foreground">{metric.name}</p>
+                  <Button variant="ghost" size="sm" onClick={() => setMetric(undefined)}>
+                    Remove metric
                   </Button>
                 </div>
               )}

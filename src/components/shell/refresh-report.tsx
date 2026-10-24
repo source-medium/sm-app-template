@@ -1,14 +1,17 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { requestRefresh } from "@/lib/refresh";
 
-/** Re-read the current report without changing its URL or resetting client state. */
+/**
+ * Re-read the current report from the warehouse without changing its URL or
+ * resetting client state. The server action's response carries the re-rendered
+ * page, read past the query cache (src/lib/refresh.ts).
+ */
 export function RefreshReport() {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   return (
@@ -24,7 +27,11 @@ export function RefreshReport() {
             data-agent-target="Refresh data"
             data-agent-component="RefreshReport"
             aria-busy={pending}
-            onClick={() => startTransition(() => router.refresh())}
+            onClick={() =>
+              startTransition(async () => {
+                await requestRefresh();
+              })
+            }
           >
             <RefreshCw aria-hidden className={pending ? "motion-safe:animate-spin" : undefined} />
           </Button>

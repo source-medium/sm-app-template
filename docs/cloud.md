@@ -207,6 +207,24 @@ existing connection, push its reviewed source to Artifacts, then disconnect
 the old Builds source and connect Artifacts. Existing deployments stay live
 during this switch. Keep the old remote until the new path is verified.
 
+### Query cache
+
+Repeated report queries are served from a private cache inside the app
+([docs/data.md](data.md#the-query-cache)). Memory alone works everywhere. To keep
+entries across Worker restarts and locations, give each Worker a KV namespace
+bound as `APP_QUERY_CACHE`:
+
+```sh
+pnpm exec wrangler kv namespace create APP_QUERY_CACHE
+pnpm exec wrangler kv namespace create APP_QUERY_CACHE --env preview
+```
+
+Copy each printed `id` into the matching `kv_namespaces` entry in
+`wrangler.jsonc` (the template ships them commented out) and deploy. The
+Connection page and `pnpm diagnose` report which tiers are in use. The
+namespace holds only query results keyed by a digest, with hard expiry; it is
+never shared between apps, and production and preview use separate namespaces.
+
 ## 4. Change, review, publish
 
 Ask your agent to make a change on a task branch and push it to the connected

@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { parseTimeGrain, periodRange, periodStart } from "@/lib/time-grain";
-import { comparisonDates, comparisonRange } from "@/lib/comparison";
+import { baselineFor, comparisonDates } from "@/lib/comparison";
 
 it("uses Monday weeks across year boundaries and calendar months", () => {
   expect(periodStart("2026-01-01", "week")).toBe("2025-12-29");
@@ -22,6 +22,8 @@ it("clips partial buckets to the selected dates, including leap months", () => {
 });
 
 it("aligns comparison lines without shifting March or plotting Feb 28 twice", () => {
+  const comparisonRange = (range: { from: string; to: string }, mode: "year" | "previous") =>
+    baselineFor(range, "custom", mode).range;
   const range = { from: "2024-02-28", to: "2024-03-01" };
   expect(comparisonDates(range, { mode: "year", range: comparisonRange(range, "year") })).toEqual([
     "2023-02-28",

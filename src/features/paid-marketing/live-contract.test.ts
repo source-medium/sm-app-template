@@ -57,7 +57,7 @@ describe("paid marketing, live", () => {
     ];
     const filters = { ...FILTERS, names };
     await getPaidMarketing(filters);
-    await getSpendBreakdown(filters, "campaign", { from: "2026-08-01", to: "2026-08-02" });
+    await getSpendBreakdown(filters, "campaign", [{ from: "2026-08-01", to: "2026-08-02" }, null]);
     await getPaidNames(filters);
     const url = new URL("https://example.test/paid-marketing/export?store=store-1&from=2026-09-01&to=2026-09-02");
     url.searchParams.set("names", JSON.stringify(names));
@@ -185,6 +185,39 @@ describe("paid marketing, live", () => {
     ]);
     const sql = (fake.calls.find((call) => call.kind === "submit")?.body as Submitted).query;
     expect(sql).toContain("GROUP BY channel, campaign_id");
+  });
+
+  it("ranks only groups with selected-period spend, so comparison-only campaigns never pad the list", async () => {
+    const fields = [
+      "dimension_key",
+      "label",
+      "spend",
+      "previous_spend",
+      "second_spend",
+      "total_spend",
+      "minimum_spend",
+      "latest_date",
+      "previous_latest_date",
+      "second_latest_date",
+    ].map((name) => ({ name, type: name.endsWith("date") ? "DATE" : name.endsWith("spend") ? "NUMERIC" : "STRING" }));
+    const row = (key: string, spend: string | null) => ({
+      dimension_key: key,
+      label: key,
+      spend,
+      previous_spend: null,
+      second_spend: "5",
+      total_spend: "3",
+      minimum_spend: "1",
+      latest_date: "2026-09-02",
+      previous_latest_date: null,
+      second_latest_date: "2025-09-02",
+    });
+    // The warehouse sorts groups without selected-period spend last (NULLS LAST).
+    await goLive({ submit: () => rowsResponse(fields, [row("a", "2"), row("b", "1"), row("last-year-only", null)]) });
+    const { getSpendBreakdown } = await import("./queries");
+    const data = await getSpendBreakdown(FILTERS, "campaign", [null, { from: "2025-09-01", to: "2025-09-02" }]);
+    expect(data.rows.map((entry) => entry.dimension_key)).toEqual(["a", "b"]);
+    expect(data.hasMore).toBe(false);
   });
 
   it("treats a truncated series as an error, and a truncated campaign list as a notice", async () => {

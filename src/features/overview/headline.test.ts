@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { baselineFor } from "@/lib/comparison";
 import { overviewHeadline } from "./headline";
-import type { OverviewData, OverviewReport } from "./queries";
+import type { OverviewData, OverviewSlice } from "./queries";
 
 const period = (netRevenue: string, adSpend: string, latestDate: string): OverviewData => ({
   revenue: null,
@@ -11,8 +12,8 @@ const period = (netRevenue: string, adSpend: string, latestDate: string): Overvi
   latestDate,
 });
 const filters = { storeId: "s", range: { from: "2026-09-01", to: "2026-09-28" } };
-const previous = { mode: "previous" as const, range: { from: "2026-08-04", to: "2026-08-31" } };
-const report = (current: OverviewData, compared: OverviewData | null): OverviewReport => ({
+const previous = baselineFor(filters.range, "custom", "previous");
+const report = (current: OverviewData, compared: OverviewData | null): OverviewSlice => ({
   current,
   comparison: compared ? { data: compared, error: null } : null,
   coverage: compared ? { latest_date: current.latestDate, previous_latest_date: compared.latestDate } : null,
@@ -36,11 +37,11 @@ describe("overview headline", () => {
       overviewHeadline(
         report(period("90", "10", "2026-09-28"), period("100", "20", "2025-09-28")),
         filters,
-        { mode: "year", range: { from: "2025-09-01", to: "2025-09-28" } },
+        baselineFor(filters.range, "custom", "year"),
         null,
       ),
     ).toBe(
-      "Net revenue fell 10% to 90.00 against the same dates last year. Ad spend fell 50%, and marketing efficiency improved to 9x.",
+      "Net revenue fell 10% to 90.00 against the same period last year. Ad spend fell 50%, and marketing efficiency improved to 9x.",
     );
     expect(
       overviewHeadline(
@@ -79,24 +80,43 @@ describe("overview headline", () => {
     );
   });
 
-  it("names a single day in the singular", () => {
+  it("names each baseline by what it compares: a weekday, a calendar month, 52 weeks earlier", () => {
     const day = { storeId: "s", range: { from: "2026-09-28", to: "2026-09-28" } };
     expect(
       overviewHeadline(
-        report(period("100", "10", "2026-09-28"), period("90", "10", "2026-09-27")),
+        report(period("100", "10", "2026-09-28"), period("90", "10", "2026-09-21")),
         day,
-        { mode: "previous", range: { from: "2026-09-27", to: "2026-09-27" } },
+        baselineFor(day.range, "single_day", "previous"),
         "USD",
       ),
     ).toBe(
-      "Net revenue rose 11.11% to $100.00 against the previous day. Ad spend held, and marketing efficiency improved to 10x.",
+      "Net revenue rose 11.11% to $100.00 against the same weekday last week. Ad spend held, and marketing efficiency improved to 10x.",
     );
+    const month = { storeId: "s", range: { from: "2026-09-01", to: "2026-09-30" } };
+    expect(
+      overviewHeadline(
+        report(period("100", "10", "2026-09-30"), period("90", "10", "2026-08-31")),
+        month,
+        baselineFor(month.range, "full_month", "previous"),
+        "USD",
+      ),
+    ).toMatch(/^Net revenue rose 11\.11% to \$100\.00 against the previous month\./);
+    expect(
+      overviewHeadline(
+        report(period("100", "10", "2026-09-28"), period("90", "10", "2025-09-29")),
+        day,
+        baselineFor(day.range, "single_day", "weekday"),
+        "USD",
+      ),
+    ).toMatch(/against the same weekday 52 weeks earlier\./);
   });
 
   it("says nothing without a trustworthy comparison", () => {
     const current = period("100", "10", "2026-09-28");
     expect(overviewHeadline(report(current, null), filters, undefined, "USD")).toBeNull();
-    expect(overviewHeadline(report(current, null), filters, { mode: "off", range: null }, "USD")).toBeNull();
+    expect(
+      overviewHeadline(report(current, null), filters, baselineFor(filters.range, "custom", "off"), "USD"),
+    ).toBeNull();
     // The selected period is missing its last days while the comparison is complete: deltas are hidden, so is the sentence.
     expect(
       overviewHeadline(

@@ -20,7 +20,12 @@ const basic = (password: string) => new Headers({ authorization: `Basic ${btoa(`
 describe("requireViewer", () => {
   it("serves public sample data when nothing is configured", async () => {
     const { requireViewer } = await import("@/lib/auth/require-viewer");
-    await expect(requireViewer()).resolves.toEqual({ mode: "sample", viewer: { kind: "public" }, storeId: null });
+    await expect(requireViewer()).resolves.toMatchObject({
+      mode: "sample",
+      viewer: { kind: "public" },
+      storeId: null,
+      request: { bypassCache: false },
+    });
   });
 
   it("restricts sample loaders too, and re-reads store scope across requests", async () => {

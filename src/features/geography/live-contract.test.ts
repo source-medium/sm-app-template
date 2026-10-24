@@ -10,6 +10,10 @@ const total = {
   previous_records: "0",
   previous_orders: "0",
   previous_revenue: null,
+  second_records: "0",
+  second_orders: "0",
+  second_revenue: null,
+  second_latest_date: null,
   latest_date: null,
   previous_latest_date: null,
 };
@@ -25,7 +29,7 @@ const filters = {
 it("uses verified created dates without unsafe processed-date pruning and totals before the bounded grouping", async () => {
   const fake = await goLive({ submit: () => rowsResponse(fields, [total]) });
   const { getGeography } = await import("./queries");
-  expect((await getGeography(filters, null)).total.orders).toBe(0n);
+  expect((await getGeography(filters, [null, null])).total.orders).toBe(0n);
   const body = fake.calls.find((call) => call.kind === "submit")?.body as {
     query: string;
     queryParameters: { name: string; parameterValue: { value: string } }[];
@@ -47,7 +51,7 @@ it("scopes both dispatcher and direct live calls in a fixed-store deployment", a
   vi.stubEnv("APP_STORE_ID", "other");
   const { getGeography } = await import("./queries");
   const { queryGeography } = await import("./bigquery");
-  await expect(getGeography(filters, null)).rejects.toThrow("This store is not available");
-  await expect(queryGeography(filters, null)).rejects.toThrow("This store is not available");
+  await expect(getGeography(filters, [null, null])).rejects.toThrow("This store is not available");
+  await expect(queryGeography(filters, [null, null])).rejects.toThrow("This store is not available");
   expect(fake.calls).toHaveLength(0);
 });

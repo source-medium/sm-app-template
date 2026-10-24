@@ -210,7 +210,7 @@ for (const [feature, path, content] of [
   ["/geography", "/geography", "Shipping destinations"],
   ["/geography", "/geography/export", '"valid_orders"'],
   ["/overview", "/overview/export.json", '"report":"overview"'],
-  ["/data", "/data", "Availability &amp; health"],
+  ["/data", "/data", "Data health"],
 ] as const) {
   if (!appConfig.nav.some((item) => item.href === feature)) continue;
   const scope = "from=2026-09-01&to=2026-09-07";

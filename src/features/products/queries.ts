@@ -1,9 +1,10 @@
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
-import { parseChoice, single, type DateRange, type ReportFilters, type SearchParams } from "@/lib/filters";
+import { parseChoice, single, type ReportFilters, type SearchParams } from "@/lib/filters";
 import { queryProductChannels, queryProducts, queryProductCoverage } from "./bigquery";
 import type { Product, ProductCoverage } from "./rows";
 import { sampleProductSource, sampleProducts, aggregateProductCoverage } from "./sample";
+import type { BaselineRanges } from "@/lib/comparison";
 
 export const PRODUCT_DIMENSIONS = [
   { value: "product", label: "Product" },
@@ -46,9 +47,9 @@ export function productOptions(params: SearchParams) {
   };
 }
 
-export async function getProducts(filters: ProductFilters, baseline: DateRange | null): Promise<ProductsData> {
+export async function getProducts(filters: ProductFilters, baselines: BaselineRanges): Promise<ProductsData> {
   const access = await requireViewer({ storeId: filters.storeId });
-  return access.mode === "live" ? queryProducts(filters, baseline) : sampleProducts(filters, baseline);
+  return access.mode === "live" ? queryProducts(filters, baselines) : sampleProducts(filters, baselines);
 }
 
 export async function getProductChannels(filters: ReportFilters): Promise<string[]> {

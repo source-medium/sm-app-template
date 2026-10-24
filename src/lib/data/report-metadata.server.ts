@@ -5,14 +5,17 @@ import { requestScoped } from "@/lib/request-scope";
 import type { PublishedMetric } from "@/lib/metric-binding";
 import { dictionaryIdentity } from "./catalog.server";
 import { sourceEvidence, type Availability, type SourceEvidence } from "./evidence";
+import { CACHE_POLICY } from "./query-cache";
 import { WarehouseError } from "./warehouse-error";
 import { bq, decodeRows } from "./decode";
 type Warehouse = Extract<Awaited<ReturnType<typeof requireViewer>>, { mode: "live" }>["warehouse"];
 
 const Dictionary = "dim_data_dictionary";
 const Catalog = "dim_semantic_metric_catalog";
+/** The catalog read's row bound; a longer catalog is reported as partial. */
+export const CATALOG_LIMIT = 600;
 const SchemaRow = z.object({ table_name: bq.string(), column_name: bq.string(), data_type: bq.string() });
-const PayloadRow = z.object({ kind: bq.string(), payload: bq.string() });
+const PayloadRow = z.object({ payload: bq.string() });
 const Metric = z.object({
   metric_name: z.string(),
   metric_label: z.string().nullable(),
@@ -28,6 +31,11 @@ const Metric = z.object({
   preferred_metric_name: z.string().nullable(),
   abbreviations_list: z.string().nullable(),
   catalog_updated_at: z.string().nullable(),
+  metric_category: z.string().nullable(),
+  metric_type: z.string().nullable(),
+  is_abbreviation: z.boolean().nullable(),
+  semantic_model_name: z.string().nullable(),
+  cumulative_settings: z.string().nullable(),
 });
 const Observation = z.object({
   dataset: z.string(),
@@ -46,7 +54,13 @@ export type ReportMetadata = {
 };
 const requests = requestScoped(async () => new Map<string, Promise<ReportMetadata>>());
 
-/** One schema probe and one batched metadata job, deduplicated within this request. */
+/**
+ * The published metadata a report needs: a schema probe, the store-free metric
+ * catalog and the selected store's source observations. Deduplicated within
+ * this request, and each read is cached for its own policy (schema an hour,
+ * catalog fifteen minutes, observations a minute), so warm navigation runs
+ * no metadata job at all.
+ */
 export async function loadReportMetadata(storeId: string, relations: readonly string[]): Promise<ReportMetadata> {
   const access = await requireViewer({ storeId });
   const unique = [...new Set(relations)].sort();
@@ -99,13 +113,16 @@ async function readMetadata(
   try {
     const metadataTable = warehouse.table(Dictionary, "metadata");
     const schemaTable = metadataTable.replace(/\.dim_data_dictionary`$/, ".INFORMATION_SCHEMA.COLUMNS`");
+    // The store parameter satisfies a fixed-store deployment's check; neither metadata relation is filtered by it here.
+    const storeParam = { name: "store_id", type: "STRING", value: storeId } as const;
     const result = await warehouse.query(
       {
         name: "report_metadata_schema",
+        cache: CACHE_POLICY.schema,
         maxRows: 150,
         sql: `SELECT table_name, column_name, data_type FROM ${schemaTable}
         WHERE table_name IN ('dim_data_dictionary', 'dim_semantic_metric_catalog')`,
-        params: [{ name: "store_id", type: "STRING", value: storeId }],
+        params: [storeParam],
       },
       { signal },
     );
@@ -131,10 +148,16 @@ async function readMetadata(
       if (actual.has(name) && actual.get(name) !== type) throw WarehouseError.incompatible("metadata", name);
       return actual.has(name) ? name : `CAST(NULL AS ${type})`;
     };
-    const branches: string[] = [];
-    if (dictionaryStatus === "accessible" && sources.length)
-      branches.push(`
-      SELECT 'source' AS kind, TO_JSON_STRING(STRUCT(dataset_name AS dataset, table_name AS relation,
+    // Two independent reads with different lifetimes: the store-free catalog changes with a
+    // SourceMedium release; the selected store's observations change with each delivery.
+    const observationsRead =
+      dictionaryStatus === "accessible" && sources.length
+        ? warehouse.query(
+            {
+              name: "report_metadata_sources",
+              cache: CACHE_POLICY.observation,
+              maxRows: 200,
+              sql: `SELECT TO_JSON_STRING(STRUCT(dataset_name AS dataset, table_name AS relation,
         sm_store_id AS storeId, ${optional(dictionary, "table_has_data", "BOOL")} AS hasData,
         ${optional(dictionary, "table_has_fresh_data_14d", "BOOL")} AS recentRecord,
         CAST(${optional(dictionary, "table_last_data_date", "DATE")} AS STRING) AS observedDate)) AS payload
@@ -142,52 +165,65 @@ async function readMetadata(
       WHERE sm_store_id = @store_id AND EXISTS (
         SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(@sources)) AS source
         WHERE dataset_name = JSON_VALUE(source, '$[0]') AND table_name = JSON_VALUE(source, '$[1]'))
-      GROUP BY payload`);
-    if (catalogStatus === "accessible") {
-      const fields = [
-        "metric_name",
-        "metric_label",
-        "metric_description",
-        "calculation",
-        "filter_condition",
-        "dependent_metrics",
-        "underlying_model",
-        "metric_time_expression",
-        "metric_time_grains",
-        "value_format",
-        "preferred_metric_name",
-        "abbreviations_list",
-      ];
-      branches.push(`SELECT 'metric' AS kind, TO_JSON_STRING(STRUCT(
-        ${fields.map((field) => `${optional(catalog, field)} AS ${field}`).join(", ")},
+      GROUP BY payload ORDER BY payload`,
+              params: [storeParam, { name: "sources", type: "STRING", value: JSON.stringify(sources) }],
+            },
+            { signal },
+          )
+        : null;
+    const catalogRead =
+      catalogStatus === "accessible"
+        ? warehouse.query(
+            {
+              name: "report_metadata_catalog",
+              cache: CACHE_POLICY.catalog,
+              maxRows: CATALOG_LIMIT,
+              partial: true,
+              sql: `SELECT TO_JSON_STRING(STRUCT(
+        ${[
+          "metric_name",
+          "metric_label",
+          "metric_description",
+          "calculation",
+          "filter_condition",
+          "dependent_metrics",
+          "underlying_model",
+          "metric_time_expression",
+          "metric_time_grains",
+          "value_format",
+          "preferred_metric_name",
+          "abbreviations_list",
+          "metric_category",
+          "metric_type",
+          "semantic_model_name",
+          "cumulative_settings",
+        ]
+          .map((field) => `${optional(catalog, field)} AS ${field}`)
+          .join(", ")},
         ${optional(catalog, "has_filter", "BOOL")} AS has_filter,
+        ${optional(catalog, "is_abbreviation", "BOOL")} AS is_abbreviation,
         CAST(${optional(catalog, "catalog_updated_at", "TIMESTAMP")} AS STRING) AS catalog_updated_at)) AS payload
-        FROM ${warehouse.table(Catalog, "metadata")}`);
-    }
-    if (!branches.length) return { ...empty(dictionaryStatus), catalog: catalogStatus };
-    const data = await warehouse.query(
-      {
-        name: "report_metadata",
-        maxRows: 600,
-        partial: true,
-        sql: `${branches.join(" UNION ALL ")} ORDER BY kind DESC, payload LIMIT 601`,
-        params: [
-          { name: "store_id", type: "STRING", value: storeId },
-          { name: "sources", type: "STRING", value: JSON.stringify(sources) },
-        ],
-      },
-      { signal },
-    );
-    const rows = decodeRows(PayloadRow, data.rows, "report metadata");
-    const metrics = rows.filter((row) => row.kind === "metric").map((row) => Metric.parse(JSON.parse(row.payload)));
-    const observations = rows
-      .filter((row) => row.kind === "source")
-      .map((row) => Observation.parse(JSON.parse(row.payload)));
+        FROM ${warehouse.table(Catalog, "metadata")} ORDER BY payload LIMIT ${CATALOG_LIMIT + 1}`,
+              params: [storeParam],
+            },
+            { signal },
+          )
+        : null;
+    if (!observationsRead && !catalogRead) return { ...empty(dictionaryStatus), catalog: catalogStatus };
+    const [observationsData, catalogData] = await Promise.all([observationsRead, catalogRead]);
+    const metrics = catalogData
+      ? decodeRows(PayloadRow, catalogData.rows, "metric catalog").map((row) => Metric.parse(JSON.parse(row.payload)))
+      : [];
+    const observations = observationsData
+      ? decodeRows(PayloadRow, observationsData.rows, "source metadata").map((row) =>
+          Observation.parse(JSON.parse(row.payload)),
+        )
+      : [];
     return {
       mode: "live",
       metrics,
       catalog: catalogStatus,
-      truncated: data.truncated,
+      truncated: catalogData?.truncated ?? false,
       sources: sources.map(([dataset, relation]) =>
         sourceEvidence(dataset, relation, storeId, observations, dictionaryStatus),
       ),

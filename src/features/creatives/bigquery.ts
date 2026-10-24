@@ -9,6 +9,7 @@ import { adNamePredicate } from "@/lib/data/ad-name-sql";
 import { decodeRows } from "@/lib/data/decode";
 import type { CreativeSort, CreativesData, CreativesFilters } from "./queries";
 import { CREATIVE_RELATION, CreativeChannelRow, CreativeRow, MAX_CREATIVES, toCreative } from "./rows";
+import { CACHE_POLICY } from "@/lib/data/query-cache";
 
 const ORDER_BY: Record<CreativeSort, string> = {
   spend: "spend DESC",
@@ -26,6 +27,7 @@ export async function queryCreatives(filters: CreativesFilters): Promise<Creativ
   const names = adNamePredicate(filters.names);
   const result = await warehouse.query({
     name: "creatives",
+    cache: CACHE_POLICY.aggregate,
     partial: !filters.selection,
     maxRows: filters.selection ? 4 : MAX_CREATIVES,
     sql: `
@@ -84,6 +86,7 @@ export async function queryCreativeChannels(filters: ReportFilters): Promise<str
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
     name: "creative_channels",
+    cache: CACHE_POLICY.aggregate,
     maxRows: 50,
     sql: `SELECT DISTINCT IFNULL(sm_channel, '(none)') AS channel
       FROM ${warehouse.table(CREATIVE_RELATION)}

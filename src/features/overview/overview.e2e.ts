@@ -96,7 +96,7 @@ test("overview: a chart tooltip separates its label and formatted money", async 
 test("overview: period and year comparisons survive links, navigation, and refresh", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07");
-  const comparison = page.locator('details[aria-label="Comparison period"]');
+  const comparison = page.locator('details[aria-label="Comparison periods"]');
   await expect(comparison).toContainText("Aug 25, 2026 – Aug 31, 2026");
   await expect(page.locator('[data-slot="kpi-comparison"]:visible')).toHaveCount(4);
   await choose(page, "Compare with", "year");
@@ -137,10 +137,16 @@ test("overview: period and year comparisons survive links, navigation, and refre
 
 test("overview: calendar YoY explains different day counts across leap years", async ({ page }) => {
   await page.goto("/overview?from=2025-02-28&to=2025-03-01&compare=year");
-  const comparison = page.locator('details[aria-label="Comparison period"]');
-  await expect(comparison).toContainText("Feb 28, 2024 – Mar 1, 2024");
-  await expect(comparison).toContainText("2 selected days vs 3 comparison days");
-  await expect(comparison).toContainText("Calendar dates, not matched weekdays");
+  const comparison = page.locator('details[aria-label="Comparison periods"]');
+  await expect(comparison).toContainText("Feb 28, 2024 – Mar 1, 2024 (same period last year, 3 days, calendar dates)");
+  await expect(comparison).toContainText("2 selected days vs 3 days (same period last year)");
+  await expect(comparison).toContainText("Last year compares calendar dates, not matched weekdays");
+  // A calendar-aligned comparison allows the different day counts: the changes still show.
+  await expect(
+    page
+      .getByRole("region", { name: "Period totals" })
+      .locator('[data-slot="kpi-delta"]', { hasText: "Changes hidden" }),
+  ).toHaveCount(0);
 });
 
 test("overview: metric definitions open and close by keyboard", async ({ page }) => {
@@ -261,7 +267,7 @@ test("overview: comparison dates and the dashed baseline survive the table toggl
   const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
   await expect(card.locator('.recharts-line-curve[stroke-dasharray="6 4"]')).toBeVisible();
   await card.getByRole("button", { name: "View as table" }).click();
-  await expect(card.getByRole("columnheader", { name: "Comparison", exact: true })).toBeVisible();
+  await expect(card.getByRole("columnheader", { name: "Previous 7 days", exact: true })).toBeVisible();
   await expect(card.getByRole("cell").filter({ hasText: "Aug 26, 2026" })).toBeVisible();
   await choose(page, "Compare with", "off");
   await expect(page).toHaveURL(/compare=off/);
@@ -363,11 +369,14 @@ test("overview: hides period changes only when the selected period's last days h
   // Sample store B has no rows on 3, 11, 13 and 19 September.
   await page.goto("/overview?store=sample-store-b&from=2026-09-13&to=2026-09-19&compare=previous");
   const totals = page.getByRole("region", { name: "Period totals" });
-  await expect(page.locator("[data-comparison-issue]")).toHaveText(
-    /no rows for its last 1 day, while the comparison has rows through its end/,
+  await expect(page.locator("[data-comparison-issue]").first()).toHaveText(
+    /previous 7 days: Changes are hidden because the selected period has no rows for its last 1 day, while the comparison has rows through its end/,
   );
   await expect(totals.locator('[data-slot="kpi-value"]').first()).toBeVisible();
-  await expect(totals.locator('[data-slot="kpi-comparison"]')).toHaveCount(0);
+  // Each card keeps a row per comparison, but a hidden one explains itself instead of showing a change.
+  // The selected period's missing last day hides both baselines.
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "Changes hidden" })).toHaveCount(8);
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs previous 7 days" })).toHaveCount(4);
   // Per-day lines align date by date, so the dashed comparison still shows.
   const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
   await expect(card.locator('.recharts-line-curve[stroke-dasharray="6 4"]')).toBeVisible();
@@ -377,6 +386,35 @@ test("overview: hides period changes only when the selected period's last days h
   await expect(page.locator("[data-comparison-issue]")).toHaveCount(0);
   await expect(page.getByText("Some dates have no rows.", { exact: false })).toBeVisible();
   await expect(totals.locator('[data-slot="kpi-comparison"]')).toHaveCount(4);
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "Changes hidden" })).toHaveCount(0);
+});
+
+test("overview: every headline shows two comparison rows, and switching the overlay makes no request", async ({
+  page,
+}) => {
+  await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  const totals = page.getByRole("region", { name: "Period totals" });
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs previous 7 days" })).toHaveCount(4);
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs same period last year" })).toHaveCount(4);
+  await expect(page.getByLabel("Second comparison")).toHaveValue("year");
+  const caption = page.locator('details[aria-label="Comparison periods"]');
+  await expect(caption).toContainText("Aug 25, 2026 – Aug 31, 2026 (previous 7 days, 7 days)");
+  await expect(caption).toContainText("Sep 1, 2025 – Sep 7, 2025 (same period last year, 7 days, calendar dates)");
+  const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
+  await expect(card).toContainText("Previous 7 days");
+  const requests: string[] = [];
+  page.on("request", (request) => {
+    if (["fetch", "xhr", "document"].includes(request.resourceType())) requests.push(request.url());
+  });
+  const group = page.getByRole("group", { name: "Comparison shown in charts and tables" });
+  await group.getByRole("button", { name: "Same period last year" }).click();
+  await expect(page).toHaveURL(/baseline=b/);
+  await expect(card).toContainText("Same period last year");
+  expect(requests).toEqual([]);
+  // The second slot is a duplicate of the first: it says so and is shown once.
+  await choose(page, "Second comparison", "previous");
+  await expect(page.getByText("This matches the first comparison", { exact: false }).first()).toBeVisible();
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs previous 7 days" })).toHaveCount(8);
 });
 
 test("overview: the report form stays in place when the first filter applies", async ({ page }) => {

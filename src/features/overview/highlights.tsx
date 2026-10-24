@@ -5,7 +5,7 @@ import { revenueContributions } from "./contributions";
 import { largestRevenueChanges } from "./revenue-changes";
 import { toUnits } from "@/lib/data/decimal";
 import { formatDate, formatMoney } from "@/lib/format";
-import type { OverviewFilters, OverviewReport } from "./queries";
+import type { OverviewFilters, OverviewSlice } from "./queries";
 import { SectionHeader } from "@/components/patterns/section-header";
 
 export function OverviewHighlights({
@@ -14,7 +14,7 @@ export function OverviewHighlights({
   comparison,
   currency,
 }: {
-  report: OverviewReport;
+  report: OverviewSlice;
   filters: OverviewFilters;
   comparison?: Comparison;
   currency: string | null;

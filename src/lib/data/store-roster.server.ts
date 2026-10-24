@@ -8,6 +8,7 @@ import "server-only";
 import { z } from "zod";
 import { bq, decodeRows } from "./decode";
 import type { QueryRequest } from "./bigquery-rest.server";
+import { CACHE_POLICY } from "./query-cache";
 import type { Warehouse } from "./warehouse.server";
 import { WarehouseError } from "./warehouse-error";
 
@@ -35,6 +36,7 @@ export function storeRosterQuery(
 ): QueryRequest {
   return {
     name: "store_roster",
+    cache: CACHE_POLICY.roster,
     // More than MAX_STORES fails below, with a remedy for this case.
     partial: true,
     sql: `
@@ -89,6 +91,7 @@ const OffsetRow = z.object({ offset_minutes: bq.int64() });
 export async function queryOrderTimeZone(warehouse: Warehouse, storeId: string): Promise<string | null> {
   const result = await warehouse.query({
     name: "store_order_offset",
+    cache: CACHE_POLICY.storeTimeZone,
     maxRows: 1,
     sql: `
       SELECT TIMESTAMP_DIFF(TIMESTAMP(order_processed_at_local_datetime), order_processed_at, MINUTE) AS offset_minutes

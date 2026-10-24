@@ -4,6 +4,7 @@ import type { RetentionFilters, RetentionSegmentFilters, RetentionSegments } fro
 import { COHORT_MONTHS, shiftMonth } from "./filters";
 import { decodeRetention, RetentionSegmentRow, RETENTION_RELATION, type RetentionRowData } from "./rows";
 import { decodeRows } from "@/lib/data/decode";
+import { CACHE_POLICY } from "@/lib/data/query-cache";
 
 export async function queryRetention(filters: RetentionFilters): Promise<RetentionRowData[]> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
@@ -13,6 +14,7 @@ export async function queryRetention(filters: RetentionFilters): Promise<Retenti
   if (segmented && !filters.segment) return [];
   const result = await warehouse.query({
     name: "retention_cohorts",
+    cache: CACHE_POLICY.aggregate,
     maxRows: 2000,
     // Exactly one dimension/value slice per channel/cohort/age. Segment families overlap and must never be pooled.
     // The relation publishes counts and money as FLOAT64; NUMERIC casts keep the decoders and sums exact from here.
@@ -52,6 +54,7 @@ export async function queryRetentionSegments(filters: RetentionSegmentFilters): 
   if (!filters.dimension || filters.dimension === "no_filters") return { values: [], truncated: false };
   const result = await warehouse.query({
     name: "retention_segments",
+    cache: CACHE_POLICY.aggregate,
     maxRows: 200,
     partial: true,
     sql: `SELECT DISTINCT acquisition_order_filter_dimension_value AS segment

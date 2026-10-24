@@ -27,6 +27,12 @@ export type NavItem = {
   scope?: "all-stores";
   group?: string;
   comparisons?: boolean;
+  /**
+   * Canonical SourceMedium metric names (dim_semantic_metric_catalog
+   * metric_name) this view presents, so "Explore your data" can offer
+   * "View in report". Deleting the view's entry removes its links.
+   */
+  metrics?: readonly string[];
 };
 
 export const appConfig = {
@@ -52,16 +58,51 @@ export const appConfig = {
   reportingCurrencies: {} as Record<string, string | null>,
   /** The first entry is the home page. A page also needs a feature folder and a route; see the sm-add-page skill. */
   nav: [
-    { group: "Business", href: "/overview", comparisons: true, label: "Overview", icon: LayoutDashboard },
+    {
+      group: "Business",
+      href: "/overview",
+      comparisons: true,
+      label: "Overview",
+      icon: LayoutDashboard,
+      metrics: [
+        "order_net_revenue_summary",
+        "order_count_summary",
+        "total_ad_spend_summary",
+        "marketing_efficiency_ratio_summary",
+        "website_sessions_summary",
+      ],
+    },
     { group: "Business", href: "/performance", comparisons: true, label: "Performance tables", icon: Table2 },
     { group: "Business", href: "/stores", comparisons: true, label: "All stores", icon: Store, scope: "all-stores" },
     { group: "Marketing", href: "/paid-marketing", comparisons: true, label: "Paid marketing", icon: Megaphone },
-    { group: "Marketing", href: "/creatives", label: "Creatives", icon: ImageIcon },
+    {
+      group: "Marketing",
+      href: "/creatives",
+      label: "Creatives",
+      icon: ImageIcon,
+      metrics: [
+        "total_ad_spend",
+        "total_ad_clicks",
+        "total_ad_impressions",
+        "platform_reported_conversions",
+        "platform_reported_revenue",
+        "platform_return_on_ad_spend",
+        "platform_cost_per_conversion",
+        "click_through_rate",
+      ],
+    },
     { group: "Sales", href: "/products", comparisons: true, label: "Products", icon: Package },
     { group: "Sales", href: "/retention", label: "Retention", icon: Repeat2 },
-    { group: "Sales", href: "/geography", comparisons: true, label: "Geography", icon: Map },
+    {
+      group: "Sales",
+      href: "/geography",
+      comparisons: true,
+      label: "Geography",
+      icon: Map,
+      metrics: ["order_net_revenue", "order_count"],
+    },
     { group: "Sales", href: "/orders", label: "Orders", icon: ShoppingBag },
-    { href: "/data", label: "Data & definitions", icon: BookOpen, group: "Reference" },
+    { href: "/data", label: "Explore your data", icon: BookOpen, group: "Reference" },
   ] satisfies NavItem[] as NavItem[],
   /** Optional overrides for dim_stores.store_name. Names and brand groups otherwise come from SourceMedium. */
   storeLabels: {} as Record<string, string>,

@@ -5,7 +5,7 @@ import type { MetricBinding } from "@/lib/metric-binding";
  */
 import type { AgentReportContext } from "@/lib/agent-prompt";
 import type { ViewerAccess } from "@/lib/auth/require-viewer";
-import type { Comparison } from "@/lib/comparison";
+import { planParams, type ComparisonPlan } from "@/lib/comparison";
 import { withParams, type DateRange, type SearchParams } from "@/lib/filters";
 import type { ReportSource } from "@/lib/report-data";
 import { AboutData } from "./about-data";
@@ -16,7 +16,7 @@ import { RefreshReport } from "./refresh-report";
 export type ReportView = {
   range: DateRange;
   issue: string | null;
-  comparison?: Comparison;
+  plan?: ComparisonPlan;
   /** The view's date-derived defaults, which apply like URL parameters. */
   derived: Record<string, string>;
 };
@@ -69,7 +69,7 @@ export function ReportHeader({
       ...view?.derived,
       ...(storeId ? { store: storeId } : {}),
       ...(view && dates && !view.issue ? view.range : {}),
-      ...(view?.comparison && !view.issue ? { compare: view.comparison.mode } : {}),
+      ...(view?.plan && !view.issue ? planParams(view.plan) : {}),
     },
     currency,
     ...(allStores ? { storeScope: "all" as const } : {}),

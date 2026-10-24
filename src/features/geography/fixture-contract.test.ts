@@ -27,7 +27,7 @@ for (const dateBasis of ["created", "processed"] as const)
   describe(dateBasis, () => {
     it("reconciles every destination to an independent total and its source fixture population", async () => {
       const scoped = { ...filters, dateBasis, country: "US", region: "CA" };
-      const data = sampleGeography(scoped, { from: "2026-08-04", to: "2026-08-31" });
+      const data = sampleGeography(scoped, [{ from: "2026-08-04", to: "2026-08-31" }, null]);
       expect(geographicReconciliation(data)).toBe(true);
       const revenues = datesInRange(scoped.range)
         .flatMap((date) => sampleOrderRowsForDay(scoped.storeId, date))
@@ -51,8 +51,12 @@ it("retains exact negative, zero, null and unsafe counts including remainder gro
     previous_records: "0",
     previous_orders: "0",
     previous_revenue: null,
+    second_records: "0",
+    second_orders: "0",
+    second_revenue: null,
     latest_date: "2026-09-01",
     previous_latest_date: null,
+    second_latest_date: null,
   };
   const data = toGeographyData([
     { ...base, kind: "total", location: "" },
