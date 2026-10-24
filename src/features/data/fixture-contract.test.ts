@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { sampleDefinitions } from "./sample";
 import { DATA_SOURCES } from "./rows";
 import { dependencyIds } from "@/lib/metric-binding";
-import { explorerCatalog, firstSentence, matchesSearch } from "./catalog";
+import { explorerCatalog, firstSentence, matchesSearch, metricCategory } from "./catalog";
 it("ships bounded source choices and reviewed store-free definitions with an exact dependency closure", () => {
   const data = sampleDefinitions();
   const names = new Set(data.metrics.map((metric) => metric.metric_name));
@@ -41,6 +41,8 @@ it("folds alias rows into their primary metric, groups by the published category
   const found = metrics.find((metric) => matchesSearch(metric, "AOV"));
   expect(found?.metric_name).toBe("average_order_value_net");
   expect(metrics.some((metric) => matchesSearch(metric, "no such"))).toBe(false);
+  expect(metricCategory({ ...base, metric_category: "period_comparison" })).toBe("Period comparison");
+  expect(metricCategory({ ...base, metric_category: " revenue " })).toBe("Revenue");
   expect(firstSentence("First sentence. Second one.")).toBe("First sentence.");
   expect(firstSentence(null)).toBe("No published description.");
 });

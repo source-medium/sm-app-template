@@ -75,10 +75,27 @@ Commands run on this checkout (Node, macOS). "Not run" is stated where it applie
 - `pnpm build:cloudflare`: passed; the Worker built without local environment
   values. `pnpm smoke:worker`: passed in workerd, including the Explore page and
   its fixed-store guard (the smoke expectation now looks for "Data health").
-- Live checks (`pnpm test:live`), the three-window dry run against the demo
-  fixture, and a protected preview timing run: **not run** in this session; no
-  live credential was used. These remain for the maintainer with the Development
-  app credential (docs/cloud.md#debug-with-live-data).
+- After merging `origin/main` (`8c31777`): `pnpm build:cloudflare` then
+  `pnpm check:deploy` passed every stage (check, secret isolation, 171 browser
+  tests, Worker smoke).
+- `pnpm diagnose` and `pnpm test:live` against the `sm-democo` demo warehouse:
+  all checks passed, 21 of 21 live tests, so every report's three-window SQL
+  runs on BigQuery. A hands-on pass on a live `next start` server confirmed:
+  each Overview KPI card shows both rows; the switch changes the overlay with
+  no request; a full month compares with the previous month and last year's
+  month, and the headline names "the previous month"; Geography, Products,
+  Paid marketing and All stores show their per-slot change columns; Products
+  gainers show one list against the first comparison with no switch; Explore
+  lists 177 live metrics grouped by the catalog's categories; the JSON export
+  carries `cachedResultsQueriedAt`; the Connection check names the memory tier.
+  It also found raw category keys (`period_comparison`) on the chips; they are
+  now shown in words.
+- Server logs from that pass, per request: first Overview load 8 warehouse jobs;
+  reload 8 cache hits and no jobs; Refresh one request with 8 `bypass` jobs;
+  the same store's full month 4 hits (store list, metadata) and 4 jobs. No
+  warning or error lines.
+- Not run: a protected preview timing run and the KV tier on a deployed Worker
+  (no namespace exists yet); KV is exercised on Miniflare only.
 
 ### Cache gates (automated)
 

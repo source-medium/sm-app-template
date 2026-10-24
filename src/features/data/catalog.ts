@@ -32,9 +32,15 @@ export function firstSentence(text: string | null): string {
   return match ? match[0] : trimmed;
 }
 
-/** The catalog publishes a category; an older catalog does not, so the metric's model stands in. */
+/**
+ * The catalog publishes a category as a key ("period_comparison"), shown in
+ * words ("Period comparison"); an older catalog has none, so the metric's
+ * model stands in under its own name.
+ */
 export function metricCategory(metric: PublishedMetric): string {
-  return metric.metric_category?.trim() || metric.underlying_model?.trim() || "Uncategorized";
+  const published = metric.metric_category?.replace(/[_\s]+/g, " ").trim();
+  if (published) return published.charAt(0).toUpperCase() + published.slice(1);
+  return metric.underlying_model?.trim() || "Uncategorized";
 }
 
 function entry(metric: PublishedMetric): ExplorerMetric {
