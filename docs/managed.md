@@ -97,9 +97,9 @@ Cloud environments send HTTPS through a proxy named in `HTTPS_PROXY`, and
 Node's `fetch` ignores it by default. In managed development, `pnpm dev`,
 `pnpm diagnose` and `pnpm schema` start Node with `NODE_USE_ENV_PROXY=1` when a
 proxy is set, and keep loopback off the proxy
-(`scripts/managed-node.mjs`). Every Node version the template supports
-(22.22.1 and later) honors that setting; older releases such as 22.16 silently
-ignore it.
+(`scripts/managed-node.mjs`). The verified Node versions (22.22.1, 24.7 and 26)
+honor that setting; older releases such as 22.16 silently ignore it. See
+[Node's proxy support](https://nodejs.org/learn/http/enterprise-network-configuration).
 TLS verification is never turned off: if the environment uses its own
 certificate authority, it must be in `NODE_EXTRA_CA_CERTS`.
 
