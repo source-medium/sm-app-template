@@ -22,7 +22,8 @@ describe("reporting currency configuration summary", () => {
   it("describes each configuration honestly on the Connection page", () => {
     expect(liveCurrencyNote(reportingCurrencyConfig({ currency: "USD", reportingCurrencies: {} }))).toEqual({
       status: "Amounts are labeled USD",
-      detail: "Set in app.config.ts. The store currency published in dim_stores never chooses the label.",
+      detail:
+        "Set in app.config.ts. Reports use each store’s store_currency_code from dim_stores unless app.config.ts explicitly overrides it. Missing or invalid codes leave amounts unlabeled.",
     });
     expect(
       liveCurrencyNote(reportingCurrencyConfig({ currency: "USD", reportingCurrencies: { a: "CAD", b: null } })).detail,
@@ -32,7 +33,7 @@ describe("reporting currency configuration summary", () => {
       liveCurrencyNote(reportingCurrencyConfig({ currency: null, reportingCurrencies: { a: "CAD" } })),
     ).toMatchObject({ status: "Set per store for 1 store" });
     const invalid = liveCurrencyNote(reportingCurrencyConfig({ currency: "usd1", reportingCurrencies: {} }));
-    expect(invalid.status).toBe("Not set: amounts show no currency");
+    expect(invalid.status).toBe("From store metadata");
     expect(invalid.detail).toContain('sets "usd1", which is not a recognized ISO code, so it is ignored');
   });
 });

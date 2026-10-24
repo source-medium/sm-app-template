@@ -114,12 +114,40 @@ it("runs a query without a cache policy every time, and never stores an error", 
   expect(fake.calls.filter((call) => call.kind === "submit")).toHaveLength(4);
 });
 
-it("coalesces concurrent identical requests into one job", async () => {
-  const fake = await goLive({ submit: () => rowsResponse(fields, [{ total: "7" }]) });
-  const w = await warehouse();
-  const results = await Promise.all([w.query(aggregate()), w.query(aggregate()), w.query(aggregate())]);
+it("coalesces separate concurrent requests into one job and traces every consumer", async () => {
+  let release!: () => void;
+  const ready = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const fake = await goLive({
+    submit: async () => {
+      await ready;
+      return rowsResponse(fields, [{ total: "7" }]);
+    },
+  });
+  const viewers = [];
+  for (let i = 0; i < 3; i++) {
+    requestHeaders.current = new Headers({ authorization: `Basic ${btoa(`viewer:${TEST_PASSWORD}`)}` });
+    viewers.push(await requireViewer({ live: true }));
+  }
+  const promises = viewers.map((viewer) => viewer.warehouse.query(aggregate()));
+  await vi.waitFor(() => expect(fake.calls.filter((call) => call.kind === "submit")).toHaveLength(1));
+  release();
+  const results = await Promise.all(promises);
   expect(results.map((result) => result.rows[0]?.total)).toEqual(["7", "7", "7"]);
+  expect(results.map((result) => result.servedFrom).sort()).toEqual(["app-cache", "app-cache", "warehouse"]);
+  const consumers = viewers.filter((_viewer, index) => results[index]?.servedFrom === "app-cache");
   expect(fake.calls.filter((call) => call.kind === "submit")).toHaveLength(1);
+  expect(
+    lines
+      .filter((line) => line.event === "app_cache")
+      .map((line) => line.app_request_id)
+      .sort(),
+  ).toEqual(consumers.map((viewer) => viewer.request.id).sort());
+  expect(lines.filter((line) => line.event === "app_cache").every((line) => line.cache_tier === "inflight")).toBe(true);
+  expect(consumers.map((viewer) => viewer.request.provenance)).toEqual(
+    Array.from({ length: 2 }, () => ({ oldestQueriedAt: results[0]?.queriedAt, servedFromCache: 1 })),
+  );
 });
 
 it("keys on the store, the SQL and the parameters, so another store never reads this one's result", async () => {

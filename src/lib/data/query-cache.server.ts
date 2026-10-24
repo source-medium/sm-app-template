@@ -234,8 +234,8 @@ export async function cachedQuery(
   const policy = request.cache;
   const key = await cacheKey(scope, request);
   const started = now();
-  const serve = (entry: Entry, tier: CacheTier): QueryResult => {
-    recordCachedResult(context, entry.queriedAt);
+  const serve = (result: QueryResult, tier: CacheTier): QueryResult => {
+    if (result.queriedAt) recordCachedResult(context, result.queriedAt);
     logEvent({
       event: "app_cache",
       level: "info",
@@ -244,18 +244,18 @@ export async function cachedQuery(
       app_request_id: context.id,
       app_cache: "hit",
       cache_tier: tier,
-      job_id: entry.receipt.job?.jobId ?? null,
-      cache_hit: entry.receipt.cacheHit,
-      rows: entry.rows.length,
-      truncated: entry.truncated,
+      job_id: result.job?.jobId ?? null,
+      cache_hit: result.cacheHit,
+      rows: result.rows.length,
+      truncated: result.truncated,
       duration_ms: now() - started,
     });
-    return fromEntry(entry);
+    return { ...result, servedFrom: "app-cache" };
   };
   const { store, waitUntil } = resolveRuntime();
   if (!context.bypassCache) {
     const held = recall(key, started);
-    if (held) return serve(held.entry, "memory");
+    if (held) return serve(fromEntry(held.entry), "memory");
     if (store) {
       try {
         const raw = await store.get(key);
@@ -263,7 +263,7 @@ export async function cachedQuery(
           const parsed: unknown = JSON.parse(raw);
           if (isEntry(parsed) && parsed.expiresAt > now()) {
             remember(key, parsed, raw.length);
-            return serve(parsed, store.name);
+            return serve(fromEntry(parsed), store.name);
           }
         }
       } catch {
@@ -280,7 +280,7 @@ export async function cachedQuery(
       }
     }
     const pending = inflight.get(key);
-    if (pending) return pending;
+    if (pending) return serve(await pending, "inflight");
   }
   const execution = (async (): Promise<QueryResult> => {
     const result = await run({ ...traced, appCache: context.bypassCache ? "bypass" : "miss" });

@@ -75,6 +75,7 @@ async function managedAccess(managed: ManagedApiConfig, viewer: Viewer, request:
       level: error.status !== null && error.status < 500 ? "warn" : "error",
       build: client.buildId,
       request_id: error.requestId,
+      app_request_id: request.id,
       error_kind: error.kind,
       error_reason: error.reason,
       http_status: error.status,
@@ -90,7 +91,7 @@ const resolveViewer = requestScoped(async (requestHeaders): Promise<ViewerAccess
     logEvent({ event: "config_error", level: "error", variables: config.problems.map((p) => p.variable) });
     throw new ConfigurationError(config.problems);
   }
-  const request = newRequestContext();
+  const request = newRequestContext(config.mode === "managed" ? requestHeaders.get("x-sm-request-id") : null);
   if (config.mode === "managed") {
     // SourceMedium's gateway is the only way in and sets this header on every
     // request; without it, nothing is served (no sample fallback).

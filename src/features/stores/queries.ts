@@ -21,7 +21,7 @@ export async function getStoreComparison(range: DateRange, baselines: BaselineRa
   const summaries = new Map(rows.map((row) => [row.sm_store_id, row]));
   return stores.map((store) => ({
     store,
-    currency: reportingCurrency(store.id, access),
+    currency: reportingCurrency(store, access),
     summary: summaries.get(store.id) ?? null,
   }));
 }

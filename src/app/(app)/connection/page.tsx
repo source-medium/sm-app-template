@@ -15,10 +15,7 @@ export default async function ConnectionPage() {
   const managed = config.status === "ok" && (config.mode === "managed-dev" || config.mode === "managed");
   const hosted = config.status === "ok" && config.mode === "managed";
   const probe = hosted && config.hosted.authMethod === "probe";
-  const currency =
-    access.mode === "sample"
-      ? sampleCurrencyNote()
-      : liveCurrencyNote(reportingCurrencyConfig(), access.warehouse.reportingCurrency);
+  const currency = access.mode === "sample" ? sampleCurrencyNote() : liveCurrencyNote(reportingCurrencyConfig());
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="space-y-2">

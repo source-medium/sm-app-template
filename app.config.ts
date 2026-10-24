@@ -48,10 +48,9 @@ export const appConfig = {
   /** Numbers and dates are formatted on the server in this locale. */
   locale: "en-US",
   /**
-   * Verified reporting ISO code, such as "USD", shared by this deployment's
-   * monetary inputs. Confirm source alignment before setting it; nominal
-   * store currency is not evidence of reporting currency. This labels amounts
-   * without converting them. Null leaves live amounts unlabeled.
+   * Optional reporting ISO override, such as "USD", for this deployment.
+   * Leave null to use each store’s store_currency_code from dim_stores.
+   * An override labels amounts without converting them.
    */
   currency: null as string | null,
   /** Per-store reporting currency overrides. Null explicitly leaves a store unlabeled. Sample data stays USD. */

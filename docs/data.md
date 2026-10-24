@@ -156,9 +156,9 @@ It clears campaign/order identities, order search and pagination from the old st
 **All stores** opens `/stores`, with one row per roster store, including stores
 without rows. Its `store` URL parameter is only the reference for default dates
 and return navigation; it does not narrow the portfolio. Explicit dates are the
-same calendar dates in each store's local time. Each row uses its verified reporting
-currency and its own period coverage; currencies are never inferred from nominal
-store metadata. Money is neither totaled nor ranked across stores.
+same calendar dates in each store's local time. Each row uses its reporting
+currency from dim_stores and its own period coverage. Money is neither totaled
+nor ranked across stores.
 
 `src/features/stores/bigquery.ts` is the sole feature exception to the scalar
 store predicate. Both exported loaders reject `APP_STORE_ID` deployments before
@@ -272,29 +272,22 @@ integer into a plausible-looking chart value.
 
 ## Money and currency
 
-`dim_stores.store_currency_code` is nominal store metadata. It does not prove
-the currency of published money columns, so it never chooses a live report's
-money label. Verify the monetary inputs used by these views, then set
-`app.config.ts` `currency` to their reporting ISO code. For stores with different
-verified reporting currencies, override by exact store ID in `reportingCurrencies`,
-for example `{ "store-a": "CAD", "store-b": null }`. An explicit null override
-leaves a store unlabeled even when the deployment has a default code.
+`dim_stores.store_currency_code` is the source of truth for each store's
+reporting currency. Reports, the footer, the agent prompt and CSV
+`reporting_currency` use the same metadata resolver in managed and self-hosted
+modes. No currency setup is needed. Missing, blank or unrecognized codes leave
+amounts unlabeled; the footer states that the currency is unknown.
 
-Reports, the footer, the agent prompt, and CSV `reporting_currency` share this
-setting. Null or an unrecognized code leaves live amounts unlabeled; the footer
-says the currency is unverified. This is an operator-verified contract, not
-automatic currency detection. Synthetic sample amounts always use USD.
-These settings label amounts without converting them or changing calculations.
-A code counts as recognized only when it is a real ISO 4217 code the runtime
-publishes (`isCurrency` in `src/lib/format.ts`), not any three letters Intl
-would format. Formatting respects each currency's minor units (JPY has none,
-BHD has three) and disambiguates dollars (`CA$`, `A$`) in the configured locale.
+Existing `app.config.ts` customizations remain explicit overrides: a store's
+`reportingCurrencies` entry takes precedence over the deployment's `currency`,
+which otherwise defaults to the metadata code. A null per-store override leaves
+that store unlabeled. Neither metadata nor an override performs FX conversion.
+Synthetic sample amounts stay in USD. Currency metadata follows the roster's
+five-minute cache, and Refresh data bypasses that cache.
 
-An app SourceMedium hosts reads a third source: the workspace reporting
-currency its data API publishes with the app's context (`reporting_currency`,
-an optional, additive field). It applies only to stores `app.config.ts` leaves
-unset, and the Connection page says where the label came from. An older data
-API publishes none, and amounts stay unlabeled as before.
+A recognized code must be a real ISO 4217 code the runtime publishes (`isCurrency`
+in `src/lib/format.ts`). Formatting respects minor units (JPY has none, BHD has
+three) and disambiguates dollars (`CA$`, `A$`) in the configured locale.
 
 `store_timezone` is the store's SourceMedium time zone, which sets the
 store's dates in the app (see [dates](#dates)); it is not every source's date

@@ -1,13 +1,13 @@
 # Apps SourceMedium hosts
 
-When SourceMedium hosts your app, your team still owns the code in a private
-GitHub repository, but there is no Google key, hosting account or warehouse
+When SourceMedium hosts your app, your team still owns the code. GitHub is
+optional. There is no Google key, hosting account or warehouse
 setting to manage. Every query goes through SourceMedium's data API, which
 holds the credential, runs your SQL read-only, and checks on every request
 that the person or token behind it still has access.
 
-This guide covers managed development and hosting. The data adapter and a
-manually deployed staging app with workspace sign-in are verified. Self-service
+This guide covers managed development and hosting. The data adapter and
+manually deployed apps with workspace sign-in are verified. Self-service
 repository creation, builds and the Agent setup panel are not available yet;
 until the panel exists, a workspace admin or editor creates the developer token
 ([Local development](#local-development)).
@@ -156,8 +156,13 @@ active; ask a workspace admin.
   app's error or safe Connection report to SourceMedium's request log. CSV
   and dictionary errors include the same ID as `request_id`. A transport
   failure without a server response has no support code.
+- Hosted requests also carry a gateway-generated `X-SM-Request-ID`. Query and
+  cache logs record it as `app_request_id`; SourceMedium's RPC logs record it
+  as `parent_request_id`. Each data call keeps its own support code. Cached
+  results still require a fresh data context on every request, and concurrent
+  requests sharing one query each record their own cache use.
 - Report headers say when warehouse freshness or reporting currency is
   unknown. A successful query or connection check does not establish either.
-  When the data API publishes the workspace reporting currency with the app's
-  context, stores that `app.config.ts` leaves unset take that label, and the
-  Connection page says so; `app.config.ts` settings still take precedence.
+  Reports use each store's `dim_stores.store_currency_code` automatically,
+  through the same data API as other metadata. Missing or invalid codes stay
+  unlabeled. Explicit `app.config.ts` overrides retain precedence.

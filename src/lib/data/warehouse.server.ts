@@ -41,12 +41,6 @@ export type Warehouse = {
   table(name: string, dataset?: DatasetName): string;
   query(request: QueryRequest, options?: QueryOptions): Promise<QueryResult>;
   checkConnection(signal?: AbortSignal): Promise<ConnectionReport>;
-  /**
-   * The reporting currency the data source itself vouches for: SourceMedium's
-   * workspace setting for a managed app, null for a self-hosted warehouse,
-   * whose owner verifies it in app.config.ts instead.
-   */
-  reportingCurrency: string | null;
 };
 
 const clients = new Map<string, BigQueryClient>();
@@ -124,7 +118,6 @@ export function warehouseFor(
   };
   const warehouse: Warehouse = {
     applicationId: live.applicationId,
-    reportingCurrency: null,
     table: tableIn({
       projectId: live.dataProjectId,
       transformedDatasetId: live.transformedDatasetId,
@@ -178,7 +171,6 @@ export function managedWarehouse(
   };
   const warehouse: Warehouse = {
     applicationId: context.appId,
-    reportingCurrency: context.reportingCurrency,
     table: tableIn(context),
     query: (query, options = {}) =>
       cachedQuery(scope, request, query, options, (traced) => runManagedQuery(client, query, traced)),
@@ -205,7 +197,6 @@ export function managedWarehouse(
 export function refusedWarehouse(refusal: WarehouseError): Warehouse {
   return {
     applicationId: "", // No context was loaded, so there is no app id.
-    reportingCurrency: null,
     table: () => {
       throw refusal;
     },

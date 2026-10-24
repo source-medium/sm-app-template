@@ -78,13 +78,11 @@ Missing or broken logos use initials. You can override names with `storeLabels`
 in `app.config.ts`. See [store scope](data.md#store-scope) for metadata availability
 and stable links to each store.
 
-Confirm the reporting currency and monetary source alignment, then set `currency`
-in `app.config.ts`, for example `"USD"`. Use `reportingCurrencies` only when stores
-need different verified codes; a null override leaves that store unlabeled.
-Nominal `dim_stores.store_currency_code` does not establish reporting currency.
-Reports, the footer, the agent prompt, and CSV exports use the configured code.
-Unset codes leave live amounts unlabeled. Setting a code does not convert amounts.
-Never add money across stores. Synthetic sample data stays in USD.
+Reports, the footer, the agent prompt and CSV exports automatically use each
+store's `dim_stores.store_currency_code`. Missing or invalid codes leave live
+amounts unlabeled. Use `app.config.ts` `currency` or `reportingCurrencies` only
+for an intentional label override; neither performs FX conversion. Never add
+money across stores. Synthetic sample data stays in USD.
 See [money and currency](data.md#money-and-currency).
 
 Dates need no setting: each store's dates follow its SourceMedium time zone,
@@ -155,11 +153,9 @@ Your agent reuses your [sign-in choice](auth.md#choose-sign-in-with-your-agent)
 and handles the steps below within its authorization and account access.
 You only need to complete private entry and account steps it cannot perform.
 
-1. Confirm the workspace reporting currency and [source alignment](data.md#money-and-currency).
-   Have your agent set `currency` (and per-store `reportingCurrencies` if needed) in
-   `app.config.ts` on a task branch. Prepare the change now; review and publish
-   it after the runtime settings below are ready.
-   Store names come from `dim_stores`; no store roster setup is needed.
+1. Store names and reporting currencies come from `dim_stores`; no roster or
+   currency setup is needed. Review [source alignment](data.md#money-and-currency)
+   when changing the monetary inputs used by a report.
 2. Open the production Worker, **not** the `<app>-preview` Worker. In
    **Settings > Variables and Secrets**, select **Production** if an environment
    selector is shown.

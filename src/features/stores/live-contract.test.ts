@@ -1,6 +1,14 @@
 import { expect, it, vi } from "vitest";
 import { validSales } from "@/lib/data/channel-sql";
-import { goLive, rowsResponse, withStores, isStoreList, requestHeaders } from "../../../tests/helpers/live";
+import {
+  goLive,
+  rowsResponse,
+  withStores,
+  isStoreList,
+  requestHeaders,
+  ROSTER_FIELDS,
+  storeRow,
+} from "../../../tests/helpers/live";
 
 const fields = [
   { name: "sm_store_id", type: "STRING" },
@@ -85,4 +93,28 @@ it("fails explicitly on truncation instead of publishing incomplete totals", asy
   });
   const { getStoreComparison } = await import("./queries");
   await expect(getStoreComparison(range, [null, null])).rejects.toMatchObject({ kind: "result_too_large" });
+});
+
+it("keeps each store's metadata currency on portfolio rows without summing unlike units", async () => {
+  await goLive({
+    submit: (call) =>
+      isStoreList(call)
+        ? rowsResponse(ROSTER_FIELDS, [
+            storeRow("us", "UTC", "USD"),
+            storeRow("ca", "UTC", "CAD"),
+            storeRow("unknown", "UTC", null),
+          ])
+        : rowsResponse(
+            fields,
+            ["us", "ca", "unknown"].map((sm_store_id) => ({ ...row, sm_store_id })),
+          ),
+  });
+  const { getStoreComparison } = await import("./queries");
+  const data = await getStoreComparison(range, [baseline, null]);
+  expect(data.map(({ store, currency }) => [store.id, currency])).toEqual([
+    ["us", "USD"],
+    ["ca", "CAD"],
+    ["unknown", null],
+  ]);
+  expect(data.map(({ summary }) => summary?.revenue)).toEqual([row.revenue, row.revenue, row.revenue]);
 });
