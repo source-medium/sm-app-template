@@ -6,11 +6,11 @@ const EPOCH_DAY = Date.parse("2024-01-01T00:00:00Z") / 86_400_000;
 /** Sample stores report in UTC-5, so local wall time is five hours behind the instant. */
 const OFFSET_MS = 5 * 3_600_000;
 const CHANNELS = [
-  ["Online DTC", "Paid Social"],
-  ["Online DTC", "Organic Search"],
-  ["Online DTC", "Email"],
-  ["Online DTC", "Direct"],
-  ["Amazon", "Marketplace"],
+  ["online_dtc", "Paid Social"],
+  ["online_dtc", "Organic Search"],
+  ["online_dtc", "Email"],
+  ["online_dtc", "Direct"],
+  ["amazon", "Marketplace"],
 ] as const;
 const PRODUCTS = [
   { title: "Everyday Tote", cents: 6800 },
@@ -54,7 +54,7 @@ export function sampleOrderRowsForDay(storeId: string, date: string): WireOrder[
     const taxes = Math.round(net * 0.08);
     orders.push({
       order_key: `${storeId}-${number}`,
-      order_name: channel === "Amazon" ? `112-${String(number).padStart(7, "0")}` : `#${number}`,
+      order_name: channel === "amazon" ? `112-${String(number).padStart(7, "0")}` : `#${number}`,
       order_number: String(number),
       order_created_at_local_datetime: new Date(createdLocalMs).toISOString().slice(0, 19),
       order_shipping_country_code: country === "United States" ? "US" : "CA",
@@ -69,8 +69,8 @@ export function sampleOrderRowsForDay(storeId: string, date: string): WireOrder[
       order_created_at: String(BigInt(createdLocalMs + OFFSET_MS) * 1000n),
       order_cancelled_at: cancelled ? String(BigInt(createdLocalMs + OFFSET_MS + 3_600_000) * 1000n) : null,
       order_cancellation_reason: cancelled ? "customer" : null,
-      sm_order_sales_channel: channel === "Amazon" ? "Amazon" : "Online Store",
-      source_system: channel === "Amazon" ? "amazon" : "shopify",
+      sm_order_sales_channel: channel === "amazon" ? "Amazon" : "Online Store",
+      source_system: channel === "amazon" ? "amazon" : "shopify",
       order_refund_quantity: refund > 0 ? "1" : "0",
       order_gross_revenue: money(gross),
       order_discounts: money(discount),

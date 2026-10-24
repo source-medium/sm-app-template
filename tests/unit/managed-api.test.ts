@@ -46,6 +46,8 @@ function expectManagedCopy(error: unknown) {
   expect(error).toBeInstanceOf(WarehouseError);
   const { title, remedy } = error as WarehouseError;
   expect(`${title}. ${remedy}`).not.toMatch(/Google|BigQuery|BIGQUERY_|app key|replacement key/i);
+  // Until SourceMedium ships its Agent setup panel, docs/managed.md says who creates a token.
+  expect(`${title}. ${remedy}`).not.toContain("Agent setup");
 }
 
 const reply = (body: unknown, status = 200) =>

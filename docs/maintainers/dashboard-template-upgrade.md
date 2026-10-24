@@ -326,3 +326,33 @@ window)` instead of `COALESCE(...)`, in Orders (list, roster, detail) and
   same tree had one load-related failure in the pre-existing Orders channel test
   (`orders.e2e.ts:50`, select read before the streamed roster replaced its
   placeholder); it passed three isolated reruns and the full rerun unchanged.
+
+### Follow-up, 2026-10-24 (valid sales channels in summary order measures)
+
+- A numbers audit of the public demo (September 2026 plus its comparison period)
+  matched every displayed Overview, Performance, Stores, Geography, Products, Paid
+  marketing and Creatives value to independent SQL. It also found that summary
+  reports summed every published `sm_channel` row, including `draft_orders`,
+  `exchanged`, `excluded` and `*_via_shopify`. Across the three production lanes
+  that overstated September 2026 net revenue for 29 of 39 tenants (medians 0.25% to
+  0.40%, one tenant 50.7%), because `*_via_shopify` repeats orders already counted
+  in their direct channel.
+- The fix is in the catalog first: reporting_queries `fix/summary-metrics-valid-channels`
+  filters `order_count_summary` and `order_net_revenue_summary` to the five channels
+  `is_valid_order` accepts. New and repeat counts are already built from valid
+  orders; ad spend, sessions and subscriptions are not order validity and stay
+  unfiltered, so MER divides valid revenue by all spend. dashboard-metrics-v1 is
+  re-vendored from that branch.
+- The summary reports compute the same definition: every order measure goes through
+  `validSales()` (`src/lib/data/channel-sql.ts`), a test checks its predicate against
+  the vendored `filter_condition`, and the sample's `countedSales()` mirrors it.
+  Spend and sessions count every row, so a tenant's Walmart.com or Target.com ad
+  spend (which `rpt_ad_performance_daily` can assign) is never dropped. **Sales
+  channel** still defaults to all channels. Sample data now uses warehouse channel
+  values and publishes a small `exchanged` channel with orders and no sales.
+- On the deployed demo, the valid-channel totals matched independent SQL exactly:
+  $7,084,493.66 net and 79,524 summary orders for September 2026.
+- DemoCo's summary counts are about twice `obt_orders` by design (its privacy masking
+  scales numeric columns; see release-readiness). Its gross minus discounts minus
+  refunds also misses net by $403,734.59, and demand before returns differs from gross
+  plus discounts; both reconcile exactly on a real tenant.

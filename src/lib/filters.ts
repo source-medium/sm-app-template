@@ -186,6 +186,10 @@ export function matchesSalesChannel(selection: string | null | undefined, channe
   const values = salesChannelValues(selection);
   return values.length === 0 || values.includes(channel ?? "(none)");
 }
+/** A channel scope as report copy names it: no selection means every sales channel. */
+export function salesChannelLabel(selection: string | null | undefined): string {
+  return salesChannelValues(selection).join(", ") || "All sales channels";
+}
 export function summarySalesChannel(params: SearchParams): string | null {
   return single(params, "sales_channel") === undefined
     ? encodeSalesChannels(appConfig.defaultSalesChannels)

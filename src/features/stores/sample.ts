@@ -2,7 +2,7 @@ import { decodeRows } from "@/lib/data/decode";
 import { fromUnits } from "@/lib/data/decimal";
 import type { StoreOption } from "@/lib/data/stores.server";
 import type { DateRange } from "@/lib/filters";
-import { sampleSummarySource } from "@/lib/sample/executive-summary";
+import { countedSales, sampleSummarySource } from "@/lib/sample/executive-summary";
 import { STORES_RELATION, StoreSummaryRow } from "./rows";
 
 export function sampleStoreComparison(
@@ -12,7 +12,7 @@ export function sampleStoreComparison(
   today?: string,
 ) {
   function totals(storeId: string, period: DateRange | null) {
-    const rows = period ? sampleSummarySource(storeId, period, today) : [];
+    const rows = period ? sampleSummarySource(storeId, period, today).map(countedSales) : [];
     return {
       revenue: rows.length
         ? fromUnits(rows.reduce((sum, row) => sum + row.order_net_revenue_cents, 0n) * 10_000_000n)

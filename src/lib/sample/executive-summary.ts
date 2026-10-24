@@ -1,6 +1,7 @@
 /** Deterministic source-grain fixtures for rpt_executive_summary_daily. */
 import { datesInRange, type DateRange } from "@/lib/filters";
 import { calendarDate } from "@/lib/format";
+import { isValidSalesChannel } from "@/lib/sales-channels";
 import { randomInt, seededRandom } from "./random";
 import { SAMPLE_STORE_SCALE, SAMPLE_STORES } from "./stores";
 
@@ -25,7 +26,7 @@ export type SummarySourceRow = {
 
 const SOURCES = [
   {
-    channel: "Online DTC",
+    channel: "online_dtc",
     subChannel: "Paid Social",
     share: 0.34,
     sessionsPerOrder: 38,
@@ -33,7 +34,7 @@ const SOURCES = [
     centsPerClick: 92,
   },
   {
-    channel: "Online DTC",
+    channel: "online_dtc",
     subChannel: "Organic Search",
     share: 0.28,
     sessionsPerOrder: 42,
@@ -41,7 +42,7 @@ const SOURCES = [
     centsPerClick: 0,
   },
   {
-    channel: "Online DTC",
+    channel: "online_dtc",
     subChannel: "Email",
     share: 0.18,
     sessionsPerOrder: 22,
@@ -49,16 +50,50 @@ const SOURCES = [
     centsPerClick: 0,
   },
   {
-    channel: "Amazon",
+    channel: "amazon",
     subChannel: "Marketplace",
     share: 0.2,
     sessionsPerOrder: 0,
     clicksPerOrder: 3,
     centsPerClick: 61,
   },
+  {
+    // Not a valid channel. Like the live relation, it counts exchange orders without sales or customers.
+    channel: "exchanged",
+    subChannel: "Exchanges",
+    share: 0.02,
+    sessionsPerOrder: 0,
+    clicksPerOrder: 0,
+    centsPerClick: 0,
+  },
 ] as const;
 /** Average net revenue per order, in cents. */
 const ORDER_VALUE_CENTS = 6840;
+
+/**
+ * A row as summary reports measure it (validSales in channel-sql): outside the valid sales channels
+ * its order measures add nothing, while spend and traffic still count.
+ */
+export function countedSales(row: SummarySourceRow): SummarySourceRow {
+  if (isValidSalesChannel(row.sm_channel)) return row;
+  return {
+    ...row,
+    order_net_revenue_cents: 0n,
+    order_gross_revenue_cents: 0n,
+    order_discounts_cents: 0n,
+    order_refunds_cents: 0n,
+    order_count: 0,
+    new_customer_order_net_revenue_cents: 0n,
+    new_customer_order_count: 0,
+    repeat_customer_order_net_revenue_cents: 0n,
+    repeat_customer_order_count: 0,
+  };
+}
+
+/** The channels the relation publishes for one store and dates, as the live channel rosters list them. */
+export function sampleSummaryChannels(storeId: string, range: DateRange): string[] {
+  return [...new Set(sampleSummarySource(storeId, range).map((row) => row.sm_channel))].sort();
+}
 
 /**
  * The relation's rows for one store. Dates after `today` (by default, the
@@ -99,24 +134,25 @@ export function sampleSummarySource(storeId: string, range: DateRange, today?: s
         });
         continue;
       }
+      const valid = isValidSalesChannel(source.channel);
       const random = seededRandom(`overview|${storeId}|${date}|${source.subChannel}`);
       // Marketplace orders arrive split across attribution, so the measure can be fractional.
       const orders =
-        source.channel === "Amazon"
+        source.channel === "amazon"
           ? Math.round(dailyOrders * source.share * 2) / 2
           : Math.round(dailyOrders * source.share);
       const clicks =
         source.clicksPerOrder === 0 ? 0 : randomInt(random, 0, 9) + Math.round(orders * source.clicksPerOrder);
       const row = {
         ...base,
-        order_net_revenue_cents: BigInt(Math.round(orders * ORDER_VALUE_CENTS * (0.85 + random() * 0.3))),
+        order_net_revenue_cents: valid ? BigInt(Math.round(orders * ORDER_VALUE_CENTS * (0.85 + random() * 0.3))) : 0n,
         order_count: orders,
         website_sessions: BigInt(Math.round(orders * source.sessionsPerOrder * (0.9 + random() * 0.2))),
         ad_clicks: BigInt(clicks),
         ad_spend_cents: BigInt(Math.round(clicks * source.centsPerClick * (0.8 + random() * 0.4))),
       };
       const acquisition = seededRandom(`purchases|${storeId}|${date}|${source.subChannel}`);
-      const firstOrders = Math.floor(orders * (0.35 + acquisition() * 0.25));
+      const firstOrders = valid ? Math.floor(orders * (0.35 + acquisition() * 0.25)) : 0;
       const firstRevenue = (row.order_net_revenue_cents * BigInt(Math.round((0.4 + acquisition() * 0.2) * 100))) / 100n;
       rows.push({
         ...row,
@@ -127,7 +163,7 @@ export function sampleSummarySource(storeId: string, range: DateRange, today?: s
         new_customer_order_net_revenue_cents: firstRevenue,
         new_customer_order_count: firstOrders,
         repeat_customer_order_net_revenue_cents: row.order_net_revenue_cents - firstRevenue,
-        repeat_customer_order_count: orders - firstOrders,
+        repeat_customer_order_count: valid ? orders - firstOrders : 0,
       });
     }
   }

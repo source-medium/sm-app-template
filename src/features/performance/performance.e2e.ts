@@ -21,9 +21,9 @@ test("performance: calendar grains and metric groups preserve the full business 
   await expect(page.getByRole("table", { name: "Marketing efficiency", exact: true })).toBeVisible();
   await choose(page, "Metrics", "purchases");
   await expect(page.getByRole("table", { name: "New and repeat purchases", exact: true })).toBeVisible();
-  await choose(page, "Sales channel", "Amazon");
+  await choose(page, "Sales channel", "amazon");
   const comparison = page.getByRole("link", { name: "Compare last year in Overview", exact: true });
-  await expect(comparison).toHaveAttribute("href", /sales_channel=Amazon/);
+  await expect(comparison).toHaveAttribute("href", /sales_channel=amazon/);
   await expect(comparison).toHaveAttribute("href", /compare=year/);
   await comparison.click();
   await expect(page).toHaveURL((url) => url.pathname === "/overview" && url.searchParams.get("compare") === "year");
@@ -76,11 +76,12 @@ test("performance: multiple channels survive reload and CSV includes the full ye
   await expect(table).toBeVisible();
   const original = await table.locator("tfoot td").allTextContents();
   await page.getByText("Choose multiple channels", { exact: true }).click();
-  await page.getByRole("checkbox", { name: "Online DTC", exact: true }).check();
-  await page.getByRole("checkbox", { name: "Amazon", exact: true }).check();
+  await page.getByRole("checkbox", { name: "online_dtc", exact: true }).check();
+  await page.getByRole("checkbox", { name: "amazon", exact: true }).check();
   await page.getByRole("button", { name: "Apply channels", exact: true }).click();
-  await expect(page).toHaveURL((url) => url.searchParams.get("sales_channel") === '["Amazon","Online DTC"]');
+  await expect(page).toHaveURL((url) => url.searchParams.get("sales_channel") === '["amazon","online_dtc"]');
   await page.reload();
+  // The sample also publishes exchange orders, which are not sales, so its two sales channels are every total.
   await expect(table.locator("tfoot td")).toHaveText(original);
   const href = await page.getByRole("link", { name: "Download business CSV", exact: true }).getAttribute("href");
   if (!href) throw new Error("Missing scoped export");
@@ -92,9 +93,9 @@ test("performance: multiple channels survive reload and CSV includes the full ye
   expect(rows.filter((row) => row.row_type === "total")).toHaveLength(1);
   expect(
     rows.every(
-      (row) => row.from === "2025-01-01" && row.to === "2025-12-31" && row.sales_channels === '["Amazon","Online DTC"]',
+      (row) => row.from === "2025-01-01" && row.to === "2025-12-31" && row.sales_channels === '["amazon","online_dtc"]',
     ),
   ).toBe(true);
-  await choose(page, "Sales channel", "Online DTC");
+  await choose(page, "Sales channel", "online_dtc");
   await expect(table.locator("tfoot td")).not.toHaveText(original);
 });

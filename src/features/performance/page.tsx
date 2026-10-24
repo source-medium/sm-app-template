@@ -10,8 +10,8 @@ import { MultiChannelFilter, SalesChannelFilter } from "@/components/patterns/mu
 import { buttonVariants } from "@/components/ui/button";
 import {
   parseChoice,
+  salesChannelLabel,
   summarySalesChannel,
-  salesChannelValues,
   withParams,
   single,
   type SearchParams,
@@ -54,7 +54,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
           relation: view === "business" ? BUSINESS_RELATION : PLATFORM_RELATION,
           scope:
             view === "business"
-              ? "Selected store, dates and sales channels, aggregated into calendar periods. Summary orders are published order measures."
+              ? "Selected store, dates and sales channels, aggregated into calendar periods. Summary orders are published order measures; revenue and orders count valid sales channels."
               : "Selected store, dates and sales channels, aggregated by advertising source_system and calendar period. Platform attribution is not deduplicated.",
         },
       ]}
@@ -71,7 +71,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
             ? "Business"
             : `Platform detail: ${platform ? platformLabel(platform) : "Combined platforms"}`;
         const grainLabel = TIME_GRAINS.find((item) => item.value === grain)?.label.toLowerCase();
-        const channelLabel = salesChannelValues(channel).join(", ") || "All sales channels";
+        const channelLabel = salesChannelLabel(channel);
         const download = (
           <a
             className={buttonVariants({ variant: "outline", size: "sm" })}

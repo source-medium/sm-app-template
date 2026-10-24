@@ -15,11 +15,11 @@ import { periodChanges, type Comparison } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
 import {
   parseChoice,
+  salesChannelLabel,
   summarySalesChannel,
   withParams,
   datesInRange,
   rangeLength,
-  salesChannelValues,
   type SearchParams,
 } from "@/lib/filters";
 import { decimalToNumber } from "@/lib/data/decimal";
@@ -60,7 +60,8 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       sources={[
         {
           relation: OVERVIEW_RELATION,
-          scope: "Daily summary rows, aggregated over the selected sales channels and dates.",
+          scope:
+            "Daily summary rows, aggregated over the selected sales channels and dates. Revenue and order measures count valid sales channels; spend and traffic count every row.",
         },
       ]}
       title="Overview"
@@ -75,7 +76,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         return (
           <>
             <ReportControls
-              summary={`${salesChannelValues(channel).join(", ") || "All sales channels"}. ${TREND_MODES.find((mode) => mode.value === trendMode)?.label}.`}
+              summary={`${salesChannelLabel(channel)}. ${TREND_MODES.find((mode) => mode.value === trendMode)?.label}.`}
             >
               <OverviewControls filters={selected} />
               <SelectFilter name="trend" label="Trend values" value={trendMode} options={[...TREND_MODES]} />
@@ -222,7 +223,7 @@ function OverviewView({
       key: "orders",
       label: "Summary orders",
       description:
-        "Published order counts summed across the selected sales channels, including excluded, draft, and exchanged orders. This can differ from the number of valid orders.",
+        "Published order counts on the valid sales channels within the selected scope. Draft, exchanged and excluded rows are not sales, and this published measure can still differ from the number of valid orders.",
     },
     {
       key: "average",

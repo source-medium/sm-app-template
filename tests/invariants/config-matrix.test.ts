@@ -316,6 +316,17 @@ describe("managed development", () => {
     expect(problemsOf(parseConfig({ ...MANAGED, ...override }))).toContain(variable);
   });
 
+  it.each([
+    ["no address", { SM_DATA_API_URL: undefined }],
+    ["an address that is not a URL", { SM_DATA_API_URL: "not a url" }],
+    ["a truncated token", { SM_DEVELOPER_TOKEN: TOKEN.slice(0, 20) }],
+  ])("%s points to docs/managed.md, not an Agent setup panel that does not exist yet", (_label, override) => {
+    const config = parseConfig({ ...MANAGED, ...override });
+    const messages = config.status === "error" ? config.problems.map((problem) => problem.message).join(" ") : "";
+    expect(messages).toContain("docs/managed.md");
+    expect(messages).not.toContain("Agent setup");
+  });
+
   it("refuses every self-hosted setting rather than mixing modes or falling back to sample data", () => {
     const selfHosted = {
       ...liveEnv(key),

@@ -40,17 +40,23 @@ The example uses these formulas: net revenue is
 `SUM(order_net_revenue)`, revenue per summary order is net revenue ÷ summary
 orders, MER is
 net revenue ÷ ad spend, CPC is spend ÷ clicks, and platform ROAS is
-platform-reported revenue ÷ spend. Overview implements the all-channel sums
-used by the catalog's Executive Summary metrics (`order_net_revenue_summary`, `order_count_summary`,
-`total_ad_spend_summary`), which sum every `sm_channel` row. **Sales channel** defaults to **All sales channels**;
-select one to apply the same scope to KPIs, trends, comparisons, summaries and CSV.
-The options are queried for the selected store and dates. The Looker template may
+platform-reported revenue ÷ spend. Overview implements the catalog's Executive Summary metrics
+(`order_net_revenue_summary`, `order_count_summary`, `total_ad_spend_summary`). The relation
+publishes a row for every `sm_channel`, including `draft_orders`, `exchanged`, `excluded` and
+`*_via_shopify` rows. Those are not sales, and `*_via_shopify` repeats orders already counted in
+their direct channel, so the catalog's order count and net revenue filter to the five channels
+SourceMedium counts as valid (`online_dtc`, `amazon`, `retail`, `wholesale`, `tiktok_shop`).
+Ad spend and sessions are not order validity and count every row, so MER divides valid revenue
+by all spend. The summary reports apply the same rule to every order measure through
+`validSales()` in `src/lib/data/channel-sql.ts`; a test checks its predicate against the vendored
+catalog definition. **Sales channel** defaults to **All sales channels**; select one to narrow
+KPIs, trends, comparisons, summaries and CSV to it. Selecting a non-valid channel shows its spend
+and no sales. The options are queried for the selected store and dates. The Looker template may
 open on `online_dtc`, so match its channel before comparing numbers. This is an implementation
-match, not an independent numerical reconciliation. Summary orders include
-excluded, draft and exchanged channels when published and can differ from
-valid orders in `obt_orders`. The UI labels that count and its revenue ratio
-explicitly; do not present the ratio as valid-order AOV without reconciling the
-definitions, dates and store.
+match, not an independent numerical reconciliation. Summary orders are published order measures
+and can differ from valid orders in `obt_orders`. The UI labels that count and its revenue ratio
+explicitly; do not present the ratio as valid-order AOV without reconciling the definitions,
+dates and store.
 
 Overview's ad spend reads `rpt_executive_summary_daily`; Paid marketing and
 Creatives read `rpt_ad_performance_daily`. The two published relations can

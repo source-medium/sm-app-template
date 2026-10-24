@@ -223,7 +223,7 @@ function parseManaged(env: Env, hosting: string): AppConfig {
     problems.push({
       variable: "SM_DEVELOPER_TOKEN",
       message:
-        "SM_DEVELOPER_TOKEN is incomplete; paste the whole token shown when it was created, or create a new one in your app's Agent setup (docs/managed.md#token-expired).",
+        "SM_DEVELOPER_TOKEN is incomplete; paste the whole token shown when it was created, or ask a workspace admin or editor for a new one (docs/managed.md#token-expired).",
     });
   }
   if (problems.length > 0 || dataApiUrl === null) return { status: "error", problems };
@@ -300,14 +300,16 @@ function parseDataApiUrl(raw: string | undefined, problems: ConfigProblem[], hos
   };
   if (raw === undefined) {
     return problem(
-      "SM_DATA_API_URL is missing; copy it from your app's Agent setup in SourceMedium (docs/managed.md).",
+      "SM_DATA_API_URL is missing; set it to your SourceMedium address followed by /api/app-data/v1 (docs/managed.md).",
     );
   }
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
-    return problem("SM_DATA_API_URL is not a URL; copy it from your app's Agent setup in SourceMedium.");
+    return problem(
+      "SM_DATA_API_URL is not a URL; set it to your SourceMedium address followed by /api/app-data/v1 (docs/managed.md).",
+    );
   }
   if (url.protocol !== "https:" && (hosted || !(url.protocol === "http:" && LOOPBACK_HOSTNAMES.has(url.hostname)))) {
     return problem("SM_DATA_API_URL must use https://.");

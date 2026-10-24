@@ -114,7 +114,7 @@ const MANAGED_COPY: Partial<Record<WarehouseErrorKind, { title: string; remedy: 
   credential_invalid: {
     title: "SourceMedium did not accept the developer token",
     remedy:
-      "It expired, was revoked, or was copied incompletely. Create a new token in your app's Agent setup and replace SM_DEVELOPER_TOKEN (docs/managed.md#token-expired).",
+      "It expired, was revoked, or was copied incompletely. Ask a workspace admin or editor for a new token and replace SM_DEVELOPER_TOKEN (docs/managed.md#token-expired).",
   },
   permission_denied: {
     title: "SourceMedium refused this app's request",
@@ -180,7 +180,7 @@ export function managedApiError(status: number, body: unknown): WarehouseError {
     if (status >= 500) return managedError("transient", unreadable);
     return managedError("response_invalid", {
       ...unreadable,
-      remedy: `The address in SM_DATA_API_URL answered HTTP ${status}, but not as SourceMedium's data API. Check it against your app's Agent setup, then run \`pnpm diagnose\`.`,
+      remedy: `The address in SM_DATA_API_URL answered HTTP ${status}, but not as SourceMedium's data API. Check it against docs/managed.md, then run \`pnpm diagnose\`.`,
     });
   }
   const { code, message, retryable, reason, retry_after_seconds, request_id } = parsed.data.error;

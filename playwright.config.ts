@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import nextEnv from "@next/env";
 import { sampleEnvironment as cleared } from "./scripts/lib/sample-env";
+import { testPortOffset } from "./scripts/lib/test-ports";
 
 /**
  * End-to-end tests against a production build (`pnpm test:e2e` builds first).
@@ -16,7 +17,17 @@ import { sampleEnvironment as cleared } from "./scripts/lib/sample-env";
 const PASSWORD = "e2eOnlyPassword0123456789abcd";
 const hosted = process.env.SM_HOSTED_E2E === "1";
 const live = hosted || process.env.SM_LIVE_E2E === "1";
-let liveURL = "http://127.0.0.1:3108";
+// Explicit offsets let independent checkouts keep their own test servers.
+// Hosted checks start no local servers and do not consume this setting.
+const portOffset = hosted ? 0 : testPortOffset();
+const ports = {
+  sample: 3105 + portOffset,
+  protected: 3106 + portOffset,
+  live: 3108 + portOffset,
+  fixedStore: 3109 + portOffset,
+};
+const localURL = (port: number) => `http://127.0.0.1:${port}`;
+let liveURL = localURL(ports.live);
 if (hosted) {
   const invalidTarget = "Hosted checks need an HTTPS origin without credentials, a path, query, or fragment.";
   let target: URL;
@@ -108,24 +119,24 @@ export default defineConfig({
         {
           name: "sample",
           testMatch: [/e2e\/app\.spec\.ts/, /src\/features\/.+\.e2e\.ts/],
-          use: { ...devices["Desktop Chrome"], baseURL: "http://127.0.0.1:3105" },
+          use: { ...devices["Desktop Chrome"], baseURL: localURL(ports.sample) },
         },
         {
           name: "phone",
           testMatch: /phone\.spec\.ts/,
-          use: { ...devices["Pixel 7"], baseURL: "http://127.0.0.1:3105" },
+          use: { ...devices["Pixel 7"], baseURL: localURL(ports.sample) },
         },
         {
           name: "protected",
           testMatch: /protected\.spec\.ts/,
-          use: { ...devices["Desktop Chrome"], baseURL: "http://127.0.0.1:3106" },
+          use: { ...devices["Desktop Chrome"], baseURL: localURL(ports.protected) },
         },
         {
           name: "fixed-store",
           testMatch: /e2e\/fixed-store\.spec\.ts/,
           use: {
             ...devices["Desktop Chrome"],
-            baseURL: "http://127.0.0.1:3109",
+            baseURL: localURL(ports.fixedStore),
             httpCredentials: { username: "viewer", password: PASSWORD },
           },
         },
@@ -137,28 +148,28 @@ export default defineConfig({
           {
             // The wrapper sends a cloud environment's HTTPS through its proxy, as `pnpm dev` does.
             command: managedDev
-              ? "node scripts/managed-node.mjs next start --hostname 127.0.0.1 --port 3108"
-              : "pnpm exec next start --hostname 127.0.0.1 --port 3108",
-            url: "http://127.0.0.1:3108/healthz",
+              ? `node scripts/managed-node.mjs next start --hostname 127.0.0.1 --port ${ports.live}`
+              : `pnpm exec next start --hostname 127.0.0.1 --port ${ports.live}`,
+            url: `${localURL(ports.live)}/healthz`,
             reuseExistingServer: false,
           },
         ]
       : [
           {
-            command: "pnpm exec next start --hostname 127.0.0.1 --port 3105",
-            url: "http://127.0.0.1:3105/healthz",
+            command: `pnpm exec next start --hostname 127.0.0.1 --port ${ports.sample}`,
+            url: `${localURL(ports.sample)}/healthz`,
             reuseExistingServer: false,
             env: cleared,
           },
           {
-            command: "pnpm exec next start --hostname 127.0.0.1 --port 3106",
-            url: "http://127.0.0.1:3106/healthz",
+            command: `pnpm exec next start --hostname 127.0.0.1 --port ${ports.protected}`,
+            url: `${localURL(ports.protected)}/healthz`,
             reuseExistingServer: false,
             env: { ...cleared, APP_BASIC_AUTH: `viewer:${PASSWORD}` },
           },
           {
-            command: "pnpm exec next start --hostname 127.0.0.1 --port 3109",
-            url: "http://127.0.0.1:3109/healthz",
+            command: `pnpm exec next start --hostname 127.0.0.1 --port ${ports.fixedStore}`,
+            url: `${localURL(ports.fixedStore)}/healthz`,
             reuseExistingServer: false,
             env: { ...cleared, APP_BASIC_AUTH: `viewer:${PASSWORD}`, APP_STORE_ID: "sample-store-b" },
           },

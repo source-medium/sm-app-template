@@ -6,9 +6,12 @@ setting to manage. Every query goes through SourceMedium's data API, which
 holds the credential, runs your SQL read-only, and checks on every request
 that the person or token behind it still has access.
 
-This guide covers **managed development**: running the app on your computer,
-or in a cloud coding agent, against your real data with a developer token. A
-self-hosted app keeps using [connect.md](connect.md); the two never mix.
+This guide covers managed development and hosting. The data adapter and a
+manually deployed staging app with workspace sign-in are verified. Self-service
+repository creation, builds and the Agent setup panel are not available yet;
+until the panel exists, a workspace admin or editor creates the developer token
+([Local development](#local-development)).
+A self-hosted app keeps using [connect.md](connect.md); the two never mix.
 
 | Mode                    | Set by                               | Data                                                     |
 | ----------------------- | ------------------------------------ | -------------------------------------------------------- |
@@ -27,9 +30,10 @@ offline schema snapshot.
 Hosted mode is set by SourceMedium's deploy. `pnpm dev`, `pnpm diagnose` and
 `pnpm schema` refuse it; use `managed-dev` on your computer.
 
-The staging M0 probe uses shared probe access with a fixed test viewer,
-not individual workspace sign-in. SourceMedium sets `APP_ENVIRONMENT=staging`
-and `SM_GATEWAY_AUTH=probe` for that deployment; the app labels it accordingly.
+The member staging pilot uses individual workspace sign-in and
+`SM_GATEWAY_AUTH=workspace`. The earlier M0 probe remains separate: it uses
+shared probe access with a fixed test viewer and `SM_GATEWAY_AUTH=probe`.
+Both set `APP_ENVIRONMENT=staging`; the app labels its access mode accordingly.
 These labels never authorize a request: the gateway viewer and the data API's
 app, deployment and membership checks still apply.
 
@@ -48,8 +52,11 @@ The data API only reads. A query runs for at most 30 seconds, scans at most
 
 ## Local development
 
-1. In SourceMedium, open your app's **Agent setup** and create a developer
-   token for "Local". It is shown once.
+1. A workspace admin or editor creates a developer token named "Local" with
+   SourceMedium's app management API, from a signed-in SourceMedium browser
+   session. It is shown once and carries that person's access. SourceMedium
+   staff cannot create one on a workspace's behalf. The planned **Agent
+   setup** panel will replace this manual step.
 2. Put these in `.env.local` (git-ignored), removing any self-hosted values:
 
    ```sh
@@ -58,7 +65,8 @@ The data API only reads. A query runs for at most 30 seconds, scans at most
    SM_DEVELOPER_TOKEN=smapp_…
    ```
 
-   The panel shows the exact `SM_DATA_API_URL`.
+   Use the SourceMedium address where the token was created, followed by
+   `/api/app-data/v1`.
 
 3. Run `pnpm diagnose`, then `pnpm dev`, and open http://127.0.0.1:3000.
 
@@ -71,9 +79,8 @@ app, and a tunnel that rewrites the Host header would pass that check.
 
 ## Cloud agents
 
-> These steps are being verified in fresh Codex cloud and Claude Code on the
-> web environments. Until SourceMedium's Agent setup panel lists an
-> environment, treat it as unsupported.
+> Fresh Codex cloud and Claude Code on the web environments are unverified.
+> Treat these instructions as a proposed configuration, not a supported journey.
 
 Both environments get the same two plain variables, `SM_HOSTING=managed-dev`
 and `SM_DATA_API_URL`, and allow network access to your SourceMedium host.
@@ -94,9 +101,9 @@ Cloud environments send HTTPS through a proxy named in `HTTPS_PROXY`, and
 Node's `fetch` ignores it by default. In managed development, `pnpm dev`,
 `pnpm diagnose` and `pnpm schema` start Node with `NODE_USE_ENV_PROXY=1` when a
 proxy is set, and keep loopback off the proxy
-(`scripts/managed-node.mjs`). Every Node version the template supports
-(22.22.1 and later) honors that setting; older releases such as 22.16 silently
-ignore it.
+(`scripts/managed-node.mjs`). The verified Node versions (22.22.1, 24.7 and 26)
+honor that setting; older releases such as 22.16 silently ignore it. See
+[Node's proxy support](https://nodejs.org/learn/http/enterprise-network-configuration).
 TLS verification is never turned off: if the environment uses its own
 certificate authority, it must be in `NODE_EXTRA_CA_CERTS`.
 
@@ -109,8 +116,9 @@ what checks live data.
 Ask your agent to change one report query, run it against your data, and show
 the rendered result before committing or pushing. Finding tables through the
 SourceMedium MCP connector helps write the query, but only the app's own query
-through its own adapter proves the change works. "Agent connected" in
-SourceMedium means a token completed a query; nothing else marks it.
+through its own adapter proves the change works. SourceMedium records a
+successful token query; the planned setup UI will use that receipt for
+"Agent connected".
 
 `pnpm test:live` (or `pnpm test:live --grep Overview` for one view) builds the
 app and opens every view in a browser against your data, failing on any error
@@ -128,11 +136,12 @@ and the first task does not depend on it.
 ## Token expired
 
 A token lasts 30 days. Expired, revoked and mistyped tokens all read as
-"SourceMedium did not accept the developer token". Create a new one in
-**Agent setup**, replace `SM_DEVELOPER_TOKEN` (or the cloud environment's
+"SourceMedium did not accept the developer token". Ask a workspace admin or
+editor for a new token, replace `SM_DEVELOPER_TOKEN` (or the cloud environment's
 network secret), and run `pnpm diagnose`. A token also stops working when the
-person who created it is no longer a workspace admin or editor, or when the
-app is paused or removed; ask a workspace admin.
+person who created it no longer has direct, workspace-wide admin or editor
+access, or when the app is paused or removed or its workspace is no longer
+active; ask a workspace admin.
 
 ## Troubleshooting
 

@@ -27,7 +27,7 @@ function source(
 ): SummarySourceRow {
   return {
     sm_store_id: store,
-    sm_channel: "Online DTC",
+    sm_channel: "online_dtc",
     sm_sub_channel: sub,
     date,
     order_net_revenue_cents: revenueCents,
@@ -67,10 +67,10 @@ describe("overview fixture contract", () => {
       source("2026-09-02", 1.5, 10n, 1n, "s1", "Paid", 10n, 1n),
       source("2026-09-06", 2, 20n, 2n, "s1", "Email", 20n, 2n),
       source("2026-09-08", 3, 30n, 3n, "s1", "Paid", 30n, 3n),
-      { ...source("2026-09-02", 100, 100n, 100n, "s1", "Other", 99999n), sm_channel: "Amazon" },
+      { ...source("2026-09-02", 100, 100n, 100n, "s1", "Other", 99999n), sm_channel: "amazon" },
     ];
     const data = toOverviewData(
-      decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", range, "week", "Online DTC"), OVERVIEW_RELATION),
+      decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", range, "week", "online_dtc"), OVERVIEW_RELATION),
     );
     expect(data.summaries.map((row) => [row.date, row.netRevenue, row.orders, row.sessions])).toEqual([
       ["2026-08-31", "0.3", 3.5, 30n],
@@ -85,7 +85,7 @@ describe("overview fixture contract", () => {
       ["total", "2026-09-02", "2026-09-08", "0.6"],
     ]);
     const monthly = toOverviewData(
-      decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", range, "month", "Online DTC"), OVERVIEW_RELATION),
+      decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", range, "month", "online_dtc"), OVERVIEW_RELATION),
     );
     expect(monthly.summaries).toHaveLength(1);
     expect(monthly.summaries[0]?.netRevenue).toBe("0.6");
@@ -188,13 +188,13 @@ describe("overview fixture contract", () => {
       first,
       { ...first, date: "2026-09-02", new_customer_order_net_revenue_cents: 20n },
       { ...first, sm_store_id: "other" },
-      { ...first, sm_channel: "Amazon" },
+      { ...first, sm_channel: "amazon" },
       { ...first, date: "2026-08-31" },
       source("2026-09-03", 20, 1n, 1n), // Missing classification, not a zero or inferred repeat order.
     ];
     for (const grain of ["day", "week", "month"] as const) {
       const data = toOverviewData(
-        decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", RANGE, grain, "Online DTC"), OVERVIEW_RELATION),
+        decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", RANGE, grain, "online_dtc"), OVERVIEW_RELATION),
       );
       expect(data.purchases).toEqual({
         first: { netRevenue: "0.3", orders: 3 },

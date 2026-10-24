@@ -5,6 +5,7 @@ import { loadStores } from "@/lib/data/stores.server";
 import { MAX_STORES } from "@/lib/data/store-roster.server";
 import { decodeRows } from "@/lib/data/decode";
 import { periodParams, periodSql } from "@/lib/data/period-sql";
+import { validSales } from "@/lib/data/channel-sql";
 import type { DateRange } from "@/lib/filters";
 import { STORES_RELATION, StoreSummaryRow } from "./rows";
 
@@ -21,8 +22,8 @@ export async function queryStoreComparison(range: DateRange, baseline: DateRange
     maxRows: MAX_STORES,
     sql: `WITH stores AS (
       SELECT sm_store_id,
-        ${period.sum("order_net_revenue", "revenue")},
-        ${period.sum("order_count", "orders")},
+        ${period.sum(validSales("order_net_revenue"), "revenue")},
+        ${period.sum(validSales("order_count"), "orders")},
         ${period.sum("ad_spend", "spend")},
         ${period.latest}
       FROM ${warehouse.table(STORES_RELATION)}

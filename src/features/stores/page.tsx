@@ -35,7 +35,7 @@ export default async function StoresPage({ searchParams }: { searchParams: Promi
         {
           relation: STORES_RELATION,
           scope:
-            "Daily executive summary, aggregated separately for each available store. No channel filters or cross-store totals.",
+            "Daily executive summary, aggregated separately for each available store. Revenue and orders count valid sales channels; spend counts every row. No channel filters or cross-store totals.",
         },
       ]}
     >

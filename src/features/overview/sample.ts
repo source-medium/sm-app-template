@@ -14,7 +14,8 @@ import { matchesSalesChannel } from "@/lib/filters";
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits } from "@/lib/data/decimal";
 import { type DateRange } from "@/lib/filters";
-import { sampleSummarySource, type SummarySourceRow } from "@/lib/sample/executive-summary";
+import { countedSales, sampleSummarySource, type SummarySourceRow } from "@/lib/sample/executive-summary";
+import { isValidSalesChannel } from "@/lib/sales-channels";
 import { periodStart, type TimeGrain } from "@/lib/time-grain";
 import type { OverviewData, OverviewFilters } from "./queries";
 import { OVERVIEW_RELATION, OverviewRow, toOverviewData } from "./rows";
@@ -48,7 +49,8 @@ export function aggregateOverviewWire(
   let firstOrders: number | null = null;
   let repeatRevenue: bigint | null = null;
   let repeatOrders: number | null = null;
-  for (const row of source) {
+  // Order measures count valid sales channels only, as the live query's validSales() does.
+  for (const row of source.map(countedSales)) {
     if (
       row.sm_store_id !== storeId ||
       row.date < range.from ||
@@ -66,14 +68,17 @@ export function aggregateOverviewWire(
     if (row.repeat_customer_order_net_revenue_cents !== null)
       repeatRevenue = (repeatRevenue ?? 0n) + row.repeat_customer_order_net_revenue_cents;
     if (row.repeat_customer_order_count !== null) repeatOrders = (repeatOrders ?? 0) + row.repeat_customer_order_count;
-    const identity = JSON.stringify([row.sm_channel, row.sm_sub_channel]);
-    const contribution = contributions.get(identity) ?? {
-      channel: row.sm_channel,
-      sub_channel: row.sm_sub_channel,
-      revenue: 0n,
-    };
-    contribution.revenue += row.order_net_revenue_cents;
-    contributions.set(identity, contribution);
+    // Contributions list sales channels only, as the live query's WHERE does.
+    if (isValidSalesChannel(row.sm_channel)) {
+      const identity = JSON.stringify([row.sm_channel, row.sm_sub_channel]);
+      const contribution = contributions.get(identity) ?? {
+        channel: row.sm_channel,
+        sub_channel: row.sm_sub_channel,
+        revenue: 0n,
+      };
+      contribution.revenue += row.order_net_revenue_cents;
+      contributions.set(identity, contribution);
+    }
     const sums = byDate.get(row.date) ?? zero();
     add(sums, {
       revenue: row.order_net_revenue_cents,

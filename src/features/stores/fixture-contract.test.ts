@@ -3,6 +3,7 @@ import { SAMPLE_STORES } from "@/lib/sample/stores";
 import { sampleSummarySource } from "@/lib/sample/executive-summary";
 import { toUnits } from "@/lib/data/decimal";
 import { periodChanges } from "@/lib/comparison";
+import { isValidSalesChannel } from "@/lib/sales-channels";
 import { sampleStoreComparison } from "./sample";
 
 const range = { from: "2026-09-01", to: "2026-09-07" };
@@ -15,7 +16,10 @@ it("aggregates each store and period independently with exact money and fraction
       ["", range],
       ["previous_", baseline],
     ] as const) {
-      const source = sampleSummarySource(row.sm_store_id, period, "2026-10-01");
+      const rows = sampleSummarySource(row.sm_store_id, period, "2026-10-01");
+      // Revenue and orders count valid sales channels: published exchange orders must not.
+      expect(rows.some((value) => !isValidSalesChannel(value.sm_channel) && value.order_count > 0)).toBe(true);
+      const source = rows.filter((value) => isValidSalesChannel(value.sm_channel));
       expect(toUnits(row[`${prefix}revenue`] ?? "0")).toBe(
         source.reduce((total, value) => total + value.order_net_revenue_cents, 0n) * 10_000_000n,
       );

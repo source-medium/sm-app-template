@@ -2,7 +2,7 @@ import { matchesSalesChannel } from "@/lib/filters";
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits, sumDecimals } from "@/lib/data/decimal";
 import { datesInRange } from "@/lib/filters";
-import { sampleSummarySource } from "@/lib/sample/executive-summary";
+import { countedSales, sampleSummarySource } from "@/lib/sample/executive-summary";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import { seededRandom } from "@/lib/sample/random";
 import { periodStart } from "@/lib/time-grain";
@@ -17,6 +17,7 @@ function sum(rows: Wire[], fields: readonly string[]): Wire {
 export function sampleBusiness(filters: PerformanceFilters) {
   const source = sampleSummarySource(filters.storeId, filters.range)
     .filter((row) => matchesSalesChannel(filters.channel, row.sm_channel))
+    .map(countedSales)
     .map((row) => ({
       period_date: periodStart(row.date, filters.grain),
       gross: money(row.order_gross_revenue_cents),
@@ -60,8 +61,8 @@ export function samplePlatforms(filters: PerformanceFilters) {
   if (!scale) return [];
   const channels = (
     [
-      ["Online DTC", 1],
-      ["Amazon", 0.2],
+      ["online_dtc", 1],
+      ["amazon", 0.2],
     ] as const
   ).filter(([channel]) => matchesSalesChannel(filters.channel, channel));
   if (!channels.length) return [];

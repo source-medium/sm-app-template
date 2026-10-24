@@ -59,7 +59,7 @@ export function sampleProductSource(storeId: string, range: DateRange): ProductS
           orderLineId: `${storeId}|${date}|p${index + 1}-v${v + 1}`,
           date,
           valid: true,
-          channel: index % 3 === 0 ? "Amazon" : "Online DTC",
+          channel: index % 3 === 0 ? "amazon" : "online_dtc",
           source: index % 3 === 0 ? "amazon" : "shopify",
           productId: `p${index + 1}`,
           variantId: `p${index + 1}-v${v + 1}`,

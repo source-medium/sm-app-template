@@ -17,7 +17,7 @@ import { formatCount, formatDate, formatMoneyIn, formatPercent } from "@/lib/for
 import { decimalToNumber } from "@/lib/data/decimal";
 import { periodChanges } from "@/lib/comparison";
 import { drillDown } from "@/lib/drill-down";
-import { REPORT_FILTER_FORM_ID, datesInRange, withParams, type SearchParams } from "@/lib/filters";
+import { REPORT_FILTER_FORM_ID, datesInRange, salesChannelLabel, withParams, type SearchParams } from "@/lib/filters";
 import { UNKNOWN_LOCATION, US_STATES } from "@/lib/shipping-geography";
 import { orderDateLabel } from "@/lib/order-scope";
 import countryNames from "./assets/countries-codes.json";
@@ -121,8 +121,8 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
             <p className="text-sm text-muted-foreground">
               {orderDateLabel(dateBasis)}. Valid orders only.{" "}
               {country ? `Shipping: ${country}${region ? ` / ${region}` : ""}.` : "All shipping countries."}{" "}
-              {channel && `Sales channel: ${channel}.`} Shipping destinations describe where orders were sent, not
-              residence or advertising reach.
+              {channel && `Sales channels: ${salesChannelLabel(channel)}.`} Shipping destinations describe where orders
+              were sent, not residence or advertising reach.
             </p>
             {dataStatus}
             <Link

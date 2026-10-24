@@ -82,11 +82,11 @@ describe("orders fixture contract", () => {
 });
 
 it("keeps channel filtering through search and keyset pages", async () => {
-  const filters = { ...FILTERS, range: { from: "2026-09-01", to: "2026-09-28" }, channel: "Amazon" };
+  const filters = { ...FILTERS, range: { from: "2026-09-01", to: "2026-09-28" }, channel: "amazon" };
   const first = await sampleOrders(filters);
   expect(first.nextCursor).not.toBeNull();
   const next = await sampleOrders({ ...filters, cursor: first.nextCursor });
-  expect([...first.orders, ...next.orders].every((order) => order.channel === "Amazon")).toBe(true);
+  expect([...first.orders, ...next.orders].every((order) => order.channel === "amazon")).toBe(true);
   expect(new Set([...first.orders, ...next.orders].map((row) => row.key)).size).toBe(
     first.orders.length + next.orders.length,
   );

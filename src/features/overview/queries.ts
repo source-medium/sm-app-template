@@ -12,7 +12,7 @@ import type { PeriodCoverage } from "@/lib/comparison";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { queryOverview, queryOverviewChannels } from "./bigquery";
 import { sampleOverview } from "./sample";
-import { sampleSummarySource } from "@/lib/sample/executive-summary";
+import { sampleSummaryChannels } from "@/lib/sample/executive-summary";
 
 export type OverviewMeasures = {
   /** NUMERIC, exact decimal text, in the reporting currency: SUM(order_net_revenue). */
@@ -73,7 +73,7 @@ export async function getOverviewChannels(filters: ReportFilters): Promise<strin
   const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live"
     ? queryOverviewChannels(filters)
-    : [...new Set(sampleSummarySource(filters.storeId, filters.range).map((row) => row.sm_channel))].sort();
+    : sampleSummaryChannels(filters.storeId, filters.range);
 }
 
 export type OverviewReport = {
