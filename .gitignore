@@ -30,3 +30,6 @@ coverage
 
 # Local owner reports, reconciliation inputs and stage timings.
 .sm/
+
+# Reproducible cloud-agent tool downloads (no credentials).
+/.agent-tools/
