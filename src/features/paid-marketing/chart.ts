@@ -1,10 +1,11 @@
 /**
- * The channel chart's series. The seven largest channels by impressions are
- * named and colored in name order, so a filter never repaints them; the rest
- * fold into Other. A selected channel always gets its own series, even when
- * it is too small to be named.
+ * The ad platform chart's series. The seven largest platforms by impressions
+ * are named and colored in source_system order, so a filter never repaints
+ * them; the rest fold into Other. A selected platform always gets its own
+ * series, even when it is too small to be named. Series show platform names.
  */
 import type { ChartSeries } from "@/components/charts/chart-card";
+import { adPlatformLabel } from "@/lib/ad-platforms";
 import { decimalToNumber, ratio, sumDecimals } from "@/lib/data/decimal";
 import { periodStart, type TimeGrain } from "@/lib/time-grain";
 import type { AdMeasures, ChannelDay, PaidMetric } from "./queries";
@@ -48,8 +49,8 @@ export function channelChart(
 
   const folded = channels.length > named.length;
   const series: ChartSeries[] = selected
-    ? [{ key: keyOf(selected), label: selected, color: colorOf(selected) }]
-    : named.map((name) => ({ key: keyOf(name), label: name, color: colorOf(name) }));
+    ? [{ key: keyOf(selected), label: adPlatformLabel(selected), color: colorOf(selected) }]
+    : named.map((name) => ({ key: keyOf(name), label: adPlatformLabel(name), color: colorOf(name) }));
   if (folded && !selected) series.push({ key: "other", label: "Other", color: "var(--chart-8)" });
 
   // Sum the inputs before dividing, including folded channels and calendar buckets.

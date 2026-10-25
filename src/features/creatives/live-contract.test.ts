@@ -25,7 +25,7 @@ const ROW = {
   image_url: "javascript:alert(1)",
   thumbnail_url: "https://cdn.example.com/t.jpg",
   call_to_action: "SHOP_NOW",
-  channel: "Meta",
+  channel: "meta_ads",
   spend: "0.1",
   impressions: "9007199254740993",
   clicks: "2",
@@ -33,6 +33,8 @@ const ROW = {
   ctr: "0.02",
 };
 const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-09-02" } };
+/** The ad platform; rpt_ad_performance_daily's sm_channel is the sales channel. */
+const PLATFORM = "COALESCE(source_system, '(unknown platform)')";
 
 describe("creatives, live", () => {
   it("applies literal name predicates before creative aggregation, with the same inspection scope", async () => {
@@ -42,7 +44,7 @@ describe("creatives, live", () => {
     const filters = {
       ...FILTERS,
       sort: "spend" as const,
-      channel: "Meta",
+      channel: "meta_ads",
       campaign: "cmp-1002",
       names: [{ field: "campaign" as const, operator: "contains" as const, values: [value] }],
     };
@@ -54,6 +56,8 @@ describe("creatives, live", () => {
       expect(query.query).toContain("sm_store_id = @store_id");
       expect(query.query).toContain("ad_creative_id IS NOT NULL");
       expect(query.query).toContain("ad_campaign_id = @campaign");
+      expect(query.query).toContain(`(@channel = '' OR ${PLATFORM} = @channel)`);
+      expect(query.query).not.toContain("sm_channel");
       expect(query.query).toContain("STRPOS(LOWER(ad_campaign_name), LOWER(@name_0_0)) > 0");
       expect(query.query).not.toContain(value);
       expect(query.queryParameters).toContainEqual({
@@ -68,7 +72,7 @@ describe("creatives, live", () => {
   it("sorts by a column from the fixed map and takes each creative's latest image", async () => {
     const fake = await goLive({ submit: () => rowsResponse(FIELDS, [ROW]) });
     const { getCreatives } = await import("./queries");
-    const channel = "Meta' OR TRUE --";
+    const channel = "meta_ads' OR TRUE --";
     const campaign = "campaign' OR TRUE --";
     const data = await getCreatives({ ...FILTERS, sort: "ctr", channel, campaign });
     expect(data.creatives[0]).toMatchObject({
@@ -80,8 +84,10 @@ describe("creatives, live", () => {
 
     const submit = fake.submitted(0);
     expect(submit.query).toContain("ORDER BY ctr DESC NULLS LAST, creative_id");
+    expect(submit.query).toContain(`${PLATFORM} AS channel`);
     expect(submit.query).toContain("GROUP BY creative_id, channel");
-    expect(submit.query).toContain("(@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)");
+    expect(submit.query).toContain(`(@channel = '' OR ${PLATFORM} = @channel)`);
+    expect(submit.query).not.toContain("sm_channel");
     expect(submit.query).not.toContain(channel);
     expect(submit.query).not.toContain(campaign);
     expect(submit.query).toContain("SAFE_DIVIDE(SUM(ad_platform_reported_revenue), SUM(ad_spend)) AS roas");
@@ -117,7 +123,14 @@ describe("creatives, live", () => {
           pageToken: "more",
           rows: Array.from({ length: 49 }, (_, index) => ({
             f: FIELDS.map((field) => ({
-              v: field.name === "creative_id" ? `cr${index}` : field.type === "STRING" ? null : "1",
+              v:
+                field.name === "creative_id"
+                  ? `cr${index}`
+                  : field.name === "channel"
+                    ? "meta_ads"
+                    : field.type === "STRING"
+                      ? null
+                      : "1",
             })),
           })),
         }),
@@ -158,13 +171,15 @@ it("lists channels before the creative cap and rejects a truncated roster", asyn
         [{ name: "channel", type: "STRING" }],
         truncate
           ? Array.from({ length: 50 }, (_, i) => ({ channel: String(i) }))
-          : [{ channel: "Meta" }, { channel: "Google" }],
+          : [{ channel: "meta_ads" }, { channel: "google_ads" }],
         truncate ? { pageToken: "more" } : {},
       ),
   });
   const { getCreativeChannels } = await import("./queries");
-  expect(await getCreativeChannels(FILTERS)).toEqual(["Meta", "Google"]);
+  expect(await getCreativeChannels(FILTERS)).toEqual(["meta_ads", "google_ads"]);
   const body = fake.submitted(0);
+  expect(body.query).toContain(`SELECT DISTINCT ${PLATFORM} AS channel`);
+  expect(body.query).not.toContain("sm_channel");
   expect(body.query).toContain("sm_store_id = @store_id AND date BETWEEN @start_date AND @end_date");
   expect(body.query).toContain("ad_creative_id IS NOT NULL");
   expect(body.query).not.toContain("@channel");
@@ -200,8 +215,8 @@ it("applies fractional thresholds after aggregation before ranking, and fetches 
     minimumSpend: "0.1",
     minimumConversions: "0.25",
     selection: [
-      ["Meta", "outside-top-list"],
-      ["Google", "outside-top-list"],
+      ["meta_ads", "outside-top-list"],
+      ["google_ads", "outside-top-list"],
     ],
   });
   const query = fake.submitted(0);
@@ -210,7 +225,7 @@ it("applies fractional thresholds after aggregation before ranking, and fetches 
   expect(query.query).toContain("ORDER BY cpo ASC NULLS LAST");
   expect(query.query).toContain("CAST(NULLIF(@minimum_spend, '') AS NUMERIC)");
   expect(query.query).toContain("CAST(NULLIF(@minimum_conversions, '') AS FLOAT64)");
-  expect(query.query).toContain("JSON_VALUE(selected, '$[0]')");
+  expect(query.query).toContain(`${PLATFORM} = JSON_VALUE(selected, '$[0]')`);
   expect(query.query).toContain("JSON_VALUE(selected, '$[1]')");
   expect(query.query).not.toContain("outside-top-list");
   expect(query.queryParameters).toContainEqual({
@@ -227,7 +242,7 @@ it("applies fractional thresholds after aggregation before ranking, and fetches 
     getCreatives({
       ...FILTERS,
       sort: "spend",
-      selection: Array.from({ length: 5 }, (_, i) => ["Meta", String(i)] as const),
+      selection: Array.from({ length: 5 }, (_, i) => ["meta_ads", String(i)] as const),
     }),
   ).rejects.toThrow("Invalid creative selection");
 });

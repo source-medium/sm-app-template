@@ -4,7 +4,13 @@ import { DataRegion } from "./data-region";
 import { LoadingState } from "./data-states";
 import { SelectFilter } from "./select-filter";
 
-type ChannelLabels = { name?: string; label?: string; allLabel?: string };
+type ChannelLabels = {
+  name?: string;
+  label?: string;
+  allLabel?: string;
+  /** Names each option; the default reads a carried sales-channel list as its channels. */
+  optionLabel?: (value: string) => string;
+};
 
 /** A list of several channels carried from a multi-channel report reads as its channels, not as JSON. */
 function channelLabel(value: string): string {
@@ -17,6 +23,7 @@ function ChannelFilter({
   name = "sales_channel",
   label = "Sales channel",
   allLabel = "All sales channels",
+  optionLabel = channelLabel,
   channels,
   value,
 }: ChannelLabels & {
@@ -32,7 +39,7 @@ function ChannelFilter({
         { value: "", label: allLabel },
         ...[...new Set([...(value ? [value] : []), ...channels])].sort().map((channel) => ({
           value: channel,
-          label: channelLabel(channel),
+          label: optionLabel(channel),
         })),
       ]}
     />

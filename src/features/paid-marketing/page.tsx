@@ -14,6 +14,7 @@ import { SelectFilter } from "@/components/patterns/select-filter";
 import { AdNameFilter } from "@/components/patterns/ad-name-filter";
 import { AdNameMatchesRegion } from "@/components/patterns/ad-name-matches";
 import { serializeAdNameFilters } from "@/lib/ad-name-filters";
+import { adPlatformLabel } from "@/lib/ad-platforms";
 import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber } from "@/lib/data/decimal";
@@ -73,11 +74,11 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
         {
           relation: AD_RELATION,
           scope:
-            "Daily ad delivery aggregated by channel, campaign, or the selected spend dimension. Conversions and revenue use ad-platform attribution.",
+            "Daily ad delivery aggregated by ad platform (source_system), campaign, or the selected spend dimension. Conversions and revenue use ad-platform attribution.",
         },
       ]}
       title="Paid marketing"
-      description="Spend and delivery by channel and campaign for one store."
+      description="Spend and delivery by ad platform and campaign for one store."
       pathname={PATHNAME}
       params={params}
       chartParams={["metric"]}
@@ -107,8 +108,9 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                     value={channel}
                     name="channel"
                     label="Ad platform"
-                    allLabel="All channels"
-                    loadingLabel="Loading channels"
+                    allLabel="All ad platforms"
+                    loadingLabel="Loading ad platforms"
+                    optionLabel={adPlatformLabel}
                   />
                 </div>
                 {dataStatus}
@@ -240,13 +242,13 @@ function PaidMarketingView({
           message={
             filters.names?.length
               ? "No ad delivery matches these filters. Try editing or clearing a filter."
-              : "No ad delivery matches this channel and date range."
+              : "No ad delivery matches this ad platform and date range."
           }
           action={
             filters.names?.length
               ? { href: withParams(PATHNAME, params, { names: null }), label: "Clear name filters" }
               : filters.channel
-                ? { href: withParams(PATHNAME, params, { channel: null }), label: "Show all channels" }
+                ? { href: withParams(PATHNAME, params, { channel: null }), label: "Show all ad platforms" }
                 : undefined
           }
         />
@@ -255,7 +257,7 @@ function PaidMarketingView({
           <Disclosure summary="About these numbers" className="text-sm text-muted-foreground">
             <div data-metric-definition="Paid marketing metrics" className="max-w-prose space-y-2">
               <p>
-                Platform attribution can overlap across channels. ROAS is attributed revenue / spend; cost per
+                Platform attribution can overlap across ad platforms. ROAS is attributed revenue / spend; cost per
                 conversion is spend / platform conversions. Ratios use summed inputs within each interval, including
                 Other. Missing or zero denominators stay unavailable.
               </p>
@@ -268,10 +270,10 @@ function PaidMarketingView({
           <MetricChart
             param="metric"
             metrics={metrics}
-            titleSuffix="by channel over time"
+            titleSuffix="by ad platform over time"
             description={
               folded && !filters.channel
-                ? `The ${MAX_NAMED_CHANNELS} largest channels by impressions are named; the rest are combined as Other.`
+                ? `The ${MAX_NAMED_CHANNELS} largest ad platforms by impressions are named; the rest are combined as Other.`
                 : undefined
             }
             kind="line"
@@ -280,7 +282,7 @@ function PaidMarketingView({
           <section aria-labelledby="campaigns-heading" className="flex flex-col gap-3">
             <SectionHeader
               id="campaigns-heading"
-              title={`Campaigns${filters.channel ? ` in ${filters.channel}` : ""}`}
+              title={`Campaigns${filters.channel ? ` in ${adPlatformLabel(filters.channel)}` : ""}`}
               actions={
                 <a
                   href={withParams(
@@ -310,7 +312,7 @@ function PaidMarketingView({
               truncated={data.campaignsTruncated}
               columns={[
                 { key: "campaign", header: "Campaign" },
-                { key: "channel", header: "Channel" },
+                { key: "channel", header: "Ad platform" },
                 { key: "spend", header: "Spend", align: "right" },
                 { key: "impressions", header: "Impressions", align: "right" },
                 { key: "clicks", header: "Clicks", align: "right" },
@@ -337,7 +339,7 @@ function PaidMarketingView({
                               dateBasis: "ad-date",
                               population: "platform delivery",
                               filters: {
-                                channel: campaign.channel ?? "(none)",
+                                channel: campaign.channel,
                                 campaign: campaign.campaignId,
                                 names: serializeAdNameFilters(filters.names ?? []),
                               },
@@ -353,8 +355,8 @@ function PaidMarketingView({
                         : undefined,
                     },
                     channel: {
-                      display: campaign.channel ?? EMPTY_VALUE,
-                      href: withParams(PATHNAME, params, { channel: campaign.channel ?? "(none)" }),
+                      display: adPlatformLabel(campaign.channel),
+                      href: withParams(PATHNAME, params, { channel: campaign.channel }),
                     },
                     spend: { display: money(campaign.spend), sort: spend },
                     impressions: { display: formatCount(campaign.impressions), sort: impressions },

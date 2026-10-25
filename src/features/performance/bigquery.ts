@@ -1,4 +1,4 @@
-import { SALES_CHANNEL_PREDICATE, summaryMeasure } from "@/lib/data/channel-sql";
+import { AD_PLATFORM_SQL, SALES_CHANNEL_PREDICATE, summaryMeasure } from "@/lib/data/channel-sql";
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { bq, decodeRows } from "@/lib/data/decode";
@@ -57,7 +57,7 @@ export async function queryPlatforms(filters: PerformanceFilters) {
     maxRows: performanceRowLimit(filters.range, filters.grain) * 26,
     sql: `WITH scoped AS (
       SELECT DATE_TRUNC(date, ${GRAIN_SQL[filters.grain]}) AS period_date,
-        COALESCE(source_system, '(unknown platform)') AS platform,
+        ${AD_PLATFORM_SQL} AS platform,
         ${Object.entries(PLATFORM_FIELDS)
           .map(([alias, field]) => `${field} AS ${alias}`)
           .join(",\n")}

@@ -83,13 +83,13 @@ test("performance: platform summary and individual platform tables share daily, 
   const detail = page.locator('section[aria-labelledby="platform-detail-heading"]');
   const href = await detail.getByRole("link", { name: "Download platform CSV", exact: true }).getAttribute("href");
   if (!href) throw new Error("Missing platform detail export");
-  expect(new URL(href, "http://example.com").searchParams.get("platform")).toBe("Meta");
+  expect(new URL(href, "http://example.com").searchParams.get("platform")).toBe("meta_ads");
   const response = await request.get(href);
   expect(response.status()).toBe(200);
   const { parseCsv } = await import("../../../scripts/lib/reconciliation");
   const rows = parseCsv(await response.text());
   expect(rows.length).toBeGreaterThan(1);
-  expect(rows.every((row) => row.platform === "Meta")).toBe(true);
+  expect(rows.every((row) => row.platform === "meta_ads")).toBe(true);
   await expect(page.getByText(/Combined revenue and conversions sum platform claims/)).toBeVisible();
   await page.setViewportSize({ width: 375, height: 812 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

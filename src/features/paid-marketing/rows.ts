@@ -8,7 +8,7 @@ export const AD_RELATION = "rpt_ad_performance_daily";
 /** The campaign table shows the top campaigns by spend; more is reported as truncation. */
 export const MAX_CAMPAIGNS = 200;
 export const MAX_BREAKDOWN = 10;
-/** Channel-by-day series rows: the longest allowed range times up to 25 channels. Past this bound is an error. */
+/** Platform-by-day series rows: the longest allowed range times up to 25 ad platforms. Past this bound is an error. */
 export const MAX_SERIES_ROWS = appConfig.dateRange.maxDays * 25;
 export const SpendBreakdownRow = z.object({
   dimension_key: bq.string(),
@@ -33,7 +33,7 @@ export const ChannelDayRow = z.object({ channel: bq.string(), date: bq.date(), .
 export const CampaignWireRow = z.object({
   campaign_id: bq.string(),
   campaign_name: bq.string().nullable(),
-  channel: bq.string().nullable(),
+  channel: bq.string(),
   ...adMeasures,
 });
 

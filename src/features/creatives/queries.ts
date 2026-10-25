@@ -1,6 +1,6 @@
 /**
  * Creatives' data contract: rpt_ad_performance_daily aggregated to one row
- * per ad creative over the range, sorted by a measure. Creative text and
+ * per ad platform and creative over the range, sorted by a measure. Creative text and
  * image URLs are populated for Meta today; other platforms render as text
  * cards.
  */
@@ -20,7 +20,8 @@ export type Creative = {
   /** Hotlinked from the ad platform; it may expire. The card falls back to text. */
   imageUrl: string | null;
   callToAction: string | null;
-  channel: string | null;
+  /** The ad platform: source_system (src/lib/ad-platforms.ts), not the sales channel. */
+  channel: string;
   /** NUMERIC, exact decimal text, in the reporting currency. */
   spend: string | null;
   impressions: bigint | null;

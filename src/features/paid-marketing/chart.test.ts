@@ -48,6 +48,18 @@ describe("paid marketing channel chart", () => {
     expect(metricValue(chart.byDate.get("2026-09-01")?.get("selected"), "clicks")).toBe(9n);
   });
 
+  it("names ad platform series by source_system, showing unlisted platforms as published", () => {
+    const [meta, google, snapchat] = DAYS;
+    if (!meta || !google || !snapchat) throw new Error("Missing channel days");
+    const days = [
+      { ...meta, channel: "meta_ads" },
+      { ...google, channel: "google_ads" },
+      { ...snapchat, channel: "snapchat_ads" },
+    ];
+    expect(channelChart(days, null).series.map((item) => item.label)).toEqual(["Google", "Meta", "snapchat_ads"]);
+    expect(channelChart(days, "meta_ads").series.map((item) => item.label)).toEqual(["Meta"]);
+  });
+
   it("keeps a named channel's key and color when it is selected", () => {
     const all = channelChart(DAYS, null);
     const one = channelChart(DAYS, "ch3");

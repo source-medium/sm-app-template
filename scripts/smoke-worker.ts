@@ -189,11 +189,11 @@ modes.push(fixedStoreMode, {
 
 // The export belongs to the removable Paid marketing example.
 if (appConfig.nav.some((item) => item.href === "/paid-marketing")) {
-  const download = "/paid-marketing/export?store=sample-store-a&from=2026-09-01&to=2026-09-07&channel=Meta";
+  const download = "/paid-marketing/export?store=sample-store-a&from=2026-09-01&to=2026-09-07&channel=meta_ads";
   modes[0]?.checks.push([download, {}, 200, '"data_mode","store_id"']);
   modes[1]?.checks.push([download, { headers: signedIn }, 200, '"sample","sample-store-a"']);
   fixedStoreMode.checks.push([
-    "/paid-marketing/export?from=2026-09-01&to=2026-09-07&channel=Meta",
+    "/paid-marketing/export?from=2026-09-01&to=2026-09-07&channel=meta_ads",
     { headers: signedIn },
     200,
     '"sample","sample-store-b"',

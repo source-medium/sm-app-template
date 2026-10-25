@@ -1,10 +1,12 @@
 /**
  * Paid marketing, live. Both reads aggregate in SQL before any bound: the
- * series to channel by day, the table to campaign over the range.
+ * series to ad platform by day, the table to campaign over the range. The
+ * `channel` parameter and alias carry the ad platform (AD_PLATFORM_SQL).
  */
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { adNamePredicate } from "@/lib/data/ad-name-sql";
+import { AD_PLATFORM_SQL } from "@/lib/data/channel-sql";
 import { decodeRows } from "@/lib/data/decode";
 import type { SpendBreakdown } from "./queries";
 import type { BreakdownDimension } from "./filters";
@@ -39,15 +41,15 @@ const BREAKDOWN_SQL = {
     key: "COALESCE(NULLIF(ad_campaign_tactic, ''), '(none)')",
     label: "COALESCE(NULLIF(ad_campaign_tactic, ''), '(none)')",
   },
-  channel: { key: "IFNULL(sm_channel, '(none)')", label: "IFNULL(sm_channel, '(none)')" },
+  channel: { key: AD_PLATFORM_SQL, label: AD_PLATFORM_SQL },
   // Campaign IDs are unique within an ad platform, so the key names both.
   campaign: {
-    key: "CONCAT(IFNULL(sm_channel, '(none)'), ' / ', IFNULL(ad_campaign_id, '(none)'))",
+    key: `CONCAT(${AD_PLATFORM_SQL}, ' / ', IFNULL(ad_campaign_id, '(none)'))`,
     label: "COALESCE(ad_campaign_name, ad_campaign_id, '(none)')",
   },
 } as const;
 
-/** Full-period totals are calculated before the top-N limit; both periods have identical store/channel scope. */
+/** Full-period totals are calculated before the top-N limit; both periods have identical store/ad platform scope. */
 export async function querySpendBreakdown(
   filters: PaidMarketingFilters,
   dimension: BreakdownDimension,
@@ -68,7 +70,7 @@ export async function querySpendBreakdown(
       FROM ${warehouse.table(AD_RELATION)}
       WHERE sm_store_id = @store_id
         AND ${period.rows}
-        AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
+        AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
         AND ${names.sql}
       GROUP BY dimension_key
     )
@@ -99,7 +101,7 @@ export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise
       maxRows: MAX_SERIES_ROWS,
       sql: `
         SELECT
-          IFNULL(sm_channel, '(none)') AS channel,
+          ${AD_PLATFORM_SQL} AS channel,
           date,
           ${AD_MEASURES_SQL}
         FROM ${table}
@@ -121,7 +123,7 @@ export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise
 
 /**
  * The same bounded campaign read serves the table and CSV, without rerunning the chart query.
- * Campaign IDs are unique within an ad platform, so a campaign is its channel and ID. Spend
+ * Campaign IDs are unique within an ad platform, so a campaign is its platform and ID. Spend
  * without a campaign ID is not a campaign; the spend breakdown shows it as (none).
  */
 export async function queryPaidCampaigns(filters: PaidMarketingFilters): Promise<CampaignData> {
@@ -137,13 +139,13 @@ export async function queryPaidCampaigns(filters: PaidMarketingFilters): Promise
         SELECT
           ad_campaign_id AS campaign_id,
           MAX(ad_campaign_name) AS campaign_name,
-          sm_channel AS channel,
+          ${AD_PLATFORM_SQL} AS channel,
           ${AD_MEASURES_SQL}
         FROM ${table}
         WHERE sm_store_id = @store_id
           AND date BETWEEN @start_date AND @end_date
           AND ad_campaign_id IS NOT NULL
-          AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
+          AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
           AND ${names.sql}
         GROUP BY channel, campaign_id
         ORDER BY spend DESC, impressions DESC, campaign_id, channel

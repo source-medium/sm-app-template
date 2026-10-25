@@ -7,7 +7,8 @@ import { slotColumn } from "@/lib/data/period-sql";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatMoney, formatMoneyIn, formatPercent } from "@/lib/format";
 import { withParams, type SearchParams } from "@/lib/filters";
-import type { BreakdownDimension } from "./filters";
+import { adPlatformLabel } from "@/lib/ad-platforms";
+import { BREAKDOWN_DIMENSIONS, type BreakdownDimension } from "./filters";
 import { type PaidMarketingFilters, type SpendBreakdown } from "./queries";
 
 export function SpendBreakdownView({
@@ -29,20 +30,26 @@ export function SpendBreakdownView({
   const first = data.rows[0];
   const total = first?.total_spend ?? null;
   const changes = plan ? slotChanges(plan, first) : null;
+  const title = BREAKDOWN_DIMENSIONS.find((item) => item.value === dimension)?.label.toLowerCase();
   /** The ranking for one comparison slot; both are rendered and the active one shows. */
   const ranking = (slot: 0 | 1) => {
     const baseline = plan?.slots[slot];
     const compare = Boolean(changes?.[slot].show && baseline?.range);
     return (
       <RankedBreakdown
-        title={`Spend by ${dimension === "type" || dimension === "tactic" ? `campaign ${dimension}` : dimension}`}
+        title={`Spend by ${title}`}
         valueLabel="Spend"
-        description={`Spend in the selected period: ${formatMoney(total, currency)}. ${data.hasMore ? "Top 10 by spend. " : ""}Shares use all matching rows for this store, date range, and channel. Zero totals and negative spend have no share.`}
+        description={`Spend in the selected period: ${formatMoney(total, currency)}. ${data.hasMore ? "Top 10 by spend. " : ""}Shares use all matching rows for this store, date range, and ad platform. Zero totals and negative spend have no share.`}
         comparisonLabel={compare && baseline ? `Change vs ${baseline.label}` : undefined}
         hasMore={data.hasMore}
         rows={data.rows.map((row) => ({
           id: row.dimension_key,
-          label: dimension === "campaign" ? `${row.label} (${row.dimension_key})` : row.label,
+          label:
+            dimension === "campaign"
+              ? `${row.label} (${row.dimension_key})`
+              : dimension === "channel"
+                ? adPlatformLabel(row.label)
+                : row.label,
           value: { value: decimalToNumber(row.spend), display: money(row.spend) },
           share: formatPercent(nonnegativeShare(row.spend, total, first?.minimum_spend ?? null)),
           change: compare ? kpiDelta(row.spend, row[slotColumn(slot, "spend")], money).display : undefined,

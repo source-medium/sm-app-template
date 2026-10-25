@@ -3,7 +3,7 @@ import { parseChoice, single, type SearchParams } from "@/lib/filters";
 import { parseTimeGrain } from "@/lib/time-grain";
 
 export const BREAKDOWN_DIMENSIONS = [
-  { value: "channel", label: "Channel" },
+  { value: "channel", label: "Ad platform" },
   { value: "campaign", label: "Campaign" },
   { value: "type", label: "Campaign type" },
   { value: "tactic", label: "Campaign tactic" },

@@ -16,6 +16,7 @@ import { SelectFilter } from "@/components/patterns/select-filter";
 import { AdNameFilter } from "@/components/patterns/ad-name-filter";
 import { AdNameMatchesRegion } from "@/components/patterns/ad-name-matches";
 import { serializeAdNameFilters } from "@/lib/ad-name-filters";
+import { adPlatformLabel } from "@/lib/ad-platforms";
 import { ReportPage } from "@/components/shell/report-page";
 import { single, withParams, REPORT_FILTER_FORM_ID, type ReportFilters, type SearchParams } from "@/lib/filters";
 import { formatCount, formatAttributedConversions, formatMoney, formatPercent, formatMultiple } from "@/lib/format";
@@ -44,7 +45,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
   const definitionFilters = (filters: ReportFilters) => ({
     store: filters.storeId,
     ...filters.range,
-    channel,
+    ad_platform: channel,
     campaign,
     min_spend: minimumSpend,
     min_conversions: minimumConversions,
@@ -58,7 +59,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
         {
           relation: CREATIVE_RELATION,
           scope:
-            "Daily ad delivery grouped by creative and ad channel over the selected dates. CTR is clicks divided by impressions.",
+            "Daily ad delivery grouped by creative and ad platform (source_system) over the selected dates. CTR is clicks divided by impressions.",
         },
       ]}
       title="Creatives"
@@ -160,9 +161,10 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                   load={() => getCreativeChannels(filters)}
                   value={channel}
                   name="channel"
-                  label="Ad channel"
-                  allLabel="All ad channels"
-                  loadingLabel="Loading ad channels"
+                  label="Ad platform"
+                  allLabel="All ad platforms"
+                  loadingLabel="Loading ad platforms"
+                  optionLabel={adPlatformLabel}
                 />
                 <SelectFilter
                   name="sort"
@@ -271,13 +273,13 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                   emptyMessage={
                     names.rules.length
                       ? "No ad creatives match these filters. Try editing or clearing a filter."
-                      : "No ad creatives match this store, ad channel, and date range."
+                      : "No ad creatives match this store, ad platform, and date range."
                   }
                   emptyAction={
                     names.rules.length
                       ? { href: withParams(PATHNAME, params, { names: null }), label: "Clear name filters" }
                       : channel
-                        ? { href: withParams(PATHNAME, params, { channel: null }), label: "Show all ad channels" }
+                        ? { href: withParams(PATHNAME, params, { channel: null }), label: "Show all ad platforms" }
                         : undefined
                   }
                 >
@@ -326,8 +328,8 @@ function CreativesView({
       <Disclosure summary="About these numbers" className="text-sm text-muted-foreground">
         <p data-metric-definition="Creative metrics" className="max-w-prose">
           CTR is clicks divided by impressions. Revenue and conversions use each platform&apos;s attribution and may
-          overlap across channels. ROAS is revenue / spend; cost per conversion is spend / conversions. Both use period
-          totals. Compare spend and conversion volume before interpreting a high return.
+          overlap across ad platforms. ROAS is revenue / spend; cost per conversion is spend / conversions. Both use
+          period totals. Compare spend and conversion volume before interpreting a high return.
         </p>
       </Disclosure>
       {view === "table" ? (
@@ -336,7 +338,7 @@ function CreativesView({
           truncated={data.truncated}
           columns={[
             { key: "name", header: "Creative" },
-            { key: "channel", header: "Channel" },
+            { key: "channel", header: "Ad platform" },
             { key: "spend", header: "Spend", align: "right" },
             { key: "revenue", header: "Platform revenue", align: "right" },
             { key: "conversions", header: "Conversions", align: "right" },
@@ -347,7 +349,7 @@ function CreativesView({
             id: JSON.stringify([c.channel, c.creativeId]),
             cells: {
               name: { display: c.title ?? c.creativeId },
-              channel: { display: c.channel ?? "(none)" },
+              channel: { display: adPlatformLabel(c.channel) },
               spend: { display: formatMoney(c.spend, currency), sort: decimalToNumber(c.spend) },
               revenue: { display: formatMoney(c.revenue, currency), sort: c.revenue },
               conversions: { display: formatAttributedConversions(c.conversions), sort: c.conversions },
@@ -366,26 +368,26 @@ function CreativesView({
               [creative.body, creative.callToAction ? `Call to action: ${humanize(creative.callToAction)}` : null]
                 .filter(Boolean)
                 .join(" · ") || null,
-            badge: creative.channel,
+            badge: adPlatformLabel(creative.channel),
             imageUrl: creative.imageUrl,
             definitionLabel: "About platform ROAS",
             definition: (
               <MetricDefinition
                 binding={creativeBinding("roas")}
                 scope={{
-                  filters: { ...scopeFilters, channel: creative.channel },
+                  filters: { ...scopeFilters, ad_platform: creative.channel },
                   currency,
                   timeZone,
                 }}
               />
             ),
             footer: (() => {
-              const identity: CreativeIdentity = [creative.channel ?? "(none)", creative.creativeId];
-              const selected = selection.some(([channel, id]) => channel === identity[0] && id === identity[1]);
+              const identity: CreativeIdentity = [creative.channel, creative.creativeId];
+              const selected = selection.some(([platform, id]) => platform === identity[0] && id === identity[1]);
               if (!selected && selection.length >= 4)
                 return <span className="text-sm text-muted-foreground">Four selected</span>;
               const next = selected
-                ? selection.filter(([channel, id]) => channel !== identity[0] || id !== identity[1])
+                ? selection.filter(([platform, id]) => platform !== identity[0] || id !== identity[1])
                 : [...selection, identity];
               return (
                 <Link

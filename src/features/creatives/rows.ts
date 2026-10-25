@@ -15,7 +15,7 @@ export const CreativeRow = z.object({
   image_url: bq.string().nullable(),
   thumbnail_url: bq.string().nullable(),
   call_to_action: bq.string().nullable(),
-  channel: bq.string().nullable(),
+  channel: bq.string(),
   spend: bq.numeric().nullable(),
   impressions: bq.int64().nullable(),
   clicks: bq.int64().nullable(),

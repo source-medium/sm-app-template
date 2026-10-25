@@ -32,7 +32,7 @@ const CAMPAIGN_FIELDS = [
   { name: "platform_revenue", type: "FLOAT" },
 ];
 const SERIES_ROW = {
-  channel: "Meta",
+  channel: "meta_ads",
   date: "2026-09-01",
   spend: "0.1",
   impressions: "9007199254740993",
@@ -42,14 +42,16 @@ const SERIES_ROW = {
 const CAMPAIGN_ROW = {
   campaign_id: "c1",
   campaign_name: "Prospecting",
-  channel: "Meta",
+  channel: "meta_ads",
   spend: "123456789012345678.123456789",
   impressions: "10",
   clicks: "1",
   conversions: "0.5",
   platform_revenue: "2.5",
 };
-const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-09-02" }, channel: "Meta" };
+const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-09-02" }, channel: "meta_ads" };
+/** The ad platform; rpt_ad_performance_daily's sm_channel is the sales channel. */
+const PLATFORM = "COALESCE(source_system, '(unknown platform)')";
 
 const queryName = (call: FakeCall) => (call.body as SubmittedQuery).labels.sm_query;
 
@@ -83,6 +85,9 @@ describe("paid marketing, live", () => {
       });
       if (query.query.includes("GROUP BY"))
         expect(query.query.indexOf("@name_0_0")).toBeLessThan(query.query.indexOf("GROUP BY"));
+      // Every read groups or filters by ad platform; none reads the sales channel.
+      expect(query.query).toContain(PLATFORM);
+      expect(query.query).not.toContain("sm_channel");
     }
     const before = fake.calls.length;
     url.searchParams.set("names", "invalid");
@@ -104,7 +109,7 @@ describe("paid marketing, live", () => {
     const { GET } = await import("./download");
     const response = await GET(
       new Request(
-        "https://example.test/paid-marketing/export?store=store-1&from=2026-09-01&to=2026-09-02&channel=Meta&channel=Google",
+        "https://example.test/paid-marketing/export?store=store-1&from=2026-09-01&to=2026-09-02&channel=meta_ads&channel=google_ads",
       ),
     );
     const csv = await response.text();
@@ -113,6 +118,8 @@ describe("paid marketing, live", () => {
     expect(csv).toContain('"\'=1+1"');
     // CSV uses the same canonical store metadata currency as the report.
     expect(csv).toContain('"live","store-1","2026-09-01","2026-09-02","USD","false"');
+    expect(csv.split("\r\n")[0]).toContain('"campaign_id","campaign_name","ad_platform","spend"');
+    expect(csv).toContain('"meta_ads","123456789012345678.123456789"');
     const queries = fake.calls.filter((call) => call.kind === "submit" && !isStoreList(call));
     expect(queries).toHaveLength(1);
     const submitted = queries[0];
@@ -121,7 +128,7 @@ describe("paid marketing, live", () => {
     expect((submitted.body as SubmittedQuery).queryParameters).toContainEqual({
       name: "channel",
       parameterType: { type: "STRING" },
-      parameterValue: { value: "Meta" },
+      parameterValue: { value: "meta_ads" },
     });
 
     requestHeaders.current = new Headers();
@@ -172,26 +179,36 @@ describe("paid marketing, live", () => {
     const campaigns = fake.calls.find((call) => call.kind === "submit" && queryName(call) === "paid_campaigns")
       ?.body as SubmittedQuery;
     expect(campaigns.query).toContain("`sm-demotenant.sm_transformed_v2.rpt_ad_performance_daily`");
-    expect(campaigns.query).not.toContain("Meta");
+    expect(campaigns.query).not.toContain("meta_ads");
+    expect(campaigns.query).toContain(`${PLATFORM} AS channel`);
+    expect(campaigns.query).toContain(`AND (@channel = '' OR ${PLATFORM} = @channel)`);
     expect(campaigns.queryParameters).toContainEqual({
       name: "channel",
       parameterType: { type: "STRING" },
-      parameterValue: { value: "Meta" },
+      parameterValue: { value: "meta_ads" },
     });
+    const series = fake.calls.find((call) => call.kind === "submit" && queryName(call) === "paid_channel_daily")
+      ?.body as SubmittedQuery;
+    expect(series.query).toContain(`${PLATFORM} AS channel`);
+    expect(series.query).toContain("GROUP BY channel, date");
+    expect(series.query).not.toContain("sm_channel");
   });
 
   it("keeps one campaign ID on two ad platforms as two campaigns", async () => {
     const fake = await goLive({
-      submit: () => rowsResponse(CAMPAIGN_FIELDS, [CAMPAIGN_ROW, { ...CAMPAIGN_ROW, channel: "Google", spend: "1" }]),
+      submit: () =>
+        rowsResponse(CAMPAIGN_FIELDS, [CAMPAIGN_ROW, { ...CAMPAIGN_ROW, channel: "google_ads", spend: "1" }]),
     });
     const { getPaidCampaigns } = await import("./queries");
     const data = await getPaidCampaigns(FILTERS);
     expect(data.campaigns.map((campaign) => [campaign.channel, campaign.campaignId])).toEqual([
-      ["Meta", "c1"],
-      ["Google", "c1"],
+      ["meta_ads", "c1"],
+      ["google_ads", "c1"],
     ]);
     const sql = fake.submitted(0).query;
+    expect(sql).toContain(`${PLATFORM} AS channel`);
     expect(sql).toContain("GROUP BY channel, campaign_id");
+    expect(sql).not.toContain("sm_channel");
   });
 
   it("ranks only groups with selected-period spend, so comparison-only campaigns never pad the list", async () => {
