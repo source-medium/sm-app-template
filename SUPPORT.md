@@ -1,6 +1,6 @@
 # Getting help
 
-- **Your SourceMedium data, the Apps page, keys, or query allowances:** open a
+- **Your SourceMedium data, Dashboards & Apps, keys, or query allowances:** open a
   support request from your SourceMedium workspace
   (https://sourcemedium.com/docs/product-tours/get-support) or email
   support@sourcemedium.com.

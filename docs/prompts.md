@@ -75,7 +75,7 @@ The prompts below cover work that starts outside a page.
 
 Copy one into your coding agent. These are starting instructions, not proven
 end-to-end onboarding flows. "Connect my data" needs an already provisioned
-app block issued by an organization admin from SourceMedium's Dashboards & Apps page. "Check a number" needs an
+app block issued by a workspace editor or admin from SourceMedium's Dashboards & Apps page. "Check a number" needs an
 independent, authorized source; a passing code check does not validate a metric.
 
 ## Connect my data
@@ -91,7 +91,7 @@ Cloudflare's production runtime settings myself. Do not ask me to create a
 local file, run a terminal command, or give you the key. Help verify sign-in,
 Live data, and the intended store on the hosted app. Guide me through
 Live data → Check connection; I can share its safe report here. If I need a
-block, direct an organization admin to Dashboards & Apps in SourceMedium, not Google Cloud.
+block, direct a workspace editor or admin to Dashboards & Apps in SourceMedium, not Google Cloud.
 Connect protected previews too, following docs/cloud.md#connect-preview-data;
 use Production for the live site and Development for previews and debugging.
 For cloud-agent debugging, follow docs/cloud.md#debug-with-live-data. I will
