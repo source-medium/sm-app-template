@@ -254,7 +254,7 @@ Live reports always use warehouse images.
 Your agent follows the [Cloudflare guide](docs/cloud.md) to connect the app and
 set up automatic deployments:
 
-1. **Connect your data.** An organization admin creates an app in your SourceMedium
+1. **Connect your data.** An editor or admin creates an app in your SourceMedium
    workspace's **Dashboards & Apps** page. Enter its configuration block privately.
 2. **Choose who can view it.** Use a shared password for a small trusted group,
    or Cloudflare Access for individual sign-in. Your agent helps you choose.

@@ -41,7 +41,7 @@ SourceMedium is needed.
 ## 2. Get your configuration
 
 No block yet? Dashboards & Apps appears in the workspace menu once your data has been
-delivered, and only an organization admin can create an app. If the page says
+delivered, and only a workspace editor or admin can create an app. If the page says
 credentials are still being enabled, stay on sample data and ask
 [SourceMedium support](../SUPPORT.md).
 
@@ -196,7 +196,7 @@ no `.dev.vars` shows **Sample data** here on purpose. Paste the block into
 
 ## Lost a secret?
 
-Treat the configuration block as shown once. An organization admin can return
+Treat the configuration block as shown once. An editor or admin can return
 to **Dashboards & Apps** to recover access without sending anyone the old key or password:
 
 - **Replace key** returns a new `SM_CONNECTION` (or `SM_APP_KEY` for older

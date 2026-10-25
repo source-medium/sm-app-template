@@ -8,8 +8,8 @@ public issue.
 
 If your report involves a live credential, do not include it. If you believe
 an app key or password was exposed, follow the replacement instructions in [operations](docs/operations.md)
-and contact SourceMedium immediately. Do not wait for the planned Apps page
-to become available.
+and contact SourceMedium immediately. An editor or admin replaces or revokes
+the app in **Dashboards & Apps**.
 
 ## Supported versions
 

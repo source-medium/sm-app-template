@@ -6,11 +6,11 @@ enabled, keep sample data and ask SourceMedium support.
 
 ## Replacing secrets
 
-| Action (Dashboards & Apps page)  | What changes                             | What it interrupts                                                               |
-| -------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
-| **Replace key**                  | A new connection; the old key is deleted | Every deployment stops reading data until you update its connection and redeploy |
-| **Generate new viewer password** | A new `APP_BASIC_AUTH`                   | Nothing until you update your hosts; then viewers need the new password          |
-| **Copy settings (no secrets)**   | The app's recorded non-secret values     | Nothing; update the values and redeploy                                          |
+| Action (Dashboards & Apps page)    | What changes                             | What it interrupts                                                               |
+| ---------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
+| **Replace key**                    | A new connection; the old key is deleted | Every deployment stops reading data until you update its connection and redeploy |
+| **Generate new viewer password**   | A new `APP_BASIC_AUTH`                   | Nothing until you update your hosts; then viewers need the new password          |
+| **Copy dataset and project names** | The app's recorded non-secret values     | Nothing; update the values and redeploy                                          |
 
 There is no overlap window in this version: plan a key replacement for a quiet
 moment and update every host right away. Google may honor access tokens issued
