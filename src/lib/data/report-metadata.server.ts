@@ -3,17 +3,15 @@ import { z } from "zod";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { requestScoped } from "@/lib/request-scope";
 import type { PublishedMetric } from "@/lib/metric-binding";
-import { dictionaryIdentity } from "./catalog.server";
+import { DICTIONARY, METRIC_CATALOG, dictionaryIdentity } from "./catalog.server";
 import { sourceEvidence, type Availability, type SourceEvidence } from "./evidence";
 import { CACHE_POLICY } from "./query-cache";
 import { WarehouseError } from "./warehouse-error";
 import { bq, decodeRows } from "./decode";
-type Warehouse = Extract<Awaited<ReturnType<typeof requireViewer>>, { mode: "live" }>["warehouse"];
+import type { Warehouse } from "./warehouse.server";
 
-const Dictionary = "dim_data_dictionary";
-const Catalog = "dim_semantic_metric_catalog";
 /** The catalog read's row bound; a longer catalog is reported as partial. */
-export const CATALOG_LIMIT = 600;
+const CATALOG_LIMIT = 600;
 const SchemaRow = z.object({ table_name: bq.string(), column_name: bq.string(), data_type: bq.string() });
 const PayloadRow = z.object({ payload: bq.string() });
 const Metric = z.object({
@@ -111,7 +109,7 @@ async function readMetadata(
   // Metadata never holds otherwise usable report data for the warehouse's full 30-second deadline.
   const signal = AbortSignal.timeout(2500);
   try {
-    const metadataTable = warehouse.table(Dictionary, "metadata");
+    const metadataTable = warehouse.table(DICTIONARY, "metadata");
     const schemaTable = metadataTable.replace(/\.dim_data_dictionary`$/, ".INFORMATION_SCHEMA.COLUMNS`");
     // The store parameter satisfies a fixed-store deployment's check; neither metadata relation is filtered by it here.
     const storeParam = { name: "store_id", type: "STRING", value: storeId } as const;
@@ -121,7 +119,7 @@ async function readMetadata(
         cache: CACHE_POLICY.schema,
         maxRows: 150,
         sql: `SELECT table_name, column_name, data_type FROM ${schemaTable}
-        WHERE table_name IN ('dim_data_dictionary', 'dim_semantic_metric_catalog')`,
+        WHERE table_name IN ('${DICTIONARY}', '${METRIC_CATALOG}')`,
         params: [storeParam],
       },
       { signal },
@@ -129,8 +127,8 @@ async function readMetadata(
     const columns = decodeRows(SchemaRow, result.rows, "metadata schema");
     const types = (table: string) =>
       new Map(columns.filter((row) => row.table_name === table).map((row) => [row.column_name, row.data_type]));
-    const dictionary = types(Dictionary),
-      catalog = types(Catalog);
+    const dictionary = types(DICTIONARY),
+      catalog = types(METRIC_CATALOG);
     const compatible = (actual: Map<string, string>, required: Record<string, string>): Availability =>
       !actual.size
         ? "missing"
@@ -203,7 +201,7 @@ async function readMetadata(
         ${optional(catalog, "has_filter", "BOOL")} AS has_filter,
         ${optional(catalog, "is_abbreviation", "BOOL")} AS is_abbreviation,
         CAST(${optional(catalog, "catalog_updated_at", "TIMESTAMP")} AS STRING) AS catalog_updated_at)) AS payload
-        FROM ${warehouse.table(Catalog, "metadata")} ORDER BY payload LIMIT ${CATALOG_LIMIT + 1}`,
+        FROM ${warehouse.table(METRIC_CATALOG, "metadata")} ORDER BY payload LIMIT ${CATALOG_LIMIT + 1}`,
               params: [storeParam],
             },
             { signal },

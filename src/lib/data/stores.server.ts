@@ -104,7 +104,7 @@ export const loadStores = cache(async (): Promise<StoreOption[]> => {
     return SAMPLE_STORES.filter((store) => access.storeId === null || store.id === access.storeId).map((store) => ({
       ...store,
     }));
-  const { stores } = await queryStoreRoster(access.warehouse, access.storeId);
+  const stores = await queryStoreRoster(access.warehouse, access.storeId);
   return stores.map((store) => {
     const domain = storeDomain(store.store_url);
     return {

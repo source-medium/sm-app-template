@@ -9,17 +9,17 @@ import { buildChartData, type PointValue } from "@/components/charts/chart-data"
 import { DataRegion } from "@/components/patterns/data-region";
 import { EmptyState, LoadingState } from "@/components/patterns/data-states";
 import { DataTable } from "@/components/patterns/data-table";
-import { ChannelFilter } from "@/components/patterns/channel-filter";
+import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { AdNameFilter } from "@/components/patterns/ad-name-filter";
-import { AdNameMatches } from "@/components/patterns/ad-name-matches";
+import { AdNameMatchesRegion } from "@/components/patterns/ad-name-matches";
 import { parseAdNameFilters, serializeAdNameFilters } from "@/lib/ad-name-filters";
 import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber } from "@/lib/data/decimal";
 import { parseTimeGrain, periodStart, periodRange, TIME_GRAINS } from "@/lib/time-grain";
 import { planRanges } from "@/lib/comparison";
-import { datesInRange, REPORT_FILTER_FORM_ID, parseChoice, withParams, type SearchParams } from "@/lib/filters";
+import { datesInRange, parseChoice, withParams, type SearchParams } from "@/lib/filters";
 import {
   EMPTY_VALUE,
   formatCount,
@@ -99,9 +99,6 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
         const paidFilters: PaidMarketingFilters = { ...filters, channel, names: names.rules };
         const paidData = names.error ? null : getPaidMarketing(paidFilters);
         paidData?.catch(() => undefined); // Both regions handle the same query's failure.
-        const appliedChannel = (
-          <ChannelFilter name="channel" label="Ad platform" value={channel} channels={[]} allLabel="All channels" />
-        );
         return (
           <>
             <AdNameFilter
@@ -125,49 +122,23 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                     value={metric}
                     options={PAID_METRICS.map((value) => ({ value, label: METRIC_LABELS[value] }))}
                   />
-                  <Suspense
-                    fallback={
-                      <>
-                        <input type="hidden" name="channel" value={channel ?? ""} form={REPORT_FILTER_FORM_ID} />
-                        <LoadingState variant="control" label="Loading channels" />
-                      </>
-                    }
-                  >
-                    <DataRegion
-                      timestamp={false}
-                      load={async () => [...new Set((await paidData).channelDays.map((day) => day.channel))].sort()}
-                      isEmpty={() => false}
-                      emptyMessage="No channels."
-                      errorContent={appliedChannel}
-                    >
-                      {(channels) => (
-                        <ChannelFilter
-                          name="channel"
-                          label="Ad platform"
-                          value={channel}
-                          channels={channels}
-                          allLabel="All channels"
-                        />
-                      )}
-                    </DataRegion>
-                  </Suspense>
+                  <ChannelRosterFilter
+                    load={async () => [...new Set((await paidData).channelDays.map((day) => day.channel))].sort()}
+                    value={channel}
+                    name="channel"
+                    label="Ad platform"
+                    allLabel="All channels"
+                    loadingLabel="Loading channels"
+                  />
                 </div>
                 {dataStatus}
                 {names.rules.length > 0 && (
                   <Disclosure summary="Matching names">
-                    <Suspense
+                    <AdNameMatchesRegion
                       key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${nameKey}`}
-                      fallback={<LoadingState variant="control" label="Loading matching names" />}
-                    >
-                      <DataRegion
-                        timestamp={false}
-                        load={() => getPaidNames(paidFilters)}
-                        isEmpty={(data) => data.rows.length === 0}
-                        emptyMessage="No names match these filters. Edit or clear a name filter to try again."
-                      >
-                        {(data) => <AdNameMatches data={data} rules={names.rules} />}
-                      </DataRegion>
-                    </Suspense>
+                      load={() => getPaidNames(paidFilters)}
+                      rules={names.rules}
+                    />
                   </Disclosure>
                 )}
                 <Suspense

@@ -2,6 +2,11 @@ import type { MetricBinding } from "@/lib/metric-binding";
 
 export type MetricScope = { filters: Record<string, string | null>; timeZone?: string; currency: string | null };
 
+/** A store's reporting currency where it is listed, or why amounts carry none. */
+export function currencyValue(currency: string | null): string {
+  return currency ?? "Unknown; amounts are unlabeled";
+}
+
 /** Shared content for AboutData and a number's existing inline disclosure. */
 export function MetricDefinition({ binding, scope }: { binding: MetricBinding; scope?: MetricScope }) {
   const rows = [
@@ -15,7 +20,7 @@ export function MetricDefinition({ binding, scope }: { binding: MetricBinding; s
     ["Report population", binding.population],
     ["Date basis", binding.dateBasis],
     ["Timezone", scope?.timeZone],
-    ["Reporting currency", scope ? (scope.currency ?? "Unknown; amounts unlabeled") : undefined],
+    ["Reporting currency", scope ? currencyValue(scope.currency) : undefined],
     ["Attribution", binding.attribution],
     [
       "Dependency status",

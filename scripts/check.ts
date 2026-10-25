@@ -4,14 +4,14 @@
  * (including the invariants, in Node and workerd), run side by side. Each
  * failure is one sentence naming the file and the fix.
  */
-import { SetupPlan, readWorkerConfig } from "./lib/setup";
+import { liveIntentGaps, SetupPlan, readWorkerConfig } from "./lib/setup";
 import { spawn } from "node:child_process";
-import { findAuthGaps } from "./lib/auth-coverage";
+import { findAuthGaps, readSourceFiles } from "./lib/auth-coverage";
 import { findStoreScopeGaps } from "./lib/store-scope";
 import { root } from "./lib/environment";
 import { skillDifferences } from "./lib/skills";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 
 type Step = { name: string; run: () => Promise<string[]> | string[] };
 
@@ -38,13 +38,6 @@ function command(args: string[], explain: (output: string) => string[]): () => P
         resolve(explained.length > 0 ? explained : [plain.trim()]);
       });
     });
-}
-
-function sourceFiles(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(dir, entry.name);
-    return entry.isDirectory() ? sourceFiles(path) : /\.[cm]?[jt]sx?$/.test(entry.name) ? [path] : [];
-  });
 }
 
 const steps: Step[] = [
@@ -84,10 +77,7 @@ const steps: Step[] = [
   {
     name: "auth-coverage",
     run: () => {
-      const files = sourceFiles(join(root, "src")).map((path) => ({
-        path: relative(root, path).split(sep).join("/"),
-        text: readFileSync(path, "utf8"),
-      }));
+      const files = readSourceFiles(root, "src");
       return [...findAuthGaps(files), ...findStoreScopeGaps(files)];
     },
   },
@@ -98,7 +88,8 @@ const steps: Step[] = [
       try {
         const intent = SetupPlan.parse(JSON.parse(readFileSync(join(root, "setup.json"), "utf8")));
         const worker = readWorkerConfig(readFileSync(join(root, "wrangler.jsonc"), "utf8"));
-        if (intent.data === "live" && (!intent.auth || worker.vars?.APP_REQUIRE_LIVE !== "true"))
+        const gaps = liveIntentGaps(intent, worker);
+        if (gaps.auth || gaps.requireLive)
           return [
             "Live setup intent needs a sign-in choice and root APP_REQUIRE_LIVE=true. Run pnpm app:setup plan --auth access --data live (or --auth basic).",
           ];

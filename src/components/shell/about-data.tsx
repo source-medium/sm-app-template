@@ -1,7 +1,7 @@
 "use client";
 
 import type { MetricBinding } from "@/lib/metric-binding";
-import { MetricDefinition } from "@/components/patterns/metric-definition";
+import { currencyValue, MetricDefinition } from "@/components/patterns/metric-definition";
 import { useEffect, useId, useRef, useState } from "react";
 import { BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -76,7 +76,7 @@ export function AboutData({
                 <dd>
                   {context.storeScope === "all"
                     ? "Shown per store; no combined totals."
-                    : (context.currency ?? "Not configured; amounts shown as published.")}
+                    : currencyValue(context.currency)}
                 </dd>
               </dl>
               {context.status && <p className="mt-3 text-xs">{context.status}</p>}

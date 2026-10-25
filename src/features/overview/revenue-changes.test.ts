@@ -7,7 +7,6 @@ const day = (date: string, netRevenue: string | null): OverviewDay => ({
   netRevenue,
   orders: 1,
   sessions: 1n,
-  adClicks: 0n,
   adSpend: "0",
 });
 const data = (days: OverviewDay[]): OverviewData => ({

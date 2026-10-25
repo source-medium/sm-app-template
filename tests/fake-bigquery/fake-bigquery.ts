@@ -7,6 +7,12 @@
 import { TEST_JOB_PROJECT } from "../helpers/service-account";
 
 export type FakeCall = { kind: "token" | "submit" | "poll" | "cancel" | "metadata"; url: URL; body: unknown };
+/** A jobs.query request body: the SQL, its named parameters, and its labels. */
+export type SubmittedQuery = {
+  query: string;
+  queryParameters: { name: string; parameterType: { type: string }; parameterValue: { value: string } }[];
+  labels: Record<string, string>;
+};
 type Handler = (call: FakeCall, signal: AbortSignal | undefined) => Response | Promise<Response>;
 
 export type FakeBigQueryScript = {
@@ -86,9 +92,20 @@ export function createFakeBigQuery(script: FakeBigQueryScript) {
           : () => Response.json(queryResponse()));
     return handler(call, init?.signal ?? undefined);
   };
+  /** Every jobs.query body in order, or the `index`th one, throwing when it was never sent. */
+  function submitted(): SubmittedQuery[];
+  function submitted(index: number): SubmittedQuery;
+  function submitted(index?: number): SubmittedQuery[] | SubmittedQuery {
+    const bodies = calls.filter((call) => call.kind === "submit").map((call) => call.body as SubmittedQuery);
+    if (index === undefined) return bodies;
+    const body = bodies[index];
+    if (!body) throw new Error(`The fake BigQuery received no jobs.query call ${index}.`);
+    return body;
+  }
   return {
     fetch: fetchImpl,
     calls,
     count: (kind: FakeCall["kind"]) => calls.filter((call) => call.kind === kind).length,
+    submitted,
   };
 }

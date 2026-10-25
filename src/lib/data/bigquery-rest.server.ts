@@ -17,6 +17,7 @@ import "server-only";
 import { logEvent, type LogEvent } from "./log";
 import type { TokenProvider } from "./google-token.server";
 import type { CachePolicy } from "./query-cache";
+import { DeadlineCall } from "./deadline-call.server";
 import { WarehouseError, classifyBigQueryError } from "./warehouse-error";
 
 const API_ROOT = "https://bigquery.googleapis.com/bigquery/v2";
@@ -74,8 +75,6 @@ export type QueryRequest = {
 export type QueryOptions = {
   deadlineMs?: number;
   signal?: AbortSignal;
-  /** The caller handles a missing relation, so its 404 logs at info rather than warn. */
-  missingRelationOk?: boolean;
   /** Set by the Warehouse for its log line: the request's id and why the cache did not serve this query. */
   requestId?: string;
   appCache?: Extract<LogEvent["app_cache"], "miss" | "bypass">;
@@ -197,7 +196,7 @@ export async function runQuery(
     call.dispose();
     logEvent({
       event: "bq_query",
-      level: failure && !(options.missingRelationOk && failure.kind === "not_found") ? "warn" : "info",
+      level: failure ? "warn" : "info",
       build: client.buildId,
       app: client.applicationId,
       query: request.name,
@@ -289,58 +288,20 @@ async function metadataGet(client: BigQueryClient, path: string, options: QueryO
   }
 }
 
-/** One deadline, one abort signal, and the request bookkeeping for a single helper call. */
-class Call {
-  private readonly controller = new AbortController();
-  private readonly startedAt: number;
-  private readonly deadlineAt: number;
-  private readonly timer: ReturnType<typeof setTimeout>;
-  private readonly fetchImpl: typeof fetch;
-  private readonly now: () => number;
-  private readonly unlink: () => void;
+/** The BigQuery requests of a single helper call, within its deadline. */
+class Call extends DeadlineCall {
   private tokenValue: string | null = null;
-  private responseBytes = 0;
 
   constructor(
     private readonly client: BigQueryClient,
     options: QueryOptions,
   ) {
-    this.fetchImpl = client.fetch ?? globalThis.fetch;
-    this.now = client.now ?? Date.now;
-    this.startedAt = this.now();
-    const deadlineMs = options.deadlineMs ?? DEFAULT_DEADLINE_MS;
-    this.deadlineAt = this.startedAt + deadlineMs;
-    this.timer = setTimeout(
-      () => this.controller.abort(new DOMException("Deadline exceeded", "TimeoutError")),
-      deadlineMs,
-    );
-    const callerSignal = options.signal;
-    const onAbort = () => this.controller.abort(new DOMException("Cancelled", "AbortError"));
-    if (callerSignal?.aborted) onAbort();
-    callerSignal?.addEventListener("abort", onAbort, { once: true });
-    this.unlink = () => callerSignal?.removeEventListener("abort", onAbort);
-  }
-
-  get signal(): AbortSignal {
-    return this.controller.signal;
-  }
-
-  remainingMs(): number {
-    return Math.max(1, this.deadlineAt - this.now());
-  }
-
-  elapsedMs(): number {
-    return this.now() - this.startedAt;
+    super(client, options.deadlineMs ?? DEFAULT_DEADLINE_MS, options.signal, MAX_RESPONSE_BYTES);
   }
 
   /** A server-side wait that always returns before the deadline. */
   boundedWait(preferredMs: number): number {
     return Math.max(0, Math.min(preferredMs, this.remainingMs() - 500));
-  }
-
-  dispose(): void {
-    clearTimeout(this.timer);
-    this.unlink();
   }
 
   async token(): Promise<string> {
@@ -359,10 +320,7 @@ class Call {
         signal: this.signal,
       });
     } catch (error) {
-      if (
-        (error as { name?: string } | null)?.name === "AbortError" &&
-        this.controller.signal.reason?.name === "AbortError"
-      ) {
+      if ((error as { name?: string } | null)?.name === "AbortError" && this.signal.reason?.name === "AbortError") {
         throw new WarehouseError("cancelled", { reason: "submit" });
       }
       throw new WarehouseError("submission_indeterminate", { reason: "submit_no_response" });
@@ -448,29 +406,6 @@ class Call {
       return response.ok;
     } catch {
       return false;
-    }
-  }
-
-  private async readJson(response: Response): Promise<unknown> {
-    const reader = response.body?.getReader();
-    if (!reader) throw new SyntaxError("Empty response body");
-    const decoder = new TextDecoder();
-    const chunks: string[] = [];
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        this.responseBytes += value.byteLength;
-        if (this.responseBytes > MAX_RESPONSE_BYTES) {
-          await reader.cancel();
-          throw new WarehouseError("result_too_large", { reason: "response_bytes" });
-        }
-        chunks.push(decoder.decode(value, { stream: true }));
-      }
-      chunks.push(decoder.decode());
-      return JSON.parse(chunks.join(""));
-    } finally {
-      reader.releaseLock();
     }
   }
 }

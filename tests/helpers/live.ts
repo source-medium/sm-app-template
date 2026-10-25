@@ -6,7 +6,7 @@
  * setup file for every server test, reads `requestHeaders` as the request's
  * headers and resets it after each test.
  */
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
 import { createFakeBigQuery, JOB, type FakeBigQueryScript, type FakeCall } from "../fake-bigquery/fake-bigquery";
 import { liveEnv, makeServiceAccountKey, TEST_JOB_PROJECT, TEST_PASSWORD } from "./service-account";
 
@@ -19,6 +19,20 @@ export async function goLive(script: FakeBigQueryScript) {
   const fake = createFakeBigQuery(script);
   vi.stubGlobal("fetch", fake.fetch);
   return fake;
+}
+
+/** At least one query reached the fake, and every one filters by `@store_id` bound to `storeId`. */
+export function expectEveryQueryScopedTo(fake: ReturnType<typeof createFakeBigQuery>, storeId: string) {
+  const queries = fake.submitted();
+  expect(queries.length).toBeGreaterThan(0);
+  for (const body of queries) {
+    expect(body.query).toContain("sm_store_id = @store_id");
+    expect(body.queryParameters).toContainEqual({
+      name: "store_id",
+      parameterType: { type: "STRING" },
+      parameterValue: { value: storeId },
+    });
+  }
 }
 
 /** A jobs.query response carrying `rows` (objects) in BigQuery's f/v wire format. */

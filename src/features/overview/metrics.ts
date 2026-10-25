@@ -1,16 +1,11 @@
-import definitions from "../../../contracts/dashboard-metrics-v1/definitions.json";
-import type { MetricBinding, PublishedMetric } from "@/lib/metric-binding";
+import type { MetricBinding } from "@/lib/metric-binding";
+import { REVIEWED_METRICS, reviewedMetric } from "@/lib/reviewed-metrics";
 import { validSales } from "@/lib/data/channel-sql";
 import { OVERVIEW_RELATION } from "./rows";
 
-const canonical = (name: string): PublishedMetric => {
-  const metric = definitions.metrics.find((metric) => metric.metric_name === name);
-  if (!metric) throw new Error(`Missing reviewed metric ${name}`);
-  return metric;
-};
 const base = {
   source: OVERVIEW_RELATION,
-  reviewedDependencies: definitions.metrics,
+  reviewedDependencies: REVIEWED_METRICS,
   population:
     "Published Executive Summary rows for the selected store, dates and sales channels. Revenue and order measures count SourceMedium's valid sales channels; spend and sessions count every row.",
   grain: "Selected period, aggregated from daily channel/sub-channel rows",
@@ -26,7 +21,7 @@ export const overviewBindings = [
     ...base,
     id: "revenue",
     label: "Net revenue",
-    canonical: canonical("order_net_revenue_summary"),
+    canonical: reviewedMetric("order_net_revenue_summary"),
     calculation: `SUM(${validSales("order_net_revenue")})`,
     fields: ["order_net_revenue"],
     format: "currency",
@@ -35,7 +30,7 @@ export const overviewBindings = [
     ...base,
     id: "orders",
     label: "Summary orders",
-    canonical: canonical("order_count_summary"),
+    canonical: reviewedMetric("order_count_summary"),
     calculation: `SUM(${validSales("order_count")})`,
     fields: ["order_count"],
     format: "count",
@@ -44,7 +39,7 @@ export const overviewBindings = [
     ...base,
     id: "spend",
     label: "Ad spend",
-    canonical: canonical("total_ad_spend_summary"),
+    canonical: reviewedMetric("total_ad_spend_summary"),
     calculation: "SUM(ad_spend)",
     fields: ["ad_spend"],
     format: "currency",
@@ -53,7 +48,7 @@ export const overviewBindings = [
     ...base,
     id: "mer",
     label: "Marketing efficiency (MER)",
-    canonical: canonical("marketing_efficiency_ratio_summary"),
+    canonical: reviewedMetric("marketing_efficiency_ratio_summary"),
     calculation: `SUM(${validSales("order_net_revenue")}) / SUM(ad_spend)`,
     numerator: "Summary net revenue",
     denominator: "Summary ad spend",
@@ -74,7 +69,7 @@ export const overviewBindings = [
     ...base,
     id: "sessions",
     label: "Website sessions",
-    canonical: canonical("website_sessions_summary"),
+    canonical: reviewedMetric("website_sessions_summary"),
     calculation: "SUM(website_sessions)",
     fields: ["website_sessions"],
     format: "count",

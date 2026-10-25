@@ -1,4 +1,3 @@
-import { appConfig } from "@/app.config";
 import type { CohortCell } from "@/components/patterns/cohort-matrix";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { formatMeasure, formatMoney, formatMonth, formatPercent } from "@/lib/format";
@@ -27,7 +26,7 @@ export function retentionMatrix(
   channel: string,
   metric: RetentionMetric,
   asOf: string,
-  currency: string | null = appConfig.currency,
+  currency: string | null,
 ) {
   const selected = rows.filter((row) => row.channel === channel);
   const byKey = new Map(selected.map((row) => [`${row.cohort_month}|${row.month_age}`, row]));

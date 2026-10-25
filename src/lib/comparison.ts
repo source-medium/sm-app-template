@@ -9,7 +9,16 @@
  * the applied range itself, so nothing new travels in the URL.
  */
 import { fromUnits, toUnits } from "@/lib/data/decimal";
-import { addDays, datesInRange, parseChoice, rangeLength, type DateRange, type SearchParams } from "@/lib/filters";
+import {
+  addDays,
+  datesInRange,
+  monthStart,
+  parseChoice,
+  quarterStart,
+  rangeLength,
+  type DateRange,
+  type SearchParams,
+} from "@/lib/filters";
 
 export const COMPARISON_OPTIONS = [
   { value: "previous", label: "Previous period" },
@@ -72,14 +81,12 @@ const month = (date: string) => Number(date.slice(5, 7));
 const day = (date: string) => Number(date.slice(8, 10));
 const iso = (y: number, m: number, d: number) =>
   `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-const monthStart = (date: string) => `${date.slice(0, 8)}01`;
 const monthEnd = (date: string) => iso(year(date), month(date), daysInMonth(year(date), month(date)));
 /** The first day of the month `offset` months before (or after) `date`'s month. */
 function shiftMonth(date: string, offset: number): string {
   const index = year(date) * 12 + (month(date) - 1) + offset;
   return iso(Math.floor(index / 12), (index % 12) + 1, 1);
 }
-const quarterStart = (date: string) => iso(year(date), Math.floor((month(date) - 1) / 3) * 3 + 1, 1);
 const quarterEnd = (date: string) => monthEnd(shiftMonth(quarterStart(date), 2));
 const monthName = (date: string) => `${MONTHS[month(date) - 1]} ${year(date)}`;
 
@@ -109,7 +116,11 @@ export function rangeIntent(range: DateRange, today: string): RangeIntent {
   return range.to === yesterday ? "rolling" : "custom";
 }
 
-const dayCount = (days: number) => (days === 1 ? "1 day" : `${days} days`);
+/** "1 day" or "28 days", for comparison copy. */
+export function dayCount(days: number): string {
+  return days === 1 ? "1 day" : `${days} days`;
+}
+
 /** No range before year one, which the warehouse cannot hold either. */
 const supported = (range: DateRange): DateRange | null => (range.from < "0001-01-01" ? null : range);
 
@@ -217,11 +228,6 @@ export function planRanges(plan: ComparisonPlan | undefined): BaselineRanges {
 /** Both slots' modes as URL parameters, so links and exports keep the plan they were made from. */
 export function planParams(plan: ComparisonPlan | undefined): { compare: ComparisonMode; compare2: ComparisonMode } {
   return { compare: plan?.slots[0].mode ?? "off", compare2: plan?.slots[1].mode ?? "off" };
-}
-
-/** The slot a view overlays and tabulates; its mode is kept even without a range, so copy can say why. */
-export function activeComparison(plan: ComparisonPlan): Comparison {
-  return plan.slots[plan.active];
 }
 
 /**

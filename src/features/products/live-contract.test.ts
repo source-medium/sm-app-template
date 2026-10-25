@@ -65,7 +65,7 @@ it("guards, parameterizes and aggregates valid product lines before the limit, r
   expect(data.rows).toHaveLength(10);
   expect(data.hasMore).toBe(true);
   expect(data.rows[0]?.revenue).toBe(row.revenue);
-  const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string; queryParameters: unknown[] };
+  const body = fake.submitted(0);
   expect(body.query).toContain("sm_store_id = @store_id AND is_order_sm_valid = TRUE");
   expect(body.query).toContain(
     periodSql("DATE(order_processed_at_local_datetime)").dateTimeRows("order_processed_at_local_datetime"),
@@ -138,7 +138,7 @@ it("scopes the complete channel roster to store/date and refuses a truncated pic
   });
   const { getProductChannels } = await import("./queries");
   expect(await getProductChannels(filters)).toEqual(["(none)", "Amazon"]);
-  const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string; queryParameters: unknown[] };
+  const body = fake.submitted(0);
   expect(body.query).toContain("SELECT DISTINCT IFNULL(sm_channel, '(none)') AS channel");
   expect(body.query).toContain("sm_store_id = @store_id");
   expect(body.query).toContain("order_processed_at_local_datetime >= DATETIME(@start_date)");
@@ -177,7 +177,7 @@ it("aggregates exact cost coverage for the full selected scope in a narrow indep
     ordered_units: "100.5",
     refunded_units: "1.5",
   });
-  const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string; queryParameters: unknown[] };
+  const body = fake.submitted(0);
   expect(body.query).toContain("sm_store_id = @store_id AND is_order_sm_valid = TRUE");
   expect(body.query).toContain("COUNTIF(order_line_id IS NOT NULL) AS lines");
   expect(body.query).toContain("COUNTIF(order_line_id IS NOT NULL AND order_line_product_cost IS NULL)");
@@ -203,7 +203,7 @@ it("scopes detail totals before windows and ranks changes before the bounded lim
     { from: "2026-08-01", to: "2026-08-02" },
     null,
   ]);
-  const body = fake.calls.find((call) => call.kind === "submit")?.body as { query: string; queryParameters: unknown[] };
+  const body = fake.submitted(0);
   expect(body.query).toContain("FROM grouped WHERE product_key = @entity");
   expect(body.query).toContain("ORDER BY units - previous_units ASC NULLS LAST, product_key LIMIT 11");
   expect(body.query).not.toContain(identity);

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
-import { EmptyState, ErrorState } from "@/components/patterns/data-states";
+import { EmptyState, ErrorState, WarehouseErrorState } from "@/components/patterns/data-states";
+import { WarehouseError } from "@/lib/data/warehouse-error";
 
 it("keeps the alert contract for both tones and styles only the frame by tone", () => {
   const { rerender } = render(<ErrorState title="Check the month" remedy="Choose a month that has already ended." />);
@@ -44,4 +45,21 @@ it("shows a selectable support code for failures and rejects arbitrary text", ()
     />,
   );
   expect(screen.queryByText(/Support code|private-provider-text/)).toBeNull();
+});
+
+it("shows a warehouse failure's own state: the named column, or its remedy and support code", () => {
+  const { rerender } = render(<WarehouseErrorState error={WarehouseError.incompatible("dim_stores", "store_name")} />);
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Column store_name in dim_stores is missing or has a different type",
+  );
+  const duplicate = new WarehouseError("incompatible_schema", {
+    relation: "dim_stores",
+    reason: "duplicate_store_ids",
+    remedy: "The store list (dim_stores) names a store more than once.",
+    requestId: "47ca1e6b-fa2c-4e96-aa86-39801bb3dbeb",
+  });
+  rerender(<WarehouseErrorState error={duplicate} />);
+  expect(screen.getByRole("alert")).toHaveTextContent("The store list (dim_stores) names a store more than once.");
+  expect(screen.getByRole("alert")).not.toHaveTextContent("missing or has a different type");
+  expect(screen.getByText("47ca1e6b-fa2c-4e96-aa86-39801bb3dbeb")).toBeInTheDocument();
 });

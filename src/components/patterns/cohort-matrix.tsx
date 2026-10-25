@@ -23,8 +23,8 @@ export function CohortMatrix({
     <Table
       data-agent-target={caption}
       data-agent-component="CohortMatrix"
-      containerClassName="max-h-[40rem] rounded-xl border bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      containerProps={{ tabIndex: 0, role: "region", "aria-label": caption }}
+      containerClassName="max-h-[40rem] rounded-xl border bg-card"
+      regionLabel={caption}
     >
       <caption className="sr-only">{caption}</caption>
       <TableHeader className="sticky top-0 z-10 bg-muted">

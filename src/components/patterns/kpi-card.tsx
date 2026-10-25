@@ -26,8 +26,7 @@ export function KpiCard({
   value,
   fullValue,
   period,
-  delta,
-  deltas = delta ? [delta] : [],
+  deltas = [],
   description,
   trend,
   binding,
@@ -39,8 +38,7 @@ export function KpiCard({
   value: string;
   fullValue?: string;
   period: string;
-  /** One comparison row; prefer `deltas` for a report with two comparison slots. */
-  delta?: KpiDelta;
+  /** One comparison row per slot, from slotDeltas(). */
   deltas?: KpiDelta[];
   /** A short, query-specific definition. Native details works with touch, keyboard, and no JavaScript. */
   description?: string;

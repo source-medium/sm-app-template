@@ -1,4 +1,6 @@
 /** Shipping destinations only. State aliases are interpreted within the US, never globally. */
+import { single, type SearchParams } from "./filters";
+
 export const UNKNOWN_LOCATION = "(unknown)";
 export const US_STATES: Readonly<Record<string, string>> = {
   AL: "Alabama",
@@ -65,6 +67,14 @@ export function normalizeRegion(country: string | null, value: string | null): s
       ([code, name]) => raw === code || raw === `US-${code}` || raw === name.toUpperCase(),
     )?.[0] ?? raw
   );
+}
+/** The `country` and `region` URL filters, normalized as the SQL normalizes stored destinations. */
+export function parseShippingDestination(params: SearchParams): { country: string | null; region: string | null } {
+  const country = single(params, "country") ? normalizeCountry((single(params, "country") ?? "").slice(0, 100)) : null;
+  const region = single(params, "region")
+    ? normalizeRegion(country, (single(params, "region") ?? "").slice(0, 100))
+    : null;
+  return { country, region };
 }
 export const COUNTRY_SQL =
   "COALESCE(NULLIF(NULLIF(UPPER(TRIM(order_shipping_country_code)), ''), '(UNKNOWN)'), '(unknown)')";

@@ -1,4 +1,4 @@
-/** Small, bounded CSV downloads. Feature code owns the query and column definitions. */
+/** Small, bounded CSV and JSON downloads. Feature code owns the query and column definitions. */
 import "server-only";
 import { requireViewer, type ViewerAccess } from "@/lib/auth/require-viewer";
 import { StoreAccessError } from "@/lib/auth/store-access";
@@ -21,18 +21,32 @@ function cell(value: CsvValue, numeric = false): string {
   return `"${text.replaceAll('"', '""')}"`;
 }
 
-export function csvResponse<Row>(filename: string, columns: CsvColumn<Row>[], rows: Row[]): Response {
-  if (!/^[a-zA-Z0-9_.-]+\.csv$/.test(filename)) throw new Error("CSV filenames must be plain .csv names.");
-  const lines = [columns.map((column) => cell(column.header)).join(",")];
-  for (const row of rows) lines.push(columns.map((column) => cell(column.value(row), column.numeric)).join(","));
-  return new Response(`${lines.join("\r\n")}\r\n`, {
+/** A private, never-cached attachment. `filename` is a plain name in code, never browser input. */
+function download(body: string, filename: string, extension: "csv" | "json", contentType: string): Response {
+  if (!/^[a-zA-Z0-9_.-]+$/.test(filename) || !filename.endsWith(`.${extension}`))
+    throw new Error(`Download filenames must be plain .${extension} names.`);
+  return new Response(body, {
     headers: {
-      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Type": `${contentType}; charset=utf-8`,
       "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
     },
   });
+}
+
+export function csvResponse<Row>(filename: string, columns: CsvColumn<Row>[], rows: Row[]): Response {
+  const lines = [columns.map((column) => cell(column.header)).join(",")];
+  for (const row of rows) lines.push(columns.map((column) => cell(column.value(row), column.numeric)).join(","));
+  return download(`${lines.join("\r\n")}\r\n`, filename, "csv", "text/csv");
+}
+
+/** A bounded report's raw JSON. INT64 stays decimal text, never a rounded JS number. */
+export function reportJsonResponse(filename: string, rawResults: unknown, context: unknown): Response {
+  const body = JSON.stringify({ context, results: rawResults }, (_key, value: unknown) =>
+    typeof value === "bigint" ? value.toString() : value,
+  );
+  return download(body, filename, "json", "application/json");
 }
 
 export type ExportScope = {
@@ -45,10 +59,23 @@ export type ExportScope = {
   timeZone: string;
 };
 
+/** The columns every export starts with: its data mode, report (when named), store, dates and reporting currency. */
+export function scopeColumns(scope: ExportScope, report?: string): CsvColumn<unknown>[] {
+  return [
+    { header: "data_mode", value: () => scope.mode },
+    ...(report === undefined ? [] : [{ header: "report", value: () => report }]),
+    { header: "store_id", value: () => scope.storeId },
+    { header: "from", value: () => scope.range.from },
+    { header: "to", value: () => scope.range.to },
+    { header: "reporting_currency", value: () => scope.currency },
+  ];
+}
+
 /**
  * Runs an export for the store and dates the report would show. A range the
  * page would ask to correct is a 400, never a silently different period.
- * Store and warehouse failures are short JSON errors, not CSV.
+ * Store and warehouse failures are short JSON errors, not CSV; a feature
+ * rejects its own filters the same way with exportError().
  */
 export async function csvExport(
   request: Request,
@@ -62,14 +89,14 @@ export async function csvExport(
     const store = await resolveReportStore(single(params, "store"));
     if (store.status !== "ready") {
       if (store.error) throw store.error;
-      return failure(400, {
+      return exportError(400, {
         title: store.status === "no_store" ? "No store selected" : "This store is not in the store list",
       });
     }
     // Dates are the store's calendar dates, so its time zone decides today.
     const today = calendarDate(new Date(), store.timeZone);
     const issue = dateRangeIssue(params, today, options.maxDays);
-    if (issue) return failure(400, { title: "Check the date range", remedy: issue });
+    if (issue) return exportError(400, { title: "Check the date range", remedy: issue });
     return await build({
       params,
       storeId: store.storeId,
@@ -79,9 +106,9 @@ export async function csvExport(
       timeZone: store.timeZone,
     });
   } catch (error) {
-    if (error instanceof StoreAccessError) return failure(403, { title: error.message });
+    if (error instanceof StoreAccessError) return exportError(403, { title: error.message });
     if (!(error instanceof WarehouseError)) throw error;
-    return failure(503, {
+    return exportError(503, {
       title: error.title,
       remedy: error.remedy,
       ...(error.requestId ? { request_id: error.requestId } : {}),
@@ -89,6 +116,6 @@ export async function csvExport(
   }
 }
 
-function failure(status: number, body: { title: string; remedy?: string; request_id?: string }): Response {
+export function exportError(status: number, body: { title: string; remedy?: string; request_id?: string }): Response {
   return Response.json(body, { status, headers: { "Cache-Control": "private, no-store" } });
 }

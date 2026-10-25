@@ -23,6 +23,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { Disclosure } from "@/components/ui/disclosure";
 
 export type DataTableColumn = {
   key: string;
@@ -104,10 +105,7 @@ export function DataTable({
 
   return (
     <div data-agent-target={caption} data-agent-component="DataTable" className="flex flex-col gap-3">
-      <Table
-        containerClassName="max-h-[32rem] rounded-xl border bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        containerProps={{ tabIndex: 0, role: "region", "aria-label": caption }}
-      >
+      <Table containerClassName="max-h-[32rem] rounded-xl border bg-card" regionLabel={caption}>
         <caption className="sr-only">{caption}</caption>
         <TableHeader className="sticky top-0 z-10 bg-muted">
           {table.getHeaderGroups().map((group) => (
@@ -141,12 +139,9 @@ export function DataTable({
                       flexRender(header.column.columnDef.header, header.getContext())
                     )}
                     {column?.definition && (
-                      <details className="text-left text-sm font-normal whitespace-normal">
-                        <summary className="cursor-pointer py-1 text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring">
-                          About this number
-                        </summary>
-                        <div className="max-w-prose min-w-48 py-3">{column.definition}</div>
-                      </details>
+                      <Disclosure summary="About this number" className="text-left font-normal whitespace-normal">
+                        <div className="max-w-prose min-w-48 pb-1">{column.definition}</div>
+                      </Disclosure>
                     )}
                   </TableHead>
                 );

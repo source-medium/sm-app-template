@@ -4,8 +4,6 @@
  * reproduces these examples from its handlers; this one drives the same
  * examples through the adapter, so the two sides cannot drift apart unseen.
  */
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
   loadManagedContext,
@@ -21,18 +19,7 @@ import { emit, setLogEmitter } from "@/lib/data/log";
 import { connectionReportText } from "@/lib/data/connection-report";
 import { refusedWarehouse } from "@/lib/data/warehouse.server";
 import { WarehouseError, type WarehouseErrorKind } from "@/lib/data/warehouse-error";
-
-type Example = { case: string; value: unknown; status?: number };
-type ExampleSet = { valid: Example[]; invalid: Example[] };
-const examples = JSON.parse(
-  readFileSync(fileURLToPath(new URL("../../contracts/managed-app-v1/examples.json", import.meta.url)), "utf8"),
-) as Record<"query_request" | "query_response" | "context" | "error", ExampleSet>;
-
-const example = (set: ExampleSet, name: string) => {
-  const found = set.valid.find((entry) => entry.case === name);
-  if (!found) throw new Error(`no example ${name}`);
-  return found;
-};
+import { contractExample, examples } from "../helpers/managed";
 
 const TOKEN = `smapp_${"a".repeat(43)}`;
 const API = "https://urchin.test/api/app-data/v1";
@@ -64,7 +51,7 @@ describe("the request the adapter sends", () => {
       sql: "SELECT order_date, COUNT(*) AS orders FROM obt_orders WHERE order_date >= @start GROUP BY 1",
       params: [{ name: "start", type: "DATE", value: "2026-09-01" }],
     };
-    expect(queryBody(request)).toEqual(example(examples.query_request, "orders_by_day").value);
+    expect(queryBody(request)).toEqual(contractExample("query_request", "orders_by_day").value);
   });
 
   it("carries every parameter type exactly, INT64 as a decimal string", () => {
@@ -83,7 +70,7 @@ describe("the request the adapter sends", () => {
       maxRows: 10_000,
       partial: true,
     };
-    expect(queryBody(request)).toEqual(example(examples.query_request, "every_parameter_type").value);
+    expect(queryBody(request)).toEqual(contractExample("query_request", "every_parameter_type").value);
   });
 
   it("refuses an INT64 number past exact precision before anything is sent", async () => {
@@ -99,7 +86,7 @@ describe("the request the adapter sends", () => {
   });
 
   it("sends the token only when one is configured, and only to the data API", async () => {
-    const body = example(examples.query_response, "inline_scalars").value;
+    const body = contractExample("query_response", "inline_scalars").value;
     for (const token of [TOKEN, null]) {
       const fetch = reply(body);
       await runManagedQuery(client(fetch, token), { name: "orders", sql: "SELECT 1" });
@@ -173,7 +160,7 @@ describe("errors", () => {
   });
 
   it("titles an unreachable warehouse as one, not as a refusal", async () => {
-    const unavailable = example(examples.error, "source_unavailable");
+    const unavailable = contractExample("error", "source_unavailable");
     const error = (await runManagedQuery(client(reply(unavailable.value, unavailable.status)), {
       name: "orders",
       sql: "SELECT 1",
@@ -224,7 +211,7 @@ describe("errors", () => {
   });
 
   it("gives a missing relation the shape the optional-table fallbacks read, and nothing else", async () => {
-    const missing = example(examples.error, "relation_not_found");
+    const missing = contractExample("error", "relation_not_found");
     const error = (await runManagedQuery(client(reply(missing.value, missing.status)), {
       name: "orders",
       sql: "SELECT 1",
@@ -273,10 +260,19 @@ describe("errors", () => {
       ),
     ).rejects.toMatchObject({ kind: "deadline_exceeded" });
   });
+
+  it("stops reading a response over its size limit", async () => {
+    const error = await runManagedQuery(client(reply(" ".repeat(12 * 1024 * 1024 + 1))), {
+      name: "orders",
+      sql: "SELECT 1",
+    }).catch((caught: unknown) => caught);
+    expect(error).toMatchObject({ kind: "result_too_large", reason: "response_bytes" });
+    expectManagedCopy(error);
+  });
 });
 
 describe("context", () => {
-  const context = example(examples.context, "developer_token").value as {
+  const context = contractExample("context", "developer_token").value as {
     app: { id: string };
     warehouse: {
       project_id: string;
@@ -308,7 +304,7 @@ describe("context", () => {
   });
 
   it("never retries a refused token", async () => {
-    const refused = example(examples.error, "token_invalid");
+    const refused = contractExample("error", "token_invalid");
     const fetch = reply(refused.value, refused.status);
     await expect(loadManagedContext(client(fetch))).rejects.toMatchObject({ kind: "credential_invalid" });
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -317,7 +313,7 @@ describe("context", () => {
 
 describe("managed connection checks", () => {
   it("show the adapter's own title and remedy, not the self-hosted copy for that kind", async () => {
-    const denied = example(examples.error, "access_denied");
+    const denied = contractExample("error", "access_denied");
     const warehouse: Warehouse = {
       applicationId: "app",
       table: (name) => `\`project.dataset.${name}\``,
@@ -328,14 +324,7 @@ describe("managed connection checks", () => {
         throw new Error("unused");
       },
     };
-    const context = {
-      appId: "app",
-      projectId: "project",
-      transformedDatasetId: "dataset",
-      metadataDatasetId: "metadata",
-      allowedDatasets: ["dataset", "metadata"],
-    };
-    const report = await checkManagedConnection(context, warehouse, new AbortController().signal);
+    const report = await checkManagedConnection(warehouse, new AbortController().signal);
     const failed = report.checks.find((check) => check.status === "fail");
     expect(failed?.message).toMatch(/^SourceMedium refused this app's request\. /);
     expect(failed?.message).not.toMatch(/Google|BigQuery|app key|job project/i);
@@ -349,7 +338,7 @@ describe("managed request correlation", () => {
     const original = emit;
     setLogEmitter((line) => lines.push(line));
     try {
-      const success = { ...(example(examples.query_response, "inline_scalars").value as object), request_id: id };
+      const success = { ...(contractExample("query_response", "inline_scalars").value as object), request_id: id };
       await runManagedQuery(client(reply(success)), { name: "support-test", sql: "SELECT 'private-sql'" });
       expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({ request_id: id, error_kind: null });
       const body = {

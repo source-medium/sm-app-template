@@ -1,7 +1,14 @@
 /** Paid marketing's live path end to end against the fake BigQuery. */
 import { describe, expect, it, vi } from "vitest";
-import type { FakeCall } from "../../../tests/fake-bigquery/fake-bigquery";
-import { goLive, isStoreList, requestHeaders, rowsResponse, withStores } from "../../../tests/helpers/live";
+import type { FakeCall, SubmittedQuery } from "../../../tests/fake-bigquery/fake-bigquery";
+import {
+  expectEveryQueryScopedTo,
+  goLive,
+  isStoreList,
+  requestHeaders,
+  rowsResponse,
+  withStores,
+} from "../../../tests/helpers/live";
 import { MAX_SERIES_ROWS } from "./rows";
 
 const SERIES_FIELDS = [
@@ -43,8 +50,7 @@ const CAMPAIGN_ROW = {
 };
 const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-09-02" }, channel: "Meta" };
 
-type Submitted = { query: string; queryParameters: unknown[]; labels: Record<string, string> };
-const queryName = (call: FakeCall) => (call.body as Submitted).labels.sm_query;
+const queryName = (call: FakeCall) => (call.body as SubmittedQuery).labels.sm_query;
 
 describe("paid marketing, live", () => {
   it("keeps name scope in the series, campaigns, both comparison periods, inspection, and CSV", async () => {
@@ -65,7 +71,7 @@ describe("paid marketing, live", () => {
     const calls = fake.calls.filter((call) => call.kind === "submit" && !isStoreList(call));
     expect(calls).toHaveLength(5);
     for (const call of calls) {
-      const query = call.body as Submitted;
+      const query = call.body as SubmittedQuery;
       expect(query.query).toContain("STARTS_WITH(LOWER(ad_group_name), LOWER(@name_0_0))");
       expect(query.query).toContain("NULLIF(TRIM(ad_name), '') IS NOT NULL AND NOT (");
       expect(query.query).not.toContain("US_%");
@@ -111,7 +117,7 @@ describe("paid marketing, live", () => {
     const submitted = queries[0];
     if (!submitted) throw new Error("No campaign query submitted");
     expect(queryName(submitted)).toBe("paid_campaigns");
-    expect((submitted.body as Submitted).queryParameters).toContainEqual({
+    expect((submitted.body as SubmittedQuery).queryParameters).toContainEqual({
       name: "channel",
       parameterType: { type: "STRING" },
       parameterValue: { value: "Meta" },
@@ -163,7 +169,7 @@ describe("paid marketing, live", () => {
     expect(data.campaignsTruncated).toBe(false);
 
     const campaigns = fake.calls.find((call) => call.kind === "submit" && queryName(call) === "paid_campaigns")
-      ?.body as Submitted;
+      ?.body as SubmittedQuery;
     expect(campaigns.query).toContain("`sm-demotenant.sm_transformed_v2.rpt_ad_performance_daily`");
     expect(campaigns.query).not.toContain("Meta");
     expect(campaigns.queryParameters).toContainEqual({
@@ -183,7 +189,7 @@ describe("paid marketing, live", () => {
       ["Meta", "c1"],
       ["Google", "c1"],
     ]);
-    const sql = (fake.calls.find((call) => call.kind === "submit")?.body as Submitted).query;
+    const sql = fake.submitted(0).query;
     expect(sql).toContain("GROUP BY channel, campaign_id");
   });
 
@@ -281,15 +287,5 @@ it("allows the fixed store and keeps every SQL read scoped to it", async () => {
   vi.stubEnv("APP_STORE_ID", FILTERS.storeId);
   const { getPaidMarketing } = await import("./queries");
   await getPaidMarketing(FILTERS);
-  const queries = fake.calls.filter((call) => call.kind === "submit");
-  expect(queries.length).toBeGreaterThan(0);
-  for (const call of queries) {
-    const body = call.body as { query: string; queryParameters: unknown[] };
-    expect(body.query).toContain("sm_store_id = @store_id");
-    expect(body.queryParameters).toContainEqual({
-      name: "store_id",
-      parameterType: { type: "STRING" },
-      parameterValue: { value: FILTERS.storeId },
-    });
-  }
+  expectEveryQueryScopedTo(fake, FILTERS.storeId);
 });

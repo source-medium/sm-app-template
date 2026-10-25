@@ -111,17 +111,17 @@ describe("overview fixture contract", () => {
     ];
     const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", RANGE), OVERVIEW_RELATION));
     expect(data.days).toEqual([
-      { date: "2026-09-01", netRevenue: "30.03", orders: 4, sessions: 15n, adClicks: 3n, adSpend: "3.33" },
-      { date: "2026-09-02", netRevenue: "30.03", orders: 4, sessions: 7n, adClicks: 1n, adSpend: "1.1" },
+      { date: "2026-09-01", netRevenue: "30.03", orders: 4, sessions: 15n, adSpend: "3.33" },
+      { date: "2026-09-02", netRevenue: "30.03", orders: 4, sessions: 7n, adSpend: "1.1" },
     ]);
-    expect(data.totals).toEqual({ netRevenue: "60.06", orders: 8, sessions: 22n, adClicks: 4n, adSpend: "4.43" });
+    expect(data.totals).toEqual({ netRevenue: "60.06", orders: 8, sessions: 22n, adSpend: "4.43" });
     expect(data.latestDate).toBe("2026-09-02");
   });
 
   it("keeps stores apart: there is no combined total", () => {
     const rows = [source("2026-09-01", 1, 1n, 1n, "s1"), source("2026-09-01", 100, 100n, 100n, "s2")];
     const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", RANGE), OVERVIEW_RELATION));
-    expect(data.totals).toEqual({ netRevenue: "0", orders: 1, sessions: 1n, adClicks: 1n, adSpend: "0" });
+    expect(data.totals).toEqual({ netRevenue: "0", orders: 1, sessions: 1n, adSpend: "0" });
   });
 
   it("keeps large INT64 values exact and refuses to chart them", () => {

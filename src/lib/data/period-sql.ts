@@ -34,7 +34,7 @@ export function periodParams(
  * `DATE(column) BETWEEN` the period dates, with the column left bare so a
  * partition filter can prune. `column` is a fixed identifier written in the view.
  */
-function dateTimeWindow(column: string, from: string, to: string) {
+export function dateTimeWindow(column: string, from: string, to: string): string {
   return `${column} >= DATETIME(${from}) AND ${column} < DATETIME(DATE_ADD(${to}, INTERVAL 1 DAY))`;
 }
 

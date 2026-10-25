@@ -10,20 +10,9 @@ import { POST } from "@/app/(app)/connection/check/route";
 
 const originalEmit = emit;
 const row = (values: unknown[]) => ({ f: values.map((v) => ({ v })) });
-function fakeWarehouse(
-  options: { empty?: boolean; missingDimension?: boolean; location?: string; missingColumns?: boolean } = {},
-) {
+function fakeWarehouse(options: { empty?: boolean; missingDimension?: boolean; location?: string } = {}) {
   return createFakeBigQuery({
-    metadata: () =>
-      Response.json({
-        location: options.location ?? "US",
-        schema: {
-          fields: (options.missingColumns ? ["date", "order_net_revenue"] : ["sm_store_id", "date"]).map((name) => ({
-            name,
-            type: "STRING",
-          })),
-        },
-      }),
+    metadata: () => Response.json({ location: options.location ?? "US" }),
     submit: ({ body }) => {
       const query = body as { query: string; dryRun?: boolean };
       if (query.dryRun) return Response.json(queryResponse({ totalBytesProcessed: "1" }));
@@ -109,16 +98,6 @@ describe("connection diagnostics", () => {
     ).toBe(true);
   });
 
-  it("requires only the store column the shell reads; report columns belong to each view", async () => {
-    const { warehouse } = await setup(fakeWarehouse({ missingColumns: true }));
-    expect((await warehouse.checkConnection()).checks.at(-1)).toMatchObject({
-      name: "Store column",
-      status: "fail",
-    });
-    const { warehouse: minimal } = await setup(fakeWarehouse());
-    expect((await minimal.checkConnection()).checks.every((check) => check.status === "pass")).toBe(true);
-  });
-
   it("stops at an invalid credential without echoing provider text", async () => {
     const fake = createFakeBigQuery({
       token: () => Response.json({ error: "invalid_grant", error_description: "PRIVATE_CREDENTIAL" }, { status: 400 }),
@@ -137,21 +116,17 @@ describe("connection diagnostics", () => {
     expect(fake.count("submit")).toBe(0);
   });
 
-  it("rejects an empty restricted roster and distinguishes the missing-dimension fallback", async () => {
+  it("rejects an empty restricted roster, and a missing store dimension fails rather than listing IDs", async () => {
     const { warehouse } = await setup(fakeWarehouse({ empty: true }));
     expect((await warehouse.checkConnection()).checks.at(-1)).toMatchObject({
       name: "Available stores",
       status: "fail",
     });
-    const fallback = await setup(fakeWarehouse({ missingDimension: true }));
-    expect((await fallback.warehouse.checkConnection()).checks).toContainEqual(
-      expect.objectContaining({
-        name: "Store names",
-        status: "warning",
-        message:
-          "Using store IDs because dim_stores was not found in the configured report dataset. Store names and website domains are optional; they are used automatically when available.",
-      }),
-    );
+    const missing = await setup(fakeWarehouse({ missingDimension: true }));
+    expect((await missing.warehouse.checkConnection()).checks.at(-1)).toMatchObject({
+      name: "Store access",
+      status: "fail",
+    });
   });
 
   it("cancels an in-progress metadata check and does not continue to queries", async () => {

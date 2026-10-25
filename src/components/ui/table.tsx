@@ -6,17 +6,22 @@ import { cn } from "@/lib/utils";
 function Table({
   className,
   containerClassName,
-  containerProps,
+  regionLabel,
   ...props
 }: React.ComponentProps<"table"> & {
   containerClassName?: string;
-  containerProps?: Omit<React.ComponentProps<"div">, "className" | "children">;
+  /** Names the scroll container as a focusable region, so a keyboard can scroll a table wider or taller than it. */
+  regionLabel?: string;
 }) {
   return (
     <div
       data-slot="table-container"
-      className={cn("relative w-full overflow-auto", containerClassName)}
-      {...containerProps}
+      className={cn(
+        "relative w-full overflow-auto",
+        regionLabel && "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        containerClassName,
+      )}
+      {...(regionLabel ? { tabIndex: 0, role: "region", "aria-label": regionLabel } : {})}
     >
       <table
         data-slot="table"

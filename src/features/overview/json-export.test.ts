@@ -22,6 +22,8 @@ it("exports raw values and context from the same scoped result without changing 
   expect(body.results.current.totals.netRevenue).toBe(total?.net_revenue);
   expect(String(body.results.current.totals.orders)).toBe(total?.summary_orders);
   expect(body.results.current.totals.sessions).toBe(total?.website_sessions);
+  // The raw results carry exactly the measures the report presents.
+  expect(Object.keys(body.results.current.totals).sort()).toEqual(["adSpend", "netRevenue", "orders", "sessions"]);
 });
 it("authorizes JSON export store scope before business reads", async () => {
   const fake = await goLive({});

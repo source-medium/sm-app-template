@@ -15,6 +15,7 @@
  */
 import "server-only";
 import { z } from "zod";
+import { DeadlineCall } from "./deadline-call.server";
 import { logEvent } from "./log";
 import type {
   BigQueryField,
@@ -107,8 +108,9 @@ const TRANSIENT_REMEDY = "SourceMedium's data API returned a temporary error. Re
 /**
  * Copy for every kind whose generic WarehouseError copy describes the
  * self-hosted Google path (an app key, BigQuery settings, Google's errors).
- * Every error this adapter raises goes through `managedError`, so a managed
- * app never tells its user to replace a Google key.
+ * Every error this adapter raises goes through `managedError` (the shared
+ * response-size limit's generic copy names no source), so a managed app never
+ * tells its user to replace a Google key.
  */
 const MANAGED_COPY: Partial<Record<WarehouseErrorKind, { title: string; remedy: string }>> = {
   credential_invalid: {
@@ -306,7 +308,7 @@ export async function runManagedQuery(
     call.dispose();
     logEvent({
       event: "bq_query",
-      level: failure && !(options.missingRelationOk && failure.kind === "not_found") ? "warn" : "info",
+      level: failure ? "warn" : "info",
       build: client.buildId,
       query: request.name,
       request_id: failure?.requestId ?? requestId,
@@ -370,45 +372,13 @@ export async function loadManagedContext(
   }
 }
 
-/** One deadline and abort signal for a single data API call. */
-class Call {
-  private readonly controller = new AbortController();
-  private readonly startedAt: number;
-  private readonly timer: ReturnType<typeof setTimeout>;
-  private readonly unlink: () => void;
-  private readonly fetchImpl: typeof fetch;
-  private readonly now: () => number;
-
+/** A single data API call, within its deadline. */
+class Call extends DeadlineCall {
   constructor(
     private readonly client: ManagedApiClient,
     options: QueryOptions,
   ) {
-    this.fetchImpl = client.fetch ?? globalThis.fetch;
-    this.now = client.now ?? Date.now;
-    this.startedAt = this.now();
-    const deadlineMs = options.deadlineMs ?? DEFAULT_DEADLINE_MS;
-    this.timer = setTimeout(
-      () => this.controller.abort(new DOMException("Deadline exceeded", "TimeoutError")),
-      deadlineMs,
-    );
-    const callerSignal = options.signal;
-    const onAbort = () => this.controller.abort(new DOMException("Cancelled", "AbortError"));
-    if (callerSignal?.aborted) onAbort();
-    callerSignal?.addEventListener("abort", onAbort, { once: true });
-    this.unlink = () => callerSignal?.removeEventListener("abort", onAbort);
-  }
-
-  get signal(): AbortSignal {
-    return this.controller.signal;
-  }
-
-  elapsedMs(): number {
-    return this.now() - this.startedAt;
-  }
-
-  dispose(): void {
-    clearTimeout(this.timer);
-    this.unlink();
+    super(client, options.deadlineMs ?? DEFAULT_DEADLINE_MS, options.signal, MAX_RESPONSE_BYTES);
   }
 
   /** Sends the token only when one is configured; a cloud proxy may add it instead. */
@@ -423,29 +393,5 @@ class Call {
       redirect: "manual",
       signal: this.signal,
     });
-  }
-
-  async readJson(response: Response): Promise<unknown> {
-    const reader = response.body?.getReader();
-    if (!reader) throw new SyntaxError("Empty response body");
-    const decoder = new TextDecoder();
-    const chunks: string[] = [];
-    let bytes = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        bytes += value.byteLength;
-        if (bytes > MAX_RESPONSE_BYTES) {
-          await reader.cancel();
-          throw managedError("result_too_large", { reason: "response_bytes" });
-        }
-        chunks.push(decoder.decode(value, { stream: true }));
-      }
-      chunks.push(decoder.decode());
-      return JSON.parse(chunks.join(""));
-    } finally {
-      reader.releaseLock();
-    }
   }
 }

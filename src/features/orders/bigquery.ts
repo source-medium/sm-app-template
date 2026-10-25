@@ -131,7 +131,6 @@ export async function queryOrderChannels(
         ${filters.region ? `AND ${REGION_SQL} = @region` : ""}
       ORDER BY channel`,
     params: [
-      { name: "valid_only", type: "BOOL", value: filters.validOnly ?? false },
       { name: "country", type: "STRING", value: filters.country ?? "" },
       { name: "region", type: "STRING", value: filters.region ?? "" },
       { name: "store_id", type: "STRING", value: filters.storeId },

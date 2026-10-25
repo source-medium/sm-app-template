@@ -11,6 +11,7 @@ it("uses each group's own order measure for its ratio, including fractional coun
         repeat: { netRevenue: "240", orders: 2 },
       }}
       previous={null}
+      currency={null}
     />,
   );
   const table = screen.getByRole("table", { name: "New vs repeat purchases" });
@@ -29,6 +30,7 @@ it("keeps exact revenue and missing measures intact; zero orders have no ratio",
         repeat: { netRevenue: null, orders: null },
       }}
       previous={null}
+      currency={null}
       comparedTo="Prior period"
     />,
   );

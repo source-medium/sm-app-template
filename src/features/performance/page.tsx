@@ -8,17 +8,10 @@ import { LoadingState } from "@/components/patterns/data-states";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { MultiChannelFilter, SalesChannelFilter } from "@/components/patterns/multi-channel-filter";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  parseChoice,
-  salesChannelLabel,
-  summarySalesChannel,
-  withParams,
-  single,
-  type SearchParams,
-} from "@/lib/filters";
+import { parseChoice, salesChannelLabel, summarySalesChannel, withParams, type SearchParams } from "@/lib/filters";
 import { parseTimeGrain, TIME_GRAINS } from "@/lib/time-grain";
 import { getBusiness, getPlatforms, getPerformanceChannels, type PerformanceFilters } from "./queries";
-import { BUSINESS_RELATION, PLATFORM_RELATION } from "./rows";
+import { BUSINESS_RELATION, parsePlatform, PLATFORM_RELATION } from "./rows";
 import { BusinessTable, PlatformFilter, PlatformTables, METRIC_GROUPS, platformLabel } from "./tables";
 
 export const metadata: Metadata = { title: "Performance tables" };
@@ -32,7 +25,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
     "revenue",
   );
   const grain = parseTimeGrain(params);
-  const platform = single(params, "platform")?.slice(0, 200) ?? "";
+  const platform = parsePlatform(params);
   const channel = summarySalesChannel(params);
   return (
     <ReportPage

@@ -14,16 +14,10 @@ import { DataStatus, PendingDataStatus } from "./data-status";
  * store list: each is a BigQuery job, so running them together saves a round
  * trip. Otherwise the page first waits for the list.
  */
-import { EmptyState, ErrorState } from "@/components/patterns/data-states";
+import { EmptyState, ErrorState, WarehouseErrorState } from "@/components/patterns/data-states";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { loadStores, resolveReportStore } from "@/lib/data/stores.server";
-import {
-  activeComparison,
-  parseComparisonPlan,
-  planParams,
-  type Comparison,
-  type ComparisonPlan,
-} from "@/lib/comparison";
+import { parseComparisonPlan, planParams, type ComparisonPlan } from "@/lib/comparison";
 import { BaselineProvider } from "@/components/patterns/baseline-switch";
 import { calendarDate } from "@/lib/format";
 import { dateRangeIssue, parseDateRange, single, type ReportFilters, type SearchParams } from "@/lib/filters";
@@ -38,8 +32,6 @@ import { ReportHeader } from "./report-header";
 export type ReportContext = {
   filters: ReportFilters;
   params: SearchParams;
-  /** The comparison slot whose overlay and change columns show (plan.slots[plan.active]). */
-  comparison?: Comparison;
   /** Both comparison slots; KPI cards show a row for each. */
   plan?: ComparisonPlan;
   today: string;
@@ -124,12 +116,7 @@ export async function ReportPage({
       <div className="flex flex-col gap-4">
         <ReportHeader {...header} params={params} />
         {store.error ? (
-          <ErrorState
-            title={store.error.title}
-            remedy={store.error.remedy}
-            detail={store.error.detail}
-            requestId={store.error.requestId}
-          />
+          <WarehouseErrorState error={store.error} />
         ) : (
           <EmptyState message="This warehouse has no stores available yet." />
         )}
@@ -160,14 +147,7 @@ export async function ReportPage({
           allStores={allStores}
           fixedStore={fixedStore}
         />
-        {store.error && !rosterFailed && (
-          <ErrorState
-            title={store.error.title}
-            remedy={store.error.remedy}
-            detail={store.error.detail}
-            requestId={store.error.requestId}
-          />
-        )}
+        {store.error && !rosterFailed && <WarehouseErrorState error={store.error} />}
       </div>
     );
   }
@@ -179,7 +159,6 @@ export async function ReportPage({
   const range = parseDateRange(params, today, maxDays);
   const issue = dates ? dateRangeIssue(params, today, maxDays) : null;
   const plan = comparisons && dates ? parseComparisonPlan(params, range, today) : undefined;
-  const comparison = plan ? activeComparison(plan) : undefined;
   if (plan) params = { ...params, ...planParams(plan) };
   // Which slot the charts and tables show is a presentation choice made without a request.
   const presentationParams = plan ? [...clientPresentationParams, "baseline"] : clientPresentationParams;
@@ -227,7 +206,6 @@ export async function ReportPage({
           {children({
             filters: { storeId, range },
             params: { ...params, store: storeId },
-            comparison,
             plan,
             today,
             timeZone,

@@ -29,7 +29,7 @@ command against your warehouse. MCP is not required for that path.
 
 | View           | Relation                                                              | Grain                                                                               | Columns used                                                                                                                                                           |
 | -------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Overview       | `rpt_executive_summary_daily`                                         | store, channel, sub-channel, date                                                   | `order_net_revenue`, `ad_spend` (NUMERIC), `order_count` (FLOAT64), `website_sessions`, `ad_clicks` (INT64)                                                            |
+| Overview       | `rpt_executive_summary_daily`                                         | store, channel, sub-channel, date                                                   | `order_net_revenue`, `ad_spend` (NUMERIC), `order_count` (FLOAT64), `website_sessions` (INT64)                                                                         |
 | Paid marketing | `rpt_ad_performance_daily`                                            | ad by day                                                                           | `sm_channel`, `ad_campaign_id`, `ad_campaign_name`, `ad_spend`, `ad_impressions`, `ad_clicks`, `ad_platform_reported_conversions`, `ad_platform_reported_revenue`      |
 | Creatives      | `rpt_ad_performance_daily`                                            | ad by day, aggregated to creative                                                   | `ad_creative_*` text and image URLs, the same measures                                                                                                                 |
 | Orders         | `obt_orders`                                                          | one row per order                                                                   | `sm_order_key`, `order_name`, `order_processed_at_local_datetime`, channel, type, status, quantities, and the order's revenue columns                                  |
@@ -170,10 +170,9 @@ check provides a second boundary. Contract tests cover auth, fixed-store denial,
 parameterization, exact money, missing stores and truncation. Fixed-store apps hide
 All stores and redirect direct visits to an allowed individual report.
 
-Some warehouses have not received `dim_stores` yet. Only when the table is
-missing does the app use distinct IDs from `rpt_executive_summary_daily`, with
-optional configured labels. `pnpm diagnose` reports this fallback. An empty
-dimension stays empty; permission and schema errors remain errors. Metadata
+Every SourceMedium delivery publishes `dim_stores`. A missing table and
+permission or schema errors are reported as errors, and an empty dimension
+lists no stores; the app never builds a store list from report rows. Metadata
 describes active stores, including those without report rows yet. It is not
 an authorization policy: every viewer can access the deployment's allowed
 store scope, and historical IDs may still have report data.
@@ -403,8 +402,8 @@ missing, never zero, and a range including today may be incomplete.
 To add comparisons to a view, opt into `ReportPage comparisons` and read
 `plan` from the report context: `planRanges(plan)` gives both slots' dates for
 a query (typed `BaselineRanges`), `slotChanges(plan, coverage)` says for each
-slot whether changes can show, `comparison` is the active slot for an overlay,
-and `planParams(plan)` carries both slots into links and exports. Query every period
+slot whether changes can show, and `planParams(plan)` carries both slots into
+links and exports. Query every period
 with the same store and dimension filters. Copy Overview's `getOverviewReport`
 to run the existing bounded query once per period in parallel, keeping current
 data visible if a comparison query fails, or compare in one pass as Products,
@@ -533,8 +532,10 @@ shares and totals together. Orders keeps the channel through search and paging;
 changing it resets the cursor and closes the selected order. Creatives groups
 by both channel and creative id so equal platform ids cannot merge.
 
-`ChannelFilter` owns consistent picker behavior; each feature owns its roster
-query and data predicates. No shared code imports an example feature.
+`ChannelRosterFilter` owns consistent picker behavior, including keeping the
+applied channel in the report form while its roster loads or fails; each
+feature owns its roster query and data predicates. No shared code imports an
+example feature.
 
 ## Products and purchase cohorts
 
@@ -854,7 +855,7 @@ No naming taxonomy is inferred, and filters never rewrite warehouse names.
 
 Overview and Performance tables opt into `appConfig.summaryMaxDays` (366 by default) while detail views retain `dateRange.maxDays` (90). Pass the same maximum to ReportPage and csvExport so the URL, browser validation and download agree. Quarter-to-date and year-to-date presets appear only when they fit the report's bound. Performance uses a grain-specific aggregate row bound and rejects excess platform groups rather than truncating totals.
 
-For multiple sales channels, copy Overview's `SalesChannelFilter` wrapper outside Suspense and `MultiChannelFilter` inside it. The wrapper owns one form value while the roster loads or fails. The shared `SALES_CHANNEL_PREDICATE` accepts bound legacy single-channel values and canonical JSON selections. Keep explicit All selections in links and exports as `sales_channel=` so customer defaults cannot reapply. See [reconciliation.md](reconciliation.md) for metric definitions and reference parity.
+For multiple sales channels, copy Overview's `SalesChannelFilter` wrapper outside Suspense and `MultiChannelFilter` inside it. The wrapper owns one form value while the roster loads or fails. The shared `SALES_CHANNEL_PREDICATE` accepts one bound channel or a JSON list of several. Keep explicit All selections in links and exports as `sales_channel=` so customer defaults cannot reapply. See [reconciliation.md](reconciliation.md) for metric definitions and reference parity.
 
 ## Dashboard definitions and evidence
 

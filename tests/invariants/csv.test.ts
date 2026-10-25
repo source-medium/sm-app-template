@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { appConfig } from "@/app.config";
-import { csvExport, csvResponse } from "@/lib/csv.server";
+import { csvExport, csvResponse, scopeColumns, type ExportScope } from "@/lib/csv.server";
 import { googleError } from "../fake-bigquery/fake-bigquery";
 import { goLive, isStoreList, rowsResponse, withStores } from "../helpers/live";
 
@@ -53,6 +53,24 @@ describe("CSV downloads", () => {
 
 describe("CSV export scope", () => {
   const ok = async () => new Response("ok");
+
+  it("starts every export with its mode, optional report, store, dates and currency, in that order", async () => {
+    const scope: ExportScope = {
+      params: {},
+      storeId: "store-a",
+      range: { from: "2026-09-01", to: "2026-09-02" },
+      mode: "live",
+      currency: null,
+      timeZone: "UTC",
+    };
+    const header = async (report?: string) =>
+      (await csvResponse("scope.csv", scopeColumns(scope, report), [{}]).text()).split("\r\n").slice(0, 2);
+    expect(await header()).toEqual([
+      '"data_mode","store_id","from","to","reporting_currency"',
+      '"live","store-a","2026-09-01","2026-09-02",""',
+    ]);
+    expect((await header("geography"))[0]).toBe('"data_mode","report","store_id","from","to","reporting_currency"');
+  });
 
   it("exports the store metadata currency without configuration", async () => {
     await goLive({ submit: withStores(() => rowsResponse([], []), ["csv-metadata-currency"], "UTC", "EUR") });

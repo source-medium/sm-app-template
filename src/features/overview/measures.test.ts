@@ -7,12 +7,11 @@ const measures = {
   netRevenue: "60.06",
   orders: 8,
   sessions: 22n,
-  adClicks: 4n,
   adSpend: "4.43",
 };
 
 describe("overview measure presentation", () => {
-  const presented = presentOverviewMeasures(measures);
+  const presented = presentOverviewMeasures(measures, null);
   const revenue = decimalToNumber(measures.netRevenue);
   const spend = decimalToNumber(measures.adSpend);
 
@@ -51,10 +50,10 @@ describe("overview measure presentation", () => {
 
   it("sorts an unsafe session count as missing and formats an empty period as empty", () => {
     const huge = 9_007_199_254_740_993n;
-    const presentedHuge = presentOverviewMeasures({ ...measures, sessions: huge });
+    const presentedHuge = presentOverviewMeasures({ ...measures, sessions: huge }, null);
     expect(presentedHuge.sessions.sort).toBeNull();
     expect(presentedHuge.sessions.display).toBe(formatCount(huge));
-    expect(presentOverviewMeasures(null).revenue).toMatchObject({
+    expect(presentOverviewMeasures(null, null).revenue).toMatchObject({
       display: formatMoney(null),
       sort: null,
       amount: null,

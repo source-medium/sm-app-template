@@ -1,5 +1,4 @@
 /** A warm cache must never outlive the current managed viewer's authorization. */
-import examples from "../../contracts/managed-app-v1/examples.json";
 import { beforeEach, expect, it, vi } from "vitest";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { CACHE_POLICY } from "@/lib/data/query-cache";
@@ -7,15 +6,13 @@ import { resetQueryCache, setQueryCacheEnabled, setQueryCacheStore } from "@/lib
 import { setLogEmitter, type LogEvent } from "@/lib/data/log";
 import { resolveReportStore } from "@/lib/data/stores.server";
 import { requestHeaders, ROSTER_FIELDS, storeRow } from "../helpers/live";
+import { contractExample } from "../helpers/managed";
 
 vi.unmock("@/lib/request-scope");
 
-const contextExample = examples.context.valid.find((entry) => entry.case === "viewer");
-const viewerExample = examples.viewer_header.valid.find((entry) => entry.case === "member");
-const denial = examples.error.valid.find((entry) => entry.case === "access_denied");
-if (!contextExample || !viewerExample || !denial) throw new Error("managed contract examples missing");
-const context = contextExample.value;
-const viewer = viewerExample.value;
+const context = contractExample("context", "viewer").value;
+const viewer = contractExample("viewer_header", "member").value;
+const denial = contractExample("error", "access_denied");
 const query = {
   name: "cached_total",
   sql: "SELECT SUM(order_total_revenue) AS total FROM rpt_executive_summary_daily",

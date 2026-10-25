@@ -13,10 +13,9 @@ function toPosix(path: string): string {
 
 function files(dir: string): string[] {
   if (!existsSync(dir)) return [];
-  return readdirSync(dir).flatMap((name) => {
-    const path = join(dir, name);
-    return statSync(path).isDirectory() ? files(path) : [path];
-  });
+  return readdirSync(dir, { recursive: true, encoding: "utf8" })
+    .map((name) => join(dir, name))
+    .filter((path) => !statSync(path).isDirectory());
 }
 
 /** One sentence per difference between the canonical skills and the copies. */

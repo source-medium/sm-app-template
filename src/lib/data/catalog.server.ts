@@ -13,8 +13,8 @@ import { bq, decodeRows } from "./decode";
 import { CACHE_POLICY } from "./query-cache";
 import type { Warehouse } from "./warehouse.server";
 
-const DICTIONARY = "dim_data_dictionary";
-const METRIC_CATALOG = "dim_semantic_metric_catalog";
+export const DICTIONARY = "dim_data_dictionary";
+export const METRIC_CATALOG = "dim_semantic_metric_catalog";
 
 const DictionaryRow = z.object({
   column_name: bq.string(),

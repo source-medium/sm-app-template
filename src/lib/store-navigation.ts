@@ -1,5 +1,5 @@
 import { appConfig } from "@/app.config";
-import { single, withParams, type SearchParams } from "./filters";
+import { SHARED_FILTERS, single, withParams, type SearchParams } from "./filters";
 
 export const STORE_SWITCHER_SLOT = "report-store-switcher";
 export const allStoresPath = () => appConfig.nav.find((item) => item.scope === "all-stores")?.href;
@@ -25,9 +25,5 @@ export function switchStoreHref(pathname: string, params: SearchParams, storeId:
 
 /** A portfolio compares the same dates across stores, independent of report-specific filters. */
 export function allStoresHref(pathname: string, params: SearchParams): string {
-  return withParams(
-    pathname,
-    {},
-    Object.fromEntries(["store", "from", "to", "compare", "compare2"].map((key) => [key, single(params, key) ?? null])),
-  );
+  return withParams(pathname, {}, Object.fromEntries(SHARED_FILTERS.map((key) => [key, single(params, key) ?? null])));
 }

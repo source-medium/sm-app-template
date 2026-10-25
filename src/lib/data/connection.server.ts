@@ -3,16 +3,15 @@ import "server-only";
 import type { LiveConfig } from "@/lib/config/env.server";
 import type { Warehouse } from "./warehouse.server";
 import type { ConnectionCheck, ConnectionReport } from "./connection-report";
-import { dryRunQuery, getDatasetMetadata, getTableMetadata, type BigQueryClient } from "./bigquery-rest.server";
+import { dryRunQuery, getDatasetMetadata, type BigQueryClient } from "./bigquery-rest.server";
 import { readDictionary, readMetricCatalog } from "./catalog.server";
-import { queryStoreRoster, ROSTER_RELATION, LEGACY_ROSTER_RELATION, storeRosterQuery } from "./store-roster.server";
-import type { ManagedContext } from "./managed-api.server";
+import { queryStoreRoster, ROSTER_RELATION, storeRosterQuery } from "./store-roster.server";
 import { CACHE_POLICY } from "./query-cache";
 import { queryCacheTiers } from "./query-cache.server";
 import { WarehouseError } from "./warehouse-error";
 
 /** Which query-cache tiers this runtime has; memory alone is a working setup, not a failure. */
-export function queryCacheCheck(): ConnectionCheck {
+function queryCacheCheck(): ConnectionCheck {
   const minutes = Math.round(CACHE_POLICY.aggregate.maxAgeSeconds / 60);
   return queryCacheTiers().includes("kv")
     ? {
@@ -64,6 +63,52 @@ function checkRunner(checks: ConnectionCheck[], signal: AbortSignal, keepCopy = 
   };
 }
 
+type Step = ReturnType<typeof checkRunner>;
+
+/** The store roster's first store, or null once a check has failed. */
+async function storeChecks(
+  checks: ConnectionCheck[],
+  step: Step,
+  warehouse: Warehouse,
+  storeId: string | null,
+): Promise<string | null> {
+  const stores = await step(
+    "Store access",
+    () => queryStoreRoster(warehouse, storeId),
+    "The app can query its store roster.",
+  );
+  if (!stores) return null;
+  const firstStore = stores[0]?.sm_store_id;
+  if (!firstStore) {
+    checks.push({
+      name: "Available stores",
+      status: "fail",
+      message:
+        storeId !== null
+          ? "APP_STORE_ID has no matching active store. Ask your SourceMedium admin to check the store restriction and published data."
+          : "No stores are published yet. Ask your SourceMedium admin to check warehouse delivery.",
+    });
+    return null;
+  }
+  return firstStore;
+}
+
+/** The published metadata. Report columns belong to each view, which names a missing one on screen. */
+async function metadataChecks(
+  checks: ConnectionCheck[],
+  step: Step,
+  warehouse: Warehouse,
+  firstStore: string,
+): Promise<void> {
+  await step(
+    "Data dictionary",
+    () => readDictionary(warehouse, firstStore, ROSTER_RELATION),
+    "The data dictionary is readable.",
+  );
+  await step("Metric catalog", () => readMetricCatalog(warehouse, 1), "The metric catalog is readable.");
+  checks.push(queryCacheCheck());
+}
+
 export async function checkWarehouseConnection(
   live: LiveConfig,
   client: BigQueryClient,
@@ -100,35 +145,11 @@ export async function checkWarehouseConnection(
     }
   }
 
-  const stores = await step(
-    "Store access",
-    () => queryStoreRoster(warehouse, storeId),
-    "The app can query its store roster.",
-  );
-  if (!stores) return report;
-  if (stores.relation !== ROSTER_RELATION)
-    checks.push({
-      name: "Store names",
-      status: "warning",
-      message:
-        "Using store IDs because dim_stores was not found in the configured report dataset. Store names and website domains are optional; they are used automatically when available.",
-    });
-  const firstStore = stores.stores[0]?.sm_store_id;
-  if (!firstStore) {
-    checks.push({
-      name: "Available stores",
-      status: "fail",
-      message:
-        storeId !== null
-          ? "APP_STORE_ID has no matching active store. Ask your SourceMedium admin to check the store restriction and published data."
-          : "No stores are published yet. Ask your SourceMedium admin to check warehouse delivery.",
-    });
-    return report;
-  }
-
+  const firstStore = await storeChecks(checks, step, warehouse, storeId);
+  if (!firstStore) return report;
   const dry = await step(
     "Query allowance",
-    () => dryRunQuery(client, storeRosterQuery(warehouse, storeId, stores.relation), { signal }),
+    () => dryRunQuery(client, storeRosterQuery(warehouse, storeId), { signal }),
     "The example query can be planned.",
   );
   if (!dry) return report;
@@ -141,101 +162,22 @@ export async function checkWarehouseConnection(
     });
     return report;
   }
-  // The store list falls back to this relation. Report columns belong to each view, which names a missing one on screen.
-  const table = await step(
-    "Published schema",
-    () => getTableMetadata(client, live.dataProjectId, live.transformedDatasetId, LEGACY_ROSTER_RELATION, { signal }),
-    "The executive summary's schema is readable.",
-  );
-  if (!table) return report;
-  if (!table.fields.some((field) => field.name === "sm_store_id")) {
-    checks.push({
-      name: "Store column",
-      status: "fail",
-      message:
-        "The published executive summary has no sm_store_id column, which the store list needs. Ask your SourceMedium admin to verify its schema.",
-    });
-    return report;
-  }
-  await step(
-    "Data dictionary",
-    () => readDictionary(warehouse, firstStore, LEGACY_ROSTER_RELATION),
-    "The data dictionary is readable.",
-  );
-  await step("Metric catalog", () => readMetricCatalog(warehouse, 1), "The metric catalog is readable.");
-  checks.push(queryCacheCheck());
+  await metadataChecks(checks, step, warehouse, firstStore);
   return report;
 }
 
 /**
  * A managed app's diagnostics, all through the data API: never a Google token
  * or metadata endpoint. The context already proved the token; the roster,
- * catalog and dictionary use the normal adapter, and columns come from the
- * dataset's INFORMATION_SCHEMA, which the API admits inside the app's scope.
+ * catalog and dictionary use the normal adapter.
  */
-export async function checkManagedConnection(
-  context: ManagedContext,
-  warehouse: Warehouse,
-  signal: AbortSignal,
-): Promise<ConnectionReport> {
+export async function checkManagedConnection(warehouse: Warehouse, signal: AbortSignal): Promise<ConnectionReport> {
   const checks: ConnectionCheck[] = [
     { name: "SourceMedium data API", status: "pass", message: "SourceMedium accepted this app's data access." },
   ];
   const report: ConnectionReport = { mode: "live", checks };
   const step = checkRunner(checks, signal, true);
-  const stores = await step(
-    "Store access",
-    () => queryStoreRoster(warehouse, null),
-    "The app can query its store roster.",
-  );
-  if (!stores) return report;
-  if (stores.relation !== ROSTER_RELATION)
-    checks.push({
-      name: "Store names",
-      status: "warning",
-      message:
-        "Using store IDs because dim_stores was not found in the report dataset. Store names and website domains are optional; they are used automatically when available.",
-    });
-  const firstStore = stores.stores[0]?.sm_store_id;
-  if (!firstStore) {
-    checks.push({
-      name: "Available stores",
-      status: "fail",
-      message: "No stores are published yet. Ask your SourceMedium admin to check warehouse delivery.",
-    });
-    return report;
-  }
-  // The store list falls back to this relation. Report columns belong to each view, which names a missing one on screen.
-  const columns = await step(
-    "Published schema",
-    () =>
-      warehouse.query(
-        {
-          name: "connection-schema",
-          sql: `SELECT column_name FROM \`${context.projectId}.${context.transformedDatasetId}.INFORMATION_SCHEMA.COLUMNS\` WHERE table_name = @table_name`,
-          params: [{ name: "table_name", type: "STRING", value: LEGACY_ROSTER_RELATION }],
-          maxRows: 1000,
-        },
-        { signal },
-      ),
-    "The executive summary's schema is readable.",
-  );
-  if (!columns) return report;
-  if (!columns.rows.some((row) => row.column_name === "sm_store_id")) {
-    checks.push({
-      name: "Store column",
-      status: "fail",
-      message:
-        "The published executive summary has no sm_store_id column, which the store list needs. Ask your SourceMedium admin to verify its schema.",
-    });
-    return report;
-  }
-  await step(
-    "Data dictionary",
-    () => readDictionary(warehouse, firstStore, LEGACY_ROSTER_RELATION),
-    "The data dictionary is readable.",
-  );
-  await step("Metric catalog", () => readMetricCatalog(warehouse, 1), "The metric catalog is readable.");
-  checks.push(queryCacheCheck());
+  const firstStore = await storeChecks(checks, step, warehouse, null);
+  if (firstStore) await metadataChecks(checks, step, warehouse, firstStore);
   return report;
 }

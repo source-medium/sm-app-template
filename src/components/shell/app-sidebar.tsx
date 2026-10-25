@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { appConfig } from "@/app.config";
+import { SHARED_FILTERS } from "@/lib/filters";
 import { LinkPending } from "./pending";
 import {
   Sidebar,
@@ -23,13 +24,11 @@ import {
 import { AppName } from "./app-name";
 
 /**
- * Filters every view shares; carrying them keeps the same store and dates when
+ * The sidebar carries SHARED_FILTERS, keeping the same store and dates when
  * switching views. Report-specific filters stay with their report: a sidebar
  * link starts the destination report fresh, while supporting detail links inside
  * a report (lib/drill-down.ts) carry a compatible investigation across.
  */
-const SHARED_FILTERS = ["store", "from", "to", "compare", "compare2"];
-
 export function AppSidebar({ fixedStore = false }: { fixedStore?: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();

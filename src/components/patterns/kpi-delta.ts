@@ -12,7 +12,7 @@ import type { KpiDelta } from "./kpi-card";
 
 /**
  * One change row for a KPI card. `label` names the baseline the row compares
- * with ("vs previous 28 days"); `baselineLabel()` builds it from a plan slot.
+ * with ("vs previous 28 days"); slotDeltas() builds it from each plan slot.
  */
 export function kpiDelta<T extends MetricValue>(
   current: T | null,
@@ -43,12 +43,12 @@ export function kpiDelta<T extends MetricValue>(
 }
 
 /** How a KPI row names its baseline: "vs previous 28 days". */
-export function baselineLabel(slot: Baseline): string {
+function baselineLabel(slot: Baseline): string {
   return `vs ${slot.label}`;
 }
 
 /** A row that explains why a slot has no change, in place of a delta. */
-export function unavailableDelta(slot: Baseline, reason?: string | null): KpiDelta {
+function unavailableDelta(slot: Baseline, reason?: string | null): KpiDelta {
   return {
     display: reason ?? slot.note ?? "Unavailable",
     direction: null,

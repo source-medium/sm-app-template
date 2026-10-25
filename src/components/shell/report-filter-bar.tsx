@@ -5,7 +5,7 @@
  * form mounted; a choice made while the next page loads still submits.
  */
 import { Suspense } from "react";
-import { ErrorState } from "@/components/patterns/data-states";
+import { ErrorState, WarehouseErrorState } from "@/components/patterns/data-states";
 import { StoreSwitcher } from "./store-switcher";
 import { FilterBar } from "@/components/shell/filter-bar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,7 +47,7 @@ async function RosterFilterBar({ roster, ...props }: ReportFilterBarProps) {
     stores = await roster;
   } catch (error) {
     if (!(error instanceof WarehouseError)) throw error;
-    return <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} />;
+    return <WarehouseErrorState error={error} />;
   }
   if (stores.some((store) => store.id === props.storeId)) return <StoreFilterBar stores={stores} {...props} />;
   return (

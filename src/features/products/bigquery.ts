@@ -3,7 +3,7 @@ import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { decodeRows } from "@/lib/data/decode";
 import type { ReportFilters } from "@/lib/filters";
-import { PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
+import { dateTimeWindow, PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
 import type { ProductFilters, ProductsData } from "./queries";
 import { MAX_PRODUCTS, PRODUCTS_RELATION, ProductChannelRow, ProductRow, ProductCoverageRow } from "./rows";
 import { CACHE_POLICY } from "@/lib/data/query-cache";
@@ -57,8 +57,7 @@ export async function queryProductCoverage(
       WHERE sm_store_id = @store_id AND is_order_sm_valid = TRUE
         AND ${SALES_CHANNEL_PREDICATE}
         ${filters.entity ? `AND ${DIMENSIONS[filters.dimension ?? "product"].key} = @entity` : ""}
-        AND order_processed_at_local_datetime >= DATETIME(@start_date)
-        AND order_processed_at_local_datetime < DATETIME(DATE_ADD(@end_date, INTERVAL 1 DAY))`,
+        AND ${dateTimeWindow("order_processed_at_local_datetime", "@start_date", "@end_date")}`,
     params: [
       { name: "store_id", type: "STRING", value: filters.storeId },
       ...(filters.entity ? [{ name: "entity", type: "STRING" as const, value: filters.entity }] : []),
@@ -123,8 +122,7 @@ export async function queryProductChannels(filters: ReportFilters): Promise<stri
     sql: `SELECT DISTINCT IFNULL(sm_channel, '(none)') AS channel
       FROM ${warehouse.table(PRODUCTS_RELATION)}
       WHERE sm_store_id = @store_id AND is_order_sm_valid = TRUE
-        AND order_processed_at_local_datetime >= DATETIME(@start_date)
-        AND order_processed_at_local_datetime < DATETIME(DATE_ADD(@end_date, INTERVAL 1 DAY))
+        AND ${dateTimeWindow("order_processed_at_local_datetime", "@start_date", "@end_date")}
       ORDER BY channel`,
     params: [
       { name: "store_id", type: "STRING", value: filters.storeId },

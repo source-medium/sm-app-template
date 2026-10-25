@@ -5,6 +5,16 @@ import { COHORT_MONTHS, shiftMonth } from "./filters";
 import { decodeRetention, RetentionSegmentRow, RETENTION_RELATION, type RetentionRowData } from "./rows";
 import { decodeRows } from "@/lib/data/decode";
 import { CACHE_POLICY } from "@/lib/data/query-cache";
+import type { QueryParameter } from "@/lib/data/bigquery-rest.server";
+
+/** The store and the cohort months both reads cover: COHORT_MONTHS acquisition months ending at the as-of month. */
+function cohortWindowParams(filters: { storeId: string; asOf: string }): QueryParameter[] {
+  return [
+    { name: "store_id", type: "STRING", value: filters.storeId },
+    { name: "cohort_from", type: "DATE", value: `${shiftMonth(filters.asOf, 1 - COHORT_MONTHS)}-01` },
+    { name: "as_of_month", type: "DATE", value: `${filters.asOf}-01` },
+  ];
+}
 
 export async function queryRetention(filters: RetentionFilters): Promise<RetentionRowData[]> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
@@ -34,9 +44,7 @@ export async function queryRetention(filters: RetentionFilters): Promise<Retenti
         AND DATE_ADD(cohort_month, INTERVAL months_since_first_order MONTH) <= @as_of_month
       ORDER BY channel, cohort_month, months_since_first_order`,
     params: [
-      { name: "store_id", type: "STRING", value: filters.storeId },
-      { name: "cohort_from", type: "DATE", value: `${shiftMonth(filters.asOf, 1 - COHORT_MONTHS)}-01` },
-      { name: "as_of_month", type: "DATE", value: `${filters.asOf}-01` },
+      ...cohortWindowParams(filters),
       ...(segmented
         ? [
             { name: "dimension", type: "STRING" as const, value: dimension },
@@ -70,9 +78,7 @@ export async function queryRetentionSegments(filters: RetentionSegmentFilters): 
       ORDER BY segment
       LIMIT 201`,
     params: [
-      { name: "store_id", type: "STRING", value: filters.storeId },
-      { name: "cohort_from", type: "DATE", value: `${shiftMonth(filters.asOf, 1 - COHORT_MONTHS)}-01` },
-      { name: "as_of_month", type: "DATE", value: `${filters.asOf}-01` },
+      ...cohortWindowParams(filters),
       { name: "dimension", type: "STRING", value: filters.dimension },
       { name: "channel", type: "STRING", value: filters.channel },
       { name: "search", type: "STRING", value: filters.search },

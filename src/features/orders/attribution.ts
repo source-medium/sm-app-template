@@ -2,7 +2,7 @@ import { z } from "zod";
 import { bq, decodeRows } from "@/lib/data/decode";
 export const ATTRIBUTION_RELATION = "fct_order_attribution_signals";
 export const MAX_SIGNALS = 100;
-export const AttributionRow = z.object({
+const AttributionRow = z.object({
   evidence_type: bq.string().nullable(),
   evidence_source: bq.string().nullable(),
   sm_marketing_channel: bq.string().nullable(),

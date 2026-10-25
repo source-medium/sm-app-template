@@ -59,8 +59,10 @@ README width and check that the before/after images stack on a narrow screen.
 
 - Follow [AGENTS.md](AGENTS.md); its five rules apply to template code too.
 - Files with a "Template version" header (`env.server.ts`, the guards,
-  `google-token.server.ts`, `bigquery-rest.server.ts`, `warehouse.server.ts`,
-  `warehouse-error.ts`, `log.ts`) are what customers diff when they update.
+  `request-scope.ts`, `google-token.server.ts`, `bigquery-rest.server.ts`,
+  `managed-api.server.ts`, `deadline-call.server.ts`, `warehouse.server.ts`,
+  `query-cache.server.ts`, `warehouse-error.ts`, `log.ts`) are what customers
+  diff when they update.
   Headers currently identify the unreleased 0.1.0 template. When publishing a
   release, align changed headers with that release and describe the changes
   in its notes; a header alone is not evidence of a published tag.

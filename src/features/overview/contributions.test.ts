@@ -2,10 +2,10 @@ import { expect, it } from "vitest";
 import { revenueContributions } from "./contributions";
 import { sampleOverview } from "./sample";
 import { sumDecimals } from "@/lib/data/decimal";
-import { activeComparison, parseComparisonPlan } from "@/lib/comparison";
+import { parseComparisonPlan } from "@/lib/comparison";
 const filters = { storeId: "sample-store-a", range: { from: "2026-09-01", to: "2026-09-28" } };
 it("reconciles same-source groups and preserves the existing comparison coverage gate", async () => {
-  const comparison = activeComparison(parseComparisonPlan({ compare: "previous" }, filters.range, "2026-10-05"));
+  const comparison = parseComparisonPlan({ compare: "previous" }, filters.range, "2026-10-05").slots[0];
   if (!comparison.range) throw new Error("Expected comparison");
   const current = await sampleOverview(filters, "2026-10-05");
   const previous = await sampleOverview({ ...filters, range: comparison.range }, "2026-10-05");

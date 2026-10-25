@@ -58,11 +58,12 @@ describe("build scan credential sources", () => {
 
 describe("Worker preview runtime values", () => {
   it("parses dotenv lines with export prefixes, quotes, blanks and comments", () => {
-    expect(parseDotenv('# note\nexport A=1\nB="two words"\nC=\n\nnot a line\n D = spaced \n')).toEqual({
-      A: "1",
-      B: "two words",
-      C: "",
-      D: "spaced",
+    const text = '# note\nexport A=1\nB="two words"\nC=\n\nnot a line\n D = spaced \nE=value # note\nF="it\'s"\n';
+    expect(parseDotenv(text)).toEqual({ A: "1", B: "two words", C: "", D: "spaced", E: "value", F: "it's" });
+    // Windows editors may write a byte-order mark and CRLF line endings.
+    expect(parseDotenv("\uFEFFSM_APP_KEY=first\r\nAPP_BASIC_AUTH=viewer:pass\r\n")).toEqual({
+      SM_APP_KEY: "first",
+      APP_BASIC_AUTH: "viewer:pass",
     });
   });
 

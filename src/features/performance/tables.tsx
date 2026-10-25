@@ -8,7 +8,7 @@ import { periodRange } from "@/lib/time-grain";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber } from "@/lib/data/decimal";
 import type { PerformanceFilters } from "./queries";
-import type { BusinessRecord, PlatformRecord } from "./rows";
+import { scopePlatformRecords, type BusinessRecord, type PlatformRecord } from "./rows";
 import { businessRatios, platformRatios } from "./measures";
 
 export const METRIC_GROUPS = [
@@ -216,7 +216,7 @@ export function PlatformTables({
       conversions: cell(row.conversions, "count", currency),
     },
   });
-  const scoped = records.filter((row) => (platform === "" ? row.combined : !row.combined && row.platform === platform));
+  const scoped = scopePlatformRecords(records, platform);
   const label = platform ? platformLabel(platform) : "Combined platforms";
   return (
     <div className="flex flex-col gap-6">

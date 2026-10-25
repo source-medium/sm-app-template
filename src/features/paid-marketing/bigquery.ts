@@ -22,6 +22,13 @@ import {
 } from "./rows";
 import type { BaselineRanges } from "@/lib/comparison";
 
+/** The delivery measures both reads sum; the row schemas in rows.ts decode them. */
+const AD_MEASURES_SQL = `SUM(ad_spend) AS spend,
+          SUM(ad_impressions) AS impressions,
+          SUM(ad_clicks) AS clicks,
+          SUM(ad_platform_reported_conversions) AS conversions,
+          SUM(ad_platform_reported_revenue) AS platform_revenue`;
+
 const BREAKDOWN_SQL = {
   type: {
     key: "COALESCE(NULLIF(ad_campaign_type, ''), '(none)')",
@@ -93,11 +100,7 @@ export async function queryPaidMarketing(filters: PaidMarketingFilters): Promise
         SELECT
           IFNULL(sm_channel, '(none)') AS channel,
           date,
-          SUM(ad_spend) AS spend,
-          SUM(ad_impressions) AS impressions,
-          SUM(ad_clicks) AS clicks,
-          SUM(ad_platform_reported_conversions) AS conversions,
-          SUM(ad_platform_reported_revenue) AS platform_revenue
+          ${AD_MEASURES_SQL}
         FROM ${table}
         WHERE sm_store_id = @store_id
           AND date BETWEEN @start_date AND @end_date
@@ -134,11 +137,7 @@ export async function queryPaidCampaigns(filters: PaidMarketingFilters): Promise
           ad_campaign_id AS campaign_id,
           MAX(ad_campaign_name) AS campaign_name,
           sm_channel AS channel,
-          SUM(ad_spend) AS spend,
-          SUM(ad_impressions) AS impressions,
-          SUM(ad_clicks) AS clicks,
-          SUM(ad_platform_reported_conversions) AS conversions,
-          SUM(ad_platform_reported_revenue) AS platform_revenue
+          ${AD_MEASURES_SQL}
         FROM ${table}
         WHERE sm_store_id = @store_id
           AND date BETWEEN @start_date AND @end_date

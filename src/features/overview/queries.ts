@@ -21,8 +21,6 @@ export type OverviewMeasures = {
   orders: number | null;
   /** INT64, exact. */
   sessions: bigint | null;
-  /** INT64, exact. */
-  adClicks: bigint | null;
   /** NUMERIC, exact decimal text, in the reporting currency: SUM(ad_spend). */
   adSpend: string | null;
 };

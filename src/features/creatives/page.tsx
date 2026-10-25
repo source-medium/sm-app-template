@@ -11,10 +11,10 @@ import { decimalToNumber } from "@/lib/data/decimal";
 import { CardGrid } from "@/components/patterns/card-grid";
 import { DataRegion } from "@/components/patterns/data-region";
 import { LoadingState } from "@/components/patterns/data-states";
-import { ChannelFilter } from "@/components/patterns/channel-filter";
+import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { AdNameFilter } from "@/components/patterns/ad-name-filter";
-import { AdNameMatches } from "@/components/patterns/ad-name-matches";
+import { AdNameMatchesRegion } from "@/components/patterns/ad-name-matches";
 import { parseAdNameFilters, serializeAdNameFilters } from "@/lib/ad-name-filters";
 import { ReportPage } from "@/components/shell/report-page";
 import { parseChoice, single, withParams, REPORT_FILTER_FORM_ID, type SearchParams } from "@/lib/filters";
@@ -149,19 +149,11 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
             <>
               {names.rules.length > 0 && (
                 <Disclosure summary="Matching names">
-                  <Suspense
+                  <AdNameMatchesRegion
                     key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${campaign}|${nameKey}`}
-                    fallback={<LoadingState variant="control" label="Loading matching names" />}
-                  >
-                    <DataRegion
-                      timestamp={false}
-                      load={() => getCreativeNames({ ...filters, sort, channel, campaign, names: names.rules })}
-                      isEmpty={(data) => data.rows.length === 0}
-                      emptyMessage="No names match these filters. Edit or clear a name filter to try again."
-                    >
-                      {(data) => <AdNameMatches data={data} rules={names.rules} />}
-                    </DataRegion>
-                  </Suspense>
+                    load={() => getCreativeNames({ ...filters, sort, channel, campaign, names: names.rules })}
+                    rules={names.rules}
+                  />
                 </Disclosure>
               )}
               <div className="flex flex-wrap gap-4">
@@ -175,27 +167,15 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                     { value: "table", label: "Performance table" },
                   ]}
                 />
-                <Suspense
+                <ChannelRosterFilter
                   key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
-                  fallback={<LoadingState variant="control" label="Loading ad channels" />}
-                >
-                  <DataRegion
-                    timestamp={false}
-                    load={() => getCreativeChannels(filters)}
-                    isEmpty={() => false}
-                    emptyMessage="No ad channels in this range."
-                  >
-                    {(channels) => (
-                      <ChannelFilter
-                        name="channel"
-                        label="Ad channel"
-                        allLabel="All ad channels"
-                        value={channel}
-                        channels={channels}
-                      />
-                    )}
-                  </DataRegion>
-                </Suspense>
+                  load={() => getCreativeChannels(filters)}
+                  value={channel}
+                  name="channel"
+                  label="Ad channel"
+                  allLabel="All ad channels"
+                  loadingLabel="Loading ad channels"
+                />
                 <SelectFilter
                   name="sort"
                   label="Sort by"

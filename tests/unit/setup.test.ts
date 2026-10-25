@@ -7,6 +7,7 @@ import ts from "typescript";
 import {
   credentialInstructions,
   EMPTY_PLAN,
+  liveIntentGaps,
   requireProductionLive,
   SetupPlan,
   sourcePushStatus,
@@ -26,6 +27,16 @@ describe("owner setup", () => {
     expect(requireProductionLive(changed)).toBe(changed);
     expect(parseConfig(parsed.config.vars)).toMatchObject({ status: "error" });
     if (source.includes("// preserve")) expect(changed).toContain("// preserve this comment");
+  });
+  it("requires a sign-in choice and root APP_REQUIRE_LIVE=true for live intent only", () => {
+    const required = { vars: { APP_REQUIRE_LIVE: "true" } };
+    expect(liveIntentGaps({ data: "sample", auth: null })).toEqual({ auth: false, requireLive: false });
+    expect(liveIntentGaps({ data: "live", auth: null }, required)).toEqual({ auth: true, requireLive: false });
+    expect(liveIntentGaps({ data: "live", auth: "access" }, { vars: { APP_REQUIRE_LIVE: "false" } })).toEqual({
+      auth: false,
+      requireLive: true,
+    });
+    expect(liveIntentGaps({ data: "live", auth: "basic" }, required)).toEqual({ auth: false, requireLive: false });
   });
   it.each(["https://user:secret@example.com", "https://example.com?token=private", "http://example.com"])(
     "rejects credential-bearing or unprotected targets: %s",

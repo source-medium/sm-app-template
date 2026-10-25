@@ -44,7 +44,6 @@ export type MetricBinding = {
   numerator?: string;
   denominator?: string;
   limitations?: readonly string[];
-  drilldowns?: readonly string[];
 };
 
 /** IDs are comma-separated exact identifiers, never substrings or display labels. */

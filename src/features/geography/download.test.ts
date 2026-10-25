@@ -22,6 +22,7 @@ it("exports independent scoped totals including all geographic groups without ch
 it("rejects invalid date bases and other stores without a business query", async () => {
   const bad = await GET(new Request("https://example.test/geography/export?store=sample-store-a&date_basis=bad"));
   expect(bad.status).toBe(400);
+  expect(await bad.json()).toEqual({ title: "Check the filters", remedy: "Choose a supported date basis." });
   const fake = await goLive({});
   vi.stubEnv("APP_STORE_ID", "allowed");
   expect((await GET(new Request("https://example.test/geography/export?store=other"))).status).toBe(403);

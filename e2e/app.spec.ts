@@ -1,4 +1,3 @@
-import { switchStore } from "./helpers";
 /**
  * Checks that hold for every page in the navigation, so they keep working as
  * you add and remove views. View-specific tests live beside each view as
@@ -6,7 +5,7 @@ import { switchStore } from "./helpers";
  */
 import { expect, test } from "@playwright/test";
 import { appConfig } from "../app.config";
-import { expectNoSeriousA11yViolations, watchConsole } from "./helpers";
+import { expectNoSeriousA11yViolations, switchStore, watchConsole } from "./helpers";
 
 const home = appConfig.nav[0]?.href ?? "/";
 

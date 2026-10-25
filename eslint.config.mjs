@@ -17,7 +17,6 @@ export default tseslint.config(
       "playwright-report/**",
       "test-results/**",
       "next-env.d.ts",
-      "cloudflare-env.d.ts",
       ".claude/worktrees/**",
     ],
   },

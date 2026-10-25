@@ -1,5 +1,4 @@
 import "server-only";
-import { appConfig } from "@/app.config";
 import { DataTable } from "@/components/patterns/data-table";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
@@ -11,12 +10,13 @@ export function OverviewPurchases({
   current,
   previous,
   comparedTo,
-  currency = appConfig.currency,
+  currency,
 }: {
   current: PurchaseMix | null;
   previous: PurchaseMix | null;
   comparedTo?: string;
-  currency?: string | null;
+  /** The store's reporting currency (ReportContext.currency), or null when unknown. */
+  currency: string | null;
 }) {
   const money = formatMoneyIn(currency);
   const rows = (["first", "repeat"] as const).map((key) => {

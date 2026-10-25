@@ -8,6 +8,7 @@ import { loadLocalEnvironment, root } from "./lib/environment";
 import {
   credentialInstructions,
   EMPTY_PLAN,
+  liveIntentGaps,
   readWorkerConfig,
   requireProductionLive,
   SetupPlan,
@@ -53,8 +54,7 @@ try {
       else throw new Error("Unknown setup option. See docs/setup.md.");
     }
     plan = SetupPlan.parse(next);
-    if (plan.data === "live" && !plan.auth)
-      throw new Error("Choose --auth access or basic before connecting live data.");
+    if (liveIntentGaps(plan).auth) throw new Error("Choose --auth access or basic before connecting live data.");
     if (plan.data === "live")
       writeFileSync(
         workerFile,
@@ -81,7 +81,7 @@ try {
     );
   } else {
     console.log(`Intent: ${plan.data} data; sign-in: ${plan.auth ?? "not chosen"}. Worker: ${worker.name}.`);
-    if (plan.data === "live" && worker.vars?.APP_REQUIRE_LIVE !== "true")
+    if (liveIntentGaps(plan, worker).requireLive)
       throw new Error(
         "Live intent requires root vars.APP_REQUIRE_LIVE=true in wrangler.jsonc. Rerun setup plan --data live.",
       );

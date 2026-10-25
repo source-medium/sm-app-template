@@ -28,21 +28,3 @@ export type AgentMetric = {
   origin: "sample" | "live";
 };
 export const USE_AGENT_METRIC = "sm:use-agent-metric";
-
-/** A bounded report's raw JSON. INT64 stays decimal text, never a rounded JS number. */
-export function reportJsonResponse(filename: string, rawResults: unknown, context: unknown): Response {
-  if (!/^[a-zA-Z0-9_.-]+\.json$/.test(filename)) throw new Error("Report filenames must be plain .json names.");
-  return new Response(
-    JSON.stringify({ context, results: rawResults }, (_key, value: unknown) =>
-      typeof value === "bigint" ? value.toString() : value,
-    ),
-    {
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "private, no-store",
-        "X-Content-Type-Options": "nosniff",
-      },
-    },
-  );
-}

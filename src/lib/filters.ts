@@ -12,6 +12,9 @@ import { appConfig } from "@/app.config";
 
 export const REPORT_FILTER_FORM_ID = "report-filters";
 
+/** The filters every view shares: the same store, dates and comparisons carry across views. */
+export const SHARED_FILTERS = ["store", "from", "to", "compare", "compare2"] as const;
+
 export type SearchParams = Record<string, string | string[] | undefined>;
 export type DateRange = { from: string; to: string };
 export type ReportFilters = { storeId: string; range: DateRange };
@@ -21,6 +24,19 @@ const DAY_MS = 86_400_000;
 
 export function addDays(date: string, days: number): string {
   return new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+}
+
+/** The Monday starting `date`'s week. */
+export function weekStart(date: string): string {
+  return addDays(date, -((new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7));
+}
+
+export function monthStart(date: string): string {
+  return `${date.slice(0, 8)}01`;
+}
+
+export function quarterStart(date: string): string {
+  return `${date.slice(0, 5)}${String(Math.floor((Number(date.slice(5, 7)) - 1) / 3) * 3 + 1).padStart(2, "0")}-01`;
 }
 
 /** Inclusive day count of a range. */
@@ -76,10 +92,9 @@ export function datePresets(
   maxDays = appConfig.dateRange.maxDays,
 ): { label: string; range: DateRange }[] {
   const yesterday = addDays(today, -1);
-  const monthStart = `${today.slice(0, 8)}01`;
-  const lastMonthEnd = addDays(monthStart, -1);
-  const monday = addDays(today, -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7));
-  const quarterStart = `${today.slice(0, 4)}-${String(Math.floor((Number(today.slice(5, 7)) - 1) / 3) * 3 + 1).padStart(2, "0")}-01`;
+  const thisMonth = monthStart(today);
+  const lastMonthEnd = addDays(thisMonth, -1);
+  const monday = weekStart(today);
   const yearStart = `${today.slice(0, 4)}-01-01`;
   const presets = [
     { label: "Yesterday", range: { from: yesterday, to: yesterday } },
@@ -88,11 +103,11 @@ export function datePresets(
       range: { from: addDays(yesterday, -(days - 1)), to: yesterday },
     })),
     { label: "Last full week", range: { from: addDays(monday, -7), to: addDays(monday, -1) } },
-    { label: "Last month", range: { from: `${lastMonthEnd.slice(0, 8)}01`, to: lastMonthEnd } },
+    { label: "Last month", range: { from: monthStart(lastMonthEnd), to: lastMonthEnd } },
     // On the first of the month there are no completed days in this month yet.
-    ...(yesterday >= monthStart ? [{ label: "Month to date", range: { from: monthStart, to: yesterday } }] : []),
+    ...(yesterday >= thisMonth ? [{ label: "Month to date", range: { from: thisMonth, to: yesterday } }] : []),
     ...[
-      { label: "Quarter to date", from: quarterStart },
+      { label: "Quarter to date", from: quarterStart(today) },
       { label: "Year to date", from: yearStart },
     ]
       .filter(({ from }) => from <= yesterday)
@@ -158,7 +173,7 @@ export function parseChoice<T extends string>(
   return choices.find((choice) => choice === value) ?? fallback;
 }
 
-/** One legacy channel or a canonical JSON list in the same shareable URL parameter. */
+/** One channel, or a JSON list of several, in the same shareable URL parameter. */
 export function salesChannelValues(value: string | null | undefined): string[] {
   if (!value) return [];
   if (value.startsWith("[") && value.length <= 6000) {

@@ -5,12 +5,13 @@
 import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { join, sep } from "node:path";
+import { join } from "node:path";
 import { ESLint, RuleTester } from "eslint";
 import tseslint from "typescript-eslint";
 import { afterAll, describe, expect, it } from "vitest";
 import template from "../../eslint-rules/index.mjs";
-import { findAuthGaps } from "../../scripts/lib/auth-coverage";
+import { findAuthGaps, readSourceFiles } from "../../scripts/lib/auth-coverage";
+import { sampleEnvironment } from "../../scripts/lib/sample-env";
 import { findStoreScopeGaps } from "../../scripts/lib/store-scope";
 import { skillDifferences, syncSkills } from "../../scripts/lib/skills";
 
@@ -303,15 +304,7 @@ describe("auth-coverage", () => {
   });
 
   it("passes on this repository's own source", () => {
-    const walk = (dir: string): string[] =>
-      readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-        entry.isDirectory()
-          ? walk(join(dir, entry.name))
-          : /\.[cm]?[jt]sx?$/.test(entry.name)
-            ? [join(dir, entry.name)]
-            : [],
-      );
-    const files = walk("src").map((path) => ({ path: path.split(sep).join("/"), text: readFileSync(path, "utf8") }));
+    const files = readSourceFiles(".", "src");
     expect(files.some((file) => file.path.startsWith("src/features/"))).toBe(true);
     expect(findAuthGaps(files)).toEqual([]);
   });
@@ -364,14 +357,7 @@ describe("store-scope", () => {
   });
 
   it("passes on this repository's own feature queries", () => {
-    const walk = (dir: string): string[] =>
-      readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-        entry.isDirectory() ? walk(join(dir, entry.name)) : /\.tsx?$/.test(entry.name) ? [join(dir, entry.name)] : [],
-      );
-    const files = walk("src/features").map((path) => ({
-      path: path.split(sep).join("/"),
-      text: readFileSync(path, "utf8"),
-    }));
+    const files = readSourceFiles(".", "src/features");
     expect(files.some((file) => file.path.endsWith("/bigquery.ts"))).toBe(true);
     expect(findStoreScopeGaps(files)).toEqual([]);
   });
@@ -450,6 +436,27 @@ describe("lint rules", () => {
     expect((await rulesFor("src/lib/config/env.server.ts"))["template/no-process-env"]).toBeUndefined();
     expect((await rulesFor("src/lib/data/anything.server.ts"))["template/server-only-import"]).toEqual([2]);
     expect((await rulesFor("src/lib/data/anything.server.tsx"))["template/server-only-import"]).toEqual([2]);
+  });
+});
+
+describe("sample environment", () => {
+  const unblanked = (text: string) =>
+    [...new Set(Array.from(text.matchAll(/(?:env\.|["'`])((?:SM|APP|BIGQUERY|CF)_[A-Z0-9_]+)/g), (match) => match[1]))]
+      // next.config.ts inlines the build id at build time; it is not runtime configuration.
+      .filter((name) => name !== undefined && name !== "SM_BUILD_ID" && !(name in sampleEnvironment))
+      .map(
+        (name) =>
+          `\`src/lib/config/env.server.ts\` reads \`${name}\`, which \`scripts/lib/sample-env.ts\` does not blank; add it to \`sampleEnvironment\` so tests never inherit a live value.`,
+      );
+
+  it("names the file and the fix for a setting tests could inherit from the shell", () => {
+    expect(unblanked('read(env, "SM_V2_SETTING") ?? env.APP_STORE_ID; const BIGQUERY_PATTERN = /x/;')).toEqual([
+      "`src/lib/config/env.server.ts` reads `SM_V2_SETTING`, which `scripts/lib/sample-env.ts` does not blank; add it to `sampleEnvironment` so tests never inherit a live value.",
+    ]);
+  });
+
+  it("blanks every setting the configuration parser reads", () => {
+    expect(unblanked(readFileSync("src/lib/config/env.server.ts", "utf8"))).toEqual([]);
   });
 });
 

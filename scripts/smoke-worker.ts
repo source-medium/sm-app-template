@@ -15,6 +15,7 @@ import { liveEnv, makeServiceAccountKey } from "../tests/helpers/service-account
 const PORT = 8791;
 const BASE = `http://127.0.0.1:${PORT}`;
 const PASSWORD = "SmokeTestPassword0123456789abc";
+const signedIn = { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` };
 const FIRST = appConfig.nav[0]?.href ?? "/";
 const LAST = appConfig.nav.at(-1)?.href ?? FIRST;
 
@@ -74,7 +75,7 @@ const modes: Mode[] = [
       ["/_next/static/../overview", {}, 401],
       ["/sample-creatives/creative-01.svg", {}, 401],
       ["/paid-marketing/export", {}, 401],
-      [FIRST, { headers: { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` } }, 200, "Sample data"],
+      [FIRST, { headers: signedIn }, 200, "Sample data"],
       // Files from public/ (and the build id) pass the guard too (run_worker_first in wrangler.jsonc).
       ["/BUILD_ID", {}, 401],
       ["/healthz", {}, 200],
@@ -119,7 +120,7 @@ const modes: Mode[] = [
       [FIRST, {}, 401],
       ["/connection", {}, 401],
       ["/paid-marketing/export", {}, 401],
-      ["/connection", { headers: { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` } }, 200, "Live data"],
+      ["/connection", { headers: signedIn }, 200, "Live data"],
     ],
   },
   { name: "connection Access", env: connection + access, checks: [[FIRST, {}, 403]] },
@@ -159,7 +160,6 @@ const modes: Mode[] = [
   },
 ];
 
-const signedIn = { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` };
 const fixedStoreMode: (typeof modes)[number] = {
   name: "fixed-store sample",
   env: `APP_BASIC_AUTH=viewer:${PASSWORD}\nAPP_STORE_ID=sample-store-b\n`,
@@ -191,12 +191,7 @@ modes.push(fixedStoreMode, {
 if (appConfig.nav.some((item) => item.href === "/paid-marketing")) {
   const download = "/paid-marketing/export?store=sample-store-a&from=2026-09-01&to=2026-09-07&channel=Meta";
   modes[0]?.checks.push([download, {}, 200, '"data_mode","store_id"']);
-  modes[1]?.checks.push([
-    download,
-    { headers: { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` } },
-    200,
-    '"sample","sample-store-a"',
-  ]);
+  modes[1]?.checks.push([download, { headers: signedIn }, 200, '"sample","sample-store-a"']);
   fixedStoreMode.checks.push([
     "/paid-marketing/export?from=2026-09-01&to=2026-09-07&channel=Meta",
     { headers: signedIn },

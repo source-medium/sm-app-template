@@ -4,6 +4,7 @@
  * never shows a broken image.
  */
 import { Card, CardContent, cardGridStyles } from "@/components/ui/card";
+import { Disclosure } from "@/components/ui/disclosure";
 import { CardImage } from "./card-image";
 
 export type GridCard = {
@@ -47,12 +48,7 @@ export function CardGrid({ cards, label }: { cards: GridCard[]; label: string })
                 ))}
               </dl>
               {card.definition && (
-                <details>
-                  <summary className="cursor-pointer py-2 text-sm underline">
-                    {card.definitionLabel ?? "About this number"}
-                  </summary>
-                  <div className="mt-2">{card.definition}</div>
-                </details>
+                <Disclosure summary={card.definitionLabel ?? "About this number"}>{card.definition}</Disclosure>
               )}
               {card.footer}
               {card.action && (

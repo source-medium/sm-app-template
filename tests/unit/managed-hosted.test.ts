@@ -4,24 +4,17 @@
  * so the app holds no credential. The viewer header is read against the
  * vendored contract's own examples.
  */
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 import { readSourceMediumViewer, VIEWER_HEADER } from "@/lib/auth/sourcemedium-viewer";
 import { describeConfig, instanceInfo, parseConfig } from "@/lib/config/env.server";
 import { requestHeaders } from "../helpers/live";
+import { contractExample, examples } from "../helpers/managed";
 
-type Example = { case: string; value: Record<string, unknown> };
-const examples = JSON.parse(
-  readFileSync(fileURLToPath(new URL("../../contracts/managed-app-v1/examples.json", import.meta.url)), "utf8"),
-) as { viewer_header: { valid: Example[]; invalid: Example[] }; context: { valid: Example[] } };
-const VIEWER_CONTEXT = examples.context.valid.find((entry) => entry.case === "viewer")?.value;
-if (!VIEWER_CONTEXT) throw new Error("the vendored contract has no viewer context example");
+const VIEWER_CONTEXT = contractExample("context", "viewer").value;
 
 const encode = (value: unknown) => Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
-const member = examples.viewer_header.valid.find((entry) => entry.case === "member")?.value;
-if (!member) throw new Error("the vendored contract has no member viewer example");
+const member = contractExample("viewer_header", "member").value;
 
 const HOSTED = {
   SM_HOSTING: "managed",

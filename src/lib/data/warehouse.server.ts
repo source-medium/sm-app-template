@@ -98,6 +98,17 @@ function tableIn(coordinates: {
   };
 }
 
+/** Diagnostics bypass the query cache and stop within 30 seconds or at the caller's signal. */
+function forDiagnostics(
+  warehouse: Warehouse,
+  run: (query: QueryRequest, options: QueryOptions) => Promise<QueryResult>,
+  callerSignal: AbortSignal | undefined,
+): { warehouse: Warehouse; signal: AbortSignal } {
+  const timeout = AbortSignal.timeout(30_000);
+  const signal = callerSignal ? AbortSignal.any([timeout, callerSignal]) : timeout;
+  return { warehouse: { ...warehouse, query: (query, options) => run(query, { ...options, signal }) }, signal };
+}
+
 /**
  * `request` is the current request's context (requireViewer() supplies it);
  * scripts and tests may omit it and get a fresh one that never bypasses the cache.
@@ -135,15 +146,10 @@ export function warehouseFor(
       return cachedQuery(scope, request, query, options, (traced) => runQuery(client, query, traced));
     },
     checkConnection: (callerSignal) => {
-      const timeout = AbortSignal.timeout(30_000);
-      const signal = callerSignal ? AbortSignal.any([timeout, callerSignal]) : timeout;
       // Diagnostics read fixed metadata queries, including the store-free catalog.
       // The roster and dictionary explicitly receive the deployment's store scope.
-      const diagnosticsWarehouse = {
-        ...warehouse,
-        query: (request: QueryRequest, options?: QueryOptions) => runQuery(client, request, { ...options, signal }),
-      };
-      return checkWarehouseConnection(live, client, diagnosticsWarehouse, fixedStoreId, signal);
+      const diagnostics = forDiagnostics(warehouse, (query, options) => runQuery(client, query, options), callerSignal);
+      return checkWarehouseConnection(live, client, diagnostics.warehouse, fixedStoreId, diagnostics.signal);
     },
   };
   return warehouse;
@@ -175,14 +181,12 @@ export function managedWarehouse(
     query: (query, options = {}) =>
       cachedQuery(scope, request, query, options, (traced) => runManagedQuery(client, query, traced)),
     checkConnection: (callerSignal) => {
-      const timeout = AbortSignal.timeout(30_000);
-      const signal = callerSignal ? AbortSignal.any([timeout, callerSignal]) : timeout;
-      const diagnosticsWarehouse = {
-        ...warehouse,
-        query: (request: QueryRequest, options?: QueryOptions) =>
-          runManagedQuery(client, request, { ...options, signal }),
-      };
-      return checkManagedConnection(context, diagnosticsWarehouse, signal);
+      const diagnostics = forDiagnostics(
+        warehouse,
+        (query, options) => runManagedQuery(client, query, options),
+        callerSignal,
+      );
+      return checkManagedConnection(diagnostics.warehouse, diagnostics.signal);
     },
   };
   return warehouse;

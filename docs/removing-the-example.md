@@ -30,9 +30,8 @@ Then point the guidance that names example views at your own pages:
   such as comparisons copying Overview's `getOverviewReport`.
 - `README.md`: the "Reports to make your own" table.
 
-The store picker reads `dim_stores` (`src/lib/data/store-roster.server.ts`)
-and falls back to `rpt_executive_summary_daily` only while that dimension is
-missing, so it keeps working without Overview once the dimension exists.
+The store picker reads `dim_stores` (`src/lib/data/store-roster.server.ts`),
+not a report relation, so it keeps working without Overview.
 If your app has no store filter, remove the `FilterBar` from your pages, or
 replace `ReportPage` with your own frame.
 

@@ -6,21 +6,15 @@
  * decision is a function of the request's own headers: a denial never
  * outlives its request, and neither does an approval.
  */
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { VIEWER_HEADER } from "@/lib/auth/sourcemedium-viewer";
 import { requestHeaders } from "../helpers/live";
+import { contractExample, examples } from "../helpers/managed";
 import { TEST_PASSWORD } from "../helpers/service-account";
 
 vi.unmock("@/lib/request-scope");
 
-type Example = { case: string; value: Record<string, unknown> };
-const examples = JSON.parse(
-  readFileSync(fileURLToPath(new URL("../../contracts/managed-app-v1/examples.json", import.meta.url)), "utf8"),
-) as { context: { valid: Example[] }; viewer_header: { valid: Example[] } };
-const context = examples.context.valid.find((entry) => entry.case === "developer_token")?.value;
-if (!context) throw new Error("the vendored contract has no developer_token context example");
+const context = contractExample("context", "developer_token").value;
 const [ana, agency] = examples.viewer_header.valid.map((entry) => entry.value);
 if (!ana || !agency) throw new Error("the vendored contract needs two viewer examples");
 

@@ -11,7 +11,7 @@ import "server-only";
 import { appConfig } from "@/app.config";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { decodeRows } from "@/lib/data/decode";
-import type { TimeGrain } from "@/lib/time-grain";
+import { GRAIN_SQL } from "@/lib/time-grain";
 import type { OverviewData, OverviewFilters } from "./queries";
 import { OVERVIEW_RELATION, OverviewChannelRow, OverviewRow, toOverviewData } from "./rows";
 import { CACHE_POLICY } from "@/lib/data/query-cache";
@@ -21,7 +21,6 @@ import { CACHE_POLICY } from "@/lib/data/query-cache";
  * answer. A same-dates-last-year baseline can hold one more day, Feb 29.
  */
 const MAX_ROWS = appConfig.summaryMaxDays + 1;
-const GRAIN_SQL: Record<TimeGrain, string> = { day: "DAY", week: "WEEK(MONDAY)", month: "MONTH" };
 
 export async function queryOverview(filters: OverviewFilters): Promise<OverviewData> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
@@ -31,7 +30,7 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
     maxRows: Math.min(MAX_ROWS, rangeLength(filters.range)),
     sql: `
       WITH scoped AS (
-        SELECT date, sm_channel, sm_sub_channel, website_sessions, ad_clicks, ad_spend,
+        SELECT date, sm_channel, sm_sub_channel, website_sessions, ad_spend,
           ${validSales("order_gross_revenue")} AS order_gross_revenue,
           ${validSales("order_discounts")} AS order_discounts,
           ${validSales("order_refunds")} AS order_refunds,
@@ -61,7 +60,6 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
           SUM(order_net_revenue) AS net_revenue,
           SUM(order_count) AS order_count,
           SUM(website_sessions) AS website_sessions,
-          SUM(ad_clicks) AS ad_clicks,
           SUM(ad_spend) AS ad_spend,
           SUM(new_customer_order_net_revenue) AS first_revenue,
           SUM(new_customer_order_count) AS first_orders,
@@ -75,13 +73,11 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
         net_revenue,
         order_count,
         website_sessions,
-        ad_clicks,
         ad_spend,
         DATE_TRUNC(date, ${GRAIN_SQL[filters.grain ?? "day"]}) AS period_date,
         SUM(net_revenue) OVER period AS period_net_revenue,
         SUM(order_count) OVER period AS period_order_count,
         SUM(website_sessions) OVER period AS period_website_sessions,
-        SUM(ad_clicks) OVER period AS period_ad_clicks,
         SUM(ad_spend) OVER period AS period_ad_spend,
         SUM(gross) OVER () AS total_gross,
         SUM(discounts) OVER () AS total_discounts,
@@ -89,7 +85,6 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
         SUM(net_revenue) OVER () AS total_net_revenue,
         SUM(order_count) OVER () AS total_order_count,
         SUM(website_sessions) OVER () AS total_website_sessions,
-        SUM(ad_clicks) OVER () AS total_ad_clicks,
         SUM(ad_spend) OVER () AS total_ad_spend,
         SUM(first_revenue) OVER () AS total_first_revenue,
         SUM(first_orders) OVER () AS total_first_orders,

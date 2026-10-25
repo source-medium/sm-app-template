@@ -1,8 +1,7 @@
 /**
- * Store identities and time zones from SourceMedium's registry dimension.
- * Warehouses that have not received it yet retain the summary's ID-only
- * roster. Only a missing relation permits that fallback; permission, schema
- * and query failures surface.
+ * Store identities, time zones and reporting currencies from SourceMedium's
+ * registry dimension, dim_stores, which every delivery lane publishes. Any
+ * failure to read it, including a missing table, surfaces.
  */
 import "server-only";
 import { z } from "zod";
@@ -14,8 +13,6 @@ import { WarehouseError } from "./warehouse-error";
 
 export const MAX_STORES = 50;
 export const ROSTER_RELATION = "dim_stores";
-export const LEGACY_ROSTER_RELATION = "rpt_executive_summary_daily";
-type RosterRelation = typeof ROSTER_RELATION | typeof LEGACY_ROSTER_RELATION;
 
 const StoreRow = z.object({
   sm_store_id: bq.string().min(1),
@@ -27,25 +24,16 @@ const StoreRow = z.object({
   store_currency_code: bq.string().nullable(),
 });
 type StoreMetadata = z.infer<typeof StoreRow>;
-export type StoreRoster = { stores: StoreMetadata[]; relation: RosterRelation };
 
-export function storeRosterQuery(
-  warehouse: Warehouse,
-  storeId: string | null = null,
-  relation: RosterRelation = ROSTER_RELATION,
-): QueryRequest {
+export function storeRosterQuery(warehouse: Warehouse, storeId: string | null = null): QueryRequest {
   return {
     name: "store_roster",
     cache: CACHE_POLICY.roster,
     // More than MAX_STORES fails below, with a remedy for this case.
     partial: true,
     sql: `
-      SELECT ${
-        relation === ROSTER_RELATION
-          ? "sm_store_id, store_name, store_url, store_logo_url, brand_name, store_timezone, store_currency_code"
-          : "DISTINCT sm_store_id, CAST(NULL AS STRING) AS store_name, CAST(NULL AS STRING) AS store_url, CAST(NULL AS STRING) AS store_logo_url, CAST(NULL AS STRING) AS brand_name, CAST(NULL AS STRING) AS store_timezone, CAST(NULL AS STRING) AS store_currency_code"
-      }
-      FROM ${warehouse.table(relation)}
+      SELECT sm_store_id, store_name, store_url, store_logo_url, brand_name, store_timezone, store_currency_code
+      FROM ${warehouse.table(ROSTER_RELATION)}
       WHERE sm_store_id IS NOT NULL
       ${storeId !== null ? "AND sm_store_id = @store_id" : ""}
       ORDER BY sm_store_id
@@ -58,26 +46,24 @@ export function storeRosterQuery(
   };
 }
 
-export async function queryStoreRoster(warehouse: Warehouse, storeId: string | null = null): Promise<StoreRoster> {
-  let relation: RosterRelation = ROSTER_RELATION;
-  let result;
-  try {
-    result = await warehouse.query(storeRosterQuery(warehouse, storeId), { missingRelationOk: true });
-  } catch (error) {
-    if (!(error instanceof WarehouseError) || error.kind !== "not_found" || error.job) throw error;
-    relation = LEGACY_ROSTER_RELATION;
-    result = await warehouse.query(storeRosterQuery(warehouse, storeId, relation));
-  }
-  const rows = decodeRows(StoreRow, result.rows, relation);
+export async function queryStoreRoster(warehouse: Warehouse, storeId: string | null = null): Promise<StoreMetadata[]> {
+  const result = await warehouse.query(storeRosterQuery(warehouse, storeId));
+  const rows = decodeRows(StoreRow, result.rows, ROSTER_RELATION);
   if (rows.length > MAX_STORES || result.truncated) {
     throw new WarehouseError("result_too_large", {
       reason: "store_roster",
       remedy: `More than ${MAX_STORES} stores are available to this app. Give each audience its own deployment with APP_STORE_ID, or raise MAX_STORES in store-roster.server.ts deliberately.`,
     });
   }
+  // A store listed twice is a delivery problem, not a changed column: no column, so no schema remedy.
   if (new Set(rows.map((row) => row.sm_store_id)).size !== rows.length)
-    throw WarehouseError.incompatible(relation, "sm_store_id");
-  return { stores: rows, relation };
+    throw new WarehouseError("incompatible_schema", {
+      relation: ROSTER_RELATION,
+      reason: "duplicate_store_ids",
+      remedy:
+        "The store list (dim_stores) names a store more than once. Ask your SourceMedium admin to check its delivery.",
+    });
+  return rows;
 }
 
 const OffsetRow = z.object({ offset_minutes: bq.int64() });

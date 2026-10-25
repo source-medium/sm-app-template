@@ -14,7 +14,7 @@ import { kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { ProductCosts } from "./costs";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
-import { ChannelFilter } from "@/components/patterns/channel-filter";
+import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { planRanges, slotChanges } from "@/lib/comparison";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
@@ -71,19 +71,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         return (
           <>
             <div className="flex flex-wrap gap-4">
-              <Suspense
+              <ChannelRosterFilter
                 key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
-                fallback={<LoadingState variant="control" label="Loading sales channels" />}
-              >
-                <DataRegion
-                  timestamp={false}
-                  load={() => getProductChannels(filters)}
-                  isEmpty={() => false}
-                  emptyMessage="No sales channels in this range."
-                >
-                  {(channels) => <ChannelFilter value={channel} channels={channels} />}
-                </DataRegion>
-              </Suspense>
+                load={() => getProductChannels(filters)}
+                value={channel}
+                loadingLabel="Loading sales channels"
+              />
               {!options.entity && (
                 <SelectFilter
                   name="dimension"

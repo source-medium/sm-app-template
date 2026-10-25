@@ -1,6 +1,6 @@
 /** Creatives' live path end to end against the fake BigQuery. */
 import { describe, expect, it, vi } from "vitest";
-import { goLive, rowsResponse } from "../../../tests/helpers/live";
+import { expectEveryQueryScopedTo, goLive, rowsResponse } from "../../../tests/helpers/live";
 
 const FIELDS = [
   ...["revenue", "roas", "cpo"].map((name) => ({ name, type: "FLOAT" })),
@@ -34,8 +34,6 @@ const ROW = {
 };
 const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-09-02" } };
 
-type Submitted = { query: string; queryParameters: { name: string }[] };
-
 describe("creatives, live", () => {
   it("applies literal name predicates before creative aggregation, with the same inspection scope", async () => {
     const fake = await goLive({ submit: () => rowsResponse([], []) });
@@ -50,10 +48,9 @@ describe("creatives, live", () => {
     };
     await getCreatives(filters);
     await getCreativeNames(filters);
-    const calls = fake.calls.filter((call) => call.kind === "submit");
-    expect(calls).toHaveLength(2);
-    for (const call of calls) {
-      const query = call.body as Submitted;
+    const queries = fake.submitted();
+    expect(queries).toHaveLength(2);
+    for (const query of queries) {
       expect(query.query).toContain("sm_store_id = @store_id");
       expect(query.query).toContain("ad_creative_id IS NOT NULL");
       expect(query.query).toContain("ad_campaign_id = @campaign");
@@ -65,7 +62,7 @@ describe("creatives, live", () => {
         parameterValue: { value },
       });
     }
-    const query = (calls[0]?.body as Submitted).query;
+    const query = fake.submitted(0).query;
     expect(query.indexOf("@name_0_0")).toBeLessThan(query.indexOf("GROUP BY creative_id"));
   });
   it("sorts by a column from the fixed map and takes each creative's latest image", async () => {
@@ -81,7 +78,7 @@ describe("creatives, live", () => {
     });
     expect(data.truncated).toBe(false);
 
-    const submit = fake.calls.find((call) => call.kind === "submit")?.body as Submitted;
+    const submit = fake.submitted(0);
     expect(submit.query).toContain("ORDER BY ctr DESC NULLS LAST, creative_id");
     expect(submit.query).toContain("GROUP BY creative_id, channel");
     expect(submit.query).toContain("(@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)");
@@ -150,17 +147,7 @@ it("allows the fixed store and keeps every SQL read scoped to it", async () => {
   vi.stubEnv("APP_STORE_ID", FILTERS.storeId);
   const { getCreatives } = await import("./queries");
   await getCreatives({ ...FILTERS, sort: "spend" });
-  const queries = fake.calls.filter((call) => call.kind === "submit");
-  expect(queries.length).toBeGreaterThan(0);
-  for (const call of queries) {
-    const body = call.body as { query: string; queryParameters: unknown[] };
-    expect(body.query).toContain("sm_store_id = @store_id");
-    expect(body.queryParameters).toContainEqual({
-      name: "store_id",
-      parameterType: { type: "STRING" },
-      parameterValue: { value: FILTERS.storeId },
-    });
-  }
+  expectEveryQueryScopedTo(fake, FILTERS.storeId);
 });
 
 it("lists channels before the creative cap and rejects a truncated roster", async () => {
@@ -177,7 +164,7 @@ it("lists channels before the creative cap and rejects a truncated roster", asyn
   });
   const { getCreativeChannels } = await import("./queries");
   expect(await getCreativeChannels(FILTERS)).toEqual(["Meta", "Google"]);
-  const body = fake.calls.find((call) => call.kind === "submit")?.body as Submitted;
+  const body = fake.submitted(0);
   expect(body.query).toContain("sm_store_id = @store_id AND date BETWEEN @start_date AND @end_date");
   expect(body.query).toContain("ad_creative_id IS NOT NULL");
   expect(body.query).not.toContain("@channel");
@@ -217,7 +204,7 @@ it("applies fractional thresholds after aggregation before ranking, and fetches 
       ["Google", "outside-top-list"],
     ],
   });
-  const query = fake.calls.find((call) => call.kind === "submit")?.body as Submitted;
+  const query = fake.submitted(0);
   expect(query.query.indexOf("GROUP BY creative_id")).toBeLessThan(query.query.indexOf("HAVING"));
   expect(query.query.indexOf("HAVING")).toBeLessThan(query.query.indexOf("ORDER BY cpo"));
   expect(query.query).toContain("ORDER BY cpo ASC NULLS LAST");

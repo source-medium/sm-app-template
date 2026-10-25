@@ -3,19 +3,14 @@
  * data API context once per request and hands features an ordinary live
  * Warehouse, only on this computer; middleware refuses anything else first.
  */
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 import { isLoopbackRequest } from "@/lib/auth/loopback";
 import { managedNodeEnvironment, managedServerBindingRefusal } from "../../scripts/managed-node.mjs";
 import { requestHeaders } from "../helpers/live";
+import { contractExample } from "../helpers/managed";
 
-const examples = JSON.parse(
-  readFileSync(fileURLToPath(new URL("../../contracts/managed-app-v1/examples.json", import.meta.url)), "utf8"),
-) as { context: { valid: { case: string; value: unknown }[] } };
-const CONTEXT = examples.context.valid.find((entry) => entry.case === "developer_token")?.value;
-if (!CONTEXT) throw new Error("the vendored contract has no developer_token context example");
+const CONTEXT = contractExample("context", "developer_token").value;
 
 const REQUEST_ID = "47ca1e6b-fa2c-4e96-aa86-39801bb3dbeb";
 const TOKEN = `smapp_${"c".repeat(43)}`;

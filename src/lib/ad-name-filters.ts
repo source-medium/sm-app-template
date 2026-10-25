@@ -23,8 +23,8 @@ export const NAME_FILTER_SIZE_ERROR =
   "These name filters are too long for a shareable link. Shorten or remove some values.";
 export const AdNameRuleSchema = z
   .object({
-    field: z.enum(["campaign", "ad_group", "ad"]),
-    operator: z.enum(["contains", "excludes", "equals", "starts_with"]),
+    field: z.enum(AD_NAME_FIELDS.map((field) => field.value)),
+    operator: z.enum(AD_NAME_OPERATORS.map((operator) => operator.value)),
     values: z
       .array(
         z
@@ -90,10 +90,4 @@ export function nameRuleLabel(rule: AdNameRule): string {
   const field = AD_NAME_FIELDS.find((item) => item.value === rule.field)?.label ?? rule.field;
   const operator = AD_NAME_OPERATORS.find((item) => item.value === rule.operator)?.label.toLowerCase() ?? rule.operator;
   return `${field} ${operator} ${rule.values.map((value) => `“${value}”`).join(" or ")}`;
-}
-
-export function sampleNameMatches(names: AdNames[]): AdNameMatches {
-  const distinct = [...new Map(names.map((row) => [JSON.stringify(row), row])).values()];
-  distinct.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-  return { rows: distinct.slice(0, MAX_MATCHED_NAMES), truncated: distinct.length > MAX_MATCHED_NAMES };
 }

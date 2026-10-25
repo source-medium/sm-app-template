@@ -9,7 +9,7 @@ import { cardGridStyles } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import { supportRequestId } from "@/lib/data/warehouse-error";
+import { supportRequestId, type WarehouseError } from "@/lib/data/warehouse-error";
 
 /** A correlation ID only, never arbitrary upstream text. */
 export function SupportCode({ requestId }: { requestId?: string | null }) {
@@ -150,7 +150,18 @@ export function ErrorState({
   );
 }
 
-export function IncompatibleState({ relation, column }: { relation: string; column: string }) {
+/**
+ * A warehouse failure in the state that explains it: the incompatible-schema
+ * state when it names the column, otherwise its title, remedy, support code
+ * and detail.
+ */
+export function WarehouseErrorState({ error }: { error: WarehouseError }) {
+  if (error.kind === "incompatible_schema" && error.relation && error.column)
+    return <IncompatibleState relation={error.relation} column={error.column} />;
+  return <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} requestId={error.requestId} />;
+}
+
+function IncompatibleState({ relation, column }: { relation: string; column: string }) {
   return (
     <div role="alert" data-slot="data-error">
       <StateFrame

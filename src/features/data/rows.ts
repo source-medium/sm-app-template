@@ -7,6 +7,6 @@ export const DATA_SOURCES = [
   "rpt_cohort_ltv_by_first_valid_purchase_attribute_no_product_filters",
   "fct_order_attribution_signals",
 ] as const;
-/** The page's destinations; `metrics` is the previous name of Explore and still opens it. */
-export const DATA_TABS = ["explore", "fields", "health", "metrics"] as const;
+/** The page's destinations. Any other `tab`, such as Explore's previous name `metrics`, opens Explore. */
+export const DATA_TABS = ["explore", "fields", "health"] as const;
 export type DataTab = (typeof DATA_TABS)[number];

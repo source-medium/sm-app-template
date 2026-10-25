@@ -7,7 +7,7 @@ const day = (
   netRevenue: string | null,
   orders: number | null = 1,
   adSpend: string | null = "0",
-): OverviewDay => ({ date, netRevenue, orders, adSpend, sessions: 10n, adClicks: 2n });
+): OverviewDay => ({ date, netRevenue, orders, adSpend, sessions: 10n });
 
 it("adds money exactly, preserves signed refunds and credits, and keeps period totals unchanged", () => {
   const days = [

@@ -9,9 +9,9 @@
  * bindings, so the file is emptied after every build and then verified.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { configuredSecretValues, root } from "./lib/environment";
+import { buildFiles, configuredSecretValues, root } from "./lib/environment";
 
 const ENV_MODULE = join(root, ".open-next/cloudflare/next-env.mjs");
 
@@ -37,15 +37,13 @@ for (const fn of readdirSync(FUNCTIONS)) {
 
 // Verify local files AND injected agent environment secrets against the Worker output.
 const secrets = configuredSecretValues();
-function scan(dir: string): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const path = join(dir, name);
-    if (statSync(path).isDirectory()) return scan(path);
-    const text = readFileSync(path, "latin1");
-    return secrets.some((secret) => text.includes(secret)) ? [path] : [];
-  });
-}
-const leaks = secrets.length > 0 ? scan(join(root, ".open-next")) : [];
+const leaks =
+  secrets.length > 0
+    ? buildFiles(join(root, ".open-next")).filter((path) => {
+        const text = readFileSync(path, "latin1");
+        return secrets.some((secret) => text.includes(secret));
+      })
+    : [];
 if (leaks.length > 0) {
   console.error(
     `A configured secret appears in the Worker build (${leaks.map((path) => path.slice(root.length + 1)).join(", ")}); do not deploy this build. Report it as a template bug.`,

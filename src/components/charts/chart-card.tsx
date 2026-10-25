@@ -25,6 +25,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
+import { Disclosure } from "@/components/ui/disclosure";
 import { compactNumber } from "./compact-number";
 
 /** Room for a two-line label beside each horizontal bar. */
@@ -79,12 +80,9 @@ export function ChartCard({
         <CardTitle>{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
         {definition && (
-          <details className="text-sm">
-            <summary className="cursor-pointer rounded py-1 text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring">
-              About this number
-            </summary>
-            <div className="py-3">{definition}</div>
-          </details>
+          <Disclosure summary="About this number">
+            <div className="pb-1">{definition}</div>
+          </Disclosure>
         )}
         <CardAction>
           {plottable && (
@@ -208,10 +206,7 @@ function ChartTable({
   data: ChartDatum[];
 }) {
   return (
-    <Table
-      containerClassName="max-h-80 rounded-md border focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      containerProps={{ tabIndex: 0, role: "region", "aria-label": `${title} table` }}
-    >
+    <Table containerClassName="max-h-80 rounded-md border" regionLabel={`${title} table`}>
       <caption className="sr-only">{title}</caption>
       <thead className="sticky top-0 bg-muted">
         <tr>

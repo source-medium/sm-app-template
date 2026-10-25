@@ -1,6 +1,6 @@
 import { appConfig } from "@/app.config";
 import { requireViewer } from "@/lib/auth/require-viewer";
-import { csvExport, csvResponse } from "@/lib/csv.server";
+import { csvExport, csvResponse, scopeColumns } from "@/lib/csv.server";
 import { summarySalesChannel } from "@/lib/filters";
 import { getOverview } from "./queries";
 import { parseTimeGrain } from "@/lib/time-grain";
@@ -11,18 +11,15 @@ export async function GET(request: Request): Promise<Response> {
   await requireViewer();
   return csvExport(
     request,
-    async ({ params, storeId, range, mode, currency }) => {
+    async (scope) => {
+      const { params, storeId, range, mode } = scope;
       const filters = { storeId, range, channel: summarySalesChannel(params), grain: parseTimeGrain(params) };
       const data = await getOverview(filters);
       const rows = overviewSummaryRows(data, filters);
       return csvResponse(
         `${mode}-summary-${filters.grain}-${range.from}-${range.to}.csv`,
         [
-          { header: "data_mode", value: () => mode },
-          { header: "store_id", value: () => storeId },
-          { header: "from", value: () => range.from },
-          { header: "to", value: () => range.to },
-          { header: "reporting_currency", value: () => currency },
+          ...scopeColumns(scope),
           { header: "sales_channel", value: () => filters.channel },
           { header: "grain", value: () => filters.grain },
           { header: "row_type", value: (row) => row.rowType },

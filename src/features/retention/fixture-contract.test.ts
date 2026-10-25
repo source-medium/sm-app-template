@@ -20,7 +20,7 @@ it("keeps cumulative second purchase separate from monthly retention and hides i
     { ...row, month_age: "1", customers: "0", second_orders: "35" },
     { ...row, month_age: "2", second_orders: null },
   ]);
-  const january = retentionMatrix(rows, "online_dtc", "second", "2026-03").find(
+  const january = retentionMatrix(rows, "online_dtc", "second", "2026-03", null).find(
     (cohort) => cohort.id === row.cohort_month,
   );
   expect(january?.cells.slice(0, 4)).toMatchObject([
@@ -63,7 +63,7 @@ it("uses complete calendar months, year boundaries, and bounded URL choices", ()
 });
 it("distinguishes zero, missing data and immature periods without filling gaps", () => {
   const rows = decodeRetention([row, { ...row, month_age: "1", customers: "0" }]);
-  const matrix = retentionMatrix(rows, "online_dtc", "retention", "2026-03");
+  const matrix = retentionMatrix(rows, "online_dtc", "retention", "2026-03", null);
   const january = matrix.find((item) => item.id === row.cohort_month);
   expect(january?.cells.slice(0, 4)).toMatchObject([
     { display: "100%", state: "value" },
@@ -72,7 +72,7 @@ it("distinguishes zero, missing data and immature periods without filling gaps",
     { display: "—", state: "immature" },
   ]);
   expect(
-    retentionMatrix(rows, "amazon", "retention", "2026-03").find((item) => item.id === row.cohort_month)?.size,
+    retentionMatrix(rows, "amazon", "retention", "2026-03", null).find((item) => item.id === row.cohort_month)?.size,
   ).toBe("No data");
 });
 it("keeps published decimals exact and distinguishes revenue from gross profit per customer", () => {
@@ -130,7 +130,7 @@ it("plots the same values as the matrix, preserving missing and unelapsed ages a
     { ...row, month_age: "3", customers: "20", cumulative_profit: "500" },
     { ...row, channel: "amazon", customers: "50", cumulative_profit: "1000" },
   ]);
-  const chart = retentionChart(rows, "online_dtc", "retention", "2026-09", "earliest");
+  const chart = retentionChart(rows, "online_dtc", "retention", "2026-09", "earliest", null);
   const january = chart.series.find((series) => series.label === "Jan 2026");
   if (!january) throw new Error("Missing cohort series");
   expect(chart.series).toHaveLength(6);
@@ -141,14 +141,14 @@ it("plots the same values as the matrix, preserving missing and unelapsed ages a
   expect(chart.data[3]?.[january.key]).toBe(0.2);
   expect(chart.data[9]?.[january.key]).toBeNull();
   expect(chart.data[9]?.[`${january.key}__display`]).toBe("—");
-  const profit = retentionChart(rows, "online_dtc", "profit", "2026-09", "earliest");
+  const profit = retentionChart(rows, "online_dtc", "profit", "2026-09", "earliest", null);
   expect(profit.data[1]?.[january.key]).toBe(3);
-  const matrix = retentionMatrix(rows, "online_dtc", "profit", "2026-09").find(
+  const matrix = retentionMatrix(rows, "online_dtc", "profit", "2026-09", null).find(
     (cohort) => cohort.id === row.cohort_month,
   );
   expect(profit.data[1]?.[`${january.key}__display`]).toBe(matrix?.cells[1]?.display);
-  expect(retentionChart(rows, "amazon", "profit", "2026-09", "earliest").data[0]?.[january.key]).toBe(10);
-  const recent = retentionChart(rows, "online_dtc", "profit", "2026-09", "recent");
+  expect(retentionChart(rows, "amazon", "profit", "2026-09", "earliest", null).data[0]?.[january.key]).toBe(10);
+  const recent = retentionChart(rows, "online_dtc", "profit", "2026-09", "recent", null);
   expect(recent.series.map((series) => series.label)).toEqual([
     "Apr 2026",
     "May 2026",

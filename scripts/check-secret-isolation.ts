@@ -14,10 +14,10 @@
  * Worker tests reuse these outputs; deployment uploads the checked artifact.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { appConfig } from "../app.config";
-import { configuredSecretValues, root } from "./lib/environment";
+import { buildFiles, configuredSecretValues, root } from "./lib/environment";
 import { sampleEnvironment as cleared } from "./lib/sample-env";
 import { nextCli, startServer } from "./lib/test-server";
 import { testPortOffset } from "./lib/test-ports";
@@ -41,14 +41,6 @@ async function sentinelKey(): Promise<{ base64: string; pemFragment: string }> {
     client_email: "app-sentinel0123@sm-sentinel-project.iam.gserviceaccount.com",
   };
   return { base64: Buffer.from(JSON.stringify(json)).toString("base64"), pemFragment: pkcs8.slice(100, 160) };
-}
-
-function files(dir: string, pattern: RegExp): string[] {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir).flatMap((name) => {
-    const path = join(dir, name);
-    return statSync(path).isDirectory() ? files(path, pattern) : pattern.test(name) ? [path] : [];
-  });
 }
 
 const key = await sentinelKey();
@@ -89,9 +81,9 @@ if (build.error) throw build.error;
 if (build.status !== 0) process.exit(build.status ?? 1);
 
 const outputs = [
-  ...files(join(root, ".open-next"), /./),
-  ...files(join(root, ".next/static"), /\.(js|css|map|json)$/),
-  ...files(join(root, ".next/server/app"), /\.(html|rsc|body|meta|map)$/),
+  ...buildFiles(join(root, ".open-next")),
+  ...buildFiles(join(root, ".next/static")).filter((path) => /\.(js|css|map|json)$/.test(path)),
+  ...buildFiles(join(root, ".next/server/app")).filter((path) => /\.(html|rsc|body|meta|map)$/.test(path)),
 ];
 for (const path of outputs) scan(path.slice(root.length + 1), readFileSync(path, "utf8"));
 console.log(`Scanned ${outputs.length} build files.`);

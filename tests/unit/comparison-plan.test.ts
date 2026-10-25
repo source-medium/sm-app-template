@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  activeComparison,
   baselineFor,
   comparisonDates,
   coverageIssue,
@@ -104,7 +103,7 @@ describe("comparison plan", () => {
     ]);
     const off = parseComparisonPlan({ compare: "off", compare2: "year" }, range, today);
     expect(off.slots.map((slot) => slot.range)).toEqual([null, null]);
-    expect(activeComparison(off)).toMatchObject({ mode: "off", range: null });
+    expect(off.slots[off.active]).toMatchObject({ mode: "off", range: null });
     expect(parseComparisonPlan({ compare: "injected" }, range, today).slots[0].mode).toBe("previous");
   });
 
@@ -115,7 +114,8 @@ describe("comparison plan", () => {
     expect(parseComparisonPlan({ baseline: "b" }, range, today).active).toBe(1);
     // The active slot must have a range; otherwise the other one shows.
     expect(parseComparisonPlan({ baseline: "b", compare2: "off" }, range, today).active).toBe(0);
-    expect(activeComparison(parseComparisonPlan({ baseline: "b" }, range, today))).toMatchObject({
+    const second = parseComparisonPlan({ baseline: "b" }, range, today);
+    expect(second.slots[second.active]).toMatchObject({
       mode: "year",
       alignment: "calendar",
     });

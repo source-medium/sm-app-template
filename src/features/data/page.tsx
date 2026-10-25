@@ -23,8 +23,7 @@ const REPORTS: ExplorerReport[] = appConfig.nav
 
 export default async function DataPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
-  const requested = parseChoice(params, "tab", DATA_TABS, "explore");
-  const tab = requested === "metrics" ? "explore" : requested;
+  const tab = parseChoice(params, "tab", DATA_TABS, "explore");
   const source = parseChoice(params, "source", DATA_SOURCES, "obt_orders");
   const search = (single(params, "q") ?? "").slice(0, 120);
   const category = (single(params, "category") ?? "").slice(0, 120);

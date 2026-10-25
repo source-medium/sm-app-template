@@ -65,7 +65,7 @@ test("explore your data: categories, aliases, Vibe code, fields and health stay 
   await expect(page.getByLabel("Published source", { exact: true })).toHaveValue("obt_orders");
   await expect(page.getByLabel("Search fields")).toBeVisible();
   await expectNoSeriousA11yViolations(page);
-  // The old metrics tab still opens Explore.
+  // An unknown tab, such as the old metrics tab, opens Explore.
   await page.goto("/data?store=sample-store-a&tab=metrics&q=sessions");
   await expect(list.getByRole("listitem")).toHaveCount(1);
 });

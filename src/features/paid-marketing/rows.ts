@@ -21,25 +21,22 @@ export const SpendBreakdownRow = z.object({
   ...periodCoverageFields,
 });
 
-export const ChannelDayRow = z.object({
-  channel: bq.string(),
-  date: bq.date(),
+/** The delivery measures both reads sum, as AD_MEASURES_SQL in bigquery.ts selects them. */
+const adMeasures = {
   spend: bq.numeric().nullable(),
   impressions: bq.int64().nullable(),
   clicks: bq.int64().nullable(),
   conversions: bq.float64().nullable(),
   platform_revenue: bq.float64().nullable(),
-});
+};
+
+export const ChannelDayRow = z.object({ channel: bq.string(), date: bq.date(), ...adMeasures });
 
 export const CampaignWireRow = z.object({
   campaign_id: bq.string(),
   campaign_name: bq.string().nullable(),
   channel: bq.string().nullable(),
-  spend: bq.numeric().nullable(),
-  impressions: bq.int64().nullable(),
-  clicks: bq.int64().nullable(),
-  conversions: bq.float64().nullable(),
-  platform_revenue: bq.float64().nullable(),
+  ...adMeasures,
 });
 
 export function toChannelDay(row: z.output<typeof ChannelDayRow>): ChannelDay {

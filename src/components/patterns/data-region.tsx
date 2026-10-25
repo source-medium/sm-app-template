@@ -9,7 +9,7 @@
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { formatInstant } from "@/lib/format";
-import { EmptyState, ErrorState, IncompatibleState } from "./data-states";
+import { EmptyState, WarehouseErrorState } from "./data-states";
 
 export async function DataRegion<T>({
   load,
@@ -40,17 +40,9 @@ export async function DataRegion<T>({
     data = await load();
   } catch (error) {
     if (!(error instanceof WarehouseError)) throw error;
-    if (error.kind === "incompatible_schema" && error.relation && error.column) {
-      return (
-        <>
-          <IncompatibleState relation={error.relation} column={error.column} />
-          {errorContent}
-        </>
-      );
-    }
     return (
       <>
-        <ErrorState title={error.title} remedy={error.remedy} detail={error.detail} requestId={error.requestId} />
+        <WarehouseErrorState error={error} />
         {errorContent}
       </>
     );

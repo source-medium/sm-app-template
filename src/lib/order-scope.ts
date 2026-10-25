@@ -1,6 +1,8 @@
+import { dateTimeWindow } from "@/lib/data/period-sql";
+
 /** Fixed, reviewed local-date expressions. An absent basis retains legacy Orders behavior. */
 export type OrderDateBasis = "created" | "processed";
-export const ORDER_DATE_EXPRESSIONS = {
+const ORDER_DATE_EXPRESSIONS = {
   created: "order_created_at_local_datetime",
   processed: "COALESCE(order_processed_at_local_datetime, order_created_at_local_datetime)",
 } as const;
@@ -9,8 +11,6 @@ export function orderDateExpression(basis?: OrderDateBasis | null): string {
 }
 const PROCESSED = "order_processed_at_local_datetime";
 const CREATED = "order_created_at_local_datetime";
-const within = (column: string, from: string, to: string) =>
-  `${column} >= DATETIME(${from}) AND ${column} < DATETIME(DATE_ADD(${to}, INTERVAL 1 DAY))`;
 
 /**
  * Rows whose local date on `basis` falls within the DATE expressions `from`..`to`
@@ -22,8 +22,8 @@ const within = (column: string, from: string, to: string) =>
  */
 export function orderDateWindow(basis: OrderDateBasis | null | undefined, from: string, to: string): string {
   if (basis === "processed")
-    return `((${within(PROCESSED, from, to)}) OR (${PROCESSED} IS NULL AND ${within(CREATED, from, to)}))`;
-  return `(${within(orderDateExpression(basis), from, to)})`;
+    return `((${dateTimeWindow(PROCESSED, from, to)}) OR (${PROCESSED} IS NULL AND ${dateTimeWindow(CREATED, from, to)}))`;
+  return `(${dateTimeWindow(orderDateExpression(basis), from, to)})`;
 }
 
 /** Rows whose `basis` time equals the DATETIME expression `value`, in the same prunable form. */

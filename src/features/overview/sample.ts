@@ -20,13 +20,12 @@ import { periodStart, type TimeGrain } from "@/lib/time-grain";
 import type { OverviewData, OverviewFilters } from "./queries";
 import { OVERVIEW_RELATION, OverviewRow, toOverviewData } from "./rows";
 
-type Sums = { revenue: bigint; orders: number; sessions: bigint; clicks: bigint; spend: bigint };
-const zero = (): Sums => ({ revenue: 0n, orders: 0, sessions: 0n, clicks: 0n, spend: 0n });
+type Sums = { revenue: bigint; orders: number; sessions: bigint; spend: bigint };
+const zero = (): Sums => ({ revenue: 0n, orders: 0, sessions: 0n, spend: 0n });
 function add(sums: Sums, row: Sums): void {
   sums.revenue += row.revenue;
   sums.orders += row.orders;
   sums.sessions += row.sessions;
-  sums.clicks += row.clicks;
   sums.spend += row.spend;
 }
 /** Cents as NUMERIC decimal text. */
@@ -84,7 +83,6 @@ export function aggregateOverviewWire(
       revenue: row.order_net_revenue_cents,
       orders: row.order_count,
       sessions: row.website_sessions,
-      clicks: row.ad_clicks,
       spend: row.ad_spend_cents,
     });
     byDate.set(row.date, sums);
@@ -115,13 +113,11 @@ export function aggregateOverviewWire(
       net_revenue: money(sums.revenue),
       order_count: String(sums.orders),
       website_sessions: String(sums.sessions),
-      ad_clicks: String(sums.clicks),
       ad_spend: money(sums.spend),
       period_date: bucket,
       period_net_revenue: money(total.revenue),
       period_order_count: String(total.orders),
       period_website_sessions: String(total.sessions),
-      period_ad_clicks: String(total.clicks),
       period_ad_spend: money(total.spend),
       total_gross: gross === null ? null : money(gross),
       total_discounts: discounts === null ? null : money(discounts),
@@ -129,7 +125,6 @@ export function aggregateOverviewWire(
       total_net_revenue: money(totals.revenue),
       total_order_count: String(totals.orders),
       total_website_sessions: String(totals.sessions),
-      total_ad_clicks: String(totals.clicks),
       total_ad_spend: money(totals.spend),
       total_first_revenue: firstRevenue === null ? null : money(firstRevenue),
       total_first_orders: firstOrders === null ? null : String(firstOrders),

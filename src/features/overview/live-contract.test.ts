@@ -1,7 +1,8 @@
 /** Overview's live path end to end against the fake BigQuery. */
 import { describe, expect, it, vi } from "vitest";
 import { datesInRange, rangeLength } from "@/lib/filters";
-import { goLive, rowsResponse } from "../../../tests/helpers/live";
+import type { SubmittedQuery } from "../../../tests/fake-bigquery/fake-bigquery";
+import { expectEveryQueryScopedTo, goLive, rowsResponse } from "../../../tests/helpers/live";
 
 const FIELDS = [
   ...["total_gross", "total_discounts", "total_refunds"].map((name) => ({ name, type: "NUMERIC" })),
@@ -10,17 +11,14 @@ const FIELDS = [
   { name: "period_net_revenue", type: "NUMERIC" },
   { name: "period_order_count", type: "FLOAT" },
   { name: "period_website_sessions", type: "INTEGER" },
-  { name: "period_ad_clicks", type: "INTEGER" },
   { name: "period_ad_spend", type: "NUMERIC" },
   { name: "net_revenue", type: "NUMERIC" },
   { name: "order_count", type: "FLOAT" },
   { name: "website_sessions", type: "INTEGER" },
-  { name: "ad_clicks", type: "INTEGER" },
   { name: "ad_spend", type: "NUMERIC" },
   { name: "total_net_revenue", type: "NUMERIC" },
   { name: "total_order_count", type: "FLOAT" },
   { name: "total_website_sessions", type: "INTEGER" },
-  { name: "total_ad_clicks", type: "INTEGER" },
   { name: "total_ad_spend", type: "NUMERIC" },
   { name: "total_first_revenue", type: "NUMERIC" },
   { name: "total_first_orders", type: "FLOAT" },
@@ -34,7 +32,6 @@ const MONEY = {
   period_net_revenue: "0.3",
   period_order_count: "20.5",
   period_website_sessions: "9007199254741000",
-  period_ad_clicks: "9",
   period_ad_spend: "123456789012345678.123456789",
   net_revenue: "0.1",
   ad_spend: "0.2",
@@ -53,8 +50,7 @@ describe("overview, live", () => {
     const { getOverviewReport } = await import("./queries");
     const channel = "online_dtc' OR TRUE --";
     await getOverviewReport({ ...FILTERS, channel, grain: "week" }, [{ from: "2025-09-01", to: "2025-09-02" }, null]);
-    for (const call of fake.calls.filter((call) => call.kind === "submit")) {
-      const body = call.body as { query: string; queryParameters: unknown[] };
+    for (const body of fake.submitted()) {
       expect(body.query).toContain("DATE_TRUNC(date, WEEK(MONDAY))");
       expect(body.query).toContain("SUM(net_revenue) OVER period");
       expect(body.query).toContain("MAX(date) OVER () AS latest_date");
@@ -71,7 +67,7 @@ describe("overview, live", () => {
   it("queries comparison periods separately with identical store scope and exact SQL totals", async () => {
     const fake = await goLive({
       submit: (call) => {
-        const body = call.body as { queryParameters: { name: string; parameterValue: { value: string } }[] };
+        const body = call.body as SubmittedQuery;
         const from = body.queryParameters.find((param) => param.name === "start_date")?.parameterValue.value;
         if (!from) throw new Error("Missing start_date parameter");
         const revenue = from === "2026-09-01" ? "100.01" : "80.01";
@@ -87,11 +83,8 @@ describe("overview, live", () => {
       previous_latest_date: "2025-09-01",
       second_latest_date: null,
     });
-    const submits = fake.calls.filter((call) => call.kind === "submit");
-    expect(submits).toHaveLength(2);
-    const bodies = submits.map(
-      (call) => call.body as { query: string; queryParameters: { name: string; parameterValue: { value: string } }[] },
-    );
+    const bodies = fake.submitted();
+    expect(bodies).toHaveLength(2);
     expect(bodies[0]?.query).toBe(bodies[1]?.query);
     const parameters = bodies.map((body) =>
       Object.fromEntries(body.queryParameters.map((param) => [param.name, param.parameterValue.value])),
@@ -132,9 +125,7 @@ describe("overview, live", () => {
       await goLive({
         submit: (call) => {
           const values = Object.fromEntries(
-            (
-              call.body as { queryParameters: { name: string; parameterValue: { value: string } }[] }
-            ).queryParameters.map((param) => [param.name, param.parameterValue.value]),
+            (call.body as SubmittedQuery).queryParameters.map((param) => [param.name, param.parameterValue.value]),
           );
           const dates = datesInRange({ from: values.start_date ?? "", to: values.end_date ?? "" });
           return rowsResponse(
@@ -154,7 +145,7 @@ describe("overview, live", () => {
   it("keeps the current report when comparison data is truncated", async () => {
     await goLive({
       submit: (call) => {
-        const body = call.body as { queryParameters: { name: string; parameterValue: { value: string } }[] };
+        const body = call.body as SubmittedQuery;
         const from = body.queryParameters.find((param) => param.name === "start_date")?.parameterValue.value;
         if (!from) throw new Error("Missing start_date parameter");
         if (from === "2025-09-01")
@@ -200,20 +191,16 @@ describe("overview, live", () => {
             date: "2026-09-01",
             order_count: "10.5",
             website_sessions: "9007199254740993",
-            ad_clicks: "4",
             total_order_count: "20.5",
             total_website_sessions: "9007199254741000",
-            total_ad_clicks: "9",
           },
           {
             ...MONEY,
             date: "2026-09-02",
             order_count: "10",
             website_sessions: "7",
-            ad_clicks: "5",
             total_order_count: "20.5",
             total_website_sessions: "9007199254741000",
-            total_ad_clicks: "9",
           },
         ]),
     });
@@ -223,7 +210,6 @@ describe("overview, live", () => {
       netRevenue: "0.3",
       orders: 20.5,
       sessions: 9_007_199_254_741_000n,
-      adClicks: 9n,
       adSpend: "123456789012345678.123456789",
     });
     expect(data.summaries[0]?.netRevenue).toBe("0.3");
@@ -234,11 +220,7 @@ describe("overview, live", () => {
     expect(data.summaries[0]?.sessions).toBe(9_007_199_254_741_000n);
     expect(data.days[0]?.sessions).toBe(9_007_199_254_740_993n);
 
-    const submit = fake.calls.find((call) => call.kind === "submit")?.body as {
-      query: string;
-      queryParameters: unknown[];
-      labels: Record<string, string>;
-    };
+    const submit = fake.submitted(0);
     expect(submit.query).toContain("`sm-demotenant.sm_transformed_v2.rpt_executive_summary_daily`");
     expect(submit.query).toContain("sm_store_id = @store_id");
     for (const [column, alias] of [
@@ -280,10 +262,8 @@ describe("overview, live", () => {
             order_count: "1",
             ...MONEY,
             website_sessions: "1.5",
-            ad_clicks: "1",
             total_order_count: "1",
             total_website_sessions: "1",
-            total_ad_clicks: "1",
           },
         ]),
     });
@@ -311,15 +291,5 @@ it("allows the fixed store and keeps every SQL read scoped to it", async () => {
   vi.stubEnv("APP_STORE_ID", FILTERS.storeId);
   const { getOverview } = await import("./queries");
   await getOverview(FILTERS);
-  const queries = fake.calls.filter((call) => call.kind === "submit");
-  expect(queries.length).toBeGreaterThan(0);
-  for (const call of queries) {
-    const body = call.body as { query: string; queryParameters: unknown[] };
-    expect(body.query).toContain("sm_store_id = @store_id");
-    expect(body.queryParameters).toContainEqual({
-      name: "store_id",
-      parameterType: { type: "STRING" },
-      parameterValue: { value: FILTERS.storeId },
-    });
-  }
+  expectEveryQueryScopedTo(fake, FILTERS.storeId);
 });

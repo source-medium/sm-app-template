@@ -6,7 +6,7 @@ import type { OverviewData, OverviewSlice } from "./queries";
 const period = (netRevenue: string, adSpend: string, latestDate: string): OverviewData => ({
   revenue: null,
   days: [],
-  totals: { netRevenue, orders: 100, sessions: 1n, adClicks: 1n, adSpend },
+  totals: { netRevenue, orders: 100, sessions: 1n, adSpend },
   summaries: [],
   purchases: null,
   latestDate,

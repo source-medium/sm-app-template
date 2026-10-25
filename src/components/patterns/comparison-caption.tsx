@@ -1,10 +1,8 @@
-import type { Baseline, ComparisonPlan } from "@/lib/comparison";
+import { dayCount, type Baseline, type ComparisonPlan } from "@/lib/comparison";
 import { rangeLength } from "@/lib/filters";
 import { formatDateRange } from "@/lib/format";
 import { Disclosure } from "@/components/ui/disclosure";
 import { BaselineSwitch } from "./baseline-switch";
-
-const dayCount = (days: number) => (days === 1 ? "1 day" : `${days} days`);
 
 /** "Aug 29, 2026 – Sep 25, 2026 (previous 28 days, 28 days)" or why the slot has no dates. */
 function describe(slot: Baseline): string {
@@ -62,7 +60,7 @@ function switchLabel(slot: Baseline): string {
 }
 
 /** Why period changes are hidden, for views that learn it only after their data loads. */
-export function ComparisonIssue({ issue }: { issue?: string | null }) {
+function ComparisonIssue({ issue }: { issue?: string | null }) {
   return issue ? (
     <p data-comparison-issue className="max-w-prose text-sm">
       {issue}

@@ -1,4 +1,4 @@
-import definitions from "../../../contracts/dashboard-metrics-v1/definitions.json";
+import { REVIEWED_METRICS, reviewedMetric } from "@/lib/reviewed-metrics";
 import type { MetricBinding, ValueFormat } from "@/lib/metric-binding";
 import { CREATIVE_RELATION } from "./rows";
 const measures: [string, string, string, string, string[], ValueFormat][] = [
@@ -47,13 +47,11 @@ const measures: [string, string, string, string, string[], ValueFormat][] = [
 ];
 export const creativeBindings: readonly MetricBinding[] = measures.map(
   ([id, label, name, calculation, fields, format]) => {
-    const canonical = definitions.metrics.find((metric) => metric.metric_name === name);
-    if (!canonical) throw new Error(`Missing reviewed definition ${name}`);
     return {
       id,
       label,
-      canonical,
-      reviewedDependencies: definitions.metrics,
+      canonical: reviewedMetric(name),
+      reviewedDependencies: REVIEWED_METRICS,
       calculation,
       fields,
       format,

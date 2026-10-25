@@ -1,7 +1,8 @@
 /** Loads .env files the way `next dev` does, so scripts see the same configuration as the app. */
 import nextEnv from "@next/env";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { parseEnv } from "node:util";
 
 export const root = join(import.meta.dirname, "..", "..");
 
@@ -9,14 +10,13 @@ export function loadLocalEnvironment(): void {
   nextEnv.loadEnvConfig(root, true, { info: () => undefined, error: console.error });
 }
 
-/** KEY=value lines in dotenv style: optional export prefix and quotes, no interpolation. */
+/**
+ * KEY=value lines in dotenv style (Node's `parseEnv`): optional export prefix
+ * and quotes, inline comments, no interpolation. A leading byte-order mark, as
+ * some Windows editors write, is dropped as dotenv and Wrangler drop it.
+ */
 export function parseDotenv(text: string): Record<string, string> {
-  const values: Record<string, string> = {};
-  for (const line of text.split("\n")) {
-    const match = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*["']?([^"'\n]*)["']?\s*$/.exec(line);
-    if (match?.[1]) values[match[1]] = match[2]?.trim() ?? "";
-  }
-  return values;
+  return { ...parseEnv(text.replace(/^\uFEFF/, "")) } as Record<string, string>;
 }
 
 /**
@@ -63,4 +63,16 @@ export function configuredSecretValues(
   }
   // Short fragments would match by chance; a real key or generated password is far longer.
   return [...new Set(values.filter((value) => value.length >= 16))];
+}
+
+/**
+ * Every file under a build output `dir`, for the secret scans. Follows symlinks, as
+ * bundlers do (OpenNext links its pnpm packages). Empty when `dir` is absent.
+ */
+export function buildFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    return statSync(path).isDirectory() ? buildFiles(path) : [path];
+  });
 }

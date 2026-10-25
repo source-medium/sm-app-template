@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
+import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { OverviewControls } from "@/features/overview/controls";
 import { RetentionSegmentControls } from "@/features/retention/controls";
 import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
@@ -33,6 +34,33 @@ it.each([
           channel: "online_dtc",
           search: "brand",
         }}
+      />
+    ),
+  },
+  {
+    label: "Single sales channel",
+    loading: "Loading sales channels",
+    fields: { sales_channel: "Online DTC" },
+    controls: (
+      <ChannelRosterFilter
+        load={() => new Promise(() => {})}
+        value="Online DTC"
+        loadingLabel="Loading sales channels"
+      />
+    ),
+  },
+  {
+    label: "Ad channel",
+    loading: "Loading ad channels",
+    fields: { channel: "Meta" },
+    controls: (
+      <ChannelRosterFilter
+        load={() => new Promise(() => {})}
+        value="Meta"
+        name="channel"
+        label="Ad channel"
+        allLabel="All ad channels"
+        loadingLabel="Loading ad channels"
       />
     ),
   },

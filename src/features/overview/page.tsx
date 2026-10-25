@@ -428,6 +428,7 @@ function OverviewView({
             title={`Comparison unavailable (${plan?.slots[index]?.label ?? "comparison"}): ${entry.error.title}`}
             remedy={entry.error.remedy}
             detail={entry.error.detail}
+            requestId={entry.error.requestId}
           />
         ) : null,
       )}

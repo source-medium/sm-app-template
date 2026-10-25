@@ -145,8 +145,8 @@ active; ask a workspace admin.
 
 ## Troubleshooting
 
-- `pnpm diagnose` checks the token, the store roster, the published schema,
-  the data dictionary and the metric catalog, all through the data API.
+- `pnpm diagnose` checks the token, the store roster, the data dictionary and
+  the metric catalog, all through the data API.
 - `pnpm schema <relation>` prints a relation's columns from the dataset's
   `INFORMATION_SCHEMA`, and its descriptions from the data dictionary.
 - A missing table reads as "Table or dataset not found" with no job, so views

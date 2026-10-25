@@ -14,8 +14,8 @@ import {
   PLATFORM_RELATION,
   PlatformRow,
 } from "./rows";
+import { GRAIN_SQL } from "@/lib/time-grain";
 
-const GRAINS = { day: "DAY", week: "WEEK(MONDAY)", month: "MONTH" } as const;
 function params(filters: PerformanceFilters) {
   return [
     { name: "store_id", type: "STRING" as const, value: filters.storeId },
@@ -36,7 +36,7 @@ export async function queryBusiness(filters: PerformanceFilters) {
     cache: CACHE_POLICY.aggregate,
     maxRows: performanceRowLimit(filters.range, filters.grain),
     sql: `WITH scoped AS (
-      SELECT DATE_TRUNC(date, ${GRAINS[filters.grain]}) AS period_date,
+      SELECT DATE_TRUNC(date, ${GRAIN_SQL[filters.grain]}) AS period_date,
         ${(Object.keys(BUSINESS_FIELDS) as (keyof typeof BUSINESS_FIELDS)[])
           .map((alias) => `${businessColumn(alias)} AS ${alias}`)
           .join(",\n")}
@@ -61,7 +61,7 @@ export async function queryPlatforms(filters: PerformanceFilters) {
     // Up to 25 platforms plus the combined group, each with period rows and a total.
     maxRows: performanceRowLimit(filters.range, filters.grain) * 26,
     sql: `WITH scoped AS (
-      SELECT DATE_TRUNC(date, ${GRAINS[filters.grain]}) AS period_date,
+      SELECT DATE_TRUNC(date, ${GRAIN_SQL[filters.grain]}) AS period_date,
         COALESCE(source_system, '(unknown platform)') AS platform,
         ${Object.entries(PLATFORM_FIELDS)
           .map(([alias, field]) => `${field} AS ${alias}`)

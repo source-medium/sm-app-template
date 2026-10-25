@@ -150,40 +150,20 @@ it("keeps stores available when optional logos are missing, malformed, or unsafe
   expect(stores.every((store) => store.logoUrl === null)).toBe(true);
 });
 
-it("only a missing dimension uses the scoped ID-only roster, and the handled probe does not warn", async () => {
+it("a missing store dimension fails instead of listing store IDs from another relation", async () => {
   const logs: { line: string; level: string }[] = [];
   setLogEmitter((line, level) => logs.push({ line, level }));
-  const fake = await goLive({
-    submit: ({ body }) =>
-      (body as { query: string }).query.includes(".dim_stores`")
-        ? googleError(404, "notFound")
-        : rowsResponse(ROSTER_FIELDS, [storeRow("store-us", null)]),
-  });
-  vi.stubEnv("APP_STORE_ID", "store-us");
-  expect(await loadStores()).toEqual([
-    { id: "store-us", label: "store-us", domain: null, logoUrl: null, brand: null, timeZone: null, currency: null },
-  ]);
+  const fake = await goLive({ submit: () => googleError(404, "notFound") });
+  await expect(loadStores()).rejects.toMatchObject({ kind: "not_found" });
+  expect(fake.count("submit")).toBe(1);
   const queries = logs.filter(({ line }) => line.includes('"event":"bq_query"'));
-  expect(queries.map(({ level }) => level)).toEqual(["info", "info"]);
-  expect(queries[0]?.line).toContain('"error_kind":"not_found"');
-  const submissions = fake.calls.filter((call) => call.kind === "submit");
-  expect(submissions).toHaveLength(2);
-  for (const { body } of submissions) {
-    expect((body as { query: string }).query).toContain("store_currency_code");
-    expect((body as { query: string }).query).toContain("store_url");
-    expect((body as { query: string }).query).toContain("AND sm_store_id = @store_id");
-    expect((body as { queryParameters: unknown[] }).queryParameters).toContainEqual({
-      name: "store_id",
-      parameterType: { type: "STRING" },
-      parameterValue: { value: "store-us" },
-    });
-  }
+  expect(queries.map(({ level }) => level)).toEqual(["warn"]);
 });
 
 it.each([
   [403, "accessDenied", "permission_denied"],
   [400, "invalidQuery", "invalid_query"],
-])("does not hide %s failures behind an ID-only roster", async (status, reason, kind) => {
+])("surfaces %s failures", async (status, reason, kind) => {
   const fake = await goLive({ submit: () => googleError(Number(status), String(reason)) });
   await expect(loadStores()).rejects.toMatchObject({ kind });
   expect(fake.count("submit")).toBe(1);
@@ -192,15 +172,6 @@ it.each([
 it("an empty active-store dimension stays empty instead of reviving historical stores", async () => {
   const fake = await goLive({ submit: () => rowsResponse(ROSTER_FIELDS, []) });
   await expect(loadStores()).resolves.toEqual([]);
-  expect(fake.count("submit")).toBe(1);
-});
-
-it("does not treat a missing job during polling as a missing dimension", async () => {
-  const fake = await goLive({
-    submit: () => rowsResponse(ROSTER_FIELDS, [], { jobComplete: false }),
-    poll: () => googleError(404, "notFound"),
-  });
-  await expect(loadStores()).rejects.toMatchObject({ kind: "not_found" });
   expect(fake.count("submit")).toBe(1);
 });
 
@@ -225,9 +196,11 @@ it.each(["duplicate", "missing-column", "overflow", "truncated"])("refuses a %s 
   });
   const remedy = expect.stringContaining(`More than ${MAX_STORES} stores`);
   await expect(loadStores()).rejects.toMatchObject(
-    failure === "duplicate" || failure === "missing-column"
-      ? { kind: "incompatible_schema" }
-      : { kind: "result_too_large", remedy, message: remedy },
+    failure === "duplicate"
+      ? { kind: "incompatible_schema", reason: "duplicate_store_ids", column: null }
+      : failure === "missing-column"
+        ? { kind: "incompatible_schema" }
+        : { kind: "result_too_large", remedy, message: remedy },
   );
   expect(fake.count("submit")).toBe(1);
 });

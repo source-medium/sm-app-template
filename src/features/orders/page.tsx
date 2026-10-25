@@ -1,7 +1,7 @@
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { ErrorState } from "@/components/patterns/data-states";
 import { orderDateLabel, type OrderDateBasis } from "@/lib/order-scope";
-import { normalizeCountry, normalizeRegion } from "@/lib/shipping-geography";
+import { parseShippingDestination } from "@/lib/shipping-geography";
 import { AttributionView } from "./attribution-view";
 import { ORDERS_RELATION } from "./rows";
 import type { Metadata } from "next";
@@ -9,7 +9,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { DataRegion } from "@/components/patterns/data-region";
 import { LoadingState } from "@/components/patterns/data-states";
-import { ChannelFilter } from "@/components/patterns/channel-filter";
+import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { DataTable } from "@/components/patterns/data-table";
 import { buttonVariants } from "@/components/ui/button";
 import { ReportPage } from "@/components/shell/report-page";
@@ -42,10 +42,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const basisParam = single(params, "date_basis");
   const dateBasis: OrderDateBasis | null = basisParam === "created" || basisParam === "processed" ? basisParam : null;
   const validOnly = single(params, "population") === "valid";
-  const country = single(params, "country") ? normalizeCountry((single(params, "country") ?? "").slice(0, 100)) : null;
-  const region = single(params, "region")
-    ? normalizeRegion(country, (single(params, "region") ?? "").slice(0, 100))
-    : null;
+  const { country, region } = parseShippingDestination(params);
   const scopeIssue =
     (basisParam && !dateBasis ? "Choose a supported date basis." : null) ??
     (region && !country ? "Choose a country before a shipping region." : null) ??
@@ -94,19 +91,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         return (
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-start gap-4">
-              <Suspense
+              <ChannelRosterFilter
                 key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
-                fallback={<LoadingState variant="control" label="Loading sales channels" />}
-              >
-                <DataRegion
-                  timestamp={false}
-                  load={() => getOrderChannels(orderFilters)}
-                  isEmpty={() => false}
-                  emptyMessage="No sales channels in this range."
-                >
-                  {(channels) => <ChannelFilter value={channel} channels={channels} />}
-                </DataRegion>
-              </Suspense>
+                load={() => getOrderChannels(orderFilters)}
+                value={channel}
+                loadingLabel="Loading sales channels"
+              />
               <SelectFilter
                 name="date_basis"
                 label="Date basis"
@@ -287,7 +277,7 @@ function OrdersList({
                 ...(dateBasis ? { dateBasis } : {}),
               }),
             },
-            processed: { display: formatWallTime(order.scopeLocal ?? order.processedLocal) },
+            processed: { display: formatWallTime(order.scopeLocal) },
             channel: { display: [order.channel, order.subChannel].filter(Boolean).join(" · ") || EMPTY_VALUE },
             type: { display: formatLabel(order.orderType) },
             status: { display: formatLabel(order.paymentStatus) },

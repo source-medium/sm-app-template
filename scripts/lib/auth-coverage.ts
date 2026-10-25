@@ -12,7 +12,8 @@
  *
  * PUBLIC_ROUTES lists the handlers that are public by design, each with why.
  */
-import { posix } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, posix, relative, sep } from "node:path";
 import ts from "typescript";
 
 const PUBLIC_ROUTES: Record<string, string> = {
@@ -35,6 +36,16 @@ const WAREHOUSE_IMPORTERS = new Set([
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 
 export type SourceFile = { path: string; text: string };
+
+/** Every JavaScript or TypeScript file under `dir` in the `root` checkout, with "/" paths relative to `root`. */
+export function readSourceFiles(root: string, dir: string): SourceFile[] {
+  return readdirSync(join(root, dir), { recursive: true, withFileTypes: true })
+    .filter((entry) => !entry.isDirectory() && /\.[cm]?[jt]sx?$/.test(entry.name))
+    .map((entry) => {
+      const path = join(entry.parentPath, entry.name);
+      return { path: relative(root, path).split(sep).join("/"), text: readFileSync(path, "utf8") };
+    });
+}
 
 /** Store scope may read a loader parameter, but may not call a helper before authentication. */
 function isStoreArgument(expression: ts.Expression, fn: ts.FunctionLikeDeclaration): boolean {

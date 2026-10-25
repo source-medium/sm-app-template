@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   AD_NAME_FIELDS,
@@ -5,14 +6,29 @@ import {
   type AdNameMatches as Matches,
   type AdNameRule,
 } from "@/lib/ad-name-filters";
+import { DataRegion } from "./data-region";
+import { LoadingState } from "./data-states";
+
+/** The names a report's name filters match, loaded in their own region. Key it by the filters `load` reads. */
+export function AdNameMatchesRegion({ load, rules }: { load: () => Promise<Matches>; rules: AdNameRule[] }) {
+  return (
+    <Suspense fallback={<LoadingState variant="control" label="Loading matching names" />}>
+      <DataRegion
+        timestamp={false}
+        load={load}
+        isEmpty={(data) => data.rows.length === 0}
+        emptyMessage="No names match these filters. Edit or clear a name filter to try again."
+      >
+        {(data) => <AdNameMatches data={data} rules={rules} />}
+      </DataRegion>
+    </Suspense>
+  );
+}
 
 export function AdNameMatches({ data, rules }: { data: Matches; rules: AdNameRule[] }) {
   return (
     <div className="flex flex-col gap-2">
-      <Table
-        containerClassName="max-h-80 rounded-xl border bg-card"
-        containerProps={{ tabIndex: 0, role: "region", "aria-label": "Matching names" }}
-      >
+      <Table containerClassName="max-h-80 rounded-xl border bg-card" regionLabel="Matching names">
         <caption className="sr-only">Matching campaign and ad names</caption>
         <TableHeader className="sticky top-0 z-10 bg-muted">
           <TableRow>

@@ -1,4 +1,4 @@
-import type { AdNames } from "../ad-name-filters";
+import { MAX_MATCHED_NAMES, type AdNameMatches, type AdNames } from "../ad-name-filters";
 
 export const SAMPLE_CAMPAIGN_NAMES = {
   "cmp-1001": "Prospecting – Broad",
@@ -17,4 +17,11 @@ export function sampleAdNames(campaign: string, variant: number): AdNames {
     ad_group: variant === 0 ? "Core audience | 30d" : "Expansion | 90d",
     ad: variant === 0 ? "UGC | evergreen" : "Static | test",
   };
+}
+
+/** The distinct names sample rows match, bounded and flagged like the live query. */
+export function sampleNameMatches(names: AdNames[]): AdNameMatches {
+  const distinct = [...new Map(names.map((row) => [JSON.stringify(row), row])).values()];
+  distinct.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  return { rows: distinct.slice(0, MAX_MATCHED_NAMES), truncated: distinct.length > MAX_MATCHED_NAMES };
 }

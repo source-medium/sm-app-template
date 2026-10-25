@@ -4,7 +4,6 @@
  */
 import "server-only";
 import { overviewBindings } from "./metrics";
-import { appConfig } from "@/app.config";
 import type { MetricValue } from "@/lib/comparison";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
@@ -32,10 +31,10 @@ const multiple = (value: MetricValue | null) => formatMultiple(typeof value === 
 const count = (value: MetricValue | null) =>
   formatCount(typeof value === "bigint" || typeof value === "number" ? value : null);
 
-/** `measures` is null when the period has no rows. `currency` defaults to the app.config.ts fallback. */
+/** `measures` is null when the period has no rows. `currency` is the store's reporting currency (ReportContext.currency). */
 export function presentOverviewMeasures(
   measures: OverviewMeasures | null,
-  currency: string | null = appConfig.currency,
+  currency: string | null,
 ): OverviewPresentation {
   const money = (value: MetricValue | null) => formatMoney(typeof value === "bigint" ? null : value, currency);
   const revenue = decimalToNumber(measures?.netRevenue ?? null);

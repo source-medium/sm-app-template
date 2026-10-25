@@ -53,8 +53,20 @@ export function readWorkerConfig(text: string): { name: string; vars?: Record<st
   return result.config;
 }
 
+/**
+ * What live intent still lacks: a sign-in choice, and root vars.APP_REQUIRE_LIVE=true
+ * in `worker` (wrangler.jsonc; lacking when not given). Sample intent lacks neither.
+ */
+export function liveIntentGaps(
+  plan: Pick<SetupPlan, "data" | "auth">,
+  worker?: { vars?: Record<string, string> },
+): { auth: boolean; requireLive: boolean } {
+  const live = plan.data === "live";
+  return { auth: live && !plan.auth, requireLive: live && worker?.vars?.APP_REQUIRE_LIVE !== "true" };
+}
+
 /** Runs one git command in the checkout and returns its trimmed output; throws when git fails. */
-export type GitRunner = (args: string[]) => string;
+type GitRunner = (args: string[]) => string;
 
 /**
  * Whether HEAD is on the remote branch the current branch tracks. The remote
