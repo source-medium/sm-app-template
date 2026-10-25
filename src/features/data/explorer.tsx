@@ -17,6 +17,7 @@ import { Disclosure } from "@/components/ui/disclosure";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { dependencyIds } from "@/lib/metric-binding";
 import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
+import { writePresentationUrl } from "@/hooks/use-presentation-params";
 import { firstSentence, matchesSearch, UNIT_LABELS, type ExplorerMetric, type ExplorerReport } from "./catalog";
 import { USE_AGENT_METRIC, type AgentMetric } from "@/lib/report-data";
 import { cn } from "@/lib/utils";
@@ -43,7 +44,7 @@ function updateUrl(changes: Record<string, string | null>) {
     if (value) url.searchParams.set(key, value);
     else url.searchParams.delete(key);
   }
-  window.history.replaceState(null, "", url);
+  writePresentationUrl(url, "replace");
 }
 
 export function MetricExplorer({

@@ -130,13 +130,13 @@ use `--chart-1`…`--chart-8` in order, one y-axis, and keep the table view.
 A chart that can show several measures its loaded rows already carry uses
 `charts/metric-chart` `MetricChart`: a short list of server-formatted measures, one at a time
 on one y-axis, switched from the title without a request, named in the URL and remembered
-per browser (list its `param` in `ReportPage chartParams`). A measure that changes which
+per browser (list its `param` in `ReportPage chartParams`; `pnpm check` names a missing one). A measure that changes which
 rows load, such as a top-10 ranking, stays a report filter.
 Comparisons: opt into `ReportPage comparisons` only when querying every period the
 context's `plan` names (two slots: `compare`, `compare2`; `baseline=a|b` picks the
 overlay). Reuse `lib/comparison.ts` (`planRanges`, `slotChanges`, `planParams`), `lib/time-grain.ts`,
 and `patterns/kpi-delta.ts`; build one-query comparisons with `lib/data/period-sql.ts`
-(`slotColumn`); show a slot's changes only when `slotChanges()` allows, KPI rows with
+(`slotColumn`, and `periodFields` for the row schema); show a slot's changes only when `slotChanges()` allows, KPI rows with
 `KpiCard deltas={slotDeltas(...)}`, and per-slot tables or charts inside `ActiveBaseline`
 (docs/data.md#period-comparisons).
 Copy Products for simple pages and rankings, Overview for multi-measure summaries,

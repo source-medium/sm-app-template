@@ -18,7 +18,7 @@ import { DataStatus, PendingDataStatus } from "./data-status";
 import { EmptyState, ErrorState, WarehouseErrorState } from "@/components/patterns/data-states";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { loadStores, resolveReportStore } from "@/lib/data/stores.server";
-import { parseComparisonPlan, planParams, type ComparisonPlan } from "@/lib/comparison";
+import { BASELINE_PARAM, parseComparisonPlan, planParams, type ComparisonPlan } from "@/lib/comparison";
 import { BaselineProvider } from "@/components/patterns/baseline-switch";
 import { ChartMemoryProvider } from "@/components/charts/chart-memory";
 import { CHART_MEMORY_COOKIE, parseChartMemory } from "@/lib/chart-memory";
@@ -173,7 +173,7 @@ export async function ReportPage({
   const plan = comparisons && dates ? parseComparisonPlan(params, range, today) : undefined;
   if (plan) params = { ...params, ...planParams(plan) };
   // Which slot the charts and tables show is a presentation choice made without a request.
-  const presentationParams = plan ? [...livePresentationParams, "baseline"] : livePresentationParams;
+  const presentationParams = plan ? [...livePresentationParams, BASELINE_PARAM] : livePresentationParams;
   // Read on the server, so a reload paints each chart's remembered measure without a client-side switch.
   const chartMemory = parseChartMemory((await cookies()).get(CHART_MEMORY_COOKIE)?.value);
   const zoneLabel = /^[+-]/.test(timeZone) ? `UTC${timeZone}` : timeZone;

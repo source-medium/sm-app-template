@@ -9,13 +9,11 @@
 import { createContext, useContext } from "react";
 import { Button } from "@/components/ui/button";
 import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
-import { activeBaseline } from "@/lib/comparison";
+import { activeBaseline, BASELINE_PARAM, BASELINE_VALUES } from "@/lib/comparison";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { usePresentationParams, writePresentationUrl } from "@/hooks/use-presentation-params";
 
 export type Slot = 0 | 1;
-const SLOT_PARAM = "baseline";
-const SLOT_VALUES = ["a", "b"] as const;
 
 const ActiveBaselineContext = createContext<{ active: Slot; choose: (slot: Slot) => void } | null>(null);
 
@@ -27,16 +25,18 @@ export function BaselineProvider({
   children: React.ReactNode;
 }) {
   const params = usePresentationParams();
-  const active = activeBaseline(params.get(SLOT_PARAM), available);
+  const active = activeBaseline(params.get(BASELINE_PARAM), available);
   function choose(slot: Slot) {
     const url = new URL(window.location.href);
-    if (slot === 0) url.searchParams.delete(SLOT_PARAM);
-    else url.searchParams.set(SLOT_PARAM, SLOT_VALUES[slot]);
+    if (slot === 0) url.searchParams.delete(BASELINE_PARAM);
+    else url.searchParams.set(BASELINE_PARAM, BASELINE_VALUES[slot]);
     writePresentationUrl(url, "replace");
   }
   return (
     <ActiveBaselineContext.Provider value={{ active, choose }}>
-      {active === 1 && <input type="hidden" name={SLOT_PARAM} value="b" form={REPORT_FILTER_FORM_ID} />}
+      {active === 1 && (
+        <input type="hidden" name={BASELINE_PARAM} value={BASELINE_VALUES[1]} form={REPORT_FILTER_FORM_ID} />
+      )}
       {children}
     </ActiveBaselineContext.Provider>
   );

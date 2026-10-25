@@ -215,13 +215,17 @@ export function parseComparisonPlan(params: SearchParams, range: DateRange, toda
   let b = baselineFor(range, intent, second);
   if (a.range && b.range && sameRange(a.range, b.range))
     b = { ...b, range: null, note: "This matches the first comparison, so it is shown once." };
-  const active = activeBaseline(parseChoice(params, "baseline", ["a", "b"] as const, "a"), [!!a.range, !!b.range]);
+  const active = activeBaseline(parseChoice(params, BASELINE_PARAM, BASELINE_VALUES, "a"), [!!a.range, !!b.range]);
   return { range, intent, slots: [a, b], active };
 }
 
+/** The URL parameter naming which slot charts and tables show, and its value for each slot. */
+export const BASELINE_PARAM = "baseline";
+export const BASELINE_VALUES = ["a", "b"] as const;
+
 /** The URL's overlay choice, falling back to the first slot that has dates. */
 export function activeBaseline(requested: string | null, available: readonly [boolean, boolean]): 0 | 1 {
-  return requested === "b" && available[1] ? 1 : available[0] || !available[1] ? 0 : 1;
+  return requested === BASELINE_VALUES[1] && available[1] ? 1 : available[0] || !available[1] ? 0 : 1;
 }
 
 /** Each slot's dates for a query, or two nulls when the report has no plan. */

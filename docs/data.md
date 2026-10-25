@@ -415,7 +415,8 @@ Paid marketing, Geography and All stores do: group with `periodSql()`, select
 bounded ranges, never the span between the earliest and latest date, so a
 partition filter prunes each one; a DATETIME partition column uses
 `dateTimeRows(column)`. Columns come back as `name`, `previous_name` and
-`second_name`; `slotColumn(slot, name)` names a slot's column. Show both slots
+`second_name`; `slotColumn(slot, name)` names a slot's column, and
+`periodFields(names, decoder)` declares all three in the row schema. Show both slots
 on KPI cards with `KpiCard deltas={slotDeltas(plan, changes, (label, slot) =>
 kpiDelta(...))}` (`patterns/kpi-delta.ts`): it skips a slot that is off and
 explains one whose changes are hidden. Render the per-slot variant of a table

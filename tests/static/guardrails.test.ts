@@ -12,6 +12,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import template from "../../eslint-rules/index.mjs";
 import { findAuthGaps, readSourceFiles } from "../../scripts/lib/auth-coverage";
 import { sampleEnvironment } from "../../scripts/lib/sample-env";
+import { findPresentationGaps } from "../../scripts/lib/presentation-params";
 import { findStoreScopeGaps } from "../../scripts/lib/store-scope";
 import { skillDifferences, syncSkills } from "../../scripts/lib/skills";
 
@@ -376,6 +377,47 @@ describe("store-scope", () => {
       );
       expect(findStoreScopeGaps([{ path, text: stripped }]).length, path).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("presentation params", () => {
+  const page = (props: string) => ({
+    path: "src/features/x/page.tsx",
+    text: `export default function P() { return <ReportPage ${props} />; }`,
+  });
+
+  it("names the view, the key and the fix for an undeclared chart param or presentation field", () => {
+    expect(
+      findPresentationGaps([
+        page(""),
+        { path: "src/features/x/chart.tsx", text: '<MetricChart param="metric" />' },
+        {
+          path: "src/features/x/toggle.tsx",
+          text: 'writePresentationUrl(url);\n<input type="hidden" name={MODE_PARAM} value="all" />',
+        },
+      ]),
+    ).toEqual([
+      "`src/features/x/chart.tsx` writes chart param `metric`, which `src/features/x/page.tsx` does not list in `ReportPage chartParams`; add it so copied links keep the choice.",
+      "`src/features/x/toggle.tsx` writes presentation field `MODE_PARAM`, which `src/features/x/page.tsx` does not list in `ReportPage clientPresentationParams`; add it so copied links keep the choice.",
+    ]);
+  });
+
+  it("flags a declared key no control writes, and ignores report-form fields applied with a request", () => {
+    expect(
+      findPresentationGaps([
+        page('chartParams={["metric", "stale"]}'),
+        { path: "src/features/x/chart.tsx", text: '<MetricChart param="metric" />' },
+        { path: "src/features/x/form.tsx", text: '<input type="hidden" name="country" value={country} />' },
+      ]),
+    ).toEqual([
+      "`src/features/x/page.tsx` lists `stale` in `ReportPage chartParams`, but no control in the view writes it; remove it.",
+    ]);
+  });
+
+  it("passes on this repository's own views", () => {
+    const files = readSourceFiles(".", "src");
+    expect(files.some((file) => /\bparam="/.test(file.text))).toBe(true);
+    expect(findPresentationGaps(files)).toEqual([]);
   });
 });
 

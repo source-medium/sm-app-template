@@ -27,7 +27,7 @@ import { MetricDefinition } from "@/components/patterns/metric-definition";
 import { compactHeadline, formatDateRange } from "@/lib/format";
 import { presentOverviewMeasures, type OverviewMeasureKey } from "./measures";
 import { getOverviewReport, overviewSlice, type OverviewFilters, type OverviewReport } from "./queries";
-import { overviewOptions } from "./filters";
+import { overviewOptions, SHOW_TRENDS_PARAM } from "./filters";
 import { OverviewControls } from "./controls";
 import { OverviewSummary } from "./summary";
 import { OverviewRevenue } from "./revenue";
@@ -54,7 +54,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   return (
     <ReportPage
       dataStatusAfterControls
-      clientPresentationParams={["show_trends"]}
+      clientPresentationParams={[SHOW_TRENDS_PARAM]}
       chartParams={["metric"]}
       bindings={overviewBindings}
       maxDays={appConfig.summaryMaxDays}
