@@ -20,6 +20,7 @@ import {
   withParams,
   datesInRange,
   rangeLength,
+  type ReportDates,
   type SearchParams,
 } from "@/lib/filters";
 import { decimalToNumber } from "@/lib/data/decimal";
@@ -72,7 +73,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       agentFilters={{ sales_channel: channel, grain, trend: trendMode }}
       comparisons
     >
-      {({ filters, plan, timeZone, currency, dataStatus, params: applied }) => {
+      {({ filters, plan, timeZone, currency, dataStatus, params: applied, dates }) => {
         const selected: OverviewFilters = { ...filters, channel, grain };
         const comparisonParams = planParams(plan);
         return (
@@ -106,6 +107,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                   <OverviewView
                     report={report}
                     filters={selected}
+                    dateParams={dates}
                     plan={plan}
                     currency={currency}
                     trendMode={trendMode}
@@ -122,7 +124,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                   {},
                   {
                     store: filters.storeId,
-                    ...filters.range,
+                    ...dates.fixed,
                     sales_channel: channel ?? "",
                     grain,
                     ...comparisonParams,
@@ -147,7 +149,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                       {},
                       {
                         store: filters.storeId,
-                        ...filters.range,
+                        ...dates.live,
                         sales_channel: channel ?? "",
                         ...comparisonParams,
                         date_basis: "processed",
@@ -169,6 +171,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
 function OverviewView({
   report,
   filters,
+  dateParams,
   plan,
   currency,
   trendMode,
@@ -177,6 +180,7 @@ function OverviewView({
   timeZone: string;
   report: OverviewReport;
   filters: OverviewFilters;
+  dateParams: ReportDates;
   plan?: ComparisonPlan;
   currency: string | null;
   trendMode: (typeof TREND_MODES)[number]["value"];
@@ -194,7 +198,7 @@ function OverviewView({
   const dailyTableHref =
     filters.grain === "day"
       ? "#summary-heading"
-      : `${withParams("/overview", {}, { store: filters.storeId, ...filters.range, sales_channel: filters.channel ?? "", ...planParams(plan), grain: "day" })}#summary-heading`;
+      : `${withParams("/overview", {}, { store: filters.storeId, ...dateParams.live, sales_channel: filters.channel ?? "", ...planParams(plan), grain: "day" })}#summary-heading`;
   function trend(key: OverviewMeasureKey) {
     return {
       tableHref: dailyTableHref,
@@ -473,7 +477,13 @@ function OverviewView({
       </Disclosure>
       {pick("revenue")}
       <Disclosure summary="Business summary and CSV" id="summary-details">
-        <OverviewSummary data={data} filters={filters} currency={currency} timeZone={timeZone} />
+        <OverviewSummary
+          data={data}
+          filters={filters}
+          dates={dateParams.fixed}
+          currency={currency}
+          timeZone={timeZone}
+        />
       </Disclosure>
     </div>
   );

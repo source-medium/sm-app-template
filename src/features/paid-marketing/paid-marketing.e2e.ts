@@ -108,12 +108,17 @@ test("paid marketing: calendar presets preserve the store and channel", async ({
   expect(params.get("channel")).toBe("Google");
   expect(params.get("metric")).toBe("clicks");
   expect(params.get("compare")).toBe("year");
-  expect(params.get("from")).toMatch(/-01$/);
+  expect(params.get("range")).toBe("last-month");
+  expect(params.has("from")).toBe(false);
   await page.getByText("More dates", { exact: true }).click();
   await expect(preset).toHaveAttribute("aria-current", "true");
+  // A download is a snapshot of the dates on screen.
+  const from = await page.getByLabel("From", { exact: true }).inputValue();
+  const to = await page.getByLabel("To", { exact: true }).inputValue();
+  expect(from).toMatch(/-01$/);
   await expect(page.getByRole("link", { name: "Download CSV" })).toHaveAttribute(
     "href",
-    new RegExp(`from=${params.get("from")}&to=${params.get("to")}`),
+    new RegExp(`from=${from}&to=${to}`),
   );
 });
 
@@ -148,7 +153,7 @@ test("paid marketing: the chart's measure switches without a request, survives f
   expect(requests).toEqual([]);
   // The preset was built while the page named Spend; it resumes the live measure instead.
   await page.getByRole("link", { name: "Last 28 days", exact: true }).click();
-  await expect(page).toHaveURL((url) => url.searchParams.get("from") !== "2026-09-01");
+  await expect(page).toHaveURL((url) => url.searchParams.get("range") === "last-28-days");
   await expect(page.getByRole("img", { name: "Platform ROAS by channel over time chart", exact: true })).toBeVisible();
   await expect(page).toHaveURL(/metric=roas/);
   // Without a param, this browser's remembered measure is in the server's HTML.

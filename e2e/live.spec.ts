@@ -156,7 +156,7 @@ test("the store and dates survive navigation, and the next page of orders loads"
   // The first page can be Retention (no date presets) or a customer's own page.
   await page.goto("/orders");
   await page.getByRole("link", { name: "Last 7 days" }).click();
-  await expect(page).toHaveURL(/store=.+&from=/);
+  await expect(page).toHaveURL(/store=.+&range=last-7-days/);
   const selected = new URL(page.url()).searchParams;
   // Wait for the regions to load, so the next click does not cancel their queries.
   await expectLiveReport(page);
@@ -168,8 +168,8 @@ test("the store and dates survive navigation, and the next page of orders loads"
   await page.getByRole("link", { name: "Orders", exact: true }).click();
   await expect(page).toHaveURL(/\/orders\?store=/);
   const applied = new URL(page.url()).searchParams;
-  expect(["store", "from", "to"].map((name) => applied.get(name))).toEqual(
-    ["store", "from", "to"].map((name) => selected.get(name)),
+  expect(["store", "range"].map((name) => applied.get(name))).toEqual(
+    ["store", "range"].map((name) => selected.get(name)),
   );
   await expectLiveReport(page);
   const older = page.getByRole("link", { name: "Older orders" });

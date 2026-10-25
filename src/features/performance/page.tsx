@@ -50,7 +50,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
         },
       ]}
     >
-      {({ filters, timeZone, currency, dataStatus }) => {
+      {({ filters, dates, timeZone, currency, dataStatus }) => {
         const selected: PerformanceFilters = { ...filters, grain, channel };
         const scope = `${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`;
         const applied = <MultiChannelFilter channels={[]} />;
@@ -69,7 +69,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
             href={withParams(
               "/performance/export",
               {},
-              { store: filters.storeId, ...filters.range, sales_channel: channel ?? "", grain, view, platform },
+              { store: filters.storeId, ...dates.fixed, sales_channel: channel ?? "", grain, view, platform },
             )}
           >
             Download {view === "business" ? "business" : "platform"} CSV
@@ -82,7 +82,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
               href={withParams(
                 "/overview",
                 {},
-                { store: filters.storeId, ...filters.range, sales_channel: channel ?? "", compare: "year" },
+                { store: filters.storeId, ...dates.live, sales_channel: channel ?? "", compare: "year" },
               )}
             >
               Compare last year in Overview

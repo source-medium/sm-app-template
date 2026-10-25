@@ -105,8 +105,11 @@ export const appConfig = {
   ] satisfies NavItem[] as NavItem[],
   /** Optional overrides for dim_stores.store_name. Names and brand groups otherwise come from SourceMedium. */
   storeLabels: {} as Record<string, string>,
-  /** Date picker defaults: the default range ends yesterday, in the store's SourceMedium time zone. */
-  dateRange: { defaultDays: 28, maxDays: 90 },
+  /**
+   * Date picker defaults: the default range ends yesterday, in the store's SourceMedium time zone.
+   * The maximum holds any calendar quarter (92 days), so quarter presets always fit detail views.
+   */
+  dateRange: { defaultDays: 28, maxDays: 92 },
   /** Summary reports can deliberately cover a full year; detail views retain the shorter limit. */
   summaryMaxDays: 366,
   /** Optional verified sales-channel defaults for summary reports. Empty means all channels. */

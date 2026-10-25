@@ -6,7 +6,7 @@ import type { MetricBinding } from "@/lib/metric-binding";
 import type { AgentReportContext } from "@/lib/agent-prompt";
 import type { ViewerAccess } from "@/lib/auth/require-viewer";
 import { planParams, type ComparisonPlan } from "@/lib/comparison";
-import { withParams, type DateRange, type SearchParams } from "@/lib/filters";
+import { withDates, withParams, type DateParams, type DateRange, type SearchParams } from "@/lib/filters";
 import type { ReportSource } from "@/lib/report-data";
 import { AboutData } from "./about-data";
 import { CopyReportLink } from "./copy-report-link";
@@ -19,6 +19,8 @@ export type ReportView = {
   plan?: ComparisonPlan;
   /** The view's date-derived defaults, which apply like URL parameters. */
   derived: Record<string, string>;
+  /** The applied dates, pinned with the preset they are. */
+  fixed: DateParams;
 };
 
 export function ReportHeader({
@@ -59,8 +61,9 @@ export function ReportHeader({
   /** Absent when the store's date is unknown; then the report is not loaded. */
   view?: ReportView;
 }) {
+  // Shared links pin the applied dates, so a colleague sees exactly this period and its comparisons.
   const shareHref =
-    storeId && view ? withParams(pathname, params, { store: storeId, ...(dates ? view.range : {}) }) : null;
+    storeId && view ? withParams(pathname, dates ? withDates(params, view.fixed) : params, { store: storeId }) : null;
   const agentContext: AgentReportContext = {
     pathname,
     title,

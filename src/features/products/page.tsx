@@ -64,7 +64,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       agentOmissions={options.entity ? ["Selected product or variant identity"] : []}
       comparisons
     >
-      {({ filters, plan, timeZone, currency, dataStatus }) => {
+      {({ filters, dates, plan, timeZone, currency, dataStatus }) => {
         const money = formatMoneyIn(currency);
         const format = options.metric === "units" || options.metric === "refunded_units" ? formatMeasure : money;
         const metricLabel = PRODUCT_METRICS.find((item) => item.value === options.metric)?.label ?? "Net revenue";
@@ -191,7 +191,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                             drillDown(
                               {
                                 store: filters.storeId,
-                                ...filters.range,
+                                dates: dates.live,
                                 dateBasis: "processed-only",
                                 population: "valid-order lines",
                                 comparison: plan?.slots[0].mode,

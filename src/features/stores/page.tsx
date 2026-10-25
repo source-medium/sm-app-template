@@ -40,7 +40,7 @@ export default async function StoresPage({ searchParams }: { searchParams: Promi
         },
       ]}
     >
-      {({ filters, plan, timeZone, params: applied }) => (
+      {({ filters, plan, timeZone, params: applied, dates }) => (
         <>
           {plan && <ComparisonCaption plan={plan} />}
           <Suspense
@@ -54,7 +54,14 @@ export default async function StoresPage({ searchParams }: { searchParams: Promi
               emptyMessage="No stores are available yet."
             >
               {(data) => (
-                <StoreComparisonTable data={data} range={filters.range} plan={plan} params={applied} now={new Date()} />
+                <StoreComparisonTable
+                  data={data}
+                  range={filters.range}
+                  plan={plan}
+                  params={applied}
+                  dates={dates.fixed}
+                  now={new Date()}
+                />
               )}
             </DataRegion>
           </Suspense>

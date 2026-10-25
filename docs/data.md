@@ -349,33 +349,55 @@ In a view, take today and the zone from `ReportContext.today` and
 **Loaded at** and an order's created time show in the store's zone, named.
 Never use the server clock's date or UTC.
 
-Date presets include Yesterday, Last 7/28/90 days, Last full week
-(Monday–Sunday), Last month, and Month to date through yesterday. They use
-the store's calendar dates, like the picker defaults. Month to date is omitted on
-the first of the month, when it has no completed days. Presets longer than
-the configured maximum range are omitted rather than silently shortened.
+Date presets (`src/lib/filters.ts`) are completed days in the store's
+calendar: Yesterday; Last 7, 14, 28, 30, 90 and 365 days; Week to date and
+Last week (Monday–Sunday); Month, Quarter and Year to date; and Last month,
+Last quarter and Last year. To date runs from the start of the period holding
+yesterday through yesterday, so on a period's first day it is the whole period
+that just ended, never empty. Presets longer than the report's maximum range
+are omitted rather than silently shortened; detail views hold 92 days, so
+every quarter fits, and summary views hold a year.
+
+A preset is named in the URL (`range=last-28-days`, `range=quarter-to-date`),
+not as dates, so a bookmark resolves it against the store's date on every
+visit. Explicit `from`/`to` always win over `range`. A preset or the default
+keeps rolling through other choices, the sidebar, store switching and
+drill-downs (`ReportContext.dates.live`); dates become fixed only when someone
+edits them, and the preset is highlighted only while it rolls. **Copy report
+link**, downloads and All stores rows pin the applied dates
+(`ReportContext.dates.fixed`) and keep `range` beside them, so whoever opens them
+sees exactly that period with the preset's comparisons. A `range` the app does
+not offer shows a correction message like an invalid date.
+Views without date controls carry the incoming date parameters unchanged, so
+visiting Retention does not shorten or discard another report's annual range.
 
 ## Period comparisons
 
 Every time-based report compares the selected range with up to two baselines
 at once, and what a baseline means depends on what the range is
-(`rangeIntent()` in `src/lib/comparison.ts`, judged against the store's date):
+(`rangeIntent()` in `src/lib/comparison.ts`). A preset says what it is, so
+Quarter to date in October compares with the previous quarter even though its
+dates look like Month to date, and a to-date preset that reached its period's
+end is the full period. Dates without a preset are judged against the store's date:
 
-| Selected range                   | Previous period                             | Same period last year       | 52 weeks earlier |
-| -------------------------------- | ------------------------------------------- | --------------------------- | ---------------- |
-| One day                          | Same weekday a week earlier                 | Same calendar date          | 364 days earlier |
-| Rolling N days ending yesterday  | The N days before                           | Both dates one year earlier | 364 days earlier |
-| A full calendar month            | The previous full month, lengths may differ | The same month last year    | 364 days earlier |
-| Month to date                    | The previous month through the same day     | The same dates last year    | 364 days earlier |
-| A full quarter / quarter to date | The previous quarter / its matching days    | The same quarter last year  | 364 days earlier |
-| Anything else                    | The equal-length range before               | Both dates one year earlier | 364 days earlier |
+| Selected range                   | Previous period                                     | Same period last year       | 52 weeks earlier |
+| -------------------------------- | --------------------------------------------------- | --------------------------- | ---------------- |
+| One day                          | Same weekday a week earlier                         | Same calendar date          | 364 days earlier |
+| Rolling N days ending yesterday  | The N days before                                   | Both dates one year earlier | 364 days earlier |
+| A full week / week to date       | The week before / its same weekdays                 | Both dates one year earlier | 364 days earlier |
+| A full calendar month            | The previous full month, lengths may differ         | The same month last year    | 364 days earlier |
+| Month to date                    | The previous month through the same day, or its end | The same dates last year    | 364 days earlier |
+| A full quarter / quarter to date | The previous quarter / its matching days            | The same quarter last year  | 364 days earlier |
+| A full year / year to date       | The previous year / its same dates (= last year)    | The same dates last year    | 364 days earlier |
+| Anything else                    | The equal-length range before                       | Both dates one year earlier | 364 days earlier |
 
-Position-aligned baselines (previous N days, 52 weeks earlier, quarter to date)
-require equal day counts. Calendar-aligned ones (last year, a previous month or
-quarter) may differ in length; the caption shows both day counts, and daily
-overlays leave days the shorter period lacks as gaps. A previous month that is
-shorter than the elapsed days of a month-to-date range has no match and says so.
-February 29 has no exact last-year date. **Off** skips every comparison query.
+Position-aligned baselines (previous N days or weeks, 52 weeks earlier, quarter
+to date) require equal day counts. Calendar-aligned ones (last year, a previous
+month, quarter or year) may differ in length; the caption shows both day counts,
+and daily overlays leave days the shorter period lacks as gaps. Month to date
+past the end of a shorter previous month compares through that month's last
+day. For a year, the previous period is last year, so the second slot says it
+matches. February 29 has no exact last-year date. **Off** skips every comparison query.
 
 The settings live in the URL: `compare` is the first slot (`previous`, `year`,
 `weekday`, `off`; `off` turns both off). Older links keep working, but
@@ -496,7 +518,8 @@ Every control belongs to one GET form. A choice (store, comparison, and every
 `SelectFilter`) submits the form as soon as it changes, so drafts in the other
 fields travel with it and an invalid date range still blocks with its message.
 Typed inputs (dates, search) are drafts until **Apply** (or **Search**) submits
-them. JS-driven selects stay non-interactive until their handlers are attached,
+them. Unedited dates that roll (a `range` preset or the default) submit as that
+preset, not as dates. JS-driven selects stay non-interactive until their handlers are attached,
 while retaining their values in form submissions. Early changes cannot be lost during loading. Reports and their filters require
 JavaScript. Date preset links
 use the already applied filters. **More dates** holds the less frequent presets.
@@ -856,7 +879,7 @@ No naming taxonomy is inferred, and filters never rewrite warehouse names.
 
 ## Summary report scope
 
-Overview and Performance tables opt into `appConfig.summaryMaxDays` (366 by default) while detail views retain `dateRange.maxDays` (90). Pass the same maximum to ReportPage and csvExport so the URL, browser validation and download agree. Quarter-to-date and year-to-date presets appear only when they fit the report's bound. Performance uses a grain-specific aggregate row bound and rejects excess platform groups rather than truncating totals.
+Overview and Performance tables opt into `appConfig.summaryMaxDays` (366 by default) while detail views retain `dateRange.maxDays` (92, any quarter). Pass the same maximum to ReportPage and csvExport so the URL, browser validation and download agree. Year presets and Last 365 days appear only when they fit the report's bound. Performance uses a grain-specific aggregate row bound and rejects excess platform groups rather than truncating totals.
 
 For multiple sales channels, copy Overview's `SalesChannelFilter` wrapper outside Suspense and `MultiChannelFilter` inside it. The wrapper owns one form value while the roster loads or fails. The shared `SALES_CHANNEL_PREDICATE` accepts one bound channel or a JSON list of several. Keep explicit All selections in links and exports as `sales_channel=` so customer defaults cannot reapply. See [reconciliation.md](reconciliation.md) for metric definitions and reference parity.
 

@@ -5,8 +5,9 @@
  * ComparisonPlan). What "previous period" means depends on what the range is:
  * a full month compares with the previous full month even though the day
  * counts differ, a rolling 28 days with the 28 days before it, a single day
- * with the same weekday a week earlier. rangeIntent() reads that intent from
- * the applied range itself, so nothing new travels in the URL.
+ * with the same weekday a week earlier. rangeIntent() takes that intent from the
+ * date preset the range is (`range=quarter-to-date`), and otherwise reads it from
+ * the applied dates, so the same dates picked as different presets keep each meaning.
  */
 import { fromUnits, toUnits } from "@/lib/data/decimal";
 import {
@@ -14,8 +15,12 @@ import {
   datesInRange,
   monthStart,
   parseChoice,
+  PERIOD_START,
   quarterStart,
   rangeLength,
+  rangePreset,
+  type DatePeriod,
+  type DatePreset,
   type DateRange,
   type SearchParams,
 } from "@/lib/filters";
@@ -43,7 +48,17 @@ export type Baseline = Comparison & {
   note: string | null;
 };
 export type RangeIntent =
-  "single_day" | "rolling" | "full_month" | "month_to_date" | "full_quarter" | "quarter_to_date" | "custom";
+  | "single_day"
+  | "rolling"
+  | "full_week"
+  | "week_to_date"
+  | "full_month"
+  | "month_to_date"
+  | "full_quarter"
+  | "quarter_to_date"
+  | "full_year"
+  | "year_to_date"
+  | "custom";
 /** Each slot's dates for a query; null for a slot that is off or has no matching dates. */
 export type BaselineRanges = [DateRange | null, DateRange | null];
 export type ComparisonPlan = {
@@ -55,20 +70,6 @@ export type ComparisonPlan = {
 };
 
 const MODES = COMPARISON_OPTIONS.map((option) => option.value);
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
@@ -88,7 +89,24 @@ function shiftMonth(date: string, offset: number): string {
   return iso(Math.floor(index / 12), (index % 12) + 1, 1);
 }
 const quarterEnd = (date: string) => monthEnd(shiftMonth(quarterStart(date), 2));
-const monthName = (date: string) => `${MONTHS[month(date) - 1]} ${year(date)}`;
+const PERIOD_END: Record<DatePeriod, (date: string) => string> = {
+  week: (date) => addDays(PERIOD_START.week(date), 6),
+  month: monthEnd,
+  quarter: quarterEnd,
+  year: (date) => `${date.slice(0, 4)}-12-31`,
+};
+const FULL_PERIOD = {
+  week: "full_week",
+  month: "full_month",
+  quarter: "full_quarter",
+  year: "full_year",
+} as const satisfies Record<DatePeriod, RangeIntent>;
+const PERIOD_TO_DATE = {
+  week: "week_to_date",
+  month: "month_to_date",
+  quarter: "quarter_to_date",
+  year: "year_to_date",
+} as const satisfies Record<DatePeriod, RangeIntent>;
 
 /** The same calendar date a year earlier, or null for Feb 29, which has none. */
 function sameDateLastYear(date: string): string | null {
@@ -101,8 +119,18 @@ function lastYear(date: string): string {
   return sameDateLastYear(date) ?? `${String(year(date) - 1).padStart(4, "0")}-02-28`;
 }
 
-/** What the applied range is, judged against the store's current date. */
-export function rangeIntent(range: DateRange, today: string): RangeIntent {
+/**
+ * What the applied range is: the period its date preset names (a to-date preset
+ * that reached its period's end is the full period), or else judged from its
+ * dates against the store's current date.
+ */
+export function rangeIntent(range: DateRange, today: string, preset?: DatePreset): RangeIntent {
+  if (preset) {
+    if ("days" in preset) return preset.days === 1 ? "single_day" : "rolling";
+    return range.to === PERIOD_END[preset.period](range.from)
+      ? FULL_PERIOD[preset.period]
+      : PERIOD_TO_DATE[preset.period];
+  }
   const yesterday = addDays(today, -1);
   if (range.from === range.to) return "single_day";
   if (range.from === monthStart(range.from)) {
@@ -112,6 +140,10 @@ export function rangeIntent(range: DateRange, today: string): RangeIntent {
   if (range.from === quarterStart(range.from)) {
     if (range.to === quarterEnd(range.from)) return "full_quarter";
     if (range.to === yesterday && quarterStart(range.to) === range.from) return "quarter_to_date";
+  }
+  if (range.from === PERIOD_START.year(range.from)) {
+    if (range.to === PERIOD_END.year(range.from)) return "full_year";
+    if (range.to === yesterday && range.to.slice(0, 4) === range.from.slice(0, 4)) return "year_to_date";
   }
   return range.to === yesterday ? "rolling" : "custom";
 }
@@ -155,22 +187,21 @@ export function baselineFor(range: DateRange, intent: RangeIntent, mode: Compari
   switch (intent) {
     case "single_day":
       return make("same weekday last week", "position", { from: addDays(range.from, -7), to: addDays(range.to, -7) });
+    case "full_week":
+    case "week_to_date":
+      return make(intent === "full_week" ? "previous week" : "previous week to date", "position", {
+        from: addDays(range.from, -7),
+        to: addDays(range.to, -7),
+      });
     case "full_month": {
       const start = shiftMonth(range.from, -1);
       return make("previous month", "calendar", { from: start, to: monthEnd(start) });
     }
     case "month_to_date": {
+      // A shorter previous month compares through its last day, as a full month does.
       const start = shiftMonth(range.from, -1);
-      const elapsed = day(range.to);
-      const available = daysInMonth(year(start), month(start));
-      if (elapsed > available)
-        return make(
-          "previous month to date",
-          "calendar",
-          null,
-          `${monthName(start)} has only ${available} days, so there is no matching month-to-date period for ${dayCount(elapsed)}.`,
-        );
-      return make("previous month to date", "calendar", { from: start, to: iso(year(start), month(start), elapsed) });
+      const to = iso(year(start), month(start), Math.min(day(range.to), daysInMonth(year(start), month(start))));
+      return make("previous month to date", "calendar", { from: start, to });
     }
     case "full_quarter": {
       const start = shiftMonth(range.from, -3);
@@ -188,6 +219,12 @@ export function baselineFor(range: DateRange, intent: RangeIntent, mode: Compari
         );
       return make("previous quarter to date", "position", { from: start, to });
     }
+    case "full_year":
+    case "year_to_date":
+      return make(intent === "full_year" ? "previous year" : "previous year to date", "calendar", {
+        from: lastYear(range.from),
+        to: lastYear(range.to),
+      });
     default:
       return make(length === 1 ? "previous day" : `previous ${dayCount(length)}`, "position", {
         from: addDays(range.from, -length),
@@ -207,7 +244,7 @@ const sameRange = (a: DateRange, b: DateRange) => a.from === b.from && a.to === 
  * is not queried; it says it matches instead.
  */
 export function parseComparisonPlan(params: SearchParams, range: DateRange, today: string): ComparisonPlan {
-  const intent = rangeIntent(range, today);
+  const intent = rangeIntent(range, today, rangePreset(params, range));
   const first = parseChoice(params, "compare", MODES, "previous");
   const second =
     first === "off" ? "off" : parseChoice(params, "compare2", MODES, first === "year" ? "previous" : "year");
@@ -245,9 +282,12 @@ export function planParams(plan: ComparisonPlan | undefined): { compare: Compari
  */
 export function comparisonDates(range: DateRange, comparison: Comparison): (string | null)[] {
   const baseline = comparison.range;
+  // Last year, like a previous year or year to date, lines up by calendar date.
+  const yearEarlier =
+    comparison.mode === "year" || (baseline?.from === lastYear(range.from) && baseline.to === lastYear(range.to));
   return datesInRange(range).map((date, index) => {
     if (!baseline || comparison.mode === "off") return null;
-    if (comparison.mode === "year") return sameDateLastYear(date);
+    if (yearEarlier) return sameDateLastYear(date);
     const oneMonth =
       baseline.from.slice(0, 7) === baseline.to.slice(0, 7) && range.from.slice(0, 7) === range.to.slice(0, 7);
     if (comparison.alignment === "calendar" && oneMonth) {

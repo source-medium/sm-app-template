@@ -1,9 +1,9 @@
-import { withParams } from "./filters";
+import { withParams, type DateParams } from "./filters";
 
 export type Investigation = {
   store: string;
-  from: string;
-  to: string;
+  /** The report's live dates (`ReportContext.dates.live`), so a rolling preset keeps rolling. */
+  dates: DateParams;
   dateBasis: string;
   population: string;
   /** The first and second comparison modes (`compare`, `compare2`), carried together. */
@@ -48,8 +48,7 @@ export function drillDown(
         ...destination.required,
         ...mapped,
         store: context.store,
-        from: context.from,
-        to: context.to,
+        ...context.dates,
         ...(destination.supportsComparison
           ? { compare: context.comparison ?? null, compare2: context.comparison2 ?? null }
           : {}),

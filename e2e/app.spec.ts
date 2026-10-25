@@ -213,6 +213,61 @@ test("filters live in the URL and survive a reload", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("aria-current", "true");
 });
 
+test("a bookmarked date preset keeps rolling through other choices until the dates are edited", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  if (!baseURL) throw new Error("The sample project needs a baseURL");
+  await page.goto(home);
+  test.skip((await page.locator("[data-agent-page]").count()) === 0, "the home page has no report filters");
+  await expect(page.getByRole("button", { name: /^Store:/ })).toBeVisible();
+  const preset = page.getByRole("link", { name: "Last 7 days" });
+  test.skip((await preset.count()) === 0, "the home page has no date range");
+  await preset.click();
+  await expect(page).toHaveURL(/range=last-7-days/);
+  const compare = page.locator('select[name="compare"]');
+  if (await compare.count()) {
+    await compare.selectOption("year");
+    await expect(page).toHaveURL(/compare=year/);
+  }
+  const bookmark = new URL(page.url());
+  expect(bookmark.searchParams.get("range")).toBe("last-7-days");
+  expect(bookmark.searchParams.has("from")).toBe(false);
+  const other = appConfig.nav.find((item) => item.href !== home);
+  if (other)
+    await expect(
+      page.locator('[data-slot="sidebar-menu"]').getByRole("link", { name: other.label, exact: true }),
+    ).toHaveAttribute("href", /range=last-7-days/);
+  // A browser with nothing remembered opens the bookmark on the same rolling preset.
+  const fresh = await browser.newContext();
+  try {
+    const other = await fresh.newPage();
+    await other.goto(`${baseURL}${bookmark.pathname}${bookmark.search}`);
+    await expect(other.getByRole("link", { name: "Last 7 days" })).toHaveAttribute("aria-current", "true");
+  } finally {
+    await fresh.close();
+  }
+  // Returning an invalid draft to the applied rolling dates clears its validation error.
+  const from = page.getByLabel("From", { exact: true });
+  const to = page.getByLabel("To", { exact: true });
+  const appliedFrom = await from.inputValue();
+  const appliedTo = await to.inputValue();
+  await from.fill("2026-09-10");
+  await to.fill("2026-09-01");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("start date must be on or before");
+  await from.fill(appliedFrom);
+  await to.fill(appliedTo);
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+  await page.getByLabel("From", { exact: true }).fill("2026-09-01");
+  await page.getByLabel("To", { exact: true }).fill("2026-09-07");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page).toHaveURL(/from=2026-09-01&to=2026-09-07/);
+  expect(new URL(page.url()).searchParams.has("range")).toBe(false);
+});
+
 test("the first Tab reaches a skip link that moves focus to the report", async ({ page }) => {
   await page.goto(home);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

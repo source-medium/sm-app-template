@@ -2,7 +2,7 @@ import { DataTable } from "@/components/patterns/data-table";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { compareValues, slotChanges, type ComparisonPlan } from "@/lib/comparison";
 import { calendarDate, formatChangePercent, formatDate, formatMeasure, formatMoney } from "@/lib/format";
-import type { DateRange, SearchParams } from "@/lib/filters";
+import { withDates, type DateParams, type DateRange, type SearchParams } from "@/lib/filters";
 import { storeReportPath, switchStoreHref } from "@/lib/store-navigation";
 import { slotColumn } from "@/lib/data/period-sql";
 import type { StoreComparison } from "./queries";
@@ -13,12 +13,15 @@ export function StoreComparisonTable({
   range,
   plan,
   params,
+  dates,
   now,
 }: {
   data: StoreComparison[];
   range: DateRange;
   plan?: ComparisonPlan;
   params: SearchParams;
+  /** Each row's link shows exactly these dates, so the store's report matches the row. */
+  dates: DateParams;
   now: Date;
 }) {
   const path = storeReportPath();
@@ -47,7 +50,7 @@ export function StoreComparisonTable({
         cells: {
           store: {
             display: `${store.label}${data.some((other) => other.store.id !== store.id && other.store.label === store.label) ? ` (${store.id})` : ""}`,
-            href: path ? switchStoreHref(path, { ...params, ...range }, store.id) : undefined,
+            href: path ? switchStoreHref(path, withDates(params, dates), store.id) : undefined,
           },
           brand: { display: store.brand ?? "—" },
           currency: { display: currency ?? "Unknown" },

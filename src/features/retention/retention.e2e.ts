@@ -1,6 +1,22 @@
 import { expect, test } from "@playwright/test";
 import { chooseMeasure, switchStore } from "../../../e2e/helpers";
 
+for (const query of ["range=last-365-days", "range=last-year&from=2025-01-01&to=2025-12-31"]) {
+  const dates = new URLSearchParams(query);
+  test(`retention: carries ${dates.get("range")} unchanged through controls and store switching`, async ({ page }) => {
+    await page.goto(`/retention?store=sample-store-a&${dates}`);
+    const expectDates = () => {
+      const params = new URL(page.url()).searchParams;
+      for (const key of ["range", "from", "to"]) expect(params.get(key)).toBe(dates.get(key));
+    };
+    await switchStore(page, "sample-store-b");
+    expectDates();
+    await page.getByLabel("Matrix measure", { exact: true }).selectOption("revenue");
+    await expect(page).toHaveURL(/measure=revenue/);
+    expectDates();
+  });
+}
+
 test("retention: long segment values and search controls stay usable on a small phone", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 320, height: 740 });
   const params = new URLSearchParams({

@@ -36,6 +36,7 @@ it("labels verified currencies per row, leaves unknown money unlabeled, and expo
     <StoreComparisonTable
       data={[store("US", "USD"), store("UK", "GBP"), store("Unknown", null)]}
       range={range}
+      dates={{ ...range, range: null }}
       plan={plan}
       params={{ compare: "previous" }}
       now={now}
@@ -58,6 +59,7 @@ it("hides only the affected store's comparison and retains a store with no rows"
     <StoreComparisonTable
       data={[store("Ready", "USD"), store("Late", "USD", "2026-09-06"), { ...store("Empty", "USD"), summary: null }]}
       range={range}
+      dates={{ ...range, range: null }}
       plan={plan}
       params={{}}
       now={now}
@@ -74,7 +76,7 @@ it("uses each store's local date for current-day completeness and omits comparis
     store("East", "USD"),
     { ...store("West", "USD"), store: { ...store("West", "USD").store, timeZone: "America/Los_Angeles" } },
   ];
-  const props = { data, range, params: {}, now: new Date("2026-09-08T05:00:00Z") };
+  const props = { data, range, params: {}, dates: { ...range, range: null }, now: new Date("2026-09-08T05:00:00Z") };
   const { rerender } = render(<StoreComparisonTable {...props} plan={plan} />);
   const rows = screen.getAllByRole("row");
   expect(rows[1]).toHaveTextContent("+23.46%");

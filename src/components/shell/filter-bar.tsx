@@ -20,6 +20,8 @@ export function FilterBar({
   storeId,
   from,
   to,
+  rolling = false,
+  preset,
   maxDate,
   maxDays,
   presets,
@@ -36,6 +38,10 @@ export function FilterBar({
   /** Absent when the store's date is unknown; the date controls are then hidden. */
   from?: string;
   to?: string;
+  /** The applied dates roll with today (a preset, or the default) rather than being fixed. */
+  rolling?: boolean;
+  /** The `range` preset the URL keeps, rolling or with its fixed dates. */
+  preset?: string;
   maxDate?: string;
   maxDays?: number;
   presets: FilterPreset[];
@@ -53,6 +59,7 @@ export function FilterBar({
   const id = useId();
   const [error, setError] = useState<string | null>(null);
   const [datesOpen, setDatesOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   // The From field takes focus once it is in the layout: after Change reveals it, or after an invalid submit.
   const focusFrom = useRef(false);
   useEffect(() => {
@@ -60,6 +67,22 @@ export function FilterBar({
     focusFrom.current = false;
     document.getElementById(`${id}-from`)?.focus();
   });
+  // Edited dates are custom, so they drop the preset; unedited rolling dates submit as only their preset
+  // (nothing, for the default), so other choices and bookmarks keep rolling. Before scripts load, the form
+  // submits its dates as typed, so an early edit is never lost.
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form || !dates) return;
+    const keepPreset = ({ formData }: FormDataEvent) => {
+      if (formData.get("from") !== (from ?? null) || formData.get("to") !== (to ?? null)) formData.delete("range");
+      else if (rolling) {
+        formData.delete("from");
+        formData.delete("to");
+      }
+    };
+    form.addEventListener("formdata", keepPreset);
+    return () => form.removeEventListener("formdata", keepPreset);
+  }, [dates, rolling, from, to]);
   // Keep the form for controls rendered by the report, even when it has no visible fields of its own.
   const hasControls = dates || comparison !== undefined;
   /** Choices apply on change; typed dates wait for Apply. The form's own submit handler still validates dates. */
@@ -83,6 +106,7 @@ export function FilterBar({
   );
   return (
     <Form
+      ref={formRef}
       prefetch={false}
       id={REPORT_FILTER_FORM_ID}
       action={pathname}
@@ -97,11 +121,14 @@ export function FilterBar({
       onSubmit={(event) => {
         if (!dates || maxDate === undefined) return;
         const data = new FormData(event.currentTarget);
-        const issue = dateRangeIssue(
-          { from: String(data.get("from") ?? ""), to: String(data.get("to") ?? "") },
-          maxDate,
-          maxDays,
-        );
+        const issue =
+          data.has("from") || data.has("to")
+            ? dateRangeIssue(
+                { from: String(data.get("from") ?? ""), to: String(data.get("to") ?? "") },
+                maxDate,
+                maxDays,
+              )
+            : null;
         setError(issue);
         if (issue) {
           event.preventDefault();
@@ -117,6 +144,7 @@ export function FilterBar({
         <input type="hidden" name="compare2" value={carriedComparison2} />
       )}
       <input type="hidden" name="store" value={storeId} />
+      {preset && <input type="hidden" name="range" value={preset} />}
       {comparison !== undefined && (
         <div
           className={cn(
@@ -239,6 +267,7 @@ export function FilterBar({
           </div>
         </div>
       ) : (
+        !rolling &&
         from !== undefined &&
         to !== undefined && (
           <>

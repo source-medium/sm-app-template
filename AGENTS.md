@@ -56,8 +56,8 @@ docs/                         Guides (index below)
    strings to client components. Locale formatting anywhere else in `src`, or
    importing `format.ts` into a `"use client"` file, fails lint, because server
    and browser can disagree.
-3. **Keep filters in the URL** (`?store=&from=&to=` plus the view's own). Read
-   them in the page's `searchParams`; there is no client data store.
+3. **Keep filters in the URL** (`?store=&from=&to=`, or a rolling `range=` preset,
+   plus the view's own). Read them in the page's `searchParams`; there is no client data store.
    Pass parsed, shareable view filters as `ReportPage agentFilters` (docs/prompts.md).
 4. **Inspect the schema before writing SQL**: the SourceMedium MCP
    (`search_data_catalog` with `tables`, or `describe_table` where a connection

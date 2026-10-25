@@ -615,3 +615,15 @@ test("overview: the geography link carries a multi-channel scope and Geography n
   );
   await expect(page.getByText("Sales channels: amazon, online_dtc.")).toBeVisible();
 });
+
+test("overview: a date preset's comparison follows the preset, even when its dates look like another's", async ({
+  page,
+}) => {
+  // In a quarter's first month, quarter to date has the same dates as month to date.
+  await page.goto("/overview?store=sample-store-a&range=quarter-to-date");
+  const caption = page.locator('[data-slot="comparison-caption"]').first();
+  await expect(caption).toContainText(/previous quarter/);
+  await expect(caption).not.toContainText(/previous month/);
+  await page.goto("/overview?store=sample-store-a&range=month-to-date");
+  await expect(page.locator('[data-slot="comparison-caption"]').first()).toContainText(/previous month/);
+});

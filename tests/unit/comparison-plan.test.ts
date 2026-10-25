@@ -7,6 +7,7 @@ import {
   rangeIntent,
   slotChanges,
 } from "@/lib/comparison";
+import { parseDateRange, reportDates, withDates } from "@/lib/filters";
 
 const today = "2026-10-24";
 
@@ -22,6 +23,8 @@ describe("range intent", () => {
     expect(rangeIntent({ from: "2026-09-01", to: "2026-09-28" }, today)).toBe("custom");
     // A month that ended yesterday is a full month, not month to date.
     expect(rangeIntent({ from: "2026-09-01", to: "2026-09-30" }, "2026-10-01")).toBe("full_month");
+    expect(rangeIntent({ from: "2025-01-01", to: "2025-12-31" }, today)).toBe("full_year");
+    expect(rangeIntent({ from: "2026-01-01", to: "2026-10-23" }, today)).toBe("year_to_date");
   });
 });
 
@@ -43,14 +46,16 @@ describe("baselines by intent", () => {
     });
   });
 
-  it("matches month to date day for day and says when the previous month is too short", () => {
+  it("matches month to date day for day, through a shorter previous month's last day", () => {
     expect(baselineFor({ from: "2026-10-01", to: "2026-10-23" }, "month_to_date", "previous")).toMatchObject({
       range: { from: "2026-09-01", to: "2026-09-23" },
       alignment: "calendar",
     });
-    const short = baselineFor({ from: "2026-03-01", to: "2026-03-30" }, "month_to_date", "previous");
-    expect(short.range).toBeNull();
-    expect(short.note).toMatch(/February 2026 has only 28 days/);
+    expect(baselineFor({ from: "2026-03-01", to: "2026-03-30" }, "month_to_date", "previous")).toMatchObject({
+      range: { from: "2026-02-01", to: "2026-02-28" },
+      alignment: "calendar",
+      note: null,
+    });
   });
 
   it("uses the previous quarter, the preceding days, the same weekday, and 52 weeks earlier", () => {
@@ -170,5 +175,79 @@ describe("comparison dates", () => {
     expect(comparisonDates(range, baselineFor(range, "rolling", "year"))[0]).toBe("2025-09-26");
     expect(comparisonDates(range, baselineFor(range, "rolling", "weekday"))[0]).toBe("2025-09-27");
     expect(comparisonDates(range, baselineFor(range, "rolling", "off"))).toEqual(Array(28).fill(null));
+  });
+});
+
+describe("comparisons follow the date preset", () => {
+  const plan = (preset: string, today: string) => {
+    const params = { range: preset };
+    return parseComparisonPlan(params, parseDateRange(params, today, 366), today);
+  };
+  const matches = { range: null, note: expect.stringMatching(/matches the first comparison/) };
+
+  it("use the preset's own period when its dates could be another preset's", () => {
+    // In a quarter's first month, quarter to date has month-to-date dates.
+    expect(plan("quarter-to-date", "2026-10-15")).toMatchObject({
+      intent: "quarter_to_date",
+      slots: [{ label: "previous quarter to date", range: { from: "2026-07-01", to: "2026-07-14" } }, {}],
+    });
+    expect(plan("month-to-date", "2026-10-15").slots[0].range).toEqual({ from: "2026-09-01", to: "2026-09-14" });
+    // A one-day month to date still compares with the previous month, not the same weekday.
+    expect(plan("month-to-date", "2026-10-02")).toMatchObject({
+      intent: "month_to_date",
+      slots: [{ range: { from: "2026-09-01", to: "2026-09-01" } }, {}],
+    });
+    // Year to date compares with last year to date, which is also last year: shown once.
+    expect(plan("year-to-date", "2026-01-20")).toMatchObject({
+      intent: "year_to_date",
+      slots: [{ label: "previous year to date", range: { from: "2025-01-01", to: "2025-01-19" } }, matches],
+    });
+    expect(plan("week-to-date", "2026-10-08")).toMatchObject({
+      intent: "week_to_date",
+      slots: [{ label: "previous week to date", range: { from: "2026-09-28", to: "2026-09-30" } }, {}],
+    });
+  });
+
+  it("treat a to-date preset that reached its period's end as the full period", () => {
+    expect(plan("month-to-date", "2026-11-01")).toMatchObject({
+      intent: "full_month",
+      slots: [{ label: "previous month", range: { from: "2026-09-01", to: "2026-09-30" } }, {}],
+    });
+    expect(plan("year-to-date", "2027-01-01")).toMatchObject({
+      intent: "full_year",
+      slots: [{ label: "previous year", range: { from: "2025-01-01", to: "2025-12-31" } }, matches],
+    });
+    expect(plan("last-week", "2026-10-07")).toMatchObject({
+      intent: "full_week",
+      slots: [{ label: "previous week", range: { from: "2026-09-21", to: "2026-09-27" } }, {}],
+    });
+    expect(plan("last-quarter", "2026-10-07")).toMatchObject({
+      intent: "full_quarter",
+      slots: [{ range: { from: "2026-04-01", to: "2026-06-30" } }, {}],
+    });
+    expect(plan("last-14-days", "2026-10-07")).toMatchObject({
+      intent: "rolling",
+      slots: [{ label: "previous 14 days" }, {}],
+    });
+  });
+
+  it("keep the preset's comparison in a link that pins its dates, unlike the same dates typed", () => {
+    const live = { range: "quarter-to-date" };
+    const range = parseDateRange(live, "2026-10-15");
+    const pinned = withDates({}, reportDates(live, range, null).fixed);
+    expect(parseComparisonPlan(pinned, parseDateRange(pinned, "2026-12-01"), "2026-12-01").slots[0].range).toEqual({
+      from: "2026-07-01",
+      to: "2026-07-14",
+    });
+    expect(parseComparisonPlan({ from: range.from, to: range.to }, range, "2026-10-15").intent).toBe("month_to_date");
+  });
+
+  it("line a previous year up by calendar date, leaving February 29 as a gap", () => {
+    const leap = { from: "2024-01-01", to: "2024-12-31" };
+    const dates = comparisonDates(leap, baselineFor(leap, "full_year", "previous"));
+    expect(dates[58]).toBe("2023-02-28");
+    expect(dates[59]).toBeNull();
+    expect(dates[60]).toBe("2023-03-01");
+    expect(dates[365]).toBe("2023-12-31");
   });
 });

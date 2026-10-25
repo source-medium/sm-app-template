@@ -5,7 +5,7 @@ import { Download } from "lucide-react";
 import { DataTable, type DataTableRow } from "@/components/patterns/data-table";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { buttonVariants } from "@/components/ui/button";
-import { withParams } from "@/lib/filters";
+import { withParams, type DateParams } from "@/lib/filters";
 import { formatDateRange } from "@/lib/format";
 import { TIME_GRAINS } from "@/lib/time-grain";
 import { presentOverviewMeasures } from "./measures";
@@ -29,11 +29,14 @@ function cells(label: string, measures: OverviewMeasures, currency: string | nul
 export function OverviewSummary({
   data,
   filters,
+  dates,
   currency,
   timeZone,
 }: {
   data: OverviewData;
   filters: OverviewFilters;
+  /** The applied dates as the CSV link pins them. */
+  dates: DateParams;
   currency: string | null;
   timeZone: string;
 }) {
@@ -60,7 +63,7 @@ export function OverviewSummary({
                 {},
                 {
                   store: filters.storeId,
-                  ...filters.range,
+                  ...dates,
                   grain: filters.grain ?? "day",
                   sales_channel: filters.channel ?? "",
                 },

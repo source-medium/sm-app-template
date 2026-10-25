@@ -55,7 +55,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
       agentFilters={{ date_basis: dateBasis, population: "valid", country, region, sales_channel: channel }}
       defaults={() => ({ date_basis: dateBasis })}
     >
-      {({ filters, plan, currency, timeZone, params: applied, dataStatus }) => {
+      {({ filters, dates, plan, currency, timeZone, params: applied, dataStatus }) => {
         const scope = {
           filters: {
             store: filters.storeId,
@@ -72,7 +72,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
         const money = formatMoneyIn(currency);
         const context = {
           store: filters.storeId,
-          ...filters.range,
+          dates: dates.live,
           dateBasis,
           population: "valid",
           comparison: plan?.slots[0].mode,

@@ -48,11 +48,7 @@ export function SpendBreakdownView({
           change: compare ? kpiDelta(row.spend, row[slotColumn(slot, "spend")], money).display : undefined,
           href:
             dimension === "channel"
-              ? withParams("/paid-marketing", params, {
-                  store: filters.storeId,
-                  ...filters.range,
-                  channel: row.dimension_key,
-                })
+              ? withParams("/paid-marketing", params, { store: filters.storeId, channel: row.dimension_key })
               : undefined,
         }))}
       />

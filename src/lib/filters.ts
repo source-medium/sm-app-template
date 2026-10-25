@@ -1,7 +1,8 @@
 /**
  * Report filters live in the URL (?store=&from=&to=), so a reload keeps the
  * view and a shared link shares it. Server components parse them with this
- * module; there is no client data layer.
+ * module; there is no client data layer. A date preset is `?range=last-28-days`
+ * instead, so a bookmark keeps rolling with today; explicit dates win over it.
  *
  * Dates are calendar dates (YYYY-MM-DD). `today` is the store's date in its
  * SourceMedium time zone (ReportContext.today; resolveReportStore finds the zone).
@@ -13,7 +14,7 @@ import { appConfig } from "@/app.config";
 export const REPORT_FILTER_FORM_ID = "report-filters";
 
 /** The filters every view shares: the same store, dates and comparisons carry across views. */
-export const SHARED_FILTERS = ["store", "from", "to", "compare", "compare2"] as const;
+export const SHARED_FILTERS = ["store", "from", "to", "range", "compare", "compare2"] as const;
 
 export type SearchParams = Record<string, string | string[] | undefined>;
 export type DateRange = { from: string; to: string };
@@ -86,34 +87,122 @@ export function defaultRange(today: string): DateRange {
   return { from: addDays(to, -(appConfig.dateRange.defaultDays - 1)), to };
 }
 
-/** Completed calendar periods relative to today. Weeks run Monday–Sunday. */
+/** Calendar periods a preset can name. Weeks run Monday–Sunday. */
+export type DatePeriod = "week" | "month" | "quarter" | "year";
+export const PERIOD_START: Record<DatePeriod, (date: string) => string> = {
+  week: weekStart,
+  month: monthStart,
+  quarter: quarterStart,
+  year: (date) => `${date.slice(0, 4)}-01-01`,
+};
+
+/**
+ * Completed days relative to today: the last `days` days, the last full
+ * `period`, or the `period` to date. To date runs from the start of the period
+ * holding yesterday through yesterday, so on a period's first day it is the
+ * whole period that just ended, never empty.
+ */
+export type DatePreset = { value: string; label: string } & (
+  { days: number } | { period: DatePeriod; toDate: boolean }
+);
+
+/**
+ * The presets, in the order the filter bar lists them. A URL names one as
+ * `range=<value>`, so a bookmark keeps meaning "last 28 days" rather than the
+ * dates it first showed, and comparisons follow the preset's own period.
+ */
+const DATE_PRESETS: readonly DatePreset[] = [
+  { value: "yesterday", label: "Yesterday", days: 1 },
+  ...[7, 14, 28, 30, 90, 365].map((days) => ({ value: `last-${days}-days`, label: `Last ${days} days`, days })),
+  { value: "week-to-date", label: "Week to date", period: "week", toDate: true },
+  { value: "last-week", label: "Last week", period: "week", toDate: false },
+  { value: "month-to-date", label: "Month to date", period: "month", toDate: true },
+  { value: "last-month", label: "Last month", period: "month", toDate: false },
+  { value: "quarter-to-date", label: "Quarter to date", period: "quarter", toDate: true },
+  { value: "last-quarter", label: "Last quarter", period: "quarter", toDate: false },
+  { value: "year-to-date", label: "Year to date", period: "year", toDate: true },
+  { value: "last-year", label: "Last year", period: "year", toDate: false },
+];
+/** The default range as a preset, when one has `dateRange.defaultDays`. */
+const DEFAULT_PRESET = DATE_PRESETS.find(
+  (preset) => "days" in preset && preset.days === appConfig.dateRange.defaultDays,
+);
+
+/** A preset's dates as of `today`. */
+export function presetRange(preset: DatePreset, today: string): DateRange {
+  const yesterday = addDays(today, -1);
+  if ("days" in preset) return { from: addDays(yesterday, -(preset.days - 1)), to: yesterday };
+  const start = PERIOD_START[preset.period];
+  if (preset.toDate) return { from: start(yesterday), to: yesterday };
+  const end = addDays(start(today), -1);
+  return { from: start(end), to: end };
+}
+
+/** The presets that fit the report's maximum range, with their dates today. */
 export function datePresets(
   today: string,
   maxDays = appConfig.dateRange.maxDays,
-): { label: string; range: DateRange }[] {
-  const yesterday = addDays(today, -1);
-  const thisMonth = monthStart(today);
-  const lastMonthEnd = addDays(thisMonth, -1);
-  const monday = weekStart(today);
-  const yearStart = `${today.slice(0, 4)}-01-01`;
-  const presets = [
-    { label: "Yesterday", range: { from: yesterday, to: yesterday } },
-    ...[7, 28, 90].map((days) => ({
-      label: `Last ${days} days`,
-      range: { from: addDays(yesterday, -(days - 1)), to: yesterday },
-    })),
-    { label: "Last full week", range: { from: addDays(monday, -7), to: addDays(monday, -1) } },
-    { label: "Last month", range: { from: monthStart(lastMonthEnd), to: lastMonthEnd } },
-    // On the first of the month there are no completed days in this month yet.
-    ...(yesterday >= thisMonth ? [{ label: "Month to date", range: { from: thisMonth, to: yesterday } }] : []),
-    ...[
-      { label: "Quarter to date", from: quarterStart(today) },
-      { label: "Year to date", from: yearStart },
-    ]
-      .filter(({ from }) => from <= yesterday)
-      .map(({ label, from }) => ({ label, range: { from, to: yesterday } })),
-  ];
-  return presets.filter((preset) => rangeLength(preset.range) <= maxDays);
+): { value: string; label: string; range: DateRange }[] {
+  return DATE_PRESETS.flatMap((preset) => {
+    const range = presetRange(preset, today);
+    return rangeLength(range) <= maxDays ? [{ value: preset.value, label: preset.label, range }] : [];
+  });
+}
+
+/** Whether the URL fixes its dates; otherwise they roll with today (a `range` preset or the default). */
+export function hasFixedDates(params: SearchParams): boolean {
+  return single(params, "from") !== undefined || single(params, "to") !== undefined;
+}
+
+/**
+ * The preset the applied range is: the URL's `range` (without one or fixed
+ * dates, the default), when its dates as of the day after the range ends are
+ * exactly the range. A rolling preset is always itself; fixed dates keep the
+ * preset they were copied with, but not once edited to other dates.
+ */
+export function rangePreset(params: SearchParams, range: DateRange): DatePreset | undefined {
+  const named = single(params, "range");
+  const preset =
+    named === undefined
+      ? hasFixedDates(params)
+        ? undefined
+        : DEFAULT_PRESET
+      : DATE_PRESETS.find((preset) => preset.value === named);
+  const dates = preset && presetRange(preset, addDays(range.to, 1));
+  return dates && dates.from === range.from && dates.to === range.to ? preset : undefined;
+}
+
+/** A report's dates as URL parameters; null removes one. */
+export type DateParams = { from: string | null; to: string | null; range: string | null };
+
+/**
+ * How a report's dates travel in links. `live` continues the report: a preset
+ * or the default keeps rolling and fixed dates stay fixed. `fixed` shows exactly
+ * this period (shared links, downloads, rows compared across stores), naming
+ * the preset it is so comparisons keep that meaning.
+ */
+export type ReportDates = { rolling: boolean; preset: string | null; live: DateParams; fixed: DateParams };
+
+/** `issue` is the range's dateRangeIssue(); a range that needs fixing travels as its suggested dates. */
+export function reportDates(params: SearchParams, range: DateRange, issue: string | null): ReportDates {
+  const preset = issue === null ? (rangePreset(params, range)?.value ?? null) : null;
+  const rolling = issue === null && !hasFixedDates(params);
+  const fixed = { from: range.from, to: range.to, range: preset };
+  // The default keeps links free of dates; only a preset the URL names travels.
+  const named = single(params, "range") === undefined ? null : preset;
+  return { rolling, preset, fixed, live: rolling ? { from: null, to: null, range: named } : fixed };
+}
+
+/** Params with a report's dates in place of any they had. */
+export function withDates(params: SearchParams, dates: DateParams): SearchParams {
+  return { ...params, from: dates.from ?? undefined, to: dates.to ?? undefined, range: dates.range ?? undefined };
+}
+
+/** The URL's fixed dates; otherwise the dates its `range` preset names today. */
+function requestedDates(params: SearchParams, today: string): { from?: string; to?: string } {
+  if (hasFixedDates(params)) return { from: single(params, "from"), to: single(params, "to") };
+  const preset = DATE_PRESETS.find((preset) => preset.value === single(params, "range"));
+  return preset ? presetRange(preset, today) : {};
 }
 
 /**
@@ -122,8 +211,7 @@ export function datePresets(
  */
 export function parseDateRange(params: SearchParams, today: string, maxDays = appConfig.dateRange.maxDays): DateRange {
   const fallback = defaultRange(today);
-  const fromParam = single(params, "from");
-  const toParam = single(params, "to");
+  const { from: fromParam, to: toParam } = requestedDates(params, today);
   if (!isCalendarDate(fromParam) || !isCalendarDate(toParam) || fromParam > toParam) return fallback;
   const to = toParam > today ? today : toParam;
   if (fromParam > to) return fallback;
@@ -137,9 +225,10 @@ export function dateRangeIssue(
   today: string,
   maxDays = appConfig.dateRange.maxDays,
 ): string | null {
-  const from = single(params, "from");
-  const to = single(params, "to");
-  if (from === undefined && to === undefined) return null;
+  const { from, to } = requestedDates(params, today);
+  // Without dates, only a `range` the app does not offer needs fixing.
+  if (from === undefined && to === undefined)
+    return single(params, "range") === undefined ? null : "Choose one of the offered date ranges.";
   if (!isCalendarDate(from) || !isCalendarDate(to)) return "Choose a valid start and end date.";
   if (from > to) return "The start date must be on or before the end date.";
   if (to > today) return "The end date cannot be after today.";

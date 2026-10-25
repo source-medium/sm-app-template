@@ -2,8 +2,7 @@ import { expect, it } from "vitest";
 import { drillDown, type Investigation } from "./drill-down";
 const context: Investigation = {
   store: "s",
-  from: "2026-02-01",
-  to: "2026-02-28",
+  dates: { from: "2026-02-01", to: "2026-02-28", range: "last-month" },
   dateBasis: "processed",
   population: "valid orders",
   filters: { country: "US", sales_channel: "online_dtc" },
@@ -21,6 +20,7 @@ it("preserves explicit mapped scope and leaves no stale pagination", () => {
     store: "s",
     from: "2026-02-01",
     to: "2026-02-28",
+    range: "last-month",
     country: "US",
     sales_channel: "online_dtc",
     date_basis: "processed",

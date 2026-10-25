@@ -23,7 +23,16 @@ import { BaselineProvider } from "@/components/patterns/baseline-switch";
 import { ChartMemoryProvider } from "@/components/charts/chart-memory";
 import { CHART_MEMORY_COOKIE, parseChartMemory } from "@/lib/chart-memory";
 import { calendarDate } from "@/lib/format";
-import { dateRangeIssue, parseDateRange, single, type ReportFilters, type SearchParams } from "@/lib/filters";
+import {
+  dateRangeIssue,
+  parseDateRange,
+  reportDates,
+  single,
+  withDates,
+  type ReportDates,
+  type ReportFilters,
+  type SearchParams,
+} from "@/lib/filters";
 import type { ReportSource } from "@/lib/report-data";
 import { ReportFilterBar } from "./report-filter-bar";
 import { ReportHeader } from "./report-header";
@@ -34,7 +43,10 @@ import { ReportHeader } from "./report-header";
  */
 export type ReportContext = {
   filters: ReportFilters;
+  /** The URL's parameters with the store and, on dated views, `dates.live`, for links that continue the report. */
   params: SearchParams;
+  /** The dates as link parameters: `live` keeps a preset rolling, `fixed` pins this exact period. */
+  dates: ReportDates;
   /** Both comparison slots; KPI cards show a row for each. */
   plan?: ComparisonPlan;
   today: string;
@@ -170,6 +182,7 @@ export async function ReportPage({
   params = { ...params, ...derived };
   const range = parseDateRange(params, today, maxDays);
   const issue = dates ? dateRangeIssue(params, today, maxDays) : null;
+  const dateParams = reportDates(params, range, issue);
   const plan = comparisons && dates ? parseComparisonPlan(params, range, today) : undefined;
   if (plan) params = { ...params, ...planParams(plan) };
   // Which slot the charts and tables show is a presentation choice made without a request.
@@ -191,7 +204,7 @@ export async function ReportPage({
         params={params}
         storeId={storeId}
         currency={allStores ? null : currency}
-        view={{ range, issue, plan, derived }}
+        view={{ range, issue, plan, derived, fixed: dateParams.fixed }}
         timeZone={timeZone}
       />
       <ReportFilterBar
@@ -200,6 +213,7 @@ export async function ReportPage({
         pathname={pathname}
         params={params}
         range={range}
+        dateParams={dateParams}
         today={today}
         maxDays={maxDays}
         comparisonLabel={comparisonLabel}
@@ -220,7 +234,8 @@ export async function ReportPage({
           <ChartMemoryProvider initial={chartMemory}>
             {children({
               filters: { storeId, range },
-              params: { ...params, store: storeId },
+              params: { ...(dates ? withDates(params, dateParams.live) : params), store: storeId },
+              dates: dateParams,
               plan,
               today,
               timeZone,

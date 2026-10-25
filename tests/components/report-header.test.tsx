@@ -44,9 +44,14 @@ it("copies native-history presentation choices while retaining resolved store an
         {...props}
         mode="sample"
         storeId="resolved-store"
-        params={{ metric: "revenue" }}
+        params={{ metric: "revenue", range: "last-28-days" }}
         clientPresentationParams={["metric", "show_trends"]}
-        view={{ range: { from: "2026-09-01", to: "2026-09-28" }, issue: null, derived: {} }}
+        view={{
+          range: { from: "2026-09-01", to: "2026-09-28" },
+          issue: null,
+          derived: {},
+          fixed: { from: "2026-09-01", to: "2026-09-28", range: "last-28-days" },
+        }}
       />,
       { wrapper: TooltipProvider },
     );
@@ -57,6 +62,8 @@ it("copies native-history presentation choices while retaining resolved store an
       store: "resolved-store",
       from: "2026-09-01",
       to: "2026-09-28",
+      // The pinned dates name the preset they are, so comparisons keep its meaning.
+      range: "last-28-days",
       metric: "spend",
       show_trends: "all",
     });
@@ -85,7 +92,12 @@ it.each(["?baseline=b", "?metric=spend&baseline=b"])(
             mode="sample"
             storeId="resolved-store"
             clientPresentationParams={["metric", "baseline"]}
-            view={{ range: { from: "2026-09-01", to: "2026-09-28" }, issue: null, derived: {} }}
+            view={{
+              range: { from: "2026-09-01", to: "2026-09-28" },
+              issue: null,
+              derived: {},
+              fixed: { from: "2026-09-01", to: "2026-09-28", range: null },
+            }}
           />
           <form id={REPORT_FILTER_FORM_ID}>
             <input name="store" defaultValue="draft-store" />

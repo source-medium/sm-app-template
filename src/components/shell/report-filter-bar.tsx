@@ -12,7 +12,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { StoreOption } from "@/lib/data/stores.server";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import type { ComparisonPlan } from "@/lib/comparison";
-import { datePresets, single, withParams, type DateRange, type SearchParams } from "@/lib/filters";
+import {
+  datePresets,
+  single,
+  withDates,
+  withParams,
+  type DateRange,
+  type ReportDates,
+  type SearchParams,
+} from "@/lib/filters";
 import { formatDateRange } from "@/lib/format";
 
 export type ReportFilterBarProps = {
@@ -22,6 +30,8 @@ export type ReportFilterBarProps = {
   params: SearchParams;
   /** Null when the store's date is unknown, which hides the date controls. */
   range: DateRange | null;
+  /** Absent while the report cannot apply dates. */
+  dateParams?: ReportDates;
   today: string | null;
   comparisonLabel?: string;
   dates: boolean;
@@ -71,6 +81,7 @@ function StoreFilterBar({
   pathname,
   params,
   range,
+  dateParams,
   today,
   comparisonLabel,
   dates,
@@ -79,12 +90,22 @@ function StoreFilterBar({
   allStores,
   maxDays,
 }: Omit<ReportFilterBarProps, "roster"> & { stores: StoreOption[] }) {
+  // A view without date controls carries another report's dates without applying its own range limit.
+  const applied = dates && dateParams ? withDates(params, dateParams.live) : params;
   const presets =
     dates && today !== null && range !== null
-      ? datePresets(today, maxDays).map(({ label, range: preset }) => ({
+      ? datePresets(today, maxDays).map(({ value, label }) => ({
           label,
-          href: withParams(pathname, params, { store: storeId, ...preset, cursor: null, order: null }),
-          active: range.from === preset.from && range.to === preset.to,
+          href: withParams(pathname, params, {
+            store: storeId,
+            range: value,
+            from: null,
+            to: null,
+            cursor: null,
+            order: null,
+          }),
+          // Only a rolling range is a preset; fixed dates stay fixed even when they match one.
+          active: dateParams?.rolling === true && dateParams.preset === value,
         }))
       : [];
   return (
@@ -93,7 +114,7 @@ function StoreFilterBar({
         stores={stores}
         storeId={storeId}
         pathname={pathname}
-        params={{ ...params, store: storeId, ...range }}
+        params={{ ...applied, store: storeId }}
         fixedStore={fixedStore}
         allStores={allStores}
       />
@@ -101,8 +122,10 @@ function StoreFilterBar({
         key={`${storeId}|${range?.from}|${range?.to}|${plan?.slots[0].mode}|${plan?.slots[1].mode}`}
         pathname={pathname}
         storeId={storeId}
-        from={range?.from}
-        to={range?.to}
+        from={dates ? range?.from : single(applied, "from")}
+        to={dates ? range?.to : single(applied, "to")}
+        rolling={dateParams?.rolling ?? false}
+        preset={single(applied, "range")}
         maxDate={today ?? undefined}
         maxDays={maxDays}
         presets={presets}

@@ -3,7 +3,7 @@ import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 import type { ReportPage } from "@/components/shell/report-page";
-import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
+import { REPORT_FILTER_FORM_ID, reportDates } from "@/lib/filters";
 import PerformancePage from "./page";
 
 // Hold the request boundary open so the real page renders its loading fallback.
@@ -20,6 +20,7 @@ it("keeps the selected platform in the report form while platform data loads", a
       {children({
         filters: { storeId: "sample-store-a", range: { from: "2026-09-01", to: "2026-09-07" } },
         params: {},
+        dates: reportDates({}, { from: "2026-09-01", to: "2026-09-07" }, null),
         today: "2026-10-22",
         timeZone: "UTC",
         currency: "USD",

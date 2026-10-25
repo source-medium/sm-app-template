@@ -19,7 +19,7 @@ import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber } from "@/lib/data/decimal";
 import { periodStart, periodRange, TIME_GRAINS, type TimeGrain } from "@/lib/time-grain";
 import { planRanges } from "@/lib/comparison";
-import { datesInRange, withParams, type SearchParams } from "@/lib/filters";
+import { datesInRange, withParams, type ReportDates, type SearchParams } from "@/lib/filters";
 import {
   EMPTY_VALUE,
   formatCount,
@@ -91,18 +91,13 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
       agentOmissions={names.error ? ["Invalid name filters prevented this report from loading."] : []}
       comparisonLabel="Compare spend breakdown with"
     >
-      {({ filters, plan, params: applied, timeZone, currency, dataStatus }) => {
+      {({ filters, plan, params: applied, dates, timeZone, currency, dataStatus }) => {
         const paidFilters: PaidMarketingFilters = { ...filters, channel, names: names.rules };
         const paidData = names.error ? null : getPaidMarketing(paidFilters);
         paidData?.catch(() => undefined); // Both regions handle the same query's failure.
         return (
           <>
-            <AdNameFilter
-              pathname={PATHNAME}
-              params={{ ...applied, ...filters.range }}
-              rules={names.rules}
-              error={names.error}
-            />
+            <AdNameFilter pathname={PATHNAME} params={applied} rules={names.rules} error={names.error} />
             {paidData && (
               <>
                 <div className="flex flex-wrap items-end gap-4">
@@ -142,6 +137,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                         filters={paidFilters}
                         grain={grain}
                         params={applied}
+                        dates={dates}
                         currency={currency}
                       />
                     )}
@@ -205,12 +201,14 @@ function PaidMarketingView({
   filters,
   grain,
   params,
+  dates,
   currency,
 }: {
   data: PaidMarketingData;
   filters: PaidMarketingFilters;
   grain: TimeGrain;
   params: SearchParams;
+  dates: ReportDates;
   currency: string | null;
 }) {
   const money = formatMoneyIn(currency);
@@ -290,7 +288,7 @@ function PaidMarketingView({
                     {},
                     {
                       store: filters.storeId,
-                      ...filters.range,
+                      ...dates.fixed,
                       channel: filters.channel,
                       names: serializeAdNameFilters(filters.names ?? []),
                     },
@@ -335,7 +333,7 @@ function PaidMarketingView({
                         ? (drillDown(
                             {
                               store: filters.storeId,
-                              ...filters.range,
+                              dates: dates.live,
                               dateBasis: "ad-date",
                               population: "platform delivery",
                               filters: {

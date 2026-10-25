@@ -81,12 +81,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
     >
       {({ filters, timeZone, currency, params: applied, dataStatus }) => (
         <div className="flex flex-col gap-4">
-          <AdNameFilter
-            pathname={PATHNAME}
-            params={{ ...applied, ...filters.range }}
-            rules={names.rules}
-            error={names.error}
-          />
+          <AdNameFilter pathname={PATHNAME} params={applied} rules={names.rules} error={names.error} />
           {campaign && <input type="hidden" name="campaign" value={campaign} form={REPORT_FILTER_FORM_ID} />}
           {campaign && (
             <p className="text-sm">
@@ -245,7 +240,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                               view="returns"
                               selection={selection.items}
                               scopeFilters={definitionFilters(filters)}
-                              params={{ ...applied, ...filters.range }}
+                              params={applied}
                               comparison
                             />
                           </>
@@ -294,7 +289,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                       view={view}
                       selection={selection.items}
                       scopeFilters={definitionFilters(filters)}
-                      params={{ ...applied, ...filters.range }}
+                      params={applied}
                     />
                   )}
                 </DataRegion>

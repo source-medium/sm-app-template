@@ -101,7 +101,8 @@ describe("CSV export scope", () => {
   it.each([
     ["from=bad&to=2026-09-02", "valid start"],
     ["from=2026-09-02&to=2026-09-01", "start date"],
-    ["from=2026-01-01&to=2026-09-30", "90 days"],
+    ["from=2026-01-01&to=2026-09-30", "92 days"],
+    ["range=last-fortnight", "offered date ranges"],
     ["from=2026-09-01", "valid start"],
   ])("rejects %s instead of exporting a different period", async (query, message) => {
     const fake = await goLive({ submit: withStores(() => rowsResponse([], []), ["s1"]) });
