@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { bq, decodeRows } from "@/lib/data/decode";
 import { sumDecimals, toUnits } from "@/lib/data/decimal";
+import { periodCoverageFields, periodFields } from "@/lib/data/period-sql";
 import type { GeographyData } from "./queries";
 export const GEOGRAPHY_RELATION = "obt_orders";
 export const MAX_GROUPS = 500;
@@ -8,18 +9,9 @@ export const GeographyRow = z.object({
   kind: z.enum(["total", "group", "remainder", "trend"]),
   location: bq.string(),
   date: bq.date().nullable(),
-  records: bq.int64(),
-  orders: bq.int64(),
-  revenue: bq.numeric().nullable(),
-  previous_records: bq.int64(),
-  previous_orders: bq.int64(),
-  previous_revenue: bq.numeric().nullable(),
-  second_records: bq.int64(),
-  second_orders: bq.int64(),
-  second_revenue: bq.numeric().nullable(),
-  latest_date: bq.date().nullable(),
-  previous_latest_date: bq.date().nullable(),
-  second_latest_date: bq.date().nullable(),
+  ...periodFields(["records", "orders"], bq.int64()),
+  ...periodFields(["revenue"], bq.numeric().nullable()),
+  ...periodCoverageFields,
 });
 export type GeographyRow = z.output<typeof GeographyRow>;
 export function toGeographyData(wire: unknown[]): GeographyData {

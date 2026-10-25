@@ -5,11 +5,16 @@ import { datesInRange, latestDate, type ReportFilters, type DateRange } from "@/
 import { seededRandom, randomInt } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import type { ProductFilters, ProductsData } from "./queries";
-import { MAX_PRODUCTS, PRODUCTS_RELATION, ProductRow, type ProductCoverage } from "./rows";
+import { periodColumns } from "@/lib/data/period-sql";
+import {
+  MAX_PRODUCTS,
+  PRODUCT_MEASURES,
+  PRODUCTS_RELATION,
+  ProductRow,
+  type ProductCoverage,
+  type ProductMeasure,
+} from "./rows";
 import type { BaselineRanges } from "@/lib/comparison";
-
-const MEASURES = ["revenue", "units", "profit", "refunds", "refunded_units"] as const;
-type Measure = (typeof MEASURES)[number];
 
 export type ProductSource = {
   storeId: string;
@@ -111,7 +116,7 @@ export function aggregateProducts(
       filters.dimension === "product" ? row.title : `${row.title} / ${row.variant}`;
     const first = group.slice().sort((a, b) => b.date.localeCompare(a.date) || label(b).localeCompare(label(a)))[0];
     if (!first) throw new Error("Product group must contain a row");
-    const sum = (metric: Measure, range: DateRange | null) =>
+    const sum = (metric: ProductMeasure, range: DateRange | null) =>
       sumDecimals(
         group
           .filter((row) => inRange(row.date, range))
@@ -126,12 +131,12 @@ export function aggregateProducts(
       label: label(first),
       reference: `${first.source} / ${filters.dimension === "product" ? first.productId : first.variantId}`,
       ...(Object.fromEntries(
-        MEASURES.flatMap((metric) => [
+        PRODUCT_MEASURES.flatMap((metric) => [
           [metric, sum(metric, filters.range)],
           [`previous_${metric}`, sum(metric, baseline)],
           [`second_${metric}`, sum(metric, second)],
         ]),
-      ) as Record<Measure | `previous_${Measure}` | `second_${Measure}`, string | null>),
+      ) as Record<ProductMeasure | `previous_${ProductMeasure}` | `second_${ProductMeasure}`, string | null>),
     };
   });
   const latest = (range: DateRange | null) =>
@@ -143,15 +148,9 @@ export function aggregateProducts(
   };
   const amounts = rows.flatMap((row) => (row[filters.metric] === null ? [] : [toUnits(row[filters.metric] as string)]));
   const minimum = amounts.length ? fromUnits(amounts.reduce((a, b) => (a < b ? a : b))) : null;
-  const totals = {
-    ...Object.fromEntries(
-      MEASURES.flatMap((metric) => [
-        [`total_${metric}`, sumDecimals(rows.map((row) => row[metric]))],
-        [`total_previous_${metric}`, sumDecimals(rows.map((row) => row[`previous_${metric}`]))],
-        [`total_second_${metric}`, sumDecimals(rows.map((row) => row[`second_${metric}`]))],
-      ]),
-    ),
-  };
+  const totals = Object.fromEntries(
+    periodColumns(PRODUCT_MEASURES).map((column) => [`total_${column}`, sumDecimals(rows.map((row) => row[column]))]),
+  );
   rows.sort((a, b) => {
     const amount = (row: typeof a) => {
       const current = row[filters.metric],

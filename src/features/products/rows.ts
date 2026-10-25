@@ -1,45 +1,20 @@
 import { z } from "zod";
 import { bq } from "@/lib/data/decode";
-import { periodCoverageFields } from "@/lib/data/period-sql";
+import { periodCoverageFields, periodFields } from "@/lib/data/period-sql";
 
 export const PRODUCTS_RELATION = "obt_order_lines";
 export const ProductChannelRow = z.object({ channel: bq.string() });
 export const MAX_PRODUCTS = 10;
+/** Each measure `queryProducts` sums per period and totals across the ranked set. */
+export const PRODUCT_MEASURES = ["revenue", "units", "profit", "refunds", "refunded_units"] as const;
+export type ProductMeasure = (typeof PRODUCT_MEASURES)[number];
 const amount = bq.numeric().nullable();
 export const ProductRow = z.object({
   product_key: bq.string(),
   label: bq.string(),
   reference: bq.string(),
-  revenue: amount,
-  units: amount,
-  profit: amount,
-  previous_revenue: amount,
-  previous_units: amount,
-  previous_profit: amount,
-  second_revenue: amount,
-  second_units: amount,
-  second_profit: amount,
-  total_revenue: amount,
-  total_units: amount,
-  total_profit: amount,
-  total_previous_revenue: amount,
-  total_previous_units: amount,
-  total_previous_profit: amount,
-  total_second_revenue: amount,
-  total_second_units: amount,
-  total_second_profit: amount,
-  refunds: amount,
-  refunded_units: amount,
-  previous_refunds: amount,
-  previous_refunded_units: amount,
-  second_refunds: amount,
-  second_refunded_units: amount,
-  total_refunds: amount,
-  total_refunded_units: amount,
-  total_previous_refunds: amount,
-  total_previous_refunded_units: amount,
-  total_second_refunds: amount,
-  total_second_refunded_units: amount,
+  ...periodFields(PRODUCT_MEASURES, amount),
+  ...periodFields(PRODUCT_MEASURES, amount, "total_"),
   minimum_value: amount,
   ...periodCoverageFields,
 });

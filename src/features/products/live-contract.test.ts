@@ -1,38 +1,18 @@
 import { expect, it, vi } from "vitest";
-import { periodSql } from "@/lib/data/period-sql";
+import { periodColumns, periodSql } from "@/lib/data/period-sql";
+import { PRODUCT_MEASURES } from "./rows";
 import { goLive, rowsResponse } from "../../../tests/helpers/live";
 import type { ProductFilters } from "./queries";
 
 const fields = [
-  ...["refunds", "refunded_units"].flatMap((name) =>
-    ["", "previous_", "second_", "total_", "total_previous_", "total_second_"].map((prefix) => ({
-      name: prefix + name,
+  ...[...periodColumns(PRODUCT_MEASURES), ...periodColumns(PRODUCT_MEASURES, "total_"), "minimum_value"].map(
+    (name) => ({
+      name,
       type: "NUMERIC",
-    })),
+    }),
   ),
   ...["product_key", "label", "reference"].map((name) => ({ name, type: "STRING" })),
-  ...[
-    "revenue",
-    "units",
-    "profit",
-    "previous_revenue",
-    "previous_units",
-    "previous_profit",
-    "second_revenue",
-    "second_units",
-    "second_profit",
-    "total_revenue",
-    "total_units",
-    "total_profit",
-    "total_previous_revenue",
-    "total_previous_units",
-    "total_previous_profit",
-    "total_second_revenue",
-    "total_second_units",
-    "total_second_profit",
-    "minimum_value",
-  ].map((name) => ({ name, type: "NUMERIC" })),
-  ...["latest_date", "previous_latest_date", "second_latest_date"].map((name) => ({ name, type: "DATE" })),
+  ...periodColumns(["latest_date"]).map((name) => ({ name, type: "DATE" })),
 ];
 const row = {
   product_key: "p1",

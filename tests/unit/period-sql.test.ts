@@ -1,8 +1,23 @@
-import { describe, expect, it } from "vitest";
-import { PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { PERIOD_COVERAGE, periodColumns, periodFields, periodParams, periodSql } from "@/lib/data/period-sql";
 
 describe("period SQL", () => {
   const range = { from: "2026-09-01", to: "2026-09-07" };
+
+  it("names row fields exactly as sum() writes its columns", () => {
+    const aliases = [
+      ...periodSql("date")
+        .sum("x", "revenue")
+        .matchAll(/ AS (\w+)/g),
+    ].map((match) => match[1]);
+    expect(periodColumns(["revenue"])).toEqual(aliases);
+    expect(periodColumns(["spend"], "total_")).toEqual(["total_spend", "total_previous_spend", "total_second_spend"]);
+    const fields = periodFields(["revenue", "orders"], "decoder");
+    expect(Object.keys(fields)).toEqual(periodColumns(["revenue", "orders"]));
+    expectTypeOf(fields).toEqualTypeOf<
+      Record<"revenue" | "previous_revenue" | "second_revenue" | "orders" | "previous_orders" | "second_orders", string>
+    >();
+  });
 
   it("binds all three periods, with valid placeholders for the comparisons that are off", () => {
     expect(

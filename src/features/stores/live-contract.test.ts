@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { summaryMeasure } from "@/lib/data/channel-sql";
+import { periodColumns } from "@/lib/data/period-sql";
 import {
   goLive,
   rowsResponse,
@@ -12,12 +13,9 @@ import {
 
 const fields = [
   { name: "sm_store_id", type: "STRING" },
-  ...["revenue", "previous_revenue", "second_revenue", "spend", "previous_spend", "second_spend"].map((name) => ({
-    name,
-    type: "NUMERIC",
-  })),
-  ...["orders", "previous_orders", "second_orders"].map((name) => ({ name, type: "FLOAT64" })),
-  ...["latest_date", "previous_latest_date", "second_latest_date"].map((name) => ({ name, type: "DATE" })),
+  ...periodColumns(["revenue", "spend"]).map((name) => ({ name, type: "NUMERIC" })),
+  ...periodColumns(["orders"]).map((name) => ({ name, type: "FLOAT64" })),
+  ...periodColumns(["latest_date"]).map((name) => ({ name, type: "DATE" })),
 ];
 const range = { from: "2026-09-01", to: "2026-09-07" };
 const baseline = { from: "2026-08-25", to: "2026-08-31" };

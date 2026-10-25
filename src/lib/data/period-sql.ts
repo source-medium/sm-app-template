@@ -71,6 +71,32 @@ export function slotColumn<N extends string>(slot: 0 | 1, name: N): `previous_${
   return slot === 0 ? `previous_${name}` : `second_${name}`;
 }
 
+type PeriodColumn<N extends string, P extends string> = `${P}${N}` | `${P}previous_${N}` | `${P}second_${N}`;
+
+/**
+ * The columns `sum()` writes for each name, in period order: `name`,
+ * `previous_name`, `second_name`. A `prefix` names a derived set, such as a
+ * window total's `total_name`, `total_previous_name` and `total_second_name`.
+ */
+export function periodColumns<const N extends string, const P extends string = "">(
+  names: readonly N[],
+  prefix: P = "" as P,
+): PeriodColumn<N, P>[] {
+  return names.flatMap((name) => [`${prefix}${name}`, `${prefix}previous_${name}`, `${prefix}second_${name}`] as const);
+}
+
+/** Row fields for `periodColumns()`, each decoded the same way, so a row schema names every period a query sums. */
+export function periodFields<const N extends string, D, const P extends string = "">(
+  names: readonly N[],
+  decoder: D,
+  prefix: P = "" as P,
+): Record<PeriodColumn<N, P>, D> {
+  return Object.fromEntries(periodColumns(names, prefix).map((column) => [column, decoder])) as Record<
+    PeriodColumn<N, P>,
+    D
+  >;
+}
+
 /** Above the grouping: its columns, plus each period's latest date across all groups. */
 export const PERIOD_COVERAGE = `* EXCEPT (group_latest_date, group_previous_latest_date, group_second_latest_date),
       MAX(group_latest_date) OVER () AS latest_date,

@@ -5,7 +5,14 @@ import { decodeRows } from "@/lib/data/decode";
 import type { ReportFilters } from "@/lib/filters";
 import { dateTimeWindow, PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
 import type { ProductFilters, ProductsData } from "./queries";
-import { MAX_PRODUCTS, PRODUCTS_RELATION, ProductChannelRow, ProductRow, ProductCoverageRow } from "./rows";
+import {
+  MAX_PRODUCTS,
+  PRODUCTS_RELATION,
+  ProductChannelRow,
+  ProductRow,
+  ProductCoverageRow,
+  type ProductMeasure,
+} from "./rows";
 import { CACHE_POLICY } from "@/lib/data/query-cache";
 import type { BaselineRanges } from "@/lib/comparison";
 
@@ -30,7 +37,7 @@ const MEASURES = {
   profit: "order_line_product_gross_profit",
   refunds: "-order_line_refunds",
   refunded_units: "-order_line_refund_quantity",
-} as const;
+} as const satisfies Record<ProductMeasure, string>;
 const SORTS = {
   revenue: "revenue",
   units: "units",

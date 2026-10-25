@@ -9,6 +9,7 @@ import {
   rowsResponse,
   withStores,
 } from "../../../tests/helpers/live";
+import { periodColumns } from "@/lib/data/period-sql";
 import { MAX_SERIES_ROWS } from "./rows";
 
 const SERIES_FIELDS = [
@@ -197,14 +198,10 @@ describe("paid marketing, live", () => {
     const fields = [
       "dimension_key",
       "label",
-      "spend",
-      "previous_spend",
-      "second_spend",
+      ...periodColumns(["spend"]),
       "total_spend",
       "minimum_spend",
-      "latest_date",
-      "previous_latest_date",
-      "second_latest_date",
+      ...periodColumns(["latest_date"]),
     ].map((name) => ({ name, type: name.endsWith("date") ? "DATE" : name.endsWith("spend") ? "NUMERIC" : "STRING" }));
     const row = (key: string, spend: string | null) => ({
       dimension_key: key,
