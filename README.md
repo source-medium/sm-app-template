@@ -122,6 +122,12 @@ Store selection travels between reports, and report filters live in shareable
 URLs. Period comparisons, CSV exports where available, chart-to-table views,
 and light and dark modes are already in place.
 
+**Saved views** keeps named filter combinations in your browser, including rolling
+date presets and chart choices. It saves applied filters, not unfinished edits or
+warehouse results. The copy-link button still pins exact dates for sharing.
+Products keeps secondary controls under **More filters**, summarizes the selected
+measure above the results, and links product photos to scoped detail reports.
+
 | Report                 | Start with this question                                                             |
 | ---------------------- | ------------------------------------------------------------------------------------ |
 | **Overview**           | How did revenue, orders, and spend change, and which channels moved?                 |

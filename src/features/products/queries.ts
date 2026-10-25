@@ -18,6 +18,11 @@ export const PRODUCT_METRICS = [
   { value: "refunds", label: "Refund amount" },
   { value: "refunded_units", label: "Refunded units" },
 ] as const;
+export const PRODUCT_RANKINGS = [
+  { value: "value", label: "Largest value" },
+  { value: "gainers", label: "Period gainers" },
+  { value: "decliners", label: "Period decliners" },
+] as const;
 export type ProductDimension = (typeof PRODUCT_DIMENSIONS)[number]["value"];
 export type ProductMetric = (typeof PRODUCT_METRICS)[number]["value"];
 export type ProductFilters = ReportFilters & {
@@ -32,7 +37,12 @@ export type ProductsData = { rows: Product[]; hasMore: boolean };
 export function productOptions(params: SearchParams) {
   return {
     entity: single(params, "entity")?.slice(0, 2000) || null,
-    ranking: parseChoice(params, "ranking", ["value", "gainers", "decliners"] as const, "value"),
+    ranking: parseChoice(
+      params,
+      "ranking",
+      PRODUCT_RANKINGS.map((item) => item.value),
+      "value",
+    ),
     dimension: parseChoice(
       params,
       "dimension",

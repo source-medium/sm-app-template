@@ -548,6 +548,22 @@ submit with the report form. Channel checkboxes are drafts until submission;
 the quick selector and scope summary keep showing the applied channels, with a
 notice for unapplied changes.
 
+Products uses the same `ReportControls` pattern on desktop and phones, with an
+applied scope summary beside **More filters**. Shared date controls keep desktop
+comparisons under **Comparison periods**; all fields remain in the same form.
+Product takeaways use the full scoped totals, existing KPI deltas and coverage
+rules, and follow the active comparison when ranking by value, without querying again.
+Gainers and decliners use the first comparison, matching their ranking. Product photos
+use the same drill-down URL as their table rows.
+
+**Saved views** in each report header stores named, applied URLs in this browser's
+local storage. Rolling dates stay rolling; fixed dates stay fixed. Live chart and
+comparison presentation choices are captured through the same helper as copied
+links, without including unapplied filter drafts. These views store no warehouse
+results and grant no access. Unknown, removed or external routes in storage are
+ignored; storage failures leave the report usable. Remove a saved view from its
+menu. Copy report links still pin exact dates for a colleague.
+
 `FilterBar` owns the `report-filters` GET form. `SelectFilter` and the other
 feature inputs associate with it using `REPORT_FILTER_FORM_ID`, including when
 rendered outside it or streamed later. Do not add a separate filter form or

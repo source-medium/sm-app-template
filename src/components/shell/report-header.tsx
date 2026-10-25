@@ -11,6 +11,7 @@ import type { ReportSource } from "@/lib/report-data";
 import { AboutData } from "./about-data";
 import { CopyReportLink } from "./copy-report-link";
 import { RefreshReport } from "./refresh-report";
+import { SavedReports } from "./saved-reports";
 
 /** The applied report state, once the store's date is known. */
 export type ReportView = {
@@ -21,6 +22,8 @@ export type ReportView = {
   derived: Record<string, string>;
   /** The applied dates, pinned with the preset they are. */
   fixed: DateParams;
+  /** Saved views preserve rolling presets rather than pinning today's dates. */
+  live: DateParams;
 };
 
 export function ReportHeader({
@@ -112,6 +115,12 @@ export function ReportHeader({
           />
         )}
         <RefreshReport />
+        {storeId && view && !view.issue && (
+          <SavedReports
+            href={withParams(pathname, dates ? withDates(params, view.live) : params, { store: storeId })}
+            clientPresentationParams={clientPresentationParams}
+          />
+        )}
         {shareHref && (
           <CopyReportLink key={shareHref} href={shareHref} clientPresentationParams={clientPresentationParams} />
         )}

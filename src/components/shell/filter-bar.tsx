@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { COMPARISON_OPTIONS, type ComparisonMode } from "@/lib/comparison";
 import { dateRangeIssue, REPORT_FILTER_FORM_ID } from "@/lib/filters";
 import { LinkPending, SubmitAnnouncement, SubmitPending } from "./pending";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 export type FilterPreset = { label: string; href: string; active: boolean };
 
@@ -59,6 +60,8 @@ export function FilterBar({
   const id = useId();
   const [error, setError] = useState<string | null>(null);
   const [datesOpen, setDatesOpen] = useState(false);
+  const [comparisonsOpen, setComparisonsOpen] = useState(false);
+  const hydrated = useHydrated();
   const formRef = useRef<HTMLFormElement>(null);
   // The From field takes focus once it is in the layout: after Change reveals it, or after an invalid submit.
   const focusFrom = useRef(false);
@@ -146,54 +149,79 @@ export function FilterBar({
       <input type="hidden" name="store" value={storeId} />
       {preset && <input type="hidden" name="range" value={preset} />}
       {comparison !== undefined && (
-        <div
-          className={cn(
-            "flex min-w-0 flex-col gap-1.5 sm:order-2 sm:w-48",
-            dates && rangeLabel && !datesOpen && "max-sm:hidden",
-          )}
-        >
-          <label htmlFor={`${id}-compare`} className="text-xs font-medium text-muted-foreground">
-            {comparisonLabel}
-          </label>
-          <NativeSelect
-            data-agent-element="Compare with"
-            id={`${id}-compare`}
-            name="compare"
-            defaultValue={comparison}
-            onChange={applyOnChange}
+        <div className="hidden min-w-0 flex-col gap-1.5 sm:order-2 sm:flex">
+          <Button
+            type="button"
+            variant="outline"
+            aria-expanded={comparisonsOpen}
+            aria-controls={`${id}-comparisons`}
+            disabled={!hydrated}
+            onClick={() => setComparisonsOpen(!comparisonsOpen)}
           >
-            {COMPARISON_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </NativeSelect>
+            Comparison periods
+            <ChevronDown aria-hidden className={cn("size-3.5", comparisonsOpen && "rotate-180")} />
+          </Button>
+          <p className="max-w-64 text-xs text-muted-foreground">
+            {comparisonLabel !== "Compare with" && `${comparisonLabel}: `}
+            {[
+              comparison,
+              ...(comparison !== "off" && comparison2 !== undefined && comparison2 !== "off" ? [comparison2] : []),
+            ]
+              .map((mode) => COMPARISON_OPTIONS.find((option) => option.value === mode)?.label)
+              .join(" · ")}
+          </p>
         </div>
       )}
-      {comparison2 !== undefined && (
+      {(comparison !== undefined || comparison2 !== undefined) && (
         <div
+          id={`${id}-comparisons`}
           className={cn(
-            "flex min-w-0 flex-col gap-1.5 sm:order-2 sm:w-48",
+            "col-span-full grid basis-full grid-cols-1 gap-3 min-[24rem]:grid-cols-2 sm:order-4 sm:flex sm:flex-wrap",
+            !comparisonsOpen && "sm:hidden",
             dates && rangeLabel && !datesOpen && "max-sm:hidden",
           )}
         >
-          <label htmlFor={`${id}-compare2`} className="text-xs font-medium text-muted-foreground">
-            Second comparison
-          </label>
-          <NativeSelect
-            data-agent-element="Second comparison"
-            id={`${id}-compare2`}
-            name="compare2"
-            defaultValue={comparison2}
-            disabled={comparison === "off"}
-            onChange={applyOnChange}
-          >
-            {COMPARISON_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </NativeSelect>
+          {comparison !== undefined && (
+            <div className="flex min-w-0 flex-col gap-1.5 sm:w-48">
+              <label htmlFor={`${id}-compare`} className="text-xs font-medium text-muted-foreground">
+                {comparisonLabel}
+              </label>
+              <NativeSelect
+                data-agent-element="Compare with"
+                id={`${id}-compare`}
+                name="compare"
+                defaultValue={comparison}
+                onChange={applyOnChange}
+              >
+                {COMPARISON_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+          )}
+          {comparison2 !== undefined && (
+            <div className="flex min-w-0 flex-col gap-1.5 sm:w-48">
+              <label htmlFor={`${id}-compare2`} className="text-xs font-medium text-muted-foreground">
+                Second comparison
+              </label>
+              <NativeSelect
+                data-agent-element="Second comparison"
+                id={`${id}-compare2`}
+                name="compare2"
+                defaultValue={comparison2}
+                disabled={comparison === "off"}
+                onChange={applyOnChange}
+              >
+                {COMPARISON_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+          )}
         </div>
       )}
       {dates && rangeLabel && !datesOpen && (

@@ -247,6 +247,8 @@ test("a bookmarked date preset keeps rolling through other choices until the dat
   await expect(page).toHaveURL(/range=last-7-days/);
   const compare = page.locator('select[name="compare"]');
   if (await compare.count()) {
+    await page.getByRole("button", { name: "Comparison periods", exact: true }).click();
+    await expect(compare).not.toHaveAttribute("inert");
     await compare.selectOption("year");
     await expect(page).toHaveURL(/compare=year/);
   }

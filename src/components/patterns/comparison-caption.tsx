@@ -24,19 +24,27 @@ export function ComparisonCaption({
   issues = [],
   switchable = true,
   children,
+  compact = false,
 }: {
   plan: ComparisonPlan;
   issues?: (string | null | undefined)[];
   switchable?: boolean;
   children?: React.ReactNode;
+  /** A report takeaway already names the main comparison; keep detailed dates available on demand. */
+  compact?: boolean;
 }) {
   const described = plan.slots.map(describe).filter(Boolean);
   if (!described.length) return null;
   const text = `Compared with ${described.join(" and ")}. ${dayCount(rangeLength(plan.range))} selected.`;
   return (
     <div className="flex flex-col gap-1" data-slot="comparison-caption">
-      {children ? (
-        <Disclosure aria-label="Comparison periods" summary={text} className="text-sm text-muted-foreground">
+      {children || compact ? (
+        <Disclosure
+          aria-label="Comparison periods"
+          summary={compact ? "Comparison periods and coverage" : text}
+          className="text-sm text-muted-foreground"
+        >
+          {compact && <p>{text}</p>}
           {children}
         </Disclosure>
       ) : (

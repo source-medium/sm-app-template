@@ -204,7 +204,7 @@ export async function ReportPage({
         params={params}
         storeId={storeId}
         currency={allStores ? null : currency}
-        view={{ range, issue, plan, derived, fixed: dateParams.fixed }}
+        view={{ range, issue, plan, derived, fixed: dateParams.fixed, live: dateParams.live }}
         timeZone={timeZone}
       />
       <ReportFilterBar

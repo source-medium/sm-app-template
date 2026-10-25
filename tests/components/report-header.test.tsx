@@ -50,6 +50,7 @@ it("copies native-history presentation choices while retaining resolved store an
           range: { from: "2026-09-01", to: "2026-09-28" },
           issue: null,
           derived: {},
+          live: { from: null, to: null, range: null },
           fixed: { from: "2026-09-01", to: "2026-09-28", range: "last-28-days" },
         }}
       />,
@@ -96,6 +97,7 @@ it.each(["?baseline=b", "?metric=spend&baseline=b"])(
               range: { from: "2026-09-01", to: "2026-09-28" },
               issue: null,
               derived: {},
+              live: { from: null, to: null, range: null },
               fixed: { from: "2026-09-01", to: "2026-09-28", range: null },
             }}
           />

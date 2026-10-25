@@ -81,7 +81,17 @@ export async function switchStore(page: Page, id: string) {
 
 /** Programmatic selection ignores inert; wait until a person could use the hydrated control. */
 export async function choose(page: Page, label: string, value: Parameters<Locator["selectOption"]>[0]) {
-  const select = page.getByRole("combobox", { name: label, exact: true });
+  const select = page.getByLabel(label, { exact: true });
+  const comparison = ["compare", "compare2"].includes((await select.getAttribute("name")) ?? "");
+  if (!(await select.isVisible())) {
+    const toggle = page.getByRole("button", { name: comparison ? "Comparison periods" : "More filters", exact: true });
+    if (await toggle.isVisible()) await toggle.click();
+    else {
+      const mobile = page.getByRole("button", { name: comparison ? /^Change dates/ : "Filters", exact: !comparison });
+      if (await mobile.isVisible()) await mobile.click();
+    }
+  }
+  await expect(select).toBeVisible();
   await expect(select).not.toHaveAttribute("inert");
   await select.selectOption(value);
 }

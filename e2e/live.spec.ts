@@ -6,7 +6,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { appConfig } from "../app.config";
-import { openDisclosure, watchConsole } from "./helpers";
+import { choose, openDisclosure, watchConsole } from "./helpers";
 
 /** Empty results are successful queries; failed or missing regions are not. */
 async function expectLiveReport(page: Page, timestamp = true) {
@@ -122,7 +122,7 @@ test("Products loads live cost coverage and refund denominators for the selected
   await expect(page.getByRole("region", { name: "Product cost coverage", exact: true })).toContainText(
     "valid-order product lines",
   );
-  await page.getByLabel("Rank by", { exact: true }).selectOption("refunds");
+  await choose(page, "Rank by", "refunds");
   await expectLiveReport(page);
   await expect(page.getByRole("region", { name: "Product refund rate", exact: true })).toContainText(
     "refunded units /",
@@ -190,6 +190,7 @@ test("channel controls apply available channels and retention renders its publis
     await page.goto(href as string);
     await expectLiveReport(page);
     const select = page.getByLabel(label as string, { exact: true });
+    if (href === "/products") await page.getByRole("button", { name: "More filters", exact: true }).click();
     await expect(select).toBeVisible({ timeout: 30000 });
     const option = select.locator('option:not([value=""])').first();
     // Stores without sales or ad delivery legitimately have no channel options.

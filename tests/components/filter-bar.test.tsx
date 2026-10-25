@@ -31,6 +31,9 @@ it("keeps the date fields behind the applied range on phones until someone chang
   const change = screen.getByRole("button", { name: "Change dates, Sep 1, 2026 – Sep 7, 2026" });
   expect(change).toHaveTextContent("Sep 1, 2026 – Sep 7, 2026");
   expect(change).toHaveAccessibleDescription("Compare spend breakdown with: Previous period");
+  expect(screen.getByRole("button", { name: "Comparison periods" }).parentElement).toHaveTextContent(
+    "Compare spend breakdown with: Previous period",
+  );
   // The collapsed fields still carry the applied dates into the request.
   const form = screen.getByRole("form", { name: "Report filters" }) as HTMLFormElement;
   expect(new FormData(form).get("from")).toBe("2026-09-01");

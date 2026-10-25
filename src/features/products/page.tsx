@@ -15,13 +15,15 @@ import { slotColumn } from "@/lib/data/period-sql";
 import { ProductCosts } from "./costs";
 import { ProductPhoto } from "./product-image";
 import { ProductGallery } from "./product-gallery";
+import { ReportControls } from "@/components/shell/report-controls";
+import { ReportTakeaway } from "@/components/patterns/report-takeaway";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { planRanges, slotChanges } from "@/lib/comparison";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatMeasure, formatMoneyIn, formatPercent } from "@/lib/format";
-import { parseSalesChannel, withParams, type SearchParams } from "@/lib/filters";
+import { parseSalesChannel, salesChannelLabel, withParams, type SearchParams } from "@/lib/filters";
 import { Disclosure } from "@/components/ui/disclosure";
 import {
   getProductCoverage,
@@ -31,6 +33,7 @@ import {
   productOptions,
   PRODUCT_DIMENSIONS,
   PRODUCT_METRICS,
+  PRODUCT_RANKINGS,
 } from "./queries";
 
 export const metadata: Metadata = { title: "Products" };
@@ -73,7 +76,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         const metricLabel = PRODUCT_METRICS.find((item) => item.value === options.metric)?.label ?? "Net revenue";
         return (
           <>
-            <div className="flex flex-wrap gap-4">
+            <ReportControls
+              collapseOnDesktop
+              summary={`${salesChannelLabel(channel)} · ${options.entity ? "Selected " : ""}${options.dimension === "product" ? "Products" : "Variants"} · ${metricLabel} · ${PRODUCT_RANKINGS.find((item) => item.value === options.ranking)?.label}`}
+            >
               <ChannelRosterFilter
                 key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
                 load={() => getProductChannels(filters)}
@@ -101,18 +107,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                   </Link>
                 </>
               )}
-              <SelectFilter
-                name="ranking"
-                label="Ranking"
-                value={options.ranking}
-                options={[
-                  { value: "value", label: "Largest value" },
-                  { value: "gainers", label: "Period gainers" },
-                  { value: "decliners", label: "Period decliners" },
-                ]}
-              />
+              <SelectFilter name="ranking" label="Ranking" value={options.ranking} options={[...PRODUCT_RANKINGS]} />
               <SelectFilter name="metric" label="Rank by" value={options.metric} options={[...PRODUCT_METRICS]} />
-            </div>
+            </ReportControls>
             {dataStatus}
             <Disclosure summary="About product metrics" className="text-sm text-muted-foreground">
               <p data-metric-definition="Product metrics" className="max-w-prose">
@@ -172,6 +169,30 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         label,
                       ),
                     );
+                  const productHref = (productKey: string) =>
+                    drillDown(
+                      {
+                        store: filters.storeId,
+                        dates: dates.live,
+                        dateBasis: "processed-only",
+                        population: "valid-order lines",
+                        comparison: plan?.slots[0].mode,
+                        comparison2: plan?.slots[1].mode,
+                        filters: { sales_channel: channel, entity: productKey },
+                      },
+                      {
+                        pathname: "/products",
+                        dateBasis: "processed-only",
+                        population: "valid-order lines",
+                        supportsComparison: true,
+                        filters: { sales_channel: "sales_channel", entity: "entity" },
+                        required: {
+                          dimension: options.dimension,
+                          metric: options.metric,
+                          ranking: options.ranking,
+                        },
+                      },
+                    ).href ?? undefined;
                   // Gainers and decliners are ranked against the first comparison in SQL, so that list
                   // has one variant; ranking by value shows either slot's changes beside the same rows.
                   const perSlot = Boolean(plan) && options.ranking === "value";
@@ -195,30 +216,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                           label: `${row.label} (${row.reference})`,
                           chartLabel: row.label,
                           leading: <ProductPhoto images={images} productKey={row.product_key} />,
-                          href:
-                            drillDown(
-                              {
-                                store: filters.storeId,
-                                dates: dates.live,
-                                dateBasis: "processed-only",
-                                population: "valid-order lines",
-                                comparison: plan?.slots[0].mode,
-                                comparison2: plan?.slots[1].mode,
-                                filters: { sales_channel: channel, entity: row.product_key },
-                              },
-                              {
-                                pathname: "/products",
-                                dateBasis: "processed-only",
-                                population: "valid-order lines",
-                                supportsComparison: true,
-                                filters: { sales_channel: "sales_channel", entity: "entity" },
-                                required: {
-                                  dimension: options.dimension,
-                                  metric: options.metric,
-                                  ranking: options.ranking,
-                                },
-                              },
-                            ).href ?? undefined,
+                          href: productHref(row.product_key),
                           value: {
                             value: decimalToNumber(row[options.metric]),
                             display: format(row[options.metric]),
@@ -233,10 +231,22 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                       />
                     );
                   };
+                  const takeawayChanges = deltas(options.metric, format);
+                  const takeaway = (slot: 0 | 1) => (
+                    <ReportTakeaway
+                      metric={metricLabel}
+                      value={format(first?.[`total_${options.metric}`] ?? null)}
+                      range={filters.range}
+                      change={takeawayChanges[slot]}
+                      issue={changes?.[slot].issue ?? plan?.slots[slot].note}
+                    />
+                  );
                   return (
                     <div className="flex flex-col gap-6">
+                      {perSlot ? <ActiveBaseline a={takeaway(0)} b={takeaway(1)} /> : takeaway(0)}
                       {plan && (
                         <ComparisonCaption
+                          compact
                           plan={plan}
                           issues={changes?.map((change) => change.issue)}
                           switchable={perSlot}
@@ -260,7 +270,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         measure={metricLabel}
                         products={data.rows.map((row) => ({
                           key: row.product_key,
-                          label: row.label,
+                          label: `${row.label} (${row.reference})`,
+                          href: productHref(row.product_key),
                           image: <ProductPhoto images={images} productKey={row.product_key} className="size-20" />,
                           value: format(row[options.metric]),
                         }))}
