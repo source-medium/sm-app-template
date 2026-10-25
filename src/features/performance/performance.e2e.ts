@@ -1,6 +1,34 @@
 import { choose } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
 
+test("performance: invalid report options fall back identically in the controls and CSV", async ({ page, request }) => {
+  await page.goto(
+    "/performance?store=sample-store-a&from=2026-09-01&to=2026-09-07&view=invalid&grain=invalid&sales_channel=amazon&platform=Meta",
+  );
+  await expect(page.getByLabel("Report", { exact: true })).toHaveValue("business");
+  await expect(page.getByLabel("Period", { exact: true })).toHaveValue("day");
+  await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("amazon");
+  const table = page.getByRole("table", { name: "Revenue and orders", exact: true });
+  await expect(table).toBeVisible();
+  const href = await page.getByRole("link", { name: "Download business CSV", exact: true }).getAttribute("href");
+  if (!href) throw new Error("Missing business export");
+  // The endpoint also receives the original malformed choices, not just the page's normalized link.
+  const url = new URL(href, "http://example.test");
+  url.searchParams.set("view", "invalid");
+  url.searchParams.set("grain", "invalid");
+  const response = await request.get(`${url.pathname}${url.search}`);
+  expect(response.status()).toBe(200);
+  const { parseCsv } = await import("../../../scripts/lib/reconciliation");
+  const rows = parseCsv(await response.text());
+  expect(rows).toHaveLength(8);
+  expect(
+    rows.every(
+      (row) =>
+        row.report === "business" && row.grain === "day" && row.sales_channels === "amazon" && row.platform === "",
+    ),
+  ).toBe(true);
+});
+
 test("performance: calendar grains and metric groups preserve the full business totals and scope", async ({ page }) => {
   await page.goto("/performance?store=sample-store-a&from=2026-09-02&to=2026-10-04");
   const table = page.getByRole("table", { name: "Revenue and orders", exact: true });

@@ -1,10 +1,10 @@
 import { appConfig } from "@/app.config";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { csvExport, csvResponse, scopeColumns } from "@/lib/csv.server";
-import { parseChoice, summarySalesChannel } from "@/lib/filters";
-import { parseTimeGrain, periodRange } from "@/lib/time-grain";
+import { periodRange } from "@/lib/time-grain";
 import { getBusiness, getPlatforms } from "./queries";
-import { BUSINESS_FIELDS, parsePlatform, PLATFORM_FIELDS, scopePlatformRecords } from "./rows";
+import { BUSINESS_FIELDS, PLATFORM_FIELDS, scopePlatformRecords } from "./rows";
+import { performanceOptions } from "./filters";
 
 /** Exact source measures and full-selection totals, scoped identically to the report. */
 export async function GET(request: Request): Promise<Response> {
@@ -13,11 +13,8 @@ export async function GET(request: Request): Promise<Response> {
     request,
     async (scope) => {
       const { params, storeId, range, mode } = scope;
-      const grain = parseTimeGrain(params);
-      const channel = summarySalesChannel(params);
-      const view = parseChoice(params, "view", ["business", "platforms"], "business");
+      const { view, grain, channel, platform } = performanceOptions(params);
       const filters = { storeId, range, grain, channel };
-      const platform = parsePlatform(params);
       const rows =
         view === "business" ? await getBusiness(filters) : scopePlatformRecords(await getPlatforms(filters), platform);
       const fields = Object.keys(view === "business" ? BUSINESS_FIELDS : PLATFORM_FIELDS);

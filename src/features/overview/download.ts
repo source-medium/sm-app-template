@@ -1,9 +1,8 @@
 import { appConfig } from "@/app.config";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { csvExport, csvResponse, scopeColumns } from "@/lib/csv.server";
-import { summarySalesChannel } from "@/lib/filters";
 import { getOverview } from "./queries";
-import { parseTimeGrain } from "@/lib/time-grain";
+import { overviewOptions } from "./filters";
 import { overviewSummaryRows } from "./summary-rows";
 
 /** Re-read the applied summary filters; export period rows and one explicitly marked full total. */
@@ -13,7 +12,7 @@ export async function GET(request: Request): Promise<Response> {
     request,
     async (scope) => {
       const { params, storeId, range, mode } = scope;
-      const filters = { storeId, range, channel: summarySalesChannel(params), grain: parseTimeGrain(params) };
+      const filters = { storeId, range, ...overviewOptions(params) };
       const data = await getOverview(filters);
       const rows = overviewSummaryRows(data, filters);
       return csvResponse(

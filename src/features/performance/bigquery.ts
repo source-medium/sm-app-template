@@ -1,4 +1,4 @@
-import { SALES_CHANNEL_PREDICATE, validSales } from "@/lib/data/channel-sql";
+import { SALES_CHANNEL_PREDICATE, summaryMeasure } from "@/lib/data/channel-sql";
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { bq, decodeRows } from "@/lib/data/decode";
@@ -24,11 +24,6 @@ function params(filters: PerformanceFilters) {
     { name: "channel", type: "STRING" as const, value: filters.channel ?? "" },
   ];
 }
-/** Order measures count the valid sales channels only, as the catalog defines them; spend and sessions every row. */
-function businessColumn(alias: keyof typeof BUSINESS_FIELDS): string {
-  const field = BUSINESS_FIELDS[alias];
-  return alias === "spend" || alias === "sessions" ? field : validSales(field);
-}
 export async function queryBusiness(filters: PerformanceFilters) {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const result = await warehouse.query({
@@ -37,8 +32,8 @@ export async function queryBusiness(filters: PerformanceFilters) {
     maxRows: performanceRowLimit(filters.range, filters.grain),
     sql: `WITH scoped AS (
       SELECT DATE_TRUNC(date, ${GRAIN_SQL[filters.grain]}) AS period_date,
-        ${(Object.keys(BUSINESS_FIELDS) as (keyof typeof BUSINESS_FIELDS)[])
-          .map((alias) => `${businessColumn(alias)} AS ${alias}`)
+        ${Object.entries(BUSINESS_FIELDS)
+          .map(([alias, field]) => `${summaryMeasure(field)} AS ${alias}`)
           .join(",\n")}
       FROM ${warehouse.table(BUSINESS_RELATION)}
       WHERE sm_store_id = @store_id AND date BETWEEN @start_date AND @end_date

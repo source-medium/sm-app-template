@@ -216,7 +216,7 @@ export async function ReportPage({
           remedy={`${issue} The dates above show a suggested range. Apply it or pick another range to load the report.`}
         />
       ) : (
-        <BaselineProvider initial={plan?.active ?? 0}>
+        <BaselineProvider available={[!!plan?.slots[0].range, !!plan?.slots[1].range]}>
           <ChartMemoryProvider initial={chartMemory}>
             {children({
               filters: { storeId, range },

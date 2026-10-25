@@ -17,7 +17,6 @@ import { ReportPage } from "@/components/shell/report-page";
 import {
   parseChoice,
   salesChannelLabel,
-  summarySalesChannel,
   withParams,
   datesInRange,
   rangeLength,
@@ -28,7 +27,7 @@ import { MetricDefinition } from "@/components/patterns/metric-definition";
 import { compactHeadline, formatDateRange } from "@/lib/format";
 import { presentOverviewMeasures, type OverviewMeasureKey } from "./measures";
 import { getOverviewReport, overviewSlice, type OverviewFilters, type OverviewReport } from "./queries";
-import { parseTimeGrain } from "@/lib/time-grain";
+import { overviewOptions } from "./filters";
 import { OverviewControls } from "./controls";
 import { OverviewSummary } from "./summary";
 import { OverviewRevenue } from "./revenue";
@@ -45,8 +44,7 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
-  const channel = summarySalesChannel(params);
-  const grain = parseTimeGrain(params);
+  const { channel, grain } = overviewOptions(params);
   const trendMode = parseChoice(
     params,
     "trend",

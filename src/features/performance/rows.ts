@@ -1,4 +1,4 @@
-import { datesInRange, single, type SearchParams } from "@/lib/filters";
+import { datesInRange } from "@/lib/filters";
 import { periodStart } from "@/lib/time-grain";
 import { z } from "zod";
 import { appConfig } from "@/app.config";
@@ -56,11 +56,6 @@ export const PlatformRow = z.object({
 });
 export type BusinessRecord = z.output<typeof BusinessRow>;
 export type PlatformRecord = z.output<typeof PlatformRow>;
-
-/** The `platform` URL filter: one platform's detail, or "" for the combined platforms. */
-export function parsePlatform(params: SearchParams): string {
-  return single(params, "platform")?.slice(0, 200) ?? "";
-}
 
 /** The records the platform detail shows: one platform's rows, or the combined rows for "". */
 export function scopePlatformRecords(records: PlatformRecord[], platform: string): PlatformRecord[] {

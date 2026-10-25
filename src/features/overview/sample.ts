@@ -48,7 +48,7 @@ export function aggregateOverviewWire(
   let firstOrders: number | null = null;
   let repeatRevenue: bigint | null = null;
   let repeatOrders: number | null = null;
-  // Order measures count valid sales channels only, as the live query's validSales() does.
+  // Order measures count valid sales channels only, as the live query's summaryMeasure() does.
   for (const row of source.map(countedSales)) {
     if (
       row.sm_store_id !== storeId ||

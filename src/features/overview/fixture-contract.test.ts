@@ -124,6 +124,15 @@ describe("overview fixture contract", () => {
     expect(data.totals).toEqual({ netRevenue: "0", orders: 1, sessions: 1n, adSpend: "0" });
   });
 
+  it("counts non-sales spend and traffic without adding their order measures", () => {
+    const rows = [
+      source("2026-09-01", 1.5, 10n, 3n, "s1", "Paid", 1001n, 333n),
+      { ...source("2026-09-01", 999, 20n, 4n, "s1", "Other", 99999n, 111n), sm_channel: "walmart" },
+    ];
+    const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", RANGE), OVERVIEW_RELATION));
+    expect(data.totals).toEqual({ netRevenue: "10.01", orders: 1.5, sessions: 30n, adSpend: "4.44" });
+  });
+
   it("keeps large INT64 values exact and refuses to chart them", () => {
     const huge = 9_007_199_254_740_993n; // 2^53 + 1
     const rows = [source("2026-09-01", 1, huge, 0n)];

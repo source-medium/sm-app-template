@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { validSales } from "@/lib/data/channel-sql";
+import { summaryMeasure } from "@/lib/data/channel-sql";
 import {
   goLive,
   rowsResponse,
@@ -50,9 +50,9 @@ it("makes one bounded summary query for the canonical roster, preserves precisio
     parameterValue: { value: JSON.stringify([id, "empty-store"]) },
   });
   // Revenue and orders count the catalog's valid sales channels; spend counts every row.
-  expect(body.query).toContain(validSales("order_net_revenue"));
-  expect(body.query).toContain(validSales("order_count"));
-  expect(body.query).not.toContain(validSales("ad_spend"));
+  expect(body.query).toContain(summaryMeasure("order_net_revenue"));
+  expect(body.query).toContain(summaryMeasure("order_count"));
+  expect(body.query).not.toMatch(/IF\([^\n]*, ad_spend, 0\)/);
   expect(body.queryParameters).toContainEqual({
     name: "baseline_from",
     parameterType: { type: "DATE" },

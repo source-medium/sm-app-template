@@ -2,6 +2,7 @@
 import { datesInRange, type DateRange } from "@/lib/filters";
 import { calendarDate } from "@/lib/format";
 import { isValidSalesChannel } from "@/lib/sales-channels";
+import { isSummaryOrderMeasure } from "@/lib/summary-measures";
 import { randomInt, seededRandom } from "./random";
 import { SAMPLE_STORE_SCALE, SAMPLE_STORES } from "./stores";
 
@@ -71,23 +72,18 @@ const SOURCES = [
 const ORDER_VALUE_CENTS = 6840;
 
 /**
- * A row as summary reports measure it (validSales in channel-sql): outside the valid sales channels
+ * A row as summary reports measure it (summaryMeasure in channel-sql): outside the valid sales channels
  * its order measures add nothing, while spend and traffic still count.
  */
 export function countedSales(row: SummarySourceRow): SummarySourceRow {
   if (isValidSalesChannel(row.sm_channel)) return row;
-  return {
-    ...row,
-    order_net_revenue_cents: 0n,
-    order_gross_revenue_cents: 0n,
-    order_discounts_cents: 0n,
-    order_refunds_cents: 0n,
-    order_count: 0,
-    new_customer_order_net_revenue_cents: 0n,
-    new_customer_order_count: 0,
-    repeat_customer_order_net_revenue_cents: 0n,
-    repeat_customer_order_count: 0,
-  };
+  // Fixtures name money columns with _cents; counts retain their canonical name.
+  const zeros = Object.fromEntries(
+    Object.keys(row)
+      .filter((field) => isSummaryOrderMeasure(field.replace(/_cents$/, "")))
+      .map((field) => [field, field.endsWith("_cents") ? 0n : 0]),
+  );
+  return { ...row, ...zeros };
 }
 
 /** The channels the relation publishes for one store and dates, as the live channel rosters list them. */

@@ -48,7 +48,8 @@ their direct channel, so the catalog's order count and net revenue filter to the
 SourceMedium counts as valid (`online_dtc`, `amazon`, `retail`, `wholesale`, `tiktok_shop`).
 Ad spend and sessions are not order validity and count every row, so MER divides valid revenue
 by all spend. The summary reports apply the same rule to every order measure through
-`validSales()` in `src/lib/data/channel-sql.ts`; a test checks its predicate against the vendored
+`summaryMeasure()` in `src/lib/data/channel-sql.ts`, using the explicit column classification in
+`src/lib/summary-measures.ts` shared with sample data; a test checks its predicate against the vendored
 catalog definition. **Sales channel** defaults to **All sales channels**; select one to narrow
 KPIs, trends, comparisons, summaries and CSV to it. Selecting a non-valid channel shows its spend
 and no sales. The options are queried for the selected store and dates. The Looker template may

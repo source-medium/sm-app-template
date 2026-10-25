@@ -69,6 +69,13 @@ it.each(["business", "platforms"] as const)(
     expect(body.query).toContain("UNNEST(IFNULL(JSON_VALUE_ARRAY(@channel), ARRAY<STRING>[]))");
     expect(body.query).not.toContain(filters.storeId);
     expect(body.query).not.toContain(filters.channel);
+    if (kind === "business") {
+      expect(body.query).toContain(
+        "IF(sm_channel in ('online_dtc', 'amazon', 'retail', 'wholesale', 'tiktok_shop'), order_count, 0) AS orders",
+      );
+      expect(body.query).toContain("ad_spend AS spend");
+      expect(body.query).toContain("website_sessions AS sessions");
+    }
     expect(body.queryParameters).toContainEqual({
       name: "channel",
       parameterType: { type: "STRING" },

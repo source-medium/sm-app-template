@@ -429,6 +429,48 @@ test("overview: the report form stays in place when the first filter applies", a
   expect(await form?.evaluate((node) => node.isConnected)).toBe(true);
 });
 
+test("overview: baseline overlays follow chart history, copied links and applied filters", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  const group = page.getByRole("group", { name: "Comparison shown in charts and tables" });
+  const previous = group.getByRole("button", { name: "Previous 7 days", exact: true });
+  const year = group.getByRole("button", { name: "Same period last year", exact: true });
+  await expect(year).not.toHaveAttribute("inert");
+  const requests: string[] = [];
+  page.on("request", (request) => {
+    if (["fetch", "xhr", "document"].includes(request.resourceType())) requests.push(request.url());
+  });
+  await year.click();
+  await chooseMeasure(page, "Net revenue", "Summary orders");
+  await previous.click();
+  await page.goBack();
+  await expect(year).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-slot="card"]', { hasText: "Net revenue by day" })).toContainText(
+    "Same period last year",
+  );
+  await page.goForward();
+  await expect(previous).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-slot="card"]', { hasText: "Summary orders by day" })).toContainText(
+    "Previous 7 days",
+  );
+  expect(requests).toEqual([]);
+  await year.click();
+  await page.getByRole("button", { name: "Copy report link", exact: true }).click();
+  await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
+  const shared = await page.evaluate(() => navigator.clipboard.readText());
+  expect(new URL(shared).searchParams.get("baseline")).toBe("b");
+  await page.goto(shared);
+  await expect(year).toHaveAttribute("aria-pressed", "true");
+  await choose(page, "Sales channel", "amazon");
+  await expect(year).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(
+    (url) => url.searchParams.get("baseline") === "b" && url.searchParams.get("sales_channel") === "amazon",
+  );
+});
+
 test("overview: Vibe code picks an element without activating it and supports keyboard selection and cancellation", async ({
   page,
 }) => {

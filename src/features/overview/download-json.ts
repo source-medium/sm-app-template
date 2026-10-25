@@ -2,9 +2,8 @@ import type { MetricBinding } from "@/lib/metric-binding";
 import { appConfig } from "@/app.config";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { csvExport, reportJsonResponse } from "@/lib/csv.server";
-import { summarySalesChannel } from "@/lib/filters";
 import { calendarDate } from "@/lib/format";
-import { parseTimeGrain } from "@/lib/time-grain";
+import { overviewOptions } from "./filters";
 import { parseComparisonPlan, planRanges } from "@/lib/comparison";
 import { getOverviewReport } from "./queries";
 import { overviewBindings } from "./metrics";
@@ -14,7 +13,7 @@ export async function GET(request: Request): Promise<Response> {
   return csvExport(
     request,
     async ({ params, storeId, range, mode, currency, timeZone }) => {
-      const filters = { storeId, range, channel: summarySalesChannel(params), grain: parseTimeGrain(params) };
+      const filters = { storeId, range, ...overviewOptions(params) };
       const plan = parseComparisonPlan(params, range, calendarDate(new Date(), timeZone));
       const startedAt = new Date().toISOString();
       const report = await getOverviewReport(filters, planRanges(plan));

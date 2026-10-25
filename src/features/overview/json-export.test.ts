@@ -34,3 +34,21 @@ it("authorizes JSON export store scope before business reads", async () => {
   expect(response.status).toBe(403);
   expect(fake.calls).toHaveLength(0);
 });
+
+it("normalizes malformed grains and multi-channel scopes identically in JSON and CSV", async () => {
+  const url = new URL(
+    "https://example.test/overview/export.json?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=off&grain=invalid",
+  );
+  url.searchParams.set("sales_channel", '["online_dtc","amazon"]');
+  const json = await GET(new Request(url));
+  expect(json.status).toBe(200);
+  const body = await json.json();
+  expect(body.context.filters).toMatchObject({ channel: '["amazon","online_dtc"]', grain: "day" });
+  url.pathname = "/overview/export";
+  const response = await csv(new Request(url));
+  expect(response.status).toBe(200);
+  const rows = parseCsv(await response.text());
+  expect(rows.filter((row) => row.row_type === "period")).toHaveLength(7);
+  expect(rows.every((row) => row.grain === "day" && row.sales_channel === '["amazon","online_dtc"]')).toBe(true);
+  expect(rows.find((row) => row.row_type === "total")?.net_revenue).toBe(body.results.current.totals.netRevenue);
+});

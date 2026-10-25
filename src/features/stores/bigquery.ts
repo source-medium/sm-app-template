@@ -5,7 +5,7 @@ import { loadStores } from "@/lib/data/stores.server";
 import { MAX_STORES } from "@/lib/data/store-roster.server";
 import { decodeRows } from "@/lib/data/decode";
 import { periodParams, periodSql } from "@/lib/data/period-sql";
-import { validSales } from "@/lib/data/channel-sql";
+import { summaryMeasure } from "@/lib/data/channel-sql";
 import type { DateRange } from "@/lib/filters";
 import { STORES_RELATION, StoreSummaryRow } from "./rows";
 import { CACHE_POLICY } from "@/lib/data/query-cache";
@@ -25,9 +25,9 @@ export async function queryStoreComparison(range: DateRange, baselines: Baseline
     maxRows: MAX_STORES,
     sql: `WITH stores AS (
       SELECT sm_store_id,
-        ${period.sum(validSales("order_net_revenue"), "revenue")},
-        ${period.sum(validSales("order_count"), "orders")},
-        ${period.sum("ad_spend", "spend")},
+        ${period.sum(summaryMeasure("order_net_revenue"), "revenue")},
+        ${period.sum(summaryMeasure("order_count"), "orders")},
+        ${period.sum(summaryMeasure("ad_spend"), "spend")},
         ${period.latest}
       FROM ${warehouse.table(STORES_RELATION)}
       WHERE sm_store_id IN UNNEST(JSON_VALUE_ARRAY(@store_ids)) AND ${period.rows}

@@ -1,5 +1,5 @@
 import { rangeLength } from "@/lib/filters";
-import { SALES_CHANNEL_PREDICATE, VALID_SALES_CHANNEL_SQL, validSales } from "@/lib/data/channel-sql";
+import { SALES_CHANNEL_PREDICATE, VALID_SALES_CHANNEL_SQL, summaryMeasure } from "@/lib/data/channel-sql";
 /**
  * Overview, live. One query aggregates the store's channel and sub-channel
  * rows to daily totals and computes the period totals in the same pass, so
@@ -30,16 +30,16 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
     maxRows: Math.min(MAX_ROWS, rangeLength(filters.range)),
     sql: `
       WITH scoped AS (
-        SELECT date, sm_channel, sm_sub_channel, website_sessions, ad_spend,
-          ${validSales("order_gross_revenue")} AS order_gross_revenue,
-          ${validSales("order_discounts")} AS order_discounts,
-          ${validSales("order_refunds")} AS order_refunds,
-          ${validSales("order_net_revenue")} AS order_net_revenue,
-          ${validSales("order_count")} AS order_count,
-          ${validSales("new_customer_order_net_revenue")} AS new_customer_order_net_revenue,
-          ${validSales("new_customer_order_count")} AS new_customer_order_count,
-          ${validSales("repeat_customer_order_net_revenue")} AS repeat_customer_order_net_revenue,
-          ${validSales("repeat_customer_order_count")} AS repeat_customer_order_count
+        SELECT date, sm_channel, sm_sub_channel, ${summaryMeasure("website_sessions")}, ${summaryMeasure("ad_spend")},
+          ${summaryMeasure("order_gross_revenue")} AS order_gross_revenue,
+          ${summaryMeasure("order_discounts")} AS order_discounts,
+          ${summaryMeasure("order_refunds")} AS order_refunds,
+          ${summaryMeasure("order_net_revenue")} AS order_net_revenue,
+          ${summaryMeasure("order_count")} AS order_count,
+          ${summaryMeasure("new_customer_order_net_revenue")} AS new_customer_order_net_revenue,
+          ${summaryMeasure("new_customer_order_count")} AS new_customer_order_count,
+          ${summaryMeasure("repeat_customer_order_net_revenue")} AS repeat_customer_order_net_revenue,
+          ${summaryMeasure("repeat_customer_order_count")} AS repeat_customer_order_count
         FROM ${warehouse.table(OVERVIEW_RELATION)}
         WHERE sm_store_id = @store_id AND date BETWEEN @start_date AND @end_date
           AND ${SALES_CHANNEL_PREDICATE}

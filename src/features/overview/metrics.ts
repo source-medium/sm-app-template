@@ -1,6 +1,6 @@
 import type { MetricBinding } from "@/lib/metric-binding";
 import { REVIEWED_METRICS, reviewedMetric } from "@/lib/reviewed-metrics";
-import { validSales } from "@/lib/data/channel-sql";
+import { summaryMeasure } from "@/lib/data/channel-sql";
 import { OVERVIEW_RELATION } from "./rows";
 
 const base = {
@@ -22,7 +22,7 @@ export const overviewBindings = [
     id: "revenue",
     label: "Net revenue",
     canonical: reviewedMetric("order_net_revenue_summary"),
-    calculation: `SUM(${validSales("order_net_revenue")})`,
+    calculation: `SUM(${summaryMeasure("order_net_revenue")})`,
     fields: ["order_net_revenue"],
     format: "currency",
   },
@@ -31,7 +31,7 @@ export const overviewBindings = [
     id: "orders",
     label: "Summary orders",
     canonical: reviewedMetric("order_count_summary"),
-    calculation: `SUM(${validSales("order_count")})`,
+    calculation: `SUM(${summaryMeasure("order_count")})`,
     fields: ["order_count"],
     format: "count",
   },
@@ -49,7 +49,7 @@ export const overviewBindings = [
     id: "mer",
     label: "Marketing efficiency (MER)",
     canonical: reviewedMetric("marketing_efficiency_ratio_summary"),
-    calculation: `SUM(${validSales("order_net_revenue")}) / SUM(ad_spend)`,
+    calculation: `SUM(${summaryMeasure("order_net_revenue")}) / SUM(ad_spend)`,
     numerator: "Summary net revenue",
     denominator: "Summary ad spend",
     fields: ["order_net_revenue", "ad_spend"],
@@ -59,7 +59,7 @@ export const overviewBindings = [
     ...base,
     id: "average",
     label: "Revenue per summary order",
-    calculation: `SUM(${validSales("order_net_revenue")}) / SUM(${validSales("order_count")})`,
+    calculation: `SUM(${summaryMeasure("order_net_revenue")}) / SUM(${summaryMeasure("order_count")})`,
     numerator: "Summary net revenue",
     denominator: "Summary orders, not valid-order count",
     fields: ["order_net_revenue", "order_count"],

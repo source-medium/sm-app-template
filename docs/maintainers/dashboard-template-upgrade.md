@@ -344,7 +344,7 @@ window)` instead of `COALESCE(...)`, in Orders (list, roster, detail) and
   unfiltered, so MER divides valid revenue by all spend. dashboard-metrics-v1 is
   re-vendored from that branch.
 - The summary reports compute the same definition: every order measure goes through
-  `validSales()` (`src/lib/data/channel-sql.ts`), a test checks its predicate against
+  `summaryMeasure()` (`src/lib/data/channel-sql.ts`), a test checks its predicate against
   the vendored `filter_condition`, and the sample's `countedSales()` mirrors it.
   Spend and sessions count every row, so a tenant's Walmart.com or Target.com ad
   spend (which `rpt_ad_performance_daily` can assign) is never dropped. **Sales
