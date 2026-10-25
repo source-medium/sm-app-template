@@ -7,7 +7,7 @@ import { Check, ChevronDown, LayoutGrid, LoaderCircle, Search } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CardImage } from "@/components/patterns/card-image";
+import { StoreAvatar } from "@/components/patterns/store-avatar";
 import type { StoreOption } from "@/lib/data/stores.server";
 import type { SearchParams } from "@/lib/filters";
 import {
@@ -22,22 +22,6 @@ import {
 const subscribeToHeader = () => () => {};
 const headerSlot = () => document.getElementById(STORE_SWITCHER_SLOT);
 const serverSlot = () => null;
-
-function StoreLogo({ label, logoUrl }: { label: string; logoUrl: string | null }) {
-  const words = label.trim().split(/\s+/);
-  const initials = [words[0], ...(words.length > 1 ? [words.at(-1)] : [])]
-    .map((word) => Array.from(word ?? "")[0])
-    .join("")
-    .toUpperCase();
-  return (
-    <span
-      aria-hidden
-      className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-xs font-semibold text-muted-foreground"
-    >
-      {logoUrl ? <CardImage src={logoUrl} alt="" fallback={initials} className="size-full object-contain" /> : initials}
-    </span>
-  );
-}
 
 /** The report supplies applied state. Date drafts never participate in switching stores. */
 export function StoreSwitcher({
@@ -140,7 +124,7 @@ export function StoreSwitcher({
                 <LayoutGrid className="size-4" />
               </span>
             ) : (
-              <StoreLogo label={selected?.label ?? storeId} logoUrl={selected?.logoUrl ?? null} />
+              <StoreAvatar label={selected?.label ?? storeId} logoUrl={selected?.logoUrl ?? null} />
             )}
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-normal text-muted-foreground">
@@ -227,7 +211,7 @@ export function StoreSwitcher({
                       else if (storePath) navigate(switchStoreHref(storePath, params, store.id), storeLabel(store));
                     }}
                   >
-                    <StoreLogo label={store.label} logoUrl={store.logoUrl} />
+                    <StoreAvatar label={store.label} logoUrl={store.logoUrl} />
                     <span className="min-w-0 flex-1 break-words">
                       <span className="block">{store.label}</span>
                       {storeDetail(store) && (

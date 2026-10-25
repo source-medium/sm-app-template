@@ -7,6 +7,7 @@ import { storeReportPath, switchStoreHref } from "@/lib/store-navigation";
 import { slotColumn } from "@/lib/data/period-sql";
 import type { StoreComparison } from "./queries";
 import { Disclosure } from "@/components/ui/disclosure";
+import { StoreAvatar } from "@/components/patterns/store-avatar";
 
 export function StoreComparisonTable({
   data,
@@ -49,6 +50,7 @@ export function StoreComparisonTable({
         id: store.id,
         cells: {
           store: {
+            leading: <StoreAvatar label={store.label} logoUrl={store.logoUrl} />,
             display: `${store.label}${data.some((other) => other.store.id !== store.id && other.store.label === store.label) ? ` (${store.id})` : ""}`,
             href: path ? switchStoreHref(path, withDates(params, dates), store.id) : undefined,
           },

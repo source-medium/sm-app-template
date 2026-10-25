@@ -213,6 +213,18 @@ or [remove the examples](docs/removing-the-example.md). Change your name, logo,
 and navigation in [`app.config.ts`](app.config.ts), and your colors and fonts in
 [`src/styles/tokens.css`](src/styles/tokens.css).
 
+The sidebar links to the original template's documentation and GitHub repository.
+Its SourceMedium attribution uses the official mark; hide it with
+`showSourceMediumAttribution` in `app.config.ts`. Store logos come from `dim_stores`
+and appear in the picker and All stores table. Product photos come from
+`dim_product_variants.primary_product_image_url`, loaded separately for the ranked products.
+Missing or expired images keep their labels and values visible.
+
+Sample mode uses fictional store marks and three AI-generated catalog photos in
+[`public/sample-products`](public/sample-products). The built-in image tool's
+[prompts](docs/images/sample-product-prompts.json) are retained with the assets.
+Live reports always use warehouse images.
+
 ## Built to be trusted
 
 - **Numbers are exact.** Decimals stay exact through aggregation and export.

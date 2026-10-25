@@ -43,7 +43,7 @@ export const appConfig = {
    * null to show the name. The name is still the browser tab title.
    */
   logo: null as { src: string; alt: string } | null,
-  /** Shows "Built on SourceMedium" in the sidebar footer. */
+  /** Shows the SourceMedium mark and attribution in the footer; template resource links remain available. */
   showSourceMediumAttribution: true,
   /** Numbers and dates are formatted on the server in this locale. */
   locale: "en-US",

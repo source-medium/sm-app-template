@@ -22,6 +22,7 @@ export function RankedBreakdown({
     share: string;
     change?: string;
     href?: string;
+    leading?: React.ReactNode;
   }[];
   hasMore?: boolean;
   comparisonLabel?: string;
@@ -54,7 +55,7 @@ export function RankedBreakdown({
         rows={rows.map((row) => ({
           id: row.id,
           cells: {
-            name: { display: row.label, href: row.href },
+            name: { display: row.label, href: row.href, leading: row.leading },
             value: { display: row.value.display },
             share: { display: row.share },
             change: { display: row.change ?? "—" },

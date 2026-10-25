@@ -1,9 +1,9 @@
 import { appConfig } from "@/app.config";
+import { ChartNoAxesColumnIncreasing } from "lucide-react";
 
 /**
- * The logo, or the app name set in the display face. A logo replaces the
- * name; it fits a 32px-tall slot, and both hide when the sidebar collapses
- * to icons.
+ * The configured logo, or the app mark and name. A custom logo fits a 32px
+ * slot; the default mark also identifies the app when navigation collapses.
  */
 export function AppName() {
   if (appConfig.logo) {
@@ -17,8 +17,16 @@ export function AppName() {
     );
   }
   return (
-    <span className="truncate font-display text-lg font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-      {appConfig.name}
-    </span>
+    <div className="flex min-w-0 items-center gap-2.5" title={appConfig.name}>
+      <span
+        aria-hidden
+        className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"
+      >
+        <ChartNoAxesColumnIncreasing className="size-5" />
+      </span>
+      <span className="truncate font-display text-lg font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+        {appConfig.name}
+      </span>
+    </div>
   );
 }

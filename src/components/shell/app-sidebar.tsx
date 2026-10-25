@@ -22,6 +22,9 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { AppName } from "./app-name";
+import { BookOpen, ExternalLink, CodeXml } from "lucide-react";
+import { SourceMediumMark } from "./source-medium-mark";
+import { SOURCEMEDIUM_WEBSITE, TEMPLATE_DOCUMENTATION, TEMPLATE_REPOSITORY } from "@/lib/template";
 
 /**
  * The sidebar carries SHARED_FILTERS, keeping the same store and dates when
@@ -39,7 +42,7 @@ export function AppSidebar({ fixedStore = false }: { fixedStore?: boolean }) {
   }
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="px-3 py-4">
+      <SidebarHeader className="px-3 py-4 group-data-[collapsible=icon]:px-2">
         <AppName />
       </SidebarHeader>
       <SidebarContent>
@@ -78,11 +81,43 @@ export function AppSidebar({ fixedStore = false }: { fixedStore?: boolean }) {
           </SidebarGroup>
         ))}
       </SidebarContent>
-      {appConfig.showSourceMediumAttribution && (
-        <SidebarFooter className="px-4 py-3 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-          Built on SourceMedium
-        </SidebarFooter>
-      )}
+      <SidebarFooter className="gap-2 border-t p-2">
+        <SidebarMenu aria-label="Template resources">
+          {[
+            { label: "Template docs", href: TEMPLATE_DOCUMENTATION, icon: BookOpen },
+            { label: "Template on GitHub", href: TEMPLATE_REPOSITORY, icon: CodeXml },
+          ].map(({ label, href, icon: Icon }) => (
+            <SidebarMenuItem key={href}>
+              <SidebarMenuButton asChild tooltip={label}>
+                <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`${label} (opens in a new tab)`}>
+                  <Icon aria-hidden />
+                  <span>{label}</span>
+                  <ExternalLink
+                    aria-hidden
+                    className="ml-auto size-3 text-muted-foreground group-data-[collapsible=icon]:hidden"
+                  />
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+        {appConfig.showSourceMediumAttribution && (
+          <a
+            href={SOURCEMEDIUM_WEBSITE}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Built on SourceMedium (opens in a new tab)"
+            title="Built on SourceMedium"
+            className="flex min-h-11 items-center gap-2.5 rounded-md px-2 text-xs text-muted-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <SourceMediumMark className="h-6 w-5 shrink-0 text-sidebar-primary" />
+            <span className="group-data-[collapsible=icon]:hidden">
+              <span className="block font-medium text-sidebar-foreground">Built on SourceMedium</span>
+              <span className="block">Open source app template</span>
+            </span>
+          </a>
+        )}
+      </SidebarFooter>
     </Sidebar>
   );
 }

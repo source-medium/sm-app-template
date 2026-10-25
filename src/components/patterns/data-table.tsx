@@ -34,14 +34,19 @@ export type DataTableColumn = {
   /** Keep identifiers on one line on narrow screens. */
   nowrap?: boolean;
 };
-export type DataTableCell = { display: string; sort?: string | number | null; href?: string };
+export type DataTableCell = {
+  display: string;
+  sort?: string | number | null;
+  href?: string;
+  leading?: React.ReactNode;
+};
 export type DataTableRow = { id: string; cells: Record<string, DataTableCell> };
 
 /** A stable component identity preserves focused links when rows or sorting update. */
 function DataCell({ row, column }: CellContext<DataTableRow, unknown>) {
   const cell = row.original.cells[column.id];
   if (!cell) return null;
-  return cell.href ? (
+  const content = cell.href ? (
     <Link
       prefetch={false}
       href={cell.href}
@@ -52,6 +57,14 @@ function DataCell({ row, column }: CellContext<DataTableRow, unknown>) {
     </Link>
   ) : (
     cell.display
+  );
+  return cell.leading ? (
+    <div className="flex min-w-0 items-center gap-3">
+      {cell.leading}
+      <span className="min-w-0">{content}</span>
+    </div>
+  ) : (
+    content
   );
 }
 

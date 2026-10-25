@@ -1,10 +1,11 @@
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { parseChoice, single, type ReportFilters, type SearchParams } from "@/lib/filters";
-import { queryProductChannels, queryProducts, queryProductCoverage } from "./bigquery";
+import { queryProductChannels, queryProducts, queryProductCoverage, queryProductImages } from "./bigquery";
 import type { Product, ProductCoverage } from "./rows";
 import { sampleProductSource, sampleProducts, aggregateProductCoverage } from "./sample";
 import type { BaselineRanges } from "@/lib/comparison";
+import { WarehouseError } from "@/lib/data/warehouse-error";
 
 export const PRODUCT_DIMENSIONS = [
   { value: "product", label: "Product" },
@@ -50,6 +51,21 @@ export function productOptions(params: SearchParams) {
 export async function getProducts(filters: ProductFilters, baselines: BaselineRanges): Promise<ProductsData> {
   const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live" ? queryProducts(filters, baselines) : sampleProducts(filters, baselines);
+}
+
+/** Photos are optional decoration. Catalog failures remain logged by the warehouse and never hide valid metrics. */
+export async function getProductImages(filters: Pick<ProductFilters, "storeId" | "dimension">, products: Product[]) {
+  const access = await requireViewer({ storeId: filters.storeId });
+  if (access.mode === "sample") return new Map(products.map((row) => [row.product_key, row.image_url]));
+  try {
+    return await queryProductImages(
+      filters,
+      products.map((row) => row.product_key),
+    );
+  } catch (error) {
+    if (!(error instanceof WarehouseError)) throw error;
+    return new Map<string, string | null>();
+  }
 }
 
 export async function getProductChannels(filters: ReportFilters): Promise<string[]> {

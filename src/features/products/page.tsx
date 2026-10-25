@@ -13,6 +13,8 @@ import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { ProductCosts } from "./costs";
+import { ProductPhoto } from "./product-image";
+import { ProductGallery } from "./product-gallery";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
@@ -25,6 +27,7 @@ import {
   getProductCoverage,
   getProductChannels,
   getProducts,
+  getProductImages,
   productOptions,
   PRODUCT_DIMENSIONS,
   PRODUCT_METRICS,
@@ -149,6 +152,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 }
               >
                 {(data) => {
+                  const images = getProductImages(
+                    { storeId: filters.storeId, dimension: options.dimension },
+                    data.rows,
+                  );
                   const first = data.rows[0];
                   const changes = plan ? slotChanges(plan, first) : null;
                   /** Both comparison rows for a total, in slot order; a slot without changes says why. */
@@ -187,6 +194,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                           id: row.product_key,
                           label: `${row.label} (${row.reference})`,
                           chartLabel: row.label,
+                          leading: <ProductPhoto images={images} productKey={row.product_key} />,
                           href:
                             drillDown(
                               {
@@ -248,6 +256,15 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                           );
                         })}
                       </section>
+                      <ProductGallery
+                        measure={metricLabel}
+                        products={data.rows.map((row) => ({
+                          key: row.product_key,
+                          label: row.label,
+                          image: <ProductPhoto images={images} productKey={row.product_key} className="size-20" />,
+                          value: format(row[options.metric]),
+                        }))}
+                      />
                       {diagnostic && (
                         <Suspense
                           key={`coverage|${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${diagnostic}|${options.entity}|${options.dimension}`}

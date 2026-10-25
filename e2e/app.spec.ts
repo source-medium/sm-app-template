@@ -6,8 +6,27 @@
 import { expect, test } from "@playwright/test";
 import { appConfig } from "../app.config";
 import { expectNoSeriousA11yViolations, switchStore, watchConsole } from "./helpers";
+import { SOURCEMEDIUM_WEBSITE, TEMPLATE_DOCUMENTATION, TEMPLATE_REPOSITORY } from "../src/lib/template";
 
 const home = appConfig.nav[0]?.href ?? "/";
+
+test("template help and attribution link to the original starter without report context", async ({ page }) => {
+  await page.goto(`${home}?store=sample-store-a`);
+  for (const { name, href } of [
+    { name: "Template docs", href: TEMPLATE_DOCUMENTATION },
+    { name: "Template on GitHub", href: TEMPLATE_REPOSITORY },
+    ...(appConfig.showSourceMediumAttribution ? [{ name: "Built on SourceMedium", href: SOURCEMEDIUM_WEBSITE }] : []),
+  ]) {
+    const link = page.getByRole("link", { name: `${name} (opens in a new tab)`, exact: true });
+    await expect(link).toHaveAttribute("href", href);
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  }
+  const logo = page.locator('[data-slot="store-switcher"] img');
+  await expect(logo).toHaveAttribute("src", "/sample-stores/store-a.svg");
+  await switchStore(page, "sample-store-b");
+  await expect(logo).toHaveAttribute("src", "/sample-stores/store-b.svg");
+});
 
 test("report documentation loads on demand and hands a field to the existing agent composer", async ({ page }) => {
   const problems = watchConsole(page);

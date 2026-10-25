@@ -27,6 +27,7 @@ export type ProductSource = {
   variantId: string;
   title: string;
   variant: string;
+  imageUrl?: string | null;
   revenue: string | null;
   units: string | null;
   profit: string | null;
@@ -70,6 +71,14 @@ export function sampleProductSource(storeId: string, range: DateRange): ProductS
           productId: `p${index + 1}`,
           variantId: `p${index + 1}-v${v + 1}`,
           title,
+          imageUrl:
+            title === "Shaker"
+              ? "/sample-products/shaker.webp"
+              : /kit|set|box/i.test(title)
+                ? "/sample-products/gift-set.webp"
+                : /blend|pack/i.test(title)
+                  ? "/sample-products/blend-pouch.webp"
+                  : null,
           variant,
           revenue: money(revenue),
           units: String(units),
@@ -130,6 +139,11 @@ export function aggregateProducts(
       product_key: key,
       label: label(first),
       reference: `${first.source} / ${filters.dimension === "product" ? first.productId : first.variantId}`,
+      image_url:
+        group
+          .filter((row) => row.imageUrl)
+          .sort((a, b) => b.date.localeCompare(a.date) || (b.imageUrl ?? "").localeCompare(a.imageUrl ?? ""))[0]
+          ?.imageUrl ?? null,
       ...(Object.fromEntries(
         PRODUCT_MEASURES.flatMap((metric) => [
           [metric, sum(metric, filters.range)],

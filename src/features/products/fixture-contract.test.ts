@@ -99,6 +99,24 @@ it("provides deterministic sample rows for both stores and empty results for an 
   expect(sampleProducts({ ...filters, storeId: "unknown" }, [null, null])).toEqual({ rows: [], hasMore: false });
 });
 
+it("uses the latest non-empty product image independently of financial totals", () => {
+  const data = aggregateProducts(
+    [
+      { ...line, imageUrl: "https://cdn.example.com/old.jpg" },
+      { ...line, date: "2026-09-02", imageUrl: "https://cdn.example.com/new.jpg" },
+      { ...line, productId: "p2", imageUrl: "javascript:alert(1)" },
+    ],
+    filters,
+    [null, null],
+  );
+  expect(data.rows[0]).toMatchObject({
+    image_url: "https://cdn.example.com/new.jpg",
+    revenue: "0.2",
+    total_revenue: "0.3",
+  });
+  expect(data.rows[1]?.image_url).toBeNull();
+});
+
 it.each(["gainers", "decliners"] as const)(
   "%s retains current-only products beyond comparison-only NULL changes and preserves every period's totals",
   (ranking) => {

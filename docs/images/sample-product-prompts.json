@@ -1,0 +1,9 @@
+{
+  "tool": "Built-in image_gen",
+  "purpose": "Fictional sample catalog photos, never used for live warehouse data",
+  "prompts": {
+    "blend-pouch": "Create a photorealistic ecommerce catalog product mockup for a clearly fictional sample wellness store in a business dashboard. A single upright matte muted violet resealable powder pouch with a small simple off-white label reading exactly 'Sample blend'. Crisp packaging silhouette, subtle realistic folds, soft studio lighting, small grounded shadow, pale cool gray seamless background, centered product occupying 70% of square image, no extra props, no logos of real companies, no decorative graphics or other text. Must be clear as a small product thumbnail.",
+    "shaker": "Create a photorealistic ecommerce catalog product mockup for a clearly fictional sample wellness store in a business dashboard. A single frosted off-white shaker bottle with a matte deep slate lid and small simple muted violet label reading exactly 'Sample'. Soft studio lighting, realistic plastic texture and small grounded shadow, pale cool gray seamless background, centered product occupying 70% of square image, no extra props, no real company logos, no other text. Must be clear as a small product thumbnail.",
+    "gift-set": "Create a photorealistic ecommerce catalog product mockup for a clearly fictional sample wellness store in a business dashboard. A compact open muted lavender gift box containing two small off-white wellness powder pouches, labels reading exactly 'Sample'. Restrained packaging design, soft studio lighting, realistic materials and small grounded shadow, pale cool gray seamless background, centered products occupying 70% of square image, no extra props, no real company logos or other text. Must be clear as a small product thumbnail."
+  }
+}

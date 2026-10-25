@@ -11,6 +11,8 @@ import {
   ProductChannelRow,
   ProductRow,
   ProductCoverageRow,
+  PRODUCT_IMAGES_RELATION,
+  ProductImageRow,
   type ProductMeasure,
 } from "./rows";
 import { CACHE_POLICY } from "@/lib/data/query-cache";
@@ -118,6 +120,31 @@ export async function queryProducts(filters: ProductFilters, baselines: Baseline
   });
   const rows = decodeRows(ProductRow, result.rows, PRODUCTS_RELATION);
   return { rows: rows.slice(0, MAX_PRODUCTS), hasMore: rows.length > MAX_PRODUCTS };
+}
+
+/** One bounded catalog lookup for the visible identities, independent of financial report availability. */
+export async function queryProductImages(filters: Pick<ProductFilters, "storeId" | "dimension">, keys: string[]) {
+  const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
+  if (!keys.length) return new Map<string, string | null>();
+  const result = await warehouse.query({
+    name: "product_images",
+    cache: CACHE_POLICY.aggregate,
+    maxRows: keys.length,
+    sql: `SELECT ${DIMENSIONS[filters.dimension].key} AS product_key,
+      ARRAY_AGG(TRIM(primary_product_image_url)
+        ORDER BY product_variant_updated_at DESC, primary_product_image_url DESC LIMIT 1)[OFFSET(0)] AS image_url
+      FROM ${warehouse.table(PRODUCT_IMAGES_RELATION)}
+      WHERE sm_store_id = @store_id AND ${DIMENSIONS[filters.dimension].key} IN UNNEST(JSON_VALUE_ARRAY(@product_keys))
+        AND NULLIF(TRIM(primary_product_image_url), '') IS NOT NULL
+      GROUP BY product_key`,
+    params: [
+      { name: "store_id", type: "STRING", value: filters.storeId },
+      { name: "product_keys", type: "STRING", value: JSON.stringify(keys) },
+    ],
+  });
+  return new Map(
+    decodeRows(ProductImageRow, result.rows, PRODUCT_IMAGES_RELATION).map((row) => [row.product_key, row.image_url]),
+  );
 }
 
 /** Roster before ranking or channel selection, so top products never hide a channel. */

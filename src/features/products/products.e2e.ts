@@ -1,4 +1,62 @@
 import { expect, test } from "@playwright/test";
+import { expectTextContained } from "../../../e2e/helpers";
+
+test("products: leading names and large values stay within their image strip", async ({ page }) => {
+  await page.goto("/products?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  const gallery = page.getByRole("region", { name: "Leading products", exact: true });
+  await gallery
+    .locator("h2")
+    .first()
+    .evaluate((node) => {
+      node.textContent = "A product with an unusually long name and an-unbroken-catalog-reference-12345678901234567890";
+    });
+  await gallery
+    .locator("p.font-semibold")
+    .first()
+    .evaluate((node) => {
+      node.textContent = "$12,345,678,901,234.56";
+    });
+  for (const width of [320, 640, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expectTextContained(gallery.locator("h2, p"));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  }
+});
+
+test("products: catalog photos load and an image outage leaves totals and detail links usable", async ({ page }) => {
+  await page.goto("/products?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  const gallery = page.getByRole("region", { name: "Leading products", exact: true });
+  await gallery.scrollIntoViewIfNeeded();
+  await expect
+    .poll(() =>
+      gallery
+        .locator("img")
+        .first()
+        .evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
+    )
+    .toBe(true);
+  const totals = await page
+    .getByRole("region", { name: "All product totals" })
+    .locator('[data-slot="kpi-value"]')
+    .allTextContents();
+  let failedImages = 0;
+  await page.route("**/sample-products/*", async (route) => {
+    failedImages++;
+    await route.abort();
+  });
+  await page.reload();
+  await gallery.scrollIntoViewIfNeeded();
+  await expect.poll(() => failedImages).toBeGreaterThan(0);
+  await expect(gallery.locator("img")).toHaveCount(0);
+  expect(
+    await page.getByRole("region", { name: "All product totals" }).locator('[data-slot="kpi-value"]').allTextContents(),
+  ).toEqual(totals);
+  await expect(
+    page.getByRole("table", { name: "Net revenue by product details", exact: true }).getByRole("link").first(),
+  ).toBeVisible();
+  await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
+});
+
 test("products: chart labels are readable while tooltips and tables retain product identity", async ({ page }) => {
   await page.goto("/products?store=sample-store-a&from=2026-09-01&to=2026-09-28");
   const chart = page.getByRole("img", { name: "Net revenue by product chart", exact: true });

@@ -21,7 +21,8 @@ test("creatives: an unreachable image shows the card's text, never a broken imag
   await expect(card.getByText(/image link has expired/)).toBeVisible();
   await expect(card.getByRole("img")).toHaveCount(0);
   const sources = await page
-    .locator("main img")
+    .getByRole("list", { name: "Ad creatives" })
+    .locator("img")
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("src") ?? ""));
   for (const src of sources) expect(src.startsWith("/sample-creatives/")).toBe(true);
 });

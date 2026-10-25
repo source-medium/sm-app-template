@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { safeImageUrl } from "@/lib/image-url";
 import { bq } from "@/lib/data/decode";
 import type { Creative } from "./queries";
 
@@ -25,12 +26,6 @@ export const CreativeRow = z.object({
   cpo: bq.float64().nullable(),
   ad_url: bq.string().nullable(),
 });
-
-/** Only https or same-origin images render; anything else becomes a text card. */
-function safeImageUrl(value: string | null): string | null {
-  if (!value) return null;
-  return /^https:\/\/[^\s"'<>]+$/i.test(value) || /^\/(?!\/)[A-Za-z0-9/_.-]+$/.test(value) ? value : null;
-}
 
 /** Only verified platform post URLs become external actions. */
 export function safeAdUrl(value: string | null): string | null {

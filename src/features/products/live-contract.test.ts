@@ -45,6 +45,7 @@ it("guards, parameterizes and aggregates valid product lines before the limit, r
   expect(data.rows).toHaveLength(10);
   expect(data.hasMore).toBe(true);
   expect(data.rows[0]?.revenue).toBe(row.revenue);
+  expect(data.rows[0]?.image_url).toBeNull();
   const body = fake.submitted(0);
   expect(body.query).toContain("sm_store_id = @store_id AND is_order_sm_valid = TRUE");
   expect(body.query).toContain(
@@ -53,6 +54,8 @@ it("guards, parameterizes and aggregates valid product lines before the limit, r
   expect(body.query).toContain("sm_product_variant_key");
   expect(body.query).toContain("ORDER BY order_processed_at_local_datetime DESC, CONCAT(COALESCE(product_title");
   expect(body.query).not.toContain("sm_order_line_key");
+  expect(body.query).not.toContain("dim_product_variants");
+  expect(body.query).not.toContain("primary_product_image_url");
   expect(body.query).toContain("SUM(revenue) OVER () AS total_revenue");
   expect(body.query).toContain("ORDER BY units DESC NULLS LAST");
   expect(body.query).not.toContain(filters.storeId);

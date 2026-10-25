@@ -143,7 +143,7 @@ brand and labels each store with its name, then the domain from `store_url`,
 then its store ID. Blank names and missing or invalid website URLs fall through
 automatically; neither is required. Duplicate labels include the ID.
 Website domains also appear beneath named stores. Configured HTTPS logos appear
-in the header and picker; missing, invalid, or broken logos fall back to initials.
+in the header, picker and All stores table; missing, invalid, or broken logos fall back to initials.
 The browser loads logos without sending the report URL as a referrer.
 The selected value and shareable URL remain `?store=<sm_store_id>`, so renaming
 a store does not break links. `app.config.ts` `storeLabels` is an optional
@@ -515,6 +515,18 @@ contribute to period totals but never pad either list.
 `ChartCard` supports dashed comparison series and horizontal bars, and
 `DataTable` accepts server-computed totals. Keep allowed SQL dimensions and
 calendar expressions in fixed maps. Do not build a general query builder.
+
+Products also selects the latest non-empty `dim_product_variants.primary_product_image_url`
+within each product or variant identity, ordered by variant update time with a stable URL tie-breaker.
+One bounded, cached catalog query loads images for the visible identities after ranking.
+It is shared by all thumbnails and streams separately, so slow or unavailable catalog data cannot
+delay or hide financial metrics. It cannot change totals, ranking or eligibility. Reading the
+product dimension avoids scanning wide image URLs across every comparison's order lines.
+Missing catalog entries and expected warehouse failures keep the fallback; query failures stay in the warehouse logs.
+The first three ranked products form a compact catalog strip; the detail table uses the same
+photos. Images are decorative alongside the product's text, load lazily without
+a report referrer, and fall back to a package icon when unavailable. Only HTTPS
+URLs without credentials or plain same-origin sample asset paths are accepted.
 
 ## Applying report filters
 
