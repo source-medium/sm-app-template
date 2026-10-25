@@ -36,7 +36,10 @@ export type ChartSeries = { key: string; label: string; color: string; dashed?: 
 export type ChartDatum = { label: string } & Record<string, string | number | null>;
 
 export type ChartCardProps = {
+  /** The accessible name of the chart, its table and the card. */
   title: string;
+  /** Shown in place of `title`, such as a measure menu; `title` still names the chart. */
+  heading?: React.ReactNode;
   description?: string;
   definition?: React.ReactNode;
   kind: "line" | "bar";
@@ -55,6 +58,7 @@ export type ChartCardProps = {
 
 export function ChartCard({
   title,
+  heading,
   description,
   definition,
   kind,
@@ -66,7 +70,9 @@ export function ChartCard({
   valueFormat = "number",
   showPoints = false,
 }: ChartCardProps) {
-  const [showTable, setShowTable] = useState(!plottable);
+  const [tableChosen, setTableChosen] = useState(false);
+  // Derived, so switching to a measure that cannot be plotted always lands on the table.
+  const showTable = tableChosen || !plottable;
   const hydrated = useHydrated();
   const regionId = useId();
   const Plot = kind === "line" ? LineChart : BarChart;
@@ -79,7 +85,7 @@ export function ChartCard({
   return (
     <Card data-agent-target={title} data-agent-component="ChartCard">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle>{heading ?? title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
         {definition && (
           <Disclosure summary="About this number">
@@ -108,7 +114,7 @@ export function ChartCard({
                       data-agent-element={`View as ${label.toLowerCase()}`}
                       aria-pressed={showTable === table}
                       aria-controls={regionId}
-                      onClick={() => setShowTable(table)}
+                      onClick={() => setTableChosen(table)}
                       className="min-w-8 px-2 aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-card"
                     >
                       <Icon aria-hidden />

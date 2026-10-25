@@ -1,4 +1,4 @@
-import { choose, openDisclosure } from "../../../e2e/helpers";
+import { choose, chooseMeasure, openDisclosure } from "../../../e2e/helpers";
 import { switchStore } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
 
@@ -12,15 +12,15 @@ test("overview: cumulative trends and revenue highlights preserve scope and exac
   expect(new URL(page.url()).searchParams.get("store")).toBe("sample-store-a");
   expect(new URL(page.url()).searchParams.get("compare")).toBe("previous");
   expect(await page.locator('[data-slot="kpi-value"]').allTextContents()).toEqual(totals);
-  const card = page.locator('[data-slot="card"]', { hasText: "Cumulative net revenue" });
+  const card = page.locator('[data-slot="card"]', { hasText: "Net revenue to date" });
   await card.getByRole("button", { name: "View as table", exact: true }).click();
-  const table = card.getByRole("table", { name: "Cumulative net revenue", exact: true });
+  const table = card.getByRole("table", { name: "Net revenue to date", exact: true });
   await expect(table).toBeVisible();
   const last = table.getByRole("row").last();
   await expect(last).toContainText(totals[0] ?? "missing revenue");
   await expect(page.getByRole("table", { name: "Largest daily revenue changes", exact: true })).toBeVisible();
   await card.getByRole("button", { name: "View as chart", exact: true }).click();
-  await expect(page.getByRole("img", { name: "Cumulative net revenue chart", exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Net revenue to date chart", exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("foundation-overview.png"), fullPage: true });
   await page.reload();
   await expect(page.getByLabel("Trend values", { exact: true })).toHaveValue("cumulative");
@@ -166,10 +166,7 @@ test("overview: metric definitions open and close by keyboard", async ({ page })
 
 test("overview: a chart opens as an accessible table", async ({ page }) => {
   await page.goto("/overview");
-  await page
-    .getByRole("group", { name: "Trend metric" })
-    .getByRole("button", { name: "Summary orders", exact: true })
-    .click();
+  await chooseMeasure(page, "Net revenue", "Summary orders");
   const card = page.locator('[data-slot="card"]', { hasText: "Summary orders by day" });
   await card.getByRole("button", { name: "View as table" }).click();
   await expect(card.getByRole("table", { name: "Summary orders by day" })).toBeVisible();
@@ -484,15 +481,13 @@ test("overview changes loaded series without a server request and restores it on
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=off");
-  const controls = page.getByRole("group", { name: "Trend metric" });
-  await expect(controls).toBeVisible();
   const requests: string[] = [];
   page.on("request", (request) => {
     if (["fetch", "xhr", "document"].includes(request.resourceType())) requests.push(request.url());
   });
-  await controls.getByRole("button", { name: "Summary orders", exact: true }).click();
+  await chooseMeasure(page, "Net revenue", "Summary orders");
   await expect(page.getByRole("img", { name: "Summary orders by day chart", exact: true })).toBeVisible();
-  await controls.getByRole("button", { name: "Ad spend", exact: true }).click();
+  await chooseMeasure(page, "Summary orders", "Ad spend");
   await expect(page.getByRole("img", { name: "Ad spend by day chart", exact: true })).toBeVisible();
   expect(requests).toEqual([]);
   await page.getByRole("button", { name: "Copy report link", exact: true }).click();
@@ -503,24 +498,23 @@ test("overview changes loaded series without a server request and restores it on
   expect(shared.searchParams.get("from")).toBe("2026-09-01");
   expect(shared.searchParams.get("compare")).toBe("off");
   await page.goBack();
-  await expect(controls.getByRole("button", { name: "Summary orders", exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(page.getByRole("img", { name: "Summary orders by day chart", exact: true })).toBeVisible();
+  // The link's measure wins over the one this browser remembered last (Ad spend).
   await page.reload();
-  await expect(controls.getByRole("button", { name: "Summary orders", exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await controls.getByRole("button", { name: "Show all trends", exact: true }).click();
-  await expect(page.getByRole("button", { name: "View as table", exact: true })).toHaveCount(3);
+  await expect(page.getByRole("img", { name: "Summary orders by day chart", exact: true })).toBeVisible();
+  // The first entry was named on load, so Back returns to the default rather than the remembered measure.
+  await page.goBack();
+  await expect(page.getByRole("img", { name: "Net revenue by day chart", exact: true })).toBeVisible();
+  const showAll = page.getByRole("button", { name: "Show all trends", exact: true });
+  await showAll.click();
+  await expect(page.getByRole("button", { name: "View as table", exact: true })).toHaveCount(6);
   await page.getByRole("button", { name: "Copy report link", exact: true }).click();
   await expect
     .poll(async () =>
       new URL(await page.evaluate(() => navigator.clipboard.readText())).searchParams.get("show_trends"),
     )
     .toBe("all");
-  await controls.getByRole("button", { name: "Net revenue", exact: true }).click();
+  await showAll.click();
   await page.getByRole("button", { name: "Copy report link", exact: true }).click();
   await expect
     .poll(async () =>

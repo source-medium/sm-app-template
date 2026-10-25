@@ -36,6 +36,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
       description="Compare monthly purchase cohorts at the same age, one sales channel at a time."
       pathname="/retention"
       params={params}
+      chartParams={["rate_curve", "value_curve"]}
       // The latest complete month depends on the store's date, so the shell applies these once it knows it.
       defaults={(today) => {
         const options = retentionOptions(params, today);

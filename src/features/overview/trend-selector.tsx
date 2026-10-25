@@ -1,52 +1,45 @@
 "use client";
 import { useSearchParams } from "next/navigation";
-import { ChartCard, type ChartCardProps } from "@/components/charts/chart-card";
+import { ChartCard } from "@/components/charts/chart-card";
+import { MetricChartCard, metricCard, useChartMetric, type MetricChartProps } from "@/components/charts/metric-chart";
 import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
 import { Button } from "@/components/ui/button";
 
-/** Only presentation changes. Native history updates preserve URLs without a server navigation. */
-export function OverviewTrendSelector({ charts }: { charts: (ChartCardProps & { key: string; label: string })[] }) {
+/**
+ * One trend with a measure menu, or every measure side by side. Only presentation changes; native history keeps
+ * the URL. The chosen measure stays named and remembered while all trends show, so it returns when they are hidden.
+ */
+export function OverviewTrendSelector(props: MetricChartProps) {
   const params = useSearchParams();
-  const selected = charts.some((chart) => chart.key === params.get("metric")) ? params.get("metric") : charts[0]?.key;
   const all = params.get("show_trends") === "all";
-  function choose(key: string, value: string | null) {
+  const choice = useChartMetric(
+    props.param,
+    props.metrics.map((metric) => metric.key),
+  );
+  const { param: _param, metrics, titleSuffix, ...card } = props;
+  function toggleAll() {
     const url = new URL(window.location.href);
-    if (value === null) url.searchParams.delete(key);
-    else url.searchParams.set(key, value);
+    if (all) url.searchParams.delete("show_trends");
+    else url.searchParams.set("show_trends", "all");
     window.history.pushState(null, "", url);
   }
   return (
     <div className="space-y-3">
-      <input type="hidden" name="metric" value={selected ?? "revenue"} form={REPORT_FILTER_FORM_ID} />
       {all && <input type="hidden" name="show_trends" value="all" form={REPORT_FILTER_FORM_ID} />}
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Trend metric">
-        {charts.map((chart) => (
-          <Button
-            key={chart.key}
-            variant={selected === chart.key && !all ? "default" : "outline"}
-            size="sm"
-            aria-pressed={selected === chart.key && !all}
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.set("metric", chart.key);
-              url.searchParams.delete("show_trends");
-              window.history.pushState(null, "", url);
-            }}
-          >
-            {chart.label}
-          </Button>
-        ))}
-        <Button variant="ghost" size="sm" aria-pressed={all} onClick={() => choose("show_trends", all ? null : "all")}>
+      <div className="flex justify-end">
+        <Button variant="ghost" size="sm" aria-pressed={all} onClick={toggleAll}>
           Show all trends
         </Button>
       </div>
-      <div className={all ? "grid gap-4 lg:grid-cols-2" : "min-w-0"}>
-        {charts
-          .filter((chart) => all || chart.key === selected)
-          .map(({ key, ...chart }) => (
-            <ChartCard key={key} {...chart} />
+      {all ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {metrics.map((metric) => (
+            <ChartCard key={metric.key} {...metricCard(card, metric, titleSuffix)} />
           ))}
-      </div>
+        </div>
+      ) : (
+        <MetricChartCard {...props} {...choice} />
+      )}
     </div>
   );
 }

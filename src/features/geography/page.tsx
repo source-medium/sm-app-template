@@ -9,7 +9,8 @@ import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { KpiCard, type KpiDelta } from "@/components/patterns/kpi-card";
 import { DataTable } from "@/components/patterns/data-table";
-import { ChartCard } from "@/components/charts/chart-card";
+import { MetricChart } from "@/components/charts/metric-chart";
+import { buildChartData, type PointValue } from "@/components/charts/chart-data";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
@@ -50,6 +51,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
         },
       ]}
       bindings={bindings}
+      chartParams={["metric"]}
       agentFilters={{ date_basis: dateBasis, population: "valid", country, region, sales_channel: channel }}
       defaults={() => ({ date_basis: dateBasis })}
     >
@@ -202,6 +204,22 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                             country ? { region: code } : { country: code, region: null },
                           );
                     const trends = new Map(data.trend.map((row) => [row.date, row]));
+                    /** One measure of the daily trend; a date without rows stays a gap. */
+                    const trendMetric = (
+                      key: string,
+                      metricLabel: string,
+                      point: (row: GeographyRow | undefined) => PointValue,
+                    ) => ({
+                      key,
+                      label: metricLabel,
+                      series: [{ key, label: metricLabel, color: "var(--chart-1)" }],
+                      ...buildChartData(
+                        datesInRange(filters.range).map((date) => ({
+                          label: formatDate(date),
+                          values: { [key]: point(trends.get(date)) },
+                        })),
+                      ),
+                    });
                     /** The destination table for one comparison slot; both are rendered and the active one shows. */
                     const table = (slot: 0 | 1) => {
                       const baseline = plan?.slots[slot];
@@ -323,17 +341,22 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                             </p>
                           )}
                         </div>
-                        <ChartCard
-                          title={`${region ? label(region) : (country ?? "All destinations")}: valid-order net revenue`}
-                          description="Selected shipping population by local date. Dates without matching orders remain gaps; missing revenue is not zero."
+                        <MetricChart
+                          param="metric"
+                          titleSuffix={`by day in ${region ? label(region) : (country ?? "all destinations")}`}
+                          description="Valid orders in the selected shipping population, by local date. Dates without matching orders remain gaps, not zeros."
                           categoryHeader="Date"
                           kind="line"
-                          series={[{ key: "revenue", label: "Net revenue", color: "var(--chart-1)" }]}
-                          data={datesInRange(filters.range).map((date) => ({
-                            label: formatDate(date),
-                            revenue: decimalToNumber(trends.get(date)?.revenue ?? null),
-                            revenue__display: money(trends.get(date)?.revenue ?? null),
-                          }))}
+                          metrics={[
+                            trendMetric("revenue", "Net revenue", (row) => ({
+                              value: decimalToNumber(row?.revenue ?? null),
+                              display: money(row?.revenue ?? null),
+                            })),
+                            trendMetric("orders", "Valid orders", (row) => ({
+                              value: row?.orders ?? null,
+                              display: formatCount(row?.orders ?? null),
+                            })),
+                          ]}
                         />
                         {appConfig.nav.some((item) => item.href === "/orders") &&
                           (orders.href ? (

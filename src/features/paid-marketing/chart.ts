@@ -15,8 +15,8 @@ export type MetricValue = string | bigint | number | null;
 
 export type ChannelChart = {
   series: ChartSeries[];
-  /** Per date, each series key's value of the chosen metric. */
-  byDate: Map<string, Record<string, MetricValue>>;
+  /** Per date, each series key's summed inputs; `metricValue` derives any measure from them. */
+  byDate: Map<string, Map<string, AdMeasures>>;
   /** Every channel, in name order, for the channel picker. */
   channels: string[];
   /** True when some channels are combined as Other. */
@@ -25,7 +25,6 @@ export type ChannelChart = {
 
 export function channelChart(
   days: readonly ChannelDay[],
-  metric: PaidMetric,
   selected: string | null,
   grain: TimeGrain = "day",
 ): ChannelChart {
@@ -76,23 +75,14 @@ export function channelChart(
     );
     grouped.set(date, values);
   }
-  const byDate = new Map<string, Record<string, MetricValue>>();
-  for (const [date, groups] of grouped) {
-    byDate.set(
-      date,
-      Object.fromEntries(
-        [...groups].map(([key, row]) => [
-          key,
-          metric === "roas"
-            ? ratio(row.platformRevenue, decimalToNumber(row.spend))
-            : metric === "cpo"
-              ? ratio(decimalToNumber(row.spend), row.conversions)
-              : metric === "revenue"
-                ? row.platformRevenue
-                : row[metric],
-        ]),
-      ),
-    );
-  }
-  return { series, byDate, channels, folded };
+  return { series, byDate: grouped, channels, folded };
+}
+
+/** Ratios divide the summed inputs, so they are never averages of daily ratios. */
+export function metricValue(row: AdMeasures | undefined, metric: PaidMetric): MetricValue {
+  if (!row) return null;
+  if (metric === "roas") return ratio(row.platformRevenue, decimalToNumber(row.spend));
+  if (metric === "cpo") return ratio(decimalToNumber(row.spend), row.conversions);
+  if (metric === "revenue") return row.platformRevenue;
+  return row[metric];
 }

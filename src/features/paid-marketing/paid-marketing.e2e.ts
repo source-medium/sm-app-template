@@ -1,4 +1,4 @@
-import { choose } from "../../../e2e/helpers";
+import { choose, chooseMeasure } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
 import { appConfig } from "@/app.config";
 import { MAX_NAME_FILTER_QUERY_LENGTH } from "@/lib/ad-name-filters";
@@ -12,7 +12,8 @@ test("paid marketing: return intervals, classifications, and campaign creative d
   await expect(page.getByRole("table", { name: "Spend by campaign tactic details", exact: true })).toBeVisible();
   await choose(page, "Trend interval", "month");
   await expect(page).toHaveURL(/grain=month/);
-  await choose(page, "Measure", "cpo");
+  await expect(page.getByRole("img", { name: "Platform ROAS by channel over time chart", exact: true })).toBeVisible();
+  await chooseMeasure(page, "Platform ROAS", "Cost / conversion");
   await expect(page).toHaveURL(/metric=cpo/);
   const campaigns = page.getByRole("table", { name: "Campaigns by spend", exact: true });
   if (!appConfig.nav.some((item) => item.href === "/creatives")) {
@@ -96,7 +97,12 @@ test("paid marketing: calendar presets preserve the store and channel", async ({
   const href = await preset.getAttribute("href");
   if (!href) throw new Error("Last month preset has no link");
   await preset.click();
-  await expect(page).toHaveURL(href);
+  // The preset leaves the chart's measure to this browser's memory, which then names it again.
+  await expect(page).toHaveURL((url) => {
+    const scope = new URL(url);
+    scope.searchParams.delete("metric");
+    return scope.href === new URL(href, url).href && url.searchParams.get("metric") === "clicks";
+  });
   const params = new URL(page.url()).searchParams;
   expect(params.get("store")).toBe("sample-store-b");
   expect(params.get("channel")).toBe("Google");
@@ -113,11 +119,9 @@ test("paid marketing: calendar presets preserve the store and channel", async ({
 
 test("paid marketing: each picker replaces its own value and preserves the other filters", async ({ page }) => {
   await page.goto("/paid-marketing?store=sample-store-b&from=2026-09-01&to=2026-09-07&metric=spend&channel=Google");
-  await choose(page, "Measure", "clicks");
+  await chooseMeasure(page, "Spend", "Clicks");
   await expect(page).toHaveURL(/metric=clicks/);
-  // Let the clicks view render before the next choice, so its render cannot replace the channel picker mid-change.
-  await expect(page.getByText("Clicks by channel over time", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Ad platform", { exact: true })).not.toHaveAttribute("inert");
+  await expect(page.getByRole("img", { name: "Clicks by channel over time chart", exact: true })).toBeVisible();
   await choose(page, "Ad platform", "Meta");
   await expect(page).toHaveURL(/channel=Meta/);
   const params = new URL(page.url()).searchParams;
@@ -127,6 +131,29 @@ test("paid marketing: each picker replaces its own value and preserves the other
   expect(params.get("from")).toBe("2026-09-01");
   expect(params.get("to")).toBe("2026-09-07");
   await expect(page.getByRole("heading", { name: "Campaigns in Meta" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Clicks by channel over time chart", exact: true })).toBeVisible();
+});
+
+test("paid marketing: the chart's measure switches without a request, survives filter links, and is painted by the server", async ({
+  page,
+}) => {
+  const report = "/paid-marketing?store=sample-store-a&from=2026-09-01&to=2026-09-07";
+  await page.goto(`${report}&metric=spend`);
+  const requests: string[] = [];
+  page.on("request", (request) => {
+    if (["fetch", "xhr", "document"].includes(request.resourceType())) requests.push(request.url());
+  });
+  await chooseMeasure(page, "Spend", "Platform ROAS");
+  await expect(page.getByRole("img", { name: "Platform ROAS by channel over time chart", exact: true })).toBeVisible();
+  expect(requests).toEqual([]);
+  // The preset was built while the page named Spend; it resumes the live measure instead.
+  await page.getByRole("link", { name: "Last 28 days", exact: true }).click();
+  await expect(page).toHaveURL((url) => url.searchParams.get("from") !== "2026-09-01");
+  await expect(page.getByRole("img", { name: "Platform ROAS by channel over time chart", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/metric=roas/);
+  // Without a param, this browser's remembered measure is in the server's HTML.
+  const html = await (await page.request.get(report)).text();
+  expect(html).toContain("Platform ROAS by channel over time chart");
 });
 
 test("paid marketing: a channel filter narrows the campaigns", async ({ page }) => {
@@ -207,11 +234,11 @@ test("paid marketing: a near-limit Unicode name filter survives client navigatio
   expect(query.length).toBeLessThanOrEqual(MAX_NAME_FILTER_QUERY_LENGTH);
   await page.goto(`/paid-marketing?store=sample-store-a&from=2026-09-01&to=2026-09-07&${query}`);
   await expect(page.getByRole("table", { name: "Campaigns by spend" })).toBeVisible();
-  await choose(page, "Measure", "roas");
+  await chooseMeasure(page, "Spend", "Platform ROAS");
   await expect(page).toHaveURL(/metric=roas/);
   expect(new URL(page.url()).searchParams.get("names")).toBe(names);
   await expect(page.getByRole("table", { name: "Campaigns by spend" })).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel("Measure", { exact: true })).toHaveValue("roas");
+  await expect(page.getByRole("button", { name: "Measure: Platform ROAS", exact: true })).toBeVisible();
   await expect(page.getByRole("table", { name: "Campaigns by spend" })).toBeVisible();
 });

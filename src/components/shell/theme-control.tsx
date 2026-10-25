@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { setPreferenceCookie } from "@/lib/preference-cookie";
 import { parseTheme, THEME_COOKIE, type Theme } from "@/lib/theme";
 
 const appearances = {
@@ -28,7 +29,7 @@ export function ThemeControl({ initialTheme }: { initialTheme: Theme }) {
   function chooseTheme(value: string) {
     const next = parseTheme(value);
     document.documentElement.dataset.theme = next;
-    document.cookie = `${THEME_COOKIE}=${next}; Path=/; Max-Age=${next === "system" ? 0 : 31536000}; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+    setPreferenceCookie(THEME_COOKIE, next, next === "system" ? 0 : 31536000);
     setTheme(next);
   }
 

@@ -97,9 +97,10 @@ order alongside the other KPI measures. Missing dates remain gaps; unsafe
 INT64 values use the table only. Daily ratios are computed
 per day, while headline ratios continue to use full-period totals.
 
-Overview's **Performance trends** offers Daily and Cumulative values for net
-revenue, summary orders and ad spend, using the same bounded daily query.
-Cumulative money adds exact decimals before chart conversion. Each period
+Overview's **Performance trends** offers Daily and Cumulative values for each
+KPI measure, chosen from the chart's title, using the same bounded daily query.
+Cumulative money adds exact decimals before chart conversion, and cumulative
+ratios (revenue per order, MER) divide the running totals. Each period
 starts at its own first date; a missing date or measure makes the affected
 cumulative series unknown from then on. Calendar comparisons accumulate their
 own complete period before aligning dates, including leap days. KPI cards,

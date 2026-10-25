@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { switchStore } from "../../../e2e/helpers";
+import { chooseMeasure, switchStore } from "../../../e2e/helpers";
 
 test("retention: long segment values and search controls stay usable on a small phone", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 320, height: 740 });
@@ -159,6 +159,22 @@ test("retention: separate retention and LTV curves share channel/window controls
   await expect(page.getByLabel("Chart cohorts", { exact: true })).toHaveValue("earliest");
   expect(new URL(page.url()).searchParams.get("as_of")).toBe("2026-09");
   await expect(rate).toBeVisible();
+});
+
+test("retention: each curve card switches between measures on its own scale and keeps them through filters", async ({
+  page,
+}) => {
+  await page.goto("/retention?store=sample-store-a&as_of=2026-09");
+  await chooseMeasure(page, "Retention", "Second-purchase rate");
+  await expect(page.getByRole("img", { name: "Second-purchase rate by cohort age chart", exact: true })).toBeVisible();
+  await chooseMeasure(page, "Gross profit LTV", "Revenue LTR");
+  await expect(page.getByRole("img", { name: "Revenue LTR by cohort age chart", exact: true })).toBeVisible();
+  const params = new URL(page.url()).searchParams;
+  expect([params.get("rate_curve"), params.get("value_curve")]).toEqual(["second", "revenue"]);
+  await page.getByLabel("Acquisition sales channel", { exact: true }).selectOption("amazon");
+  await expect(page.getByLabel("Acquisition sales channel", { exact: true })).toHaveValue("amazon");
+  await expect(page.getByRole("img", { name: "Second-purchase rate by cohort age chart", exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Revenue LTR by cohort age chart", exact: true })).toBeVisible();
 });
 
 test("retention: keyboard scrolling keeps cohort labels pinned on a phone", async ({ page }) => {

@@ -13,7 +13,9 @@ Follow "Add a page" in `AGENTS.md`, and `docs/removing-the-example.md` when dele
 3. The patterns in `src/components/patterns` (KPI card, data table, card grid,
    ranked breakdown, cohort matrix) and the chart card in `src/components/charts`,
    each region inside `<Suspense>` and `<DataRegion timestamp={timeZone}>` for its
-   four states.
+   four states. When the loaded rows carry several measures on one scale, offer them
+   with `MetricChart` and list its `param` in `ReportPage chartParams`;
+   pick one in browser checks with `chooseMeasure` from e2e/helpers.ts.
 4. Data work per the `sm-data` skill. Every SQL string that reads
    `warehouse.table(...)` keeps `sm_store_id = @store_id`; `pnpm check` fails without it.
 5. Reuse `SelectFilter` for choices; it applies on change. Other report inputs use

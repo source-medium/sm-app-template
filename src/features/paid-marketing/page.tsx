@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { appConfig } from "@/app.config";
 import { Download } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { ChartCard } from "@/components/charts/chart-card";
+import { MetricChart } from "@/components/charts/metric-chart";
 import { buildChartData, type PointValue } from "@/components/charts/chart-data";
 import { DataRegion } from "@/components/patterns/data-region";
 import { EmptyState, LoadingState } from "@/components/patterns/data-states";
@@ -19,7 +19,7 @@ import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber } from "@/lib/data/decimal";
 import { parseTimeGrain, periodStart, periodRange, TIME_GRAINS } from "@/lib/time-grain";
 import { planRanges } from "@/lib/comparison";
-import { datesInRange, parseChoice, withParams, type SearchParams } from "@/lib/filters";
+import { datesInRange, withParams, type SearchParams } from "@/lib/filters";
 import {
   EMPTY_VALUE,
   formatCount,
@@ -31,7 +31,7 @@ import {
   formatMultiple,
   formatPercent,
 } from "@/lib/format";
-import { MAX_NAMED_CHANNELS, channelChart, type MetricValue } from "./chart";
+import { MAX_NAMED_CHANNELS, channelChart, metricValue, type MetricValue } from "./chart";
 import {
   PAID_METRICS,
   BREAKDOWN_DIMENSIONS,
@@ -65,7 +65,6 @@ const METRIC_LABELS: Record<PaidMetric, string> = {
 
 export default async function PaidMarketingPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
-  const metric = parseChoice(params, "metric", PAID_METRICS, "spend");
   const channel = paidChannel(params);
   const names = parseAdNameFilters(params);
   const nameKey = serializeAdNameFilters(names.rules);
@@ -84,9 +83,9 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
       description="Spend and delivery by channel and campaign for one store."
       pathname={PATHNAME}
       params={params}
+      chartParams={["metric"]}
       agentFilters={{
         channel,
-        metric,
         grain: parseTimeGrain(params),
         breakdown: breakdownDimension(params),
         names: nameKey,
@@ -115,12 +114,6 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                     label="Trend interval"
                     value={parseTimeGrain(params)}
                     options={[...TIME_GRAINS]}
-                  />
-                  <SelectFilter
-                    name="metric"
-                    label="Measure"
-                    value={metric}
-                    options={PAID_METRICS.map((value) => ({ value, label: METRIC_LABELS[value] }))}
                   />
                   <ChannelRosterFilter
                     load={async () => [...new Set((await paidData).channelDays.map((day) => day.channel))].sort()}
@@ -152,13 +145,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                     emptyMessage="This store has no ad delivery in the selected dates."
                   >
                     {(data) => (
-                      <PaidMarketingView
-                        data={data}
-                        filters={paidFilters}
-                        metric={metric}
-                        params={applied}
-                        currency={currency}
-                      />
+                      <PaidMarketingView data={data} filters={paidFilters} params={applied} currency={currency} />
                     )}
                   </DataRegion>
                 </Suspense>
@@ -218,31 +205,36 @@ function point(value: MetricValue, currency: string | null, metric: PaidMetric):
 function PaidMarketingView({
   data,
   filters,
-  metric,
   params,
   currency,
 }: {
   data: PaidMarketingData;
   filters: PaidMarketingFilters;
-  metric: PaidMetric;
   params: SearchParams;
   currency: string | null;
 }) {
   const money = formatMoneyIn(currency);
   const hasCreatives = appConfig.nav.some((item) => item.href === "/creatives");
   const grain = parseTimeGrain(params);
-  const { series, byDate, folded } = channelChart(data.channelDays, metric, filters.channel, grain);
-  const chart = buildChartData(
-    [...new Set(datesInRange(filters.range).map((date) => periodStart(date, grain)))].map((date) => {
-      const values: Record<string, PointValue> = {};
-      for (const item of series) values[item.key] = point(byDate.get(date)?.[item.key] ?? null, currency, metric);
-      const range = periodRange(date, grain, filters.range);
-      return {
-        label: grain === "day" ? formatDay(date) : formatDateRange(range),
-        values,
-      };
-    }),
-  );
+  const { series, byDate, folded } = channelChart(data.channelDays, filters.channel, grain);
+  const periods = [...new Set(datesInRange(filters.range).map((date) => periodStart(date, grain)))];
+  // Every measure travels with the page, so the chart's menu switches without a request.
+  const metrics = PAID_METRICS.map((metric) => ({
+    key: metric,
+    label: METRIC_LABELS[metric],
+    series,
+    ...buildChartData(
+      periods.map((date) => {
+        const values: Record<string, PointValue> = {};
+        for (const item of series)
+          values[item.key] = point(metricValue(byDate.get(date)?.get(item.key), metric), currency, metric);
+        return {
+          label: grain === "day" ? formatDay(date) : formatDateRange(periodRange(date, grain, filters.range)),
+          values,
+        };
+      }),
+    ),
+  }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -276,8 +268,10 @@ function PaidMarketingView({
               </p>
             </div>
           </Disclosure>
-          <ChartCard
-            title={`${METRIC_LABELS[metric]} by channel over time`}
+          <MetricChart
+            param="metric"
+            metrics={metrics}
+            titleSuffix="by channel over time"
             description={
               folded && !filters.channel
                 ? `The ${MAX_NAMED_CHANNELS} largest channels by impressions are named; the rest are combined as Other.`
@@ -285,9 +279,6 @@ function PaidMarketingView({
             }
             kind="line"
             categoryHeader="Date"
-            series={series}
-            data={chart.data}
-            plottable={chart.plottable}
           />
           <section aria-labelledby="campaigns-heading" className="flex flex-col gap-3">
             <SectionHeader

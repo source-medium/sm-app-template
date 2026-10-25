@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import type { MetricBinding } from "@/lib/metric-binding";
 import { DataStatus, PendingDataStatus } from "./data-status";
 /**
@@ -19,6 +20,8 @@ import { requireViewer } from "@/lib/auth/require-viewer";
 import { loadStores, resolveReportStore } from "@/lib/data/stores.server";
 import { parseComparisonPlan, planParams, type ComparisonPlan } from "@/lib/comparison";
 import { BaselineProvider } from "@/components/patterns/baseline-switch";
+import { ChartMemoryProvider } from "@/components/charts/chart-memory";
+import { CHART_MEMORY_COOKIE, parseChartMemory } from "@/lib/chart-memory";
 import { calendarDate } from "@/lib/format";
 import { dateRangeIssue, parseDateRange, single, type ReportFilters, type SearchParams } from "@/lib/filters";
 import type { ReportSource } from "@/lib/report-data";
@@ -56,6 +59,7 @@ export async function ReportPage({
   sources = [],
   bindings = [],
   clientPresentationParams = [],
+  chartParams = [],
   dataStatusAfterControls = false,
   defaults,
   children,
@@ -83,6 +87,11 @@ export async function ReportPage({
   bindings?: readonly MetricBinding[];
   /** URL presentation keys a feature updates through native history, without a warehouse request. */
   clientPresentationParams?: readonly string[];
+  /**
+   * Each `MetricChart` param. Copied links name the live measure; links built
+   * here never carry one, so following them resumes the measure the browser remembers.
+   */
+  chartParams?: readonly string[];
   dataStatusAfterControls?: boolean;
   /**
    * URL parameters a view derives from the store's date, such as a default
@@ -94,6 +103,9 @@ export async function ReportPage({
 }) {
   const access = await requireViewer();
   const fixedStore = access.storeId !== null;
+  // Links built from these params resume each chart's remembered measure rather than a stale one (see chartParams).
+  params = Object.fromEntries(Object.entries(params).filter(([key]) => !chartParams.includes(key)));
+  const livePresentationParams = [...clientPresentationParams, ...chartParams];
 
   // Each header also gets the current params, which grow as date defaults and the comparison apply.
   const header = {
@@ -105,7 +117,7 @@ export async function ReportPage({
     agentOmissions,
     sources,
     bindings,
-    clientPresentationParams,
+    clientPresentationParams: livePresentationParams,
     allStores,
     mode: access.mode,
   };
@@ -161,7 +173,9 @@ export async function ReportPage({
   const plan = comparisons && dates ? parseComparisonPlan(params, range, today) : undefined;
   if (plan) params = { ...params, ...planParams(plan) };
   // Which slot the charts and tables show is a presentation choice made without a request.
-  const presentationParams = plan ? [...clientPresentationParams, "baseline"] : clientPresentationParams;
+  const presentationParams = plan ? [...livePresentationParams, "baseline"] : livePresentationParams;
+  // Read on the server, so a reload paints each chart's remembered measure without a client-side switch.
+  const chartMemory = parseChartMemory((await cookies()).get(CHART_MEMORY_COOKIE)?.value);
   const zoneLabel = /^[+-]/.test(timeZone) ? `UTC${timeZone}` : timeZone;
   const dataStatus =
     !issue && sources.length > 0 && !allStores ? (
@@ -203,15 +217,17 @@ export async function ReportPage({
         />
       ) : (
         <BaselineProvider initial={plan?.active ?? 0}>
-          {children({
-            filters: { storeId, range },
-            params: { ...params, store: storeId },
-            plan,
-            today,
-            timeZone,
-            currency,
-            dataStatus,
-          })}
+          <ChartMemoryProvider initial={chartMemory}>
+            {children({
+              filters: { storeId, range },
+              params: { ...params, store: storeId },
+              plan,
+              today,
+              timeZone,
+              currency,
+              dataStatus,
+            })}
+          </ChartMemoryProvider>
         </BaselineProvider>
       )}
       <footer className="border-t pt-4 text-xs text-muted-foreground">

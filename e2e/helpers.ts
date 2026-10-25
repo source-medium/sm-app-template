@@ -86,6 +86,15 @@ export async function choose(page: Page, label: string, value: Parameters<Locato
   await select.selectOption(value);
 }
 
+/** Picks a chart's measure from its title menu, which accepts a choice once hydrated. */
+export async function chooseMeasure(page: Page, current: string, next: string) {
+  const menu = page.getByRole("button", { name: `Measure: ${current}`, exact: true });
+  await expect(menu).not.toHaveAttribute("inert");
+  await menu.click();
+  await page.getByRole("menuitemradio", { name: next, exact: true }).click();
+  await expect(page.getByRole("button", { name: `Measure: ${next}`, exact: true })).toBeVisible();
+}
+
 /** Disclosures are intentionally reset when a new filtered data region mounts. */
 export async function openDisclosure(page: Page, summary: string) {
   const details = page

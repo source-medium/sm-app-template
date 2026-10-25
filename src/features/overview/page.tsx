@@ -56,7 +56,8 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   return (
     <ReportPage
       dataStatusAfterControls
-      clientPresentationParams={["metric", "show_trends"]}
+      clientPresentationParams={["show_trends"]}
+      chartParams={["metric"]}
       bindings={overviewBindings}
       maxDays={appConfig.summaryMaxDays}
       sources={[
@@ -73,7 +74,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       agentFilters={{ sales_channel: channel, grain, trend: trendMode }}
       comparisons
     >
-      {({ filters, plan, timeZone, currency, dataStatus }) => {
+      {({ filters, plan, timeZone, currency, dataStatus, params: applied }) => {
         const selected: OverviewFilters = { ...filters, channel, grain };
         const comparisonParams = planParams(plan);
         return (
@@ -97,7 +98,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                 emptyAction={
                   channel
                     ? {
-                        href: withParams("/overview", params, { sales_channel: "" }),
+                        href: withParams("/overview", applied, { sales_channel: "" }),
                         label: "Show all sales channels",
                       }
                     : undefined
@@ -312,7 +313,16 @@ function OverviewView({
       ) : null,
       charts: (
         <OverviewTrendSelector
-          charts={charts.map((chart) => ({
+          param="metric"
+          kind="line"
+          categoryHeader="Date"
+          titleSuffix={trendMode === "cumulative" ? "to date" : "by day"}
+          description={
+            showLines
+              ? `Selected period and dashed comparison (${baseline?.label ?? "comparison"}). Comparison dates appear in the table and tooltip.`
+              : "Selected period"
+          }
+          metrics={charts.map((chart) => ({
             ...chart,
             definition: (
               <MetricDefinition
@@ -320,11 +330,6 @@ function OverviewView({
                 scope={scope}
               />
             ),
-            kind: "line",
-            categoryHeader: "Date",
-            description: showLines
-              ? `Selected period and dashed comparison (${baseline?.label ?? "comparison"}). Comparison dates appear in the table and tooltip.`
-              : "Selected period",
             series: [
               { key: chart.key, label: chart.label, color: "var(--chart-1)" },
               ...(showLines

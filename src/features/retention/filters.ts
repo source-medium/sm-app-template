@@ -14,11 +14,12 @@ export const ACQUISITION_DIMENSIONS = [
   { value: "sub_channel", label: "First-order sub-channel" },
 ] as const;
 export type AcquisitionDimension = (typeof ACQUISITION_DIMENSIONS)[number]["value"];
+/** `chartLabel` names the measure in a curve's title menu. */
 export const RETENTION_METRICS = [
-  { value: "retention", label: "Monthly retention" },
-  { value: "second", label: "Purchased a second time" },
-  { value: "revenue", label: "Cumulative revenue / customer (LTR)" },
-  { value: "profit", label: "Cumulative gross profit / customer (LTV)" },
+  { value: "retention", label: "Monthly retention", chartLabel: "Retention" },
+  { value: "second", label: "Purchased a second time", chartLabel: "Second-purchase rate" },
+  { value: "revenue", label: "Cumulative revenue / customer (LTR)", chartLabel: "Revenue LTR" },
+  { value: "profit", label: "Cumulative gross profit / customer (LTV)", chartLabel: "Gross profit LTV" },
 ] as const;
 export type RetentionMetric = (typeof RETENTION_METRICS)[number]["value"];
 export const COHORT_WINDOWS = [

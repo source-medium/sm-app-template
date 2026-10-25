@@ -2,7 +2,7 @@ import { appConfig } from "@/app.config";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { expectNoSeriousA11yViolations, choose } from "../../../e2e/helpers";
+import { expectNoSeriousA11yViolations, choose, chooseMeasure } from "../../../e2e/helpers";
 const query = "store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=off";
 test("geography preserves shipping population and created date basis through Orders and back", async ({ page }) => {
   test.skip(!appConfig.nav.some((item) => item.href === "/orders"), "Orders example removed");
@@ -60,6 +60,21 @@ for (const width of [320, 1280])
       await page.screenshot({ path: info.outputPath(`geography-${width}-${theme}.png`), fullPage: true });
     });
   }
+
+test("geography: the daily trend's measure survives filter links and form submits", async ({ page }) => {
+  await page.goto("/geography?store=sample-store-a&from=2026-09-01&to=2026-09-07&country=US&region=CA&metric=revenue");
+  await chooseMeasure(page, "Net revenue", "Valid orders");
+  await expect(page.getByRole("img", { name: /^Valid orders by day in .+ chart$/ })).toBeVisible();
+  await expect(page).toHaveURL(/metric=orders/);
+  // This link was built while the page named Net revenue; it resumes the live measure instead.
+  await page.getByRole("link", { name: "All regions in US", exact: true }).click();
+  await expect(page).toHaveURL((url) => !url.searchParams.has("region"));
+  await expect(page.getByRole("img", { name: "Valid orders by day in US chart", exact: true })).toBeVisible();
+  await choose(page, "Date basis", "created");
+  await expect(page).toHaveURL(/date_basis=created/);
+  await expect(page.getByRole("img", { name: "Valid orders by day in US chart", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/metric=orders/);
+});
 
 test("map geometry stays off other reports and loads only when a phone requests a map", async ({ page }) => {
   const markers = ["countries.json", "us-states.json"].map((file) => {

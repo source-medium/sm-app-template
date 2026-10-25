@@ -84,3 +84,21 @@ it("leaves an unmatched leap day empty without losing the next comparison point"
   expect(charts[0]?.data[1]?.previous_revenue__display).toBe("No matching calendar day");
   expect(charts[0]?.data[2]?.revenue__display).toBe("$60.00");
 });
+
+it("offers every KPI measure, dividing running totals for cumulative ratios", () => {
+  const range = { from: "2026-09-01", to: "2026-09-02" };
+  const days = [day("2026-09-01", "30", 3, "10"), day("2026-09-02", "90", 1, "0")];
+  const daily = overviewTrends(days, range, "daily", "USD");
+  expect(daily.map((chart) => chart.key)).toEqual(["revenue", "orders", "average", "spend", "mer", "sessions"]);
+  const mer = daily.find((chart) => chart.key === "mer");
+  expect(mer?.label).toBe("Marketing efficiency (MER)");
+  expect(mer?.data.map((row) => row.mer)).toEqual([3, null]);
+  // Zero spend is an undefined ratio on a day that has data, not a gap.
+  expect(mer?.data[1]?.mer__display).not.toBe("No data");
+  const cumulative = overviewTrends(days, range, "cumulative", "USD");
+  expect(cumulative.find((chart) => chart.key === "mer")?.data.map((row) => row.mer)).toEqual([3, 12]);
+  expect(cumulative.find((chart) => chart.key === "average")?.data.map((row) => row.average)).toEqual([10, 30]);
+  expect(cumulative.find((chart) => chart.key === "sessions")?.data.map((row) => row.sessions)).toEqual([10, 20]);
+  const missing = overviewTrends([days[0] as OverviewDay], range, "daily", "USD").find((chart) => chart.key === "mer");
+  expect(missing?.data[1]?.mer__display).toBe("No data");
+});
