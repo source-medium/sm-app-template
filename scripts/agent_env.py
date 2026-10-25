@@ -87,7 +87,6 @@ def check_credentials(profile):
         os.environ.get(k)
         for k in (
             "CLOUDFLARE_API_TOKEN",
-            "DBT_CLOUD_API_TOKEN",
             "SENTRY_AUTH_TOKEN",
             "URCHIN_INTERNAL_API_TOKEN",
         )
@@ -95,6 +94,9 @@ def check_credentials(profile):
         raise SetupError(
             "use server adapters, not generic provider tokens in the agent environment"
         )
+    # dbt-monitor is the supported dbt control-plane client. Its dedicated
+    # per-profile token uses DBT_CLOUD_API_TOKEN; the provider enforces its
+    # permissions. Presence/absence here cannot establish read-only scope.
 
 
 def command_plan(data, path):
