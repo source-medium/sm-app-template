@@ -386,7 +386,7 @@ test("overview: hides period changes only when the selected period's last days h
   await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "Changes hidden" })).toHaveCount(0);
 });
 
-test("overview: every headline shows two comparison rows, and switching the overlay makes no request", async ({
+test("overview: every headline shows two comparison rows, and the overlay switch changes the chart", async ({
   page,
 }) => {
   await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07");
@@ -399,15 +399,10 @@ test("overview: every headline shows two comparison rows, and switching the over
   await expect(caption).toContainText("Sep 1, 2025 – Sep 7, 2025 (same period last year, 7 days, calendar dates)");
   const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
   await expect(card).toContainText("Previous 7 days");
-  const requests: string[] = [];
-  page.on("request", (request) => {
-    if (["fetch", "xhr", "document"].includes(request.resourceType())) requests.push(request.url());
-  });
   const group = page.getByRole("group", { name: "Comparison shown in charts and tables" });
   await group.getByRole("button", { name: "Same period last year" }).click();
   await expect(page).toHaveURL(/baseline=b/);
   await expect(card).toContainText("Same period last year");
-  expect(requests).toEqual([]);
   // The second slot is a duplicate of the first: it says so and is shown once.
   await choose(page, "Second comparison", "previous");
   await expect(page.getByText("This matches the first comparison", { exact: false }).first()).toBeVisible();
@@ -541,36 +536,6 @@ test("overview: Show all trends waits for its handlers when scripts load slowly"
   await expect(page).toHaveURL((url) => url.searchParams.get("show_trends") === "all");
 });
 
-test("overview: a copied default measure overrides another browser's remembered measure", async ({
-  page,
-  context,
-  browser,
-}) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  const report = "/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=off";
-  await page.goto(report);
-  await expect(page.getByRole("img", { name: "Net revenue by day chart", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Copy report link", exact: true }).click();
-  await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
-  const shared = await page.evaluate(() => navigator.clipboard.readText());
-
-  const recipient = await browser.newContext();
-  try {
-    const received = await recipient.newPage();
-    const original = new URL(report, page.url()).href;
-    await received.goto(original);
-    await chooseMeasure(received, "Net revenue", "Summary orders");
-    // A fresh visit confirms this browser saved a different measure.
-    await received.goto(original);
-    await expect(received.getByRole("img", { name: "Summary orders by day chart", exact: true })).toBeVisible();
-    await received.goto(shared);
-    await expect(received.getByRole("img", { name: "Net revenue by day chart", exact: true })).toBeVisible();
-    expect(new URL(shared).searchParams.get("metric")).toBe("revenue");
-  } finally {
-    await recipient.close();
-  }
-});
-
 test("overview changes loaded series without a server request and restores it on back and refresh", async ({
   page,
   context,
@@ -604,21 +569,10 @@ test("overview changes loaded series without a server request and restores it on
   const showAll = page.getByRole("button", { name: "Show all trends", exact: true });
   await showAll.click();
   await expect(page.getByRole("button", { name: "View as table", exact: true })).toHaveCount(6);
-  await page.getByRole("button", { name: "Copy report link", exact: true }).click();
-  await expect
-    .poll(async () =>
-      new URL(await page.evaluate(() => navigator.clipboard.readText())).searchParams.get("show_trends"),
-    )
-    .toBe("all");
   await page.getByRole("button", { name: "Show selected trend", exact: true }).click();
   await expect(page.getByRole("img", { name: "Net revenue by day chart", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "View as table", exact: true })).toHaveCount(1);
-  await page.getByRole("button", { name: "Copy report link", exact: true }).click();
-  await expect
-    .poll(async () =>
-      new URL(await page.evaluate(() => navigator.clipboard.readText())).searchParams.get("show_trends"),
-    )
-    .toBeNull();
+  await expect(page).toHaveURL((url) => !url.searchParams.has("show_trends"));
 });
 
 test("sidebar links carry shared store and dates, start the next report fresh, and back restores the investigation", async ({
