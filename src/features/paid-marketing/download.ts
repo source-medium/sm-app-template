@@ -1,16 +1,17 @@
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { csvExport, csvResponse, exportError, scopeColumns } from "@/lib/csv.server";
-import { campaignRatios, getPaidCampaigns, paidChannel } from "./queries";
-import { parseAdNameFilters, serializeAdNameFilters } from "@/lib/ad-name-filters";
+import { campaignRatios, getPaidCampaigns } from "./queries";
+import { serializeAdNameFilters } from "@/lib/ad-name-filters";
+import { paidMarketingOptions } from "./filters";
 
 /** Export the same filtered, bounded campaign set as the report, including all table pages. */
 export async function GET(request: Request): Promise<Response> {
   await requireViewer();
   return csvExport(request, async (scope) => {
     const { params, storeId, range, mode } = scope;
-    const names = parseAdNameFilters(params);
+    const { channel, names } = paidMarketingOptions(params);
     if (names.error) return exportError(400, { title: "Check the name filters", remedy: names.error });
-    const data = await getPaidCampaigns({ storeId, range, channel: paidChannel(params), names: names.rules });
+    const data = await getPaidCampaigns({ storeId, range, channel, names: names.rules });
     const rows = data.campaigns.map((row) => ({ ...row, ...campaignRatios(row) }));
     return csvResponse(
       `${mode}-campaigns${data.campaignsTruncated ? "-partial" : ""}-${range.from}-${range.to}.csv`,

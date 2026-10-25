@@ -11,7 +11,8 @@ import { seededRandom } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import { sampleAdNames, sampleNameMatches } from "@/lib/sample/ad-names";
 import { matchesAdNames } from "@/lib/ad-name-filters";
-import type { CreativeSort, CreativesData, CreativesFilters } from "./queries";
+import type { CreativesData, CreativesFilters } from "./queries";
+import type { CreativeSort } from "./filters";
 import { CREATIVE_RELATION, CreativeRow, MAX_CREATIVES, toCreative } from "./rows";
 
 const CREATIVES = [

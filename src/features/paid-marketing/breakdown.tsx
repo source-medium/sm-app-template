@@ -7,7 +7,8 @@ import { slotColumn } from "@/lib/data/period-sql";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatMoney, formatMoneyIn, formatPercent } from "@/lib/format";
 import { withParams, type SearchParams } from "@/lib/filters";
-import { type BreakdownDimension, type PaidMarketingFilters, type SpendBreakdown } from "./queries";
+import type { BreakdownDimension } from "./filters";
+import { type PaidMarketingFilters, type SpendBreakdown } from "./queries";
 
 export function SpendBreakdownView({
   data,

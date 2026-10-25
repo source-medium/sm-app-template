@@ -12,7 +12,8 @@ import type { OrderAttribution } from "./attribution";
 import type { OrderDateBasis } from "@/lib/order-scope";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { Instant } from "@/lib/data/decode";
-import type { ReportFilters } from "@/lib/filters";
+import { parseSalesChannel, single, type ReportFilters, type SearchParams } from "@/lib/filters";
+import { parseShippingDestination } from "@/lib/shipping-geography";
 import { queryOrderAttribution, queryOrderChannels, queryOrderDetail, queryOrders } from "./bigquery";
 import { sampleOrderAttribution, sampleOrderChannels, sampleOrderDetail, sampleOrders } from "./sample";
 
@@ -112,6 +113,32 @@ export function decodeRef(value: string | undefined): OrderRef | null {
   } catch {
     return null;
   }
+}
+
+/** The page's applied scope; an unsupported value names its remedy instead of widening the scope. */
+export function ordersOptions(params: SearchParams) {
+  const basisParam = single(params, "date_basis");
+  const dateBasis: OrderDateBasis | null = basisParam === "created" || basisParam === "processed" ? basisParam : null;
+  const population = single(params, "population");
+  const validOnly = population === "valid";
+  const { country, region } = parseShippingDestination(params);
+  const candidateCursor = decodeRef(single(params, "cursor"));
+  return {
+    search: single(params, "q")?.trim().slice(0, 64) || null,
+    channel: parseSalesChannel(params),
+    dateBasis,
+    validOnly,
+    country,
+    region,
+    scopeIssue:
+      (basisParam && !dateBasis ? "Choose a supported date basis." : null) ??
+      (region && !country ? "Choose a country before a shipping region." : null) ??
+      (population && !validOnly ? "Choose a supported order population." : null),
+    // A cursor from another date basis would page a different ordering.
+    cursor: (candidateCursor?.dateBasis ?? null) === dateBasis ? candidateCursor : null,
+    selected: decodeRef(single(params, "order")),
+    evidence: single(params, "evidence") === "attribution" ? ("attribution" as const) : null,
+  };
 }
 
 export async function getOrderChannels(

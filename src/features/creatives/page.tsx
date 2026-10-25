@@ -1,7 +1,7 @@
 import { creativeBindings, creativeBinding } from "./metrics";
 import { MetricDefinition } from "@/components/patterns/metric-definition";
 import { Input } from "@/components/ui/input";
-import { parseCreativeThreshold, parseCreativeSelection, type CreativeIdentity } from "./filters";
+import { CREATIVE_SORTS, creativesOptions, type CreativeIdentity, type CreativeSort } from "./filters";
 import { CREATIVE_RELATION } from "./rows";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -15,19 +15,12 @@ import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { AdNameFilter } from "@/components/patterns/ad-name-filter";
 import { AdNameMatchesRegion } from "@/components/patterns/ad-name-matches";
-import { parseAdNameFilters, serializeAdNameFilters } from "@/lib/ad-name-filters";
+import { serializeAdNameFilters } from "@/lib/ad-name-filters";
 import { ReportPage } from "@/components/shell/report-page";
-import { parseChoice, single, withParams, REPORT_FILTER_FORM_ID, type SearchParams } from "@/lib/filters";
+import { single, withParams, REPORT_FILTER_FORM_ID, type ReportFilters, type SearchParams } from "@/lib/filters";
 import { formatCount, formatAttributedConversions, formatMoney, formatPercent, formatMultiple } from "@/lib/format";
 import { Disclosure } from "@/components/ui/disclosure";
-import {
-  CREATIVE_SORTS,
-  getCreativeChannels,
-  getCreatives,
-  getCreativeNames,
-  type CreativeSort,
-  type CreativesData,
-} from "./queries";
+import { getCreativeChannels, getCreatives, getCreativeNames, type CreativesData } from "./queries";
 
 export const metadata: Metadata = { title: "Creatives" };
 
@@ -45,17 +38,17 @@ const SORT_LABELS: Record<CreativeSort, string> = {
 
 export default async function CreativesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
-  const channel = single(params, "channel")?.slice(0, 100) || null;
-  const campaign = single(params, "campaign")?.slice(0, 200) || null;
-  const view = parseChoice(params, "view", ["delivery", "returns", "table"] as const, "returns");
-  const minimumSpend = parseCreativeThreshold(single(params, "min_spend"));
-  const minimumConversions = parseCreativeThreshold(single(params, "min_conversions"));
-  const thresholdError =
-    (single(params, "min_spend") && minimumSpend === null) ||
-    (single(params, "min_conversions") && minimumConversions === null);
-  const selection = parseCreativeSelection(params);
-  const sort = parseChoice(params, "sort", CREATIVE_SORTS, "spend");
-  const names = parseAdNameFilters(params);
+  const { channel, campaign, view, sort, minimumSpend, minimumConversions, thresholdError, selection, names } =
+    creativesOptions(params);
+  // The parsed filters, so a metric definition never echoes a rejected or overlong URL value.
+  const definitionFilters = (filters: ReportFilters) => ({
+    store: filters.storeId,
+    ...filters.range,
+    channel,
+    campaign,
+    min_spend: minimumSpend,
+    min_conversions: minimumConversions,
+  });
   const nameKey = serializeAdNameFilters(names.rules);
   return (
     <ReportPage
@@ -251,6 +244,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                               timeZone={timeZone}
                               view="returns"
                               selection={selection.items}
+                              scopeFilters={definitionFilters(filters)}
                               params={{ ...applied, ...filters.range }}
                               comparison
                             />
@@ -299,6 +293,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                       timeZone={timeZone}
                       view={view}
                       selection={selection.items}
+                      scopeFilters={definitionFilters(filters)}
                       params={{ ...applied, ...filters.range }}
                     />
                   )}
@@ -319,10 +314,12 @@ function CreativesView({
   view,
   selection,
   params,
+  scopeFilters,
   comparison = false,
 }: {
   selection: readonly CreativeIdentity[];
   params: SearchParams;
+  scopeFilters: Record<string, string | null>;
   comparison?: boolean;
   data: CreativesData;
   currency: string | null;
@@ -381,15 +378,7 @@ function CreativesView({
               <MetricDefinition
                 binding={creativeBinding("roas")}
                 scope={{
-                  filters: {
-                    store: single(params, "store") ?? null,
-                    from: single(params, "from") ?? null,
-                    to: single(params, "to") ?? null,
-                    channel: creative.channel,
-                    campaign: single(params, "campaign") ?? null,
-                    min_spend: single(params, "min_spend") ?? null,
-                    min_conversions: single(params, "min_conversions") ?? null,
-                  },
+                  filters: { ...scopeFilters, channel: creative.channel },
                   currency,
                   timeZone,
                 }}

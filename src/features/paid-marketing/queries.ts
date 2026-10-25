@@ -8,7 +8,7 @@ import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { AdNameMatches, AdNameRule } from "@/lib/ad-name-filters";
 import { queryAdNameMatches } from "@/lib/data/ad-name-matches.server";
-import { parseChoice, single, type ReportFilters, type SearchParams } from "@/lib/filters";
+import type { ReportFilters } from "@/lib/filters";
 import type { z } from "zod";
 import type { SpendBreakdownRow } from "./rows";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
@@ -16,23 +16,9 @@ import { toChartNumber } from "@/lib/data/decode";
 import { queryPaidCampaigns, queryPaidMarketing, querySpendBreakdown } from "./bigquery";
 import { samplePaidMarketing, sampleSpendBreakdown, samplePaidNames } from "./sample";
 import type { BaselineRanges } from "@/lib/comparison";
+import type { BreakdownDimension } from "./filters";
 
-export const BREAKDOWN_DIMENSIONS = [
-  { value: "channel", label: "Channel" },
-  { value: "campaign", label: "Campaign" },
-  { value: "type", label: "Campaign type" },
-  { value: "tactic", label: "Campaign tactic" },
-] as const;
-export type BreakdownDimension = (typeof BREAKDOWN_DIMENSIONS)[number]["value"];
 export type SpendBreakdown = { rows: z.output<typeof SpendBreakdownRow>[]; hasMore: boolean };
-export function breakdownDimension(params: SearchParams): BreakdownDimension {
-  return parseChoice(
-    params,
-    "breakdown",
-    BREAKDOWN_DIMENSIONS.map((item) => item.value),
-    "channel",
-  );
-}
 
 export async function getSpendBreakdown(
   filters: PaidMarketingFilters,
@@ -76,10 +62,6 @@ export type PaidMarketingData = {
 };
 
 export type CampaignData = Pick<PaidMarketingData, "campaigns" | "campaignsTruncated">;
-
-export function paidChannel(params: SearchParams): string | null {
-  return single(params, "channel")?.slice(0, 100) || null;
-}
 
 /** Ratios use the same totals in the report and download; missing or unsafe inputs stay missing. */
 export function campaignRatios(row: CampaignRow) {

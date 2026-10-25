@@ -5,25 +5,13 @@
  * cards.
  */
 import "server-only";
-import { parseCreativeSelection, type CreativeIdentity } from "./filters";
+import { parseCreativeSelection, type CreativeIdentity, type CreativeSort } from "./filters";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { ReportFilters } from "@/lib/filters";
 import type { AdNameMatches, AdNameRule } from "@/lib/ad-name-filters";
 import { queryAdNameMatches } from "@/lib/data/ad-name-matches.server";
 import { queryCreativeChannels, queryCreatives } from "./bigquery";
 import { sampleCreativeChannels, sampleCreatives, sampleCreativeNames } from "./sample";
-
-export const CREATIVE_SORTS = [
-  "spend",
-  "impressions",
-  "clicks",
-  "conversions",
-  "ctr",
-  "revenue",
-  "roas",
-  "cpo",
-] as const;
-export type CreativeSort = (typeof CREATIVE_SORTS)[number];
 
 export type Creative = {
   creativeId: string;

@@ -7,7 +7,8 @@ import type { ReportFilters } from "@/lib/filters";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { adNamePredicate } from "@/lib/data/ad-name-sql";
 import { decodeRows } from "@/lib/data/decode";
-import type { CreativeSort, CreativesData, CreativesFilters } from "./queries";
+import type { CreativesData, CreativesFilters } from "./queries";
+import type { CreativeSort } from "./filters";
 import { CREATIVE_RELATION, CreativeChannelRow, CreativeRow, MAX_CREATIVES, toCreative } from "./rows";
 import { CACHE_POLICY } from "@/lib/data/query-cache";
 

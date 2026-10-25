@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { parseCreativeSelection, parseCreativeThreshold } from "./filters";
+import { creativesOptions, parseCreativeSelection, parseCreativeThreshold } from "./filters";
 it("accepts fractional thresholds and rejects negative, malformed or excessive decimals", () => {
   expect(parseCreativeThreshold("0.25")).toBe("0.25");
   for (const value of ["-1", "1e3", "Infinity", "0.0000000001", "1' OR TRUE"])
@@ -13,4 +13,13 @@ it("preserves compound identity and refuses duplicates and more than four select
   expect(parseCreativeSelection({ selection: JSON.stringify(items) })).toEqual({ items, error: null });
   for (const value of [[items[0], items[0]], [...items, ["Meta", "2"], ["Meta", "3"], ["Meta", "4"]], [["Meta"]]])
     expect(parseCreativeSelection({ selection: JSON.stringify(value) }).error).not.toBeNull();
+});
+it("flags a rejected threshold rather than dropping it silently, and bounds free text", () => {
+  expect(creativesOptions({ min_spend: "-1" })).toMatchObject({ minimumSpend: null, thresholdError: true });
+  expect(creativesOptions({ min_conversions: "2.5" })).toMatchObject({
+    minimumConversions: "2.5",
+    thresholdError: false,
+  });
+  expect(creativesOptions({})).toMatchObject({ view: "returns", sort: "spend", thresholdError: false });
+  expect(creativesOptions({ campaign: "c".repeat(250) }).campaign).toHaveLength(200);
 });

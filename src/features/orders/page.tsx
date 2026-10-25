@@ -1,7 +1,6 @@
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { ErrorState } from "@/components/patterns/data-states";
 import { orderDateLabel, type OrderDateBasis } from "@/lib/order-scope";
-import { parseShippingDestination } from "@/lib/shipping-geography";
 import { AttributionView } from "./attribution-view";
 import { ORDERS_RELATION } from "./rows";
 import type { Metadata } from "next";
@@ -13,13 +12,13 @@ import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { DataTable } from "@/components/patterns/data-table";
 import { buttonVariants } from "@/components/ui/button";
 import { ReportPage } from "@/components/shell/report-page";
-import { REPORT_FILTER_FORM_ID, parseSalesChannel, single, withParams, type SearchParams } from "@/lib/filters";
+import { REPORT_FILTER_FORM_ID, withParams, type SearchParams } from "@/lib/filters";
 import { EMPTY_VALUE, formatCount, formatInstant, formatLabel, formatMoney, formatWallTime } from "@/lib/format";
 import { OrderDrawer } from "./order-drawer";
 import { OrderSearchForm } from "./search-form";
 import {
-  decodeRef,
   encodeRef,
+  ordersOptions,
   getOrderDetail,
   getOrderAttribution,
   getOrders,
@@ -37,19 +36,8 @@ const PATHNAME = "/orders";
 
 export default async function OrdersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
-  const search = single(params, "q")?.trim().slice(0, 64) || null;
-  const channel = parseSalesChannel(params);
-  const basisParam = single(params, "date_basis");
-  const dateBasis: OrderDateBasis | null = basisParam === "created" || basisParam === "processed" ? basisParam : null;
-  const validOnly = single(params, "population") === "valid";
-  const { country, region } = parseShippingDestination(params);
-  const scopeIssue =
-    (basisParam && !dateBasis ? "Choose a supported date basis." : null) ??
-    (region && !country ? "Choose a country before a shipping region." : null) ??
-    (single(params, "population") && !validOnly ? "Choose a supported order population." : null);
-  const candidateCursor = decodeRef(single(params, "cursor"));
-  const cursor = (candidateCursor?.dateBasis ?? null) === dateBasis ? candidateCursor : null;
-  const selected = decodeRef(single(params, "order"));
+  const { search, channel, dateBasis, validOnly, country, region, scopeIssue, cursor, selected, evidence } =
+    ordersOptions(params);
 
   return (
     <ReportPage
@@ -150,7 +138,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               <>
                 <SectionHeader id="orders-heading" title="Orders, newest first" headingProps={{ tabIndex: -1 }} />
                 <Suspense
-                  key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${search}|${dateBasis}|${validOnly}|${country}|${region}|${single(params, "cursor")}`}
+                  key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${search}|${dateBasis}|${validOnly}|${country}|${region}|${cursor ? encodeRef(cursor) : ""}`}
                   fallback={<LoadingState variant="table" label="Loading orders" />}
                 >
                   <DataRegion
@@ -203,7 +191,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                       order ? (
                         <>
                           <OrderDetailList order={order} timeZone={timeZone} currency={currency} />
-                          {single(params, "evidence") === "attribution" ? (
+                          {evidence === "attribution" ? (
                             <Suspense fallback={<LoadingState variant="table" label="Loading attribution evidence" />}>
                               <DataRegion
                                 timestamp={timeZone}

@@ -13,7 +13,8 @@ import { matchesAdNames, type AdNames } from "@/lib/ad-name-filters";
 import type { PaidMarketingData, PaidMarketingFilters } from "./queries";
 import { AD_RELATION, CampaignWireRow, ChannelDayRow, MAX_CAMPAIGNS, toCampaign, toChannelDay } from "./rows";
 import { SpendBreakdownRow, MAX_BREAKDOWN } from "./rows";
-import type { BreakdownDimension, SpendBreakdown } from "./queries";
+import type { SpendBreakdown } from "./queries";
+import type { BreakdownDimension } from "./filters";
 import type { BaselineRanges } from "@/lib/comparison";
 
 const CAMPAIGNS = [
