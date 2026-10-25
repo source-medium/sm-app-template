@@ -414,6 +414,20 @@ describe("presentation params", () => {
     ]);
   });
 
+  it("checks forwarded chart keys at their fixed-key call site without treating props as a literal key", () => {
+    const controls = [
+      { path: "src/features/x/chart.tsx", text: '<TrendSelector param="metric" />' },
+      {
+        path: "src/features/x/selector.tsx",
+        text: 'writePresentationUrl(url);\n<input type="hidden" name={props.param} value={selected} />\n<MetricChart param={props.param} />',
+      },
+    ];
+    expect(findPresentationGaps([page('chartParams={["metric"]}'), ...controls])).toEqual([]);
+    expect(findPresentationGaps([page(""), ...controls])).toEqual([
+      "`src/features/x/chart.tsx` writes chart param `metric`, which `src/features/x/page.tsx` does not list in `ReportPage chartParams`; add it so copied links keep the choice.",
+    ]);
+  });
+
   it("passes on this repository's own views", () => {
     const files = readSourceFiles(".", "src");
     expect(files.some((file) => /\bparam="/.test(file.text))).toBe(true);

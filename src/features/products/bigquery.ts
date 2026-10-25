@@ -105,6 +105,8 @@ export async function queryProducts(filters: ProductFilters, baselines: Baseline
       ${measures.flatMap(([name]) => [`SUM(${name}) OVER () AS total_${name}`, `SUM(previous_${name}) OVER () AS total_previous_${name}`, `SUM(second_${name}) OVER () AS total_second_${name}`]).join(",\n")},
       MIN(${sort}) OVER () AS minimum_value
     FROM grouped ${filters.entity ? "WHERE product_key = @entity" : ""}
+    -- Keep all periods in the window totals, then exclude comparison-only products before the limit.
+    QUALIFY ${sort} IS NOT NULL
     -- Period gainers and decliners rank against the first comparison period.
     ORDER BY ${filters.ranking === "gainers" ? `${sort} - previous_${sort} DESC` : filters.ranking === "decliners" ? `${sort} - previous_${sort} ASC` : `${sort} DESC`} NULLS LAST, product_key LIMIT ${MAX_PRODUCTS + 1}`,
     params: [
@@ -114,8 +116,7 @@ export async function queryProducts(filters: ProductFilters, baselines: Baseline
       ...periodParams(filters.range, baselines[0], baselines[1]),
     ],
   });
-  // Products with no value in the selected period sort last; they have nothing to rank, so they never pad the list.
-  const rows = decodeRows(ProductRow, result.rows, PRODUCTS_RELATION).filter((row) => row[filters.metric] !== null);
+  const rows = decodeRows(ProductRow, result.rows, PRODUCTS_RELATION);
   return { rows: rows.slice(0, MAX_PRODUCTS), hasMore: rows.length > MAX_PRODUCTS };
 }
 

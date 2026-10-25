@@ -14,7 +14,7 @@ function declared(text: string, prop: string): Set<string> {
 }
 
 function chartParams(text: string): string[] {
-  return [...text.matchAll(/\bparam=(?:"|\{)([\w-]+)/g)].flatMap((match) => match[1] ?? []);
+  return [...text.matchAll(/\bparam=(?:"([\w-]+)"|\{([\w-]+)\})/g)].flatMap((match) => match[1] ?? match[2] ?? []);
 }
 
 /** Hidden report-form fields in a file that writes presentation state through native history. */
@@ -22,7 +22,11 @@ function presentationFields(text: string): string[] {
   if (!text.includes("writePresentationUrl(")) return [];
   return [...text.matchAll(/<input\b[^>]*>/gs)]
     .filter(([input]) => input.includes('type="hidden"'))
-    .flatMap(([input]) => input.match(/\bname=(?:"|\{)([\w-]+)/)?.[1] ?? []);
+    .flatMap(([input]) => {
+      // Forwarded expressions such as props.param are checked at the component's fixed-key call site.
+      const name = input.match(/\bname=(?:"([\w-]+)"|\{([\w-]+)\})/);
+      return name?.[1] ?? name?.[2] ?? [];
+    });
 }
 
 export function findPresentationGaps(files: readonly SourceFile[]): string[] {

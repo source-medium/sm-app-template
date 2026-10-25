@@ -1,6 +1,7 @@
 import { choose, chooseMeasure, openDisclosure } from "../../../e2e/helpers";
 import { switchStore } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
+import { CHART_MEMORY_COOKIE, serializeChartMemory } from "../../lib/chart-memory";
 
 test("overview: cumulative trends and revenue highlights preserve scope and exact accessible values", async ({
   page,
@@ -573,6 +574,37 @@ test("overview changes loaded series without a server request and restores it on
   await expect(page.getByRole("img", { name: "Net revenue by day chart", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "View as table", exact: true })).toHaveCount(1);
   await expect(page).toHaveURL((url) => !url.searchParams.has("show_trends"));
+});
+
+test("overview: all trends shares and submits the untouched default measure", async ({ page, context, browser }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=off");
+  await expect(page.getByRole("button", { name: "Measure: Net revenue", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Show all trends", exact: true }).click();
+  await expect(page.getByRole("button", { name: "View as table", exact: true })).toHaveCount(6);
+  await page.getByRole("button", { name: "Copy report link", exact: true }).click();
+  await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
+  const shared = new URL(await page.evaluate(() => navigator.clipboard.readText()));
+  expect(shared.searchParams.getAll("metric")).toEqual(["revenue"]);
+  expect(shared.searchParams.get("show_trends")).toBe("all");
+  await choose(page, "Trend values", "cumulative");
+  await expect(page).toHaveURL(
+    (url) => url.searchParams.get("metric") === "revenue" && url.searchParams.get("show_trends") === "all",
+  );
+
+  // A recipient's remembered choice must not change the link's selected trend.
+  const recipient = await browser.newContext();
+  try {
+    await recipient.addCookies([
+      { name: CHART_MEMORY_COOKIE, value: serializeChartMemory({ "/overview:metric": "orders" }), url: shared.origin },
+    ]);
+    const received = await recipient.newPage();
+    await received.goto(shared.href);
+    await received.getByRole("button", { name: "Show selected trend", exact: true }).click();
+    await expect(received.getByRole("img", { name: "Net revenue by day chart", exact: true })).toBeVisible();
+  } finally {
+    await recipient.close();
+  }
 });
 
 test("sidebar links carry shared store and dates, start the next report fresh, and back restores the investigation", async ({

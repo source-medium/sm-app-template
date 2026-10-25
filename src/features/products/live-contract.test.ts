@@ -69,15 +69,25 @@ it("guards, parameterizes and aggregates valid product lines before the limit, r
     parameterValue: { value: filters.storeId },
   });
 });
-it("ranks only products with a selected-period value, so comparison-only products never pad the list", async () => {
-  // The warehouse sorts products without a selected-period value last (NULLS LAST).
-  const ranked = Array.from({ length: 3 }, (_, i) => ({ ...row, product_key: `p${i}` }));
-  await goLive({ submit: () => rowsResponse(fields, [...ranked, { ...row, product_key: "last-year", units: null }]) });
-  const { getProducts } = await import("./queries");
-  const data = await getProducts(filters, [null, { from: "2025-09-01", to: "2025-09-02" }]);
-  expect(data.rows.map((entry) => entry.product_key)).toEqual(["p0", "p1", "p2"]);
-  expect(data.hasMore).toBe(false);
-});
+it.each(["value", "gainers", "decliners"] as const)(
+  "%s excludes comparison-only products after window totals and before the ranked limit",
+  async (ranking) => {
+    const ranked = Array.from({ length: 3 }, (_, i) => ({ ...row, product_key: `p${i}` }));
+    const fake = await goLive({ submit: () => rowsResponse(fields, ranked) });
+    const { getProducts } = await import("./queries");
+    const data = await getProducts({ ...filters, ranking }, [null, { from: "2025-09-01", to: "2025-09-02" }]);
+    expect(data.rows.map((entry) => entry.product_key)).toEqual(["p0", "p1", "p2"]);
+    expect(data.hasMore).toBe(false);
+    const sql = fake.submitted(0).query;
+    // QUALIFY runs after the windows: baseline-only rows still contribute to their totals.
+    expect(sql).toContain("SUM(previous_units) OVER () AS total_previous_units");
+    expect(sql).toContain("SUM(second_units) OVER () AS total_second_units");
+    expect(sql).not.toContain("WHERE units IS NOT NULL");
+    expect(sql).toContain("QUALIFY units IS NOT NULL");
+    expect(sql.indexOf("QUALIFY units IS NOT NULL")).toBeLessThan(sql.lastIndexOf("ORDER BY"));
+    expect(sql.lastIndexOf("ORDER BY")).toBeLessThan(sql.lastIndexOf("LIMIT 11"));
+  },
+);
 it("rejects unexpected truncation instead of publishing uncertain totals", async () => {
   await goLive({
     submit: () =>

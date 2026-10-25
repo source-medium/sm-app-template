@@ -373,8 +373,8 @@ visiting Retention does not shorten or discard another report's annual range.
 
 ## Period comparisons
 
-Every time-based report compares the selected range with up to two baselines
-at once, and what a baseline means depends on what the range is
+Reports that opt into period comparisons compare the selected range with up to
+two baselines at once, and what a baseline means depends on what the range is
 (`rangeIntent()` in `src/lib/comparison.ts`). A preset says what it is, so
 Quarter to date in October compares with the previous quarter even though its
 dates look like Month to date, and a to-date preset that reached its period's
@@ -410,8 +410,9 @@ matches. KPI cards show one change row per slot, each labelled with its baseline
 ("vs previous 28 days") and exact dates. Charts overlay one baseline and tables
 show one change column; the caption's switch changes both without a request,
 because both slots' data arrive with the page. Comparison settings survive
-filters, report links and navigation. Only views that implement comparisons
-show the controls.
+filters, report links and sidebar navigation to another comparison-enabled view.
+Sidebar links to views without comparisons drop both modes. Only views that
+implement comparisons show the controls.
 
 Data loads in date order, so a day that has not loaded yet is missing from the
 end of the selected period, where it would read as a decline. Reports hide a
@@ -504,10 +505,13 @@ actions, with host and credential validation; URLs are never constructed from ID
 
 Reuse `RankedBreakdown` for another dimension: the feature owns SQL ranking,
 totals, shares and changes; the component owns the horizontal chart and table.
-A ranking that reads comparison windows groups rows from every period, so sort
-the selected value `NULLS LAST` and drop rows without one after the query, as
-Products and the spend breakdown do; otherwise items seen only in a comparison
-period pad a short list.
+A ranking that reads comparison windows groups rows from every period. Products
+uses `QUALIFY` to exclude rows without a selected-period value after computing
+the window totals but before the ranked limit. This also works for gainers and
+decliners, where a missing change alone cannot distinguish a current-only product
+from a comparison-only one. The spend breakdown ranks the selected value
+`NULLS LAST` and drops rows without one after the query. Comparison-only rows
+contribute to period totals but never pad either list.
 `ChartCard` supports dashed comparison series and horizontal bars, and
 `DataTable` accepts server-computed totals. Keep allowed SQL dimensions and
 calendar expressions in fixed maps. Do not build a general query builder.

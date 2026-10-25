@@ -26,7 +26,6 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
   const tab = parseChoice(params, "tab", DATA_TABS, "explore");
   const source = parseChoice(params, "source", DATA_SOURCES, "obt_orders");
   const search = (single(params, "q") ?? "").slice(0, 120);
-  const category = (single(params, "category") ?? "").slice(0, 120);
   return (
     <ReportPage
       title="Explore your data"
@@ -130,8 +129,6 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
                         storeId={filters.storeId}
                         mode={data.mode}
                         truncated={data.truncated}
-                        initialQuery={search}
-                        initialCategory={category}
                       />
                     </>
                   )

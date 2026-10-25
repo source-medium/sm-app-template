@@ -11,7 +11,7 @@ test("explore your data: find a metric, understand it, and open its report in th
   await expect(list.getByRole("listitem")).toHaveCount(15);
   requests.length = 0;
   // 1. Search filters the loaded catalog locally and records the search in the URL.
-  await page.getByLabel("Search metrics", { exact: true }).fill("net revenue");
+  await page.getByLabel("Search metrics", { exact: true }).pressSequentially("net revenue");
   // Two revenue metrics plus MER, whose description names net revenue.
   await expect(list.getByRole("listitem")).toHaveCount(3);
   await expect(page).toHaveURL(/q=net\+revenue/);
@@ -29,6 +29,39 @@ test("explore your data: find a metric, understand it, and open its report in th
   await view.click();
   await expect(page).toHaveURL(/\/overview\?store=sample-store-a/);
 });
+
+for (const { name, query, category, count } of [
+  { name: "search", query: "orders", category: "", count: 2 },
+  { name: "category", query: "revenue", category: "obt_orders", count: 1 },
+]) {
+  test(`explore your data: Back restores the URL's ${name} and matching results`, async ({ page }) => {
+    await page.goto("/data?store=sample-store-a&q=revenue");
+    const search = page.getByLabel("Search metrics", { exact: true });
+    const chips = page.getByRole("group", { name: "Metric categories" });
+    const items = page.getByRole("list", { name: "Published metrics" }).getByRole("listitem");
+    await expect(search).toHaveValue("revenue");
+    const requests: string[] = [];
+    page.on("request", (request) => {
+      if (["fetch", "xhr", "document"].includes(request.resourceType())) requests.push(request.url());
+    });
+    if (category) await chips.getByRole("button", { name: category, exact: true }).click();
+    else await search.fill(query);
+    await expect(items).toHaveCount(count);
+    expect(requests).toEqual([]);
+    await page.getByRole("link", { name: "Overview", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get("q") === query && (url.searchParams.get("category") ?? "") === category,
+    );
+    await expect(search).toHaveValue(query);
+    await expect(chips.getByRole("button", { name: category || "All categories", exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(items).toHaveCount(count);
+  });
+}
 
 test("explore your data: categories, aliases, Vibe code, fields and health stay honest", async ({ page }) => {
   await page.goto("/data?store=sample-store-a");

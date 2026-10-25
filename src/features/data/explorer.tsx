@@ -17,7 +17,7 @@ import { Disclosure } from "@/components/ui/disclosure";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { dependencyIds } from "@/lib/metric-binding";
 import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
-import { writePresentationUrl } from "@/hooks/use-presentation-params";
+import { usePresentationParams, writePresentationUrl } from "@/hooks/use-presentation-params";
 import { firstSentence, matchesSearch, UNIT_LABELS, type ExplorerMetric, type ExplorerReport } from "./catalog";
 import { USE_AGENT_METRIC, type AgentMetric } from "@/lib/report-data";
 import { cn } from "@/lib/utils";
@@ -54,8 +54,6 @@ export function MetricExplorer({
   storeId,
   mode,
   truncated,
-  initialQuery = "",
-  initialCategory = "",
 }: {
   metrics: ExplorerMetric[];
   /** Names published with conflicting definitions; listed, never shown as a metric. */
@@ -64,12 +62,11 @@ export function MetricExplorer({
   storeId: string;
   mode: "sample" | "live";
   truncated: boolean;
-  initialQuery?: string;
-  initialCategory?: string;
 }) {
   const id = useId();
-  const [query, setQuery] = useState(initialQuery);
-  const [category, setCategory] = useState(initialCategory);
+  const params = usePresentationParams();
+  const query = (params.get("q") ?? "").slice(0, 120);
+  const category = (params.get("category") ?? "").slice(0, 120);
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const categories = useMemo(() => [...new Set(metrics.map((metric) => metric.category))].sort(), [metrics]);
   const active = categories.includes(category) ? category : "";
@@ -98,10 +95,8 @@ export function MetricExplorer({
             id={`${id}-search`}
             type="search"
             value={query}
-            onChange={(event) => {
-              setQuery(event.currentTarget.value);
-              updateUrl({ q: event.currentTarget.value.trim() || null });
-            }}
+            maxLength={120}
+            onChange={(event) => updateUrl({ q: event.currentTarget.value || null })}
             placeholder="Net revenue, AOV, sessions…"
             className="pl-9"
             autoComplete="off"
@@ -118,10 +113,7 @@ export function MetricExplorer({
               variant={active === value ? "default" : "outline"}
               aria-pressed={active === value}
               className="h-auto min-h-8 max-w-full py-1.5 text-left break-all whitespace-normal"
-              onClick={() => {
-                setCategory(value);
-                updateUrl({ category: value || null });
-              }}
+              onClick={() => updateUrl({ category: value || null })}
             >
               {value || "All categories"}
             </Button>
@@ -150,11 +142,7 @@ export function MetricExplorer({
             variant="outline"
             size="sm"
             className="mt-3"
-            onClick={() => {
-              setQuery("");
-              setCategory("");
-              updateUrl({ q: null, category: null });
-            }}
+            onClick={() => updateUrl({ q: null, category: null })}
           >
             Show all metrics
           </Button>

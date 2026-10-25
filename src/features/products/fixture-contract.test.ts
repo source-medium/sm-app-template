@@ -99,6 +99,38 @@ it("provides deterministic sample rows for both stores and empty results for an 
   expect(sampleProducts({ ...filters, storeId: "unknown" }, [null, null])).toEqual({ rows: [], hasMore: false });
 });
 
+it.each(["gainers", "decliners"] as const)(
+  "%s retains current-only products beyond comparison-only NULL changes and preserves every period's totals",
+  (ranking) => {
+    const baseline = { from: "2026-08-01", to: "2026-08-01" };
+    const second = { from: "2025-09-01", to: "2025-09-01" };
+    const data = aggregateProducts(
+      [
+        ...Array.from({ length: 11 }, (_, index) => ({
+          ...line,
+          productId: `a${index}`,
+          date: baseline.from,
+          revenue: "1",
+        })),
+        { ...line, productId: "last-year", date: second.from, revenue: "3" },
+        { ...line, productId: "z-current", revenue: "42" },
+      ],
+      { ...filters, ranking },
+      [baseline, second],
+    );
+    expect(data.hasMore).toBe(false);
+    expect(data.rows).toHaveLength(1);
+    expect(data.rows[0]).toMatchObject({
+      label: line.title,
+      revenue: "42",
+      previous_revenue: null,
+      total_revenue: "42",
+      total_previous_revenue: "11",
+      total_second_revenue: "3",
+    });
+  },
+);
+
 it("filters channels before both period totals and leaves unknown channels empty", () => {
   const baseline = { from: "2026-08-01", to: "2026-08-31" };
   const source = [
