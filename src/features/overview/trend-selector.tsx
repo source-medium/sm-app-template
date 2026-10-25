@@ -1,8 +1,9 @@
 "use client";
-import { useSearchParams } from "next/navigation";
 import { ChartCard } from "@/components/charts/chart-card";
 import { MetricChartCard, metricCard, useChartMetric, type MetricChartProps } from "@/components/charts/metric-chart";
 import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { usePresentationParams, writePresentationUrl } from "@/hooks/use-presentation-params";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -10,7 +11,8 @@ import { Button } from "@/components/ui/button";
  * the URL. The chosen measure stays named and remembered while all trends show, so it returns when they are hidden.
  */
 export function OverviewTrendSelector(props: MetricChartProps) {
-  const params = useSearchParams();
+  const params = usePresentationParams();
+  const hydrated = useHydrated();
   const all = params.get("show_trends") === "all";
   const choice = useChartMetric(
     props.param,
@@ -21,13 +23,13 @@ export function OverviewTrendSelector(props: MetricChartProps) {
     const url = new URL(window.location.href);
     if (all) url.searchParams.delete("show_trends");
     else url.searchParams.set("show_trends", "all");
-    window.history.pushState(null, "", url);
+    writePresentationUrl(url);
   }
   return (
     <div className="space-y-3">
       {all && <input type="hidden" name="show_trends" value="all" form={REPORT_FILTER_FORM_ID} />}
       <div className="flex justify-end">
-        <Button variant="ghost" size="sm" aria-pressed={all} onClick={toggleAll}>
+        <Button variant="ghost" size="sm" inert={!hydrated} aria-pressed={all} onClick={toggleAll}>
           Show all trends
         </Button>
       </div>

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import { ReportHeader } from "@/components/shell/report-header";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
@@ -68,3 +69,45 @@ it("copies native-history presentation choices while retaining resolved store an
     window.history.replaceState(null, "", original);
   }
 });
+
+it.each(["?baseline=b", "?metric=spend&baseline=b"])(
+  "copies the displayed chart default from its associated form, preserving applied scope (%s)",
+  async (query) => {
+    const original = window.location.href;
+    const writeText = vi.fn(async (_text: string) => undefined);
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    try {
+      window.history.replaceState(null, "", `/overview${query}`);
+      render(
+        <>
+          <ReportHeader
+            {...props}
+            mode="sample"
+            storeId="resolved-store"
+            clientPresentationParams={["metric", "baseline"]}
+            view={{ range: { from: "2026-09-01", to: "2026-09-28" }, issue: null, derived: {} }}
+          />
+          <form id={REPORT_FILTER_FORM_ID}>
+            <input name="store" defaultValue="draft-store" />
+            <input name="from" defaultValue="2020-01-01" />
+          </form>
+          <input type="hidden" name="metric" value="revenue" form={REPORT_FILTER_FORM_ID} />
+        </>,
+        { wrapper: TooltipProvider },
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Copy report link" }));
+      await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+      expect(Object.fromEntries(new URL(writeText.mock.calls[0]?.[0] ?? "").searchParams)).toEqual({
+        store: "resolved-store",
+        from: "2026-09-01",
+        to: "2026-09-28",
+        metric: "revenue",
+        baseline: "b",
+      });
+      expect(window.location.search).toBe(query);
+    } finally {
+      window.history.replaceState(null, "", original);
+      vi.unstubAllGlobals();
+    }
+  },
+);

@@ -475,6 +475,60 @@ test("overview: Vibe code picks an element without activating it and supports ke
   expect(problems).toEqual([]);
 });
 
+test("overview: Show all trends waits for its handlers when scripts load slowly", async ({ page }) => {
+  let release: () => void = () => undefined;
+  const scripts = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/_next/static/**/*.js", async (route) => {
+    await scripts;
+    await route.continue();
+  });
+  const showAll = page.getByRole("button", { name: "Show all trends", exact: true, includeHidden: true });
+  try {
+    await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=off", {
+      waitUntil: "commit",
+    });
+    await expect(showAll).toHaveAttribute("inert");
+  } finally {
+    release();
+  }
+  await expect(showAll).not.toHaveAttribute("inert");
+  await showAll.click();
+  await expect(page.getByRole("button", { name: "View as table", exact: true })).toHaveCount(6);
+  await expect(page).toHaveURL((url) => url.searchParams.get("show_trends") === "all");
+});
+
+test("overview: a copied default measure overrides another browser's remembered measure", async ({
+  page,
+  context,
+  browser,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const report = "/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=off";
+  await page.goto(report);
+  await expect(page.getByRole("img", { name: "Net revenue by day chart", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Copy report link", exact: true }).click();
+  await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
+  const shared = await page.evaluate(() => navigator.clipboard.readText());
+
+  const recipient = await browser.newContext();
+  try {
+    const received = await recipient.newPage();
+    const original = new URL(report, page.url()).href;
+    await received.goto(original);
+    await chooseMeasure(received, "Net revenue", "Summary orders");
+    // A fresh visit confirms this browser saved a different measure.
+    await received.goto(original);
+    await expect(received.getByRole("img", { name: "Summary orders by day chart", exact: true })).toBeVisible();
+    await received.goto(shared);
+    await expect(received.getByRole("img", { name: "Net revenue by day chart", exact: true })).toBeVisible();
+    expect(new URL(shared).searchParams.get("metric")).toBe("revenue");
+  } finally {
+    await recipient.close();
+  }
+});
+
 test("overview changes loaded series without a server request and restores it on back and refresh", async ({
   page,
   context,

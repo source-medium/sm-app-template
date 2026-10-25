@@ -96,16 +96,18 @@ describe("MetricChart", () => {
     vi.restoreAllMocks();
   });
 
-  it("leaves an untouched default out of the URL, and names it when switching away so Back returns to it", () => {
+  it("leaves the default out of the URL, and exposes it for filter submits and copied links", () => {
     const replace = vi.spyOn(window.history, "replaceState");
+    const push = vi.spyOn(window.history, "pushState");
     const view = render(chart());
     expect(screen.getByRole("img", { name: "Net revenue by day chart" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Measure: Net revenue" })).toHaveTextContent("Net revenue");
     flush();
     expect(window.location.search).toBe("?store=a");
+    expect(push).not.toHaveBeenCalled();
     expect(cookieMemory()).toEqual({ "/overview:metric": "revenue" });
     const form = screen.getByRole<HTMLFormElement>("form", { name: "Report filters" });
-    expect(new FormData(form).getAll("metric")).toEqual([]);
+    expect(new FormData(form).getAll("metric")).toEqual(["revenue"]);
     choose("Summary orders");
     expect(String(replace.mock.calls.at(-1)?.[2])).toMatch(/[?&]metric=revenue$/);
     view.rerender(chart());

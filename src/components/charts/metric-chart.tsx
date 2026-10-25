@@ -13,7 +13,7 @@
  * measure rather than the one the page was loaded with.
  */
 import { useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ChevronDownIcon } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { usePresentationParams, writePresentationUrl } from "@/hooks/use-presentation-params";
 import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
 import { ChartCard, type ChartCardProps } from "./chart-card";
 import { useChartMemory } from "./chart-memory";
@@ -79,7 +80,7 @@ function urlWith(param: string, value: string) {
 
 /** The shown measure, named in the URL unless it is an untouched default, and remembered in this browser. */
 export function useChartMetric(param: string, keys: string[]) {
-  const params = useSearchParams();
+  const params = usePresentationParams();
   const pathname = usePathname();
   const [remembered, remember] = useChartMemory(`${pathname}:${param}`);
   const fromUrl = params.get(param);
@@ -92,7 +93,7 @@ export function useChartMetric(param: string, keys: string[]) {
     if (!switchable || ((!named || fromUrl === selected) && remembered === selected)) return;
     // Next patches history in its router's effect, which on first hydration runs after this one.
     const timer = setTimeout(() => {
-      if (named && fromUrl !== selected) window.history.replaceState(null, "", urlWith(param, selected));
+      if (named && fromUrl !== selected) writePresentationUrl(urlWith(param, selected), "replace");
       if (remembered !== selected) remember(selected);
     });
     return () => clearTimeout(timer);
@@ -101,11 +102,11 @@ export function useChartMetric(param: string, keys: string[]) {
   function choose(key: string) {
     if (key === selected) return;
     // Name the entry being left, so Back returns to its measure rather than the remembered one.
-    if (fromUrl !== selected) window.history.replaceState(null, "", urlWith(param, selected));
-    window.history.pushState(null, "", urlWith(param, key));
+    if (fromUrl !== selected) writePresentationUrl(urlWith(param, selected), "replace");
+    writePresentationUrl(urlWith(param, key));
     remember(key);
   }
-  return { selected, named, choose };
+  return { selected, choose };
 }
 
 export function MetricChart(props: MetricChartProps) {
@@ -122,7 +123,6 @@ export function MetricChartCard({
   metrics,
   titleSuffix,
   selected,
-  named,
   choose,
   ...card
 }: MetricChartProps & ReturnType<typeof useChartMetric>) {
@@ -133,8 +133,8 @@ export function MetricChartCard({
   if (metrics.length < 2) return <ChartCard {...shown} />;
   return (
     <>
-      {/* Filter submits keep this tab's named choice. */}
-      {named && <input type="hidden" name={param} value={selected} form={REPORT_FILTER_FORM_ID} />}
+      {/* Filter submits keep this tab's displayed measure, including the default. */}
+      <input type="hidden" name={param} value={selected} form={REPORT_FILTER_FORM_ID} />
       <ChartCard
         {...shown}
         heading={

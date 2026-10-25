@@ -5,6 +5,7 @@ import { Check, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCopy } from "@/lib/use-copy";
+import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
 
 /** href already contains the applied store and dates, including defaults. */
 export function CopyReportLink({
@@ -20,11 +21,15 @@ export function CopyReportLink({
   async function copyLink() {
     const resolved = new URL(href, window.location.origin);
     const current = new URL(window.location.href);
+    const form = document.getElementById(REPORT_FILTER_FORM_ID);
+    const applied = form instanceof HTMLFormElement ? new FormData(form) : null;
     // Features may change presentation through native history without a server
-    // request. Only those declared keys override the resolved report context.
+    // request. Their form fields also expose an untouched chart default that
+    // the URL omits. Only declared presentation keys override the resolved context.
     for (const key of clientPresentationParams) {
       resolved.searchParams.delete(key);
-      for (const value of current.searchParams.getAll(key)) resolved.searchParams.append(key, value);
+      const values = applied?.has(key) ? applied.getAll(key) : current.searchParams.getAll(key);
+      for (const value of values) if (typeof value === "string") resolved.searchParams.append(key, value);
     }
     const link = resolved.href;
     setManualLink(link);
