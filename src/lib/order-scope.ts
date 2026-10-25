@@ -1,6 +1,6 @@
 import { dateTimeWindow } from "@/lib/data/period-sql";
 
-/** Fixed, reviewed local-date expressions. An absent basis retains legacy Orders behavior. */
+/** Fixed, reviewed local-date expressions. An absent basis is Orders' default: processed time alone, no created fallback. */
 export type OrderDateBasis = "created" | "processed";
 const ORDER_DATE_EXPRESSIONS = {
   created: "order_created_at_local_datetime",

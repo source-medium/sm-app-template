@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 import { Disclosure } from "@/components/ui/disclosure";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { compactNumber } from "./compact-number";
 
 /** Room for a two-line label beside each horizontal bar. */
@@ -66,6 +67,7 @@ export function ChartCard({
   showPoints = false,
 }: ChartCardProps) {
   const [showTable, setShowTable] = useState(!plottable);
+  const hydrated = useHydrated();
   const regionId = useId();
   const Plot = kind === "line" ? LineChart : BarChart;
   const tickValue = (value: number) =>
@@ -86,7 +88,13 @@ export function ChartCard({
         )}
         <CardAction>
           {plottable && (
-            <div role="group" aria-label={`${title} display`} className="flex rounded-md bg-muted p-1">
+            // A click before hydration would be lost, so the toggle accepts none until it can apply one.
+            <div
+              role="group"
+              aria-label={`${title} display`}
+              inert={!hydrated}
+              className="flex rounded-md bg-muted p-1"
+            >
               {[
                 { label: "Chart", table: false, icon: ChartNoAxesCombined },
                 { label: "Table", table: true, icon: Table2 },

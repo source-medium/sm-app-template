@@ -2,7 +2,7 @@
  * Orders' data contract, from obt_orders (one row per order). Orders are
  * listed by processed store-local time by default. Explicit processed uses
  * the canonical created-time fallback; explicit created uses created local time.
- * Only the legacy processed-only query prunes the processed partition directly. Pages are keyset-paginated in SQL (newest first, then by
+ * Only the default processed-only query prunes the processed partition directly. Pages are keyset-paginated in SQL (newest first, then by
  * order key) because a BigQuery page token cannot span requests. Search is a
  * bounded, parameterized match on the order name, number, or id. Money is in
  * the warehouse's reporting currency.

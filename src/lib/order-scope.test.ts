@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { orderDateEquals, orderDateExpression, orderDateWindow } from "./order-scope";
 import { calendarDate } from "./format";
 import { datesInRange } from "./filters";
-it("keeps legacy processed-only separate from explicit canonical fallback and created dates", () => {
+it("keeps the processed-only default separate from explicit canonical fallback and created dates", () => {
   expect(orderDateExpression()).toBe("order_processed_at_local_datetime");
   expect(orderDateExpression("processed")).toBe(
     "COALESCE(order_processed_at_local_datetime, order_created_at_local_datetime)",

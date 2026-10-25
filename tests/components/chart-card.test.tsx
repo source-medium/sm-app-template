@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChartCard } from "@/components/charts/chart-card";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -54,6 +55,25 @@ describe("ChartCard", () => {
     expect(chart).toHaveAttribute("aria-pressed", "true");
     expect(toggle).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("img", { name: "Orders by day chart" })).toBeInTheDocument();
+  });
+
+  it("accepts no view choice until hydrated, so an early click is never silently lost", () => {
+    const card = (
+      <ChartCard
+        title="Orders by day"
+        kind="line"
+        categoryHeader="Date"
+        series={[{ key: "orders", label: "Orders", color: "red" }]}
+        data={DATA}
+      />
+    );
+    const server = render(
+      <div dangerouslySetInnerHTML={{ __html: renderToString(<TooltipProvider>{card}</TooltipProvider>) }} />,
+    );
+    expect(screen.getByRole("group", { name: "Orders by day display", hidden: true })).toHaveAttribute("inert");
+    server.unmount();
+    render(card, { wrapper: TooltipProvider });
+    expect(screen.getByRole("group", { name: "Orders by day display" })).not.toHaveAttribute("inert");
   });
 
   it("opens on the table when a value cannot be plotted exactly", () => {

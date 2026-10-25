@@ -140,7 +140,7 @@ it("scopes the complete channel roster to store/date and refuses a truncated pic
   await expect(getOrderChannels(FILTERS)).rejects.toMatchObject({ kind: "result_too_large" });
 });
 
-it("explicit processed uses canonical fallback; created never prunes on processed; legacy remains unchanged", async () => {
+it("explicit processed uses canonical fallback; created never prunes on processed; the processed-only default remains unchanged", async () => {
   for (const dateBasis of ["created", "processed"] as const) {
     const fake = await goLive({ submit: () => rowsResponse(FIELDS, []) });
     const { queryOrders } = await import("./bigquery");
