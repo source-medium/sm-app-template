@@ -3481,7 +3481,7 @@
      "name": "store_currency_code",
      "type": "STRING",
      "mode": "NULLABLE",
-     "description": "Currency configured for the store (ISO 4217), not a reporting-currency guarantee; order money columns carry their own currency."
+     "description": "The store's reporting currency (ISO 4217), as configured in SourceMedium (Currency & region). Label the store's standard money fields with it: currency conversion, when enabled, converts supported fields into this code (assert_currency_conversion_output_is_store_currency), and Amazon Ads and Amazon orders always do. order_currency_code is the currency an order was placed in; without conversion, other sources keep their own."
     },
     {
      "name": "store_timezone",

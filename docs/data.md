@@ -302,13 +302,12 @@ Pass the report store's currency into `formatMoney`. Chart axis ticks stay
 compact numbers without a currency symbol, because that formatter is shared
 with counts.
 
-When SourceMedium's currency conversion is enabled for a store, supported
-standard monetary fields are converted to that store's configured output
-currency. The label is right only when that output currency equals the store's
-`store_currency_code`. If they differ, ask SourceMedium to correct the store's
-currency; an `app.config.ts` override only relabels this one app.
-Unsupported ad sources retain account currency. Amazon Ads uses the store's
-configured currency independently of workspace reporting currency. Manually
+`store_currency_code` is the store's reporting currency as SourceMedium holds
+it (Currency & region). When SourceMedium's currency conversion is enabled for
+a store, supported standard monetary fields are converted into that same code,
+so the app trusts it without checking the data.
+Unsupported ad sources retain account currency. Amazon Ads and Amazon orders
+are converted into the store's currency with or without conversion. Manually
 configured costs are not automatically converted. Before combining inputs,
 confirm order, ad, platform-reported revenue, and cost currencies match for the
 selected store. Gross profit requires costs in the revenue currency.
