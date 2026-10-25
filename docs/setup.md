@@ -13,7 +13,7 @@ pnpm app:setup plan --production-build https://dash.cloudflare.com/your-account/
 pnpm app:setup status
 ```
 
-Use actual URLs copied from Cloudflare. Do not guess a branch URL. `setup.json` is owner intent, suitable for committing to your customer repository. It contains no credentials or completion flags. Optional workspace and allowed-viewer intent preserve the decisions already collected; verify the actual Access policy rather than treating that list as enforcement. Worker names remain in `wrangler.jsonc`; reporting currency, channel defaults and branding remain in `app.config.ts`.
+Use actual URLs copied from Cloudflare. Do not guess a branch URL. `setup.json` is owner intent, suitable for committing to your customer repository. It contains no credentials or completion flags. Optional workspace and allowed-viewer intent preserve the decisions already collected; verify the actual Access policy rather than treating that list as enforcement. Worker names remain in `wrangler.jsonc`; currency overrides, channel defaults and branding remain in `app.config.ts`.
 
 Choosing `--data live` writes root `vars.APP_REQUIRE_LIVE=true` into `wrangler.jsonc`. Deploy that change when connecting production. Previews already require live data. A missing credential then produces a configuration error instead of plausible sample numbers. Explicit sample demos remain supported before live setup. Changing intent back to sample does not remove an existing live requirement: intentionally edit that setting only when reverting to a demo.
 

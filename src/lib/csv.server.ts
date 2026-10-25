@@ -40,7 +40,7 @@ export type ExportScope = {
   storeId: string;
   range: DateRange;
   mode: ViewerAccess["mode"];
-  /** The verified reporting currency configured for this store, or null when unverified. */
+  /** The store's reporting currency (dim_stores or an app.config.ts override), or null when unknown. */
   currency: string | null;
   timeZone: string;
 };

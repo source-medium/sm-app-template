@@ -12,7 +12,8 @@ vi.unmock("@/lib/request-scope");
 
 const contextExample = examples.context.valid.find((entry) => entry.case === "viewer");
 const viewerExample = examples.viewer_header.valid.find((entry) => entry.case === "member");
-if (!contextExample || !viewerExample) throw new Error("managed contract examples missing");
+const denial = examples.error.valid.find((entry) => entry.case === "access_denied");
+if (!contextExample || !viewerExample || !denial) throw new Error("managed contract examples missing");
 const context = contextExample.value;
 const viewer = viewerExample.value;
 const query = {
@@ -48,23 +49,11 @@ beforeEach(() => {
   setLogEmitter((line) => lines.push(JSON.parse(line) as LogEvent));
 });
 
-it("rechecks managed context on every HTTP request, including warm hits, pauses, access removal and recovery", async () => {
+it("rechecks managed context on every HTTP request, including warm hits, refusal, sign-out and recovery", async () => {
   let denied = false;
   const fetch = vi.fn(async (url: string | URL | Request) => {
     if (String(url).endsWith("/context"))
-      return denied
-        ? Response.json(
-            {
-              error: {
-                code: "ACCESS_DENIED",
-                message: "Unavailable",
-                retryable: false,
-                request_id: crypto.randomUUID(),
-              },
-            },
-            { status: 403 },
-          )
-        : Response.json(context);
+      return denied ? Response.json(denial.value, { status: denial.status }) : Response.json(context);
     return Response.json({
       contract_version: 1,
       request_id: crypto.randomUUID(),
@@ -87,17 +76,16 @@ it("rechecks managed context on every HTTP request, including warm hits, pauses,
   expect(fetch.mock.calls.filter(([url]) => String(url).endsWith("/query"))).toHaveLength(1);
   expect(lines.find((line) => line.event === "app_cache" && line.app_cache === "hit")?.app_request_id).toBe(secondId);
 
+  // A paused app and a removed membership both reach the app as the contract's ACCESS_DENIED.
   denied = true;
-  for (const _reason of ["paused", "membership removed"]) {
-    const refusedId = nextRequest();
-    const access = await requireViewer({ live: true });
-    await expect(access.warehouse.query(query)).rejects.toMatchObject({ kind: "permission_denied" });
-    expect(lines.at(-1)).toMatchObject({ event: "managed_context_refused", app_request_id: refusedId });
-  }
+  const refusedId = nextRequest();
+  const refused = await requireViewer({ live: true });
+  await expect(refused.warehouse.query(query)).rejects.toMatchObject({ kind: "permission_denied" });
+  expect(lines.at(-1)).toMatchObject({ event: "managed_context_refused", app_request_id: refusedId });
   nextRequest();
   requestHeaders.current.delete("x-sm-viewer");
   await expect(requireViewer({ live: true })).rejects.toThrow("not signed in");
-  expect(fetch.mock.calls.filter(([url]) => String(url).endsWith("/context"))).toHaveLength(4);
+  expect(fetch.mock.calls.filter(([url]) => String(url).endsWith("/context"))).toHaveLength(3);
 
   denied = false;
   nextRequest();

@@ -3,7 +3,6 @@ import { appConfig } from "@/app.config";
 import { StoreAccessError } from "@/lib/auth/store-access";
 import { loadStores, resolveReportStore } from "@/lib/data/stores.server";
 import { MAX_STORES } from "@/lib/data/store-roster.server";
-import { setQueryCacheEnabled, setQueryCacheStore } from "@/lib/data/query-cache.server";
 import { setLogEmitter } from "@/lib/data/log";
 import { googleError } from "../fake-bigquery/fake-bigquery";
 import { goLive, ROSTER_FIELDS, rowsResponse, storeRow } from "../helpers/live";
@@ -27,7 +26,6 @@ const metadata = [
 
 afterEach(() => {
   setLogEmitter(() => undefined);
-  setQueryCacheStore(undefined);
   vi.restoreAllMocks();
   appConfig.storeLabels = originalLabels;
   appConfig.currency = originalCurrency;
@@ -239,8 +237,6 @@ describe("store time zones", () => {
   const query = (call: { body: unknown }) => (call.body as { query?: string } | null)?.query;
 
   it("uses the store's dim_stores time zone, and remembers it", async () => {
-    setQueryCacheEnabled(true);
-    setQueryCacheStore(null);
     const fake = await goLive({ submit: () => rowsResponse(ROSTER_FIELDS, roster("zone-ny", "America/New_York")) });
     expect(await resolveReportStore("zone-ny")).toMatchObject({ status: "ready", timeZone: "America/New_York" });
     expect(await resolveReportStore("zone-ny")).toMatchObject({ status: "ready", timeZone: "America/New_York" });
@@ -295,29 +291,41 @@ describe("store time zones", () => {
     expect(fake.calls.filter((call) => call.kind === "submit")).toHaveLength(6);
   });
 
-  it("refreshes currency with the roster while retaining the separate time-zone cache", async () => {
+  it("remembers a store's zone and currency together for an hour", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
-    setQueryCacheEnabled(true);
-    setQueryCacheStore(null);
-    let currency = "USD";
     let zone = "Asia/Tokyo";
+    let currency = "USD";
     try {
       const fake = await goLive({ submit: () => rowsResponse(ROSTER_FIELDS, [storeRow("zone-hour", zone, currency)]) });
       expect(await resolveReportStore("zone-hour")).toMatchObject({ timeZone: "Asia/Tokyo", currency: "USD" });
-      currency = "CAD";
       zone = "Europe/Paris";
-      vi.advanceTimersByTime(4 * 60 * 1000);
+      currency = "CAD";
+      vi.advanceTimersByTime(59 * 60 * 1000);
       expect(await resolveReportStore("zone-hour")).toMatchObject({ timeZone: "Asia/Tokyo", currency: "USD" });
       expect(fake.count("submit")).toBe(1);
       vi.advanceTimersByTime(2 * 60 * 1000);
-      expect(await resolveReportStore("zone-hour")).toMatchObject({ timeZone: "Asia/Tokyo", currency: "CAD" });
-      expect(fake.count("submit")).toBe(2);
-      vi.advanceTimersByTime(55 * 60 * 1000);
       expect(await resolveReportStore("zone-hour")).toMatchObject({ timeZone: "Europe/Paris", currency: "CAD" });
+      expect(fake.count("submit")).toBe(2);
     } finally {
-      setQueryCacheStore(undefined);
       vi.useRealTimers();
     }
+  });
+
+  it("does not remember a store's facts while its list fails, so the currency returns with the list", async () => {
+    let listFails = true;
+    const fake = await goLive({
+      submit: ({ body }) =>
+        (body as { query: string }).query.includes("offset_minutes")
+          ? rowsResponse(offset, [{ offset_minutes: "60" }])
+          : listFails
+            ? googleError(403, "accessDenied")
+            : rowsResponse(ROSTER_FIELDS, [storeRow("zone-recovers", "Europe/Paris", "EUR")]),
+    });
+    expect(await resolveReportStore("zone-recovers")).toMatchObject({ timeZone: "+01:00", currency: null });
+    listFails = false;
+    expect(await resolveReportStore("zone-recovers")).toMatchObject({ timeZone: "Europe/Paris", currency: "EUR" });
+    expect(await resolveReportStore("zone-recovers")).toMatchObject({ timeZone: "Europe/Paris", currency: "EUR" });
+    expect(fake.count("submit")).toBe(3);
   });
 
   it("leaves dates unresolved without a zone or recent orders, preserving why they are unknown", async () => {
@@ -425,10 +433,10 @@ describe("the store a report shows", () => {
   it("uses dim_stores as the default reporting currency source", async () => {
     appConfig.currency = null;
     appConfig.reportingCurrencies = {};
-    await warehouse([storeRow("unverified-usd", "UTC", "USD")]);
-    expect(await resolveReportStore("unverified-usd")).toMatchObject({ currency: "USD" });
+    await warehouse([storeRow("metadata-usd", "UTC", "USD")]);
+    expect(await resolveReportStore("metadata-usd")).toMatchObject({ currency: "USD" });
     appConfig.currency = "usd1";
-    expect(await resolveReportStore("unverified-usd")).toMatchObject({ currency: "USD" });
+    expect(await resolveReportStore("metadata-usd")).toMatchObject({ currency: "USD" });
   });
 
   it("applies per-store overrides, including explicit null, without inheriting prototype keys or caching labels", async () => {

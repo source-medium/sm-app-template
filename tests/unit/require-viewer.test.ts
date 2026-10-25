@@ -63,6 +63,17 @@ describe("requireViewer", () => {
     expect(() => access.warehouse.table("t", "bad dataset")).toThrow();
   });
 
+  it("logs its own request id, never a correlation header a self-hosted client sends", async () => {
+    stubEnv(liveEnv(key));
+    const supplied = crypto.randomUUID();
+    requestHeaders.current = basic(TEST_PASSWORD);
+    requestHeaders.current.set("x-sm-request-id", supplied);
+    const { requireViewer } = await import("@/lib/auth/require-viewer");
+    const access = await requireViewer({ live: true });
+    expect(access.request.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(access.request.id).not.toBe(supplied);
+  });
+
   it("refuses a live request with a wrong password", async () => {
     stubEnv(liveEnv(key));
     requestHeaders.current = basic("wrong-password-wrong-password-1");

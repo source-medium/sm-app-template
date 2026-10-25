@@ -7,6 +7,7 @@
  * the Refresh button's server action sets the bypass (src/lib/refresh.ts), for
  * the page render its own response carries.
  */
+import { supportRequestId } from "./warehouse-error";
 
 export type CacheProvenance = {
   /** Origin completion time of the oldest cached result served in this request, or null. */
@@ -22,12 +23,10 @@ export type RequestContext = {
   provenance: CacheProvenance;
 };
 
+/** `gatewayRequestId` is SourceMedium's gateway id for this request; anything but a UUID is ignored. */
 export function newRequestContext(gatewayRequestId?: string | null): RequestContext {
   return {
-    id:
-      gatewayRequestId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(gatewayRequestId)
-        ? gatewayRequestId
-        : crypto.randomUUID(),
+    id: supportRequestId(gatewayRequestId) ?? crypto.randomUUID(),
     bypassCache: false,
     provenance: { oldestQueriedAt: null, servedFromCache: 0 },
   };

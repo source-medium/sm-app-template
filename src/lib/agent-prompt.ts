@@ -133,7 +133,7 @@ export function composeAgentPrompt(
             "This is synthetic sample data. Trace the fixtures, decoding, and calculations for this report; validate against the fixture contracts. Do not compare these values with a live warehouse.",
           ]
         : [
-            "Compare with an independent, authorized source for the same warehouse, store, dates, dimension filters, and verified reporting currency (docs/data.md). If that source is unavailable, report the number as unverified.",
+            "Compare with an independent, authorized source for the same warehouse, store, dates, dimension filters, and reporting currency (docs/data.md). If that source is unavailable, report the number as unverified.",
           ];
   return [
     intent.lead,
@@ -176,7 +176,7 @@ export function composeAgentPrompt(
           "- Store scope: all available stores, compared separately. The store filter is only the reference for default dates and navigation.",
         ]
       : []),
-    `- Reporting currency: ${context.storeScope === "all" ? "configured per store; unverified amounts are unlabeled; never total amounts across stores" : (context.currency ?? "not configured; verify it before reconciling money")}`,
+    `- Reporting currency: ${context.storeScope === "all" ? "each store's own; unknown currencies are unlabeled; never total amounts across stores" : (context.currency ?? "unknown; amounts are unlabeled")}`,
     `- Data mode: ${context.mode === "sample" ? "sample data (synthetic; nothing from a warehouse)" : "live warehouse data"}`,
     `- App build: ${context.build}`,
     "",

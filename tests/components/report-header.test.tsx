@@ -20,11 +20,11 @@ it("places freshness and currency uncertainty beside the report title", () => {
   const { container, rerender } = render(<ReportHeader {...props} mode="live" />, { wrapper: TooltipProvider });
   const trust = container.querySelector('[data-slot="report-trust"]');
   expect(trust).toHaveTextContent("Warehouse freshness: unknown");
-  expect(trust).toHaveTextContent("Currency unverified; amounts are unlabeled");
+  expect(trust).toHaveTextContent("Currency unknown; amounts are unlabeled");
   expect(screen.getByRole("heading", { name: "Revenue" }).parentElement).toContainElement(trust as HTMLElement);
   rerender(<ReportHeader {...props} mode="live" currency="CAD" />);
   expect(trust).toHaveTextContent("Reporting currency: CAD");
-  expect(trust).not.toHaveTextContent("unverified");
+  expect(trust).not.toHaveTextContent("Currency unknown");
   rerender(<ReportHeader {...props} mode="live" allStores />);
   expect(trust).toHaveTextContent("Currencies shown per store; no combined totals");
   rerender(<ReportHeader {...props} mode="sample" currency="USD" />);

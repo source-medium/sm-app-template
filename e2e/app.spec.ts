@@ -282,7 +282,7 @@ test("collapsed navigation keeps its labels available through tooltips", async (
   expect(problems).toEqual([]);
 });
 
-test("a verified reporting currency is stated once, under the title", async ({ page }) => {
+test("a known reporting currency is stated once, under the title", async ({ page }) => {
   await page.goto(home);
   test.skip((await page.locator("main [data-agent-page]").count()) === 0, "the home page has no report header");
   await expect(page.locator("main [data-agent-page]")).toContainText("Reporting currency: USD");

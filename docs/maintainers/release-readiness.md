@@ -20,8 +20,8 @@ issuance or a new customer account's Git and Cloudflare setup.
 1. Create an app through **Apps** and place its `SM_CONNECTION` privately
    in a demo deployment with the [chosen sign-in](../auth.md#configure-the-chosen-sign-in).
    Verify its project and dataset coordinates match
-   that organization's delivery configuration. Confirm reporting currency and
-   source alignment before labeling amounts.
+   that organization's delivery configuration. Confirm each store's
+   `dim_stores.store_currency_code` is the label its amounts should carry.
 2. From a fresh customer Git/Cloudflare account, follow [cloud onboarding](../cloud.md).
    Check the expected commit at `/healthz`, anonymous access denial, **Check
    connection**, every report and a CSV export. Use

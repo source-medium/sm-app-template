@@ -79,7 +79,7 @@ describe("composeAgentPrompt", () => {
     expect(sample).toContain("Trace the fixtures, decoding, and calculations");
     expect(sample).not.toContain("Compare with an independent");
     const live = composeAgentPrompt("check", "Check net revenue", { ...context, mode: "live" });
-    expect(live).toContain("same warehouse, store, dates, dimension filters, and verified reporting currency");
+    expect(live).toContain("same warehouse, store, dates, dimension filters, and reporting currency");
     expect(live).toContain("report the number as unverified");
     for (const prompt of [sample, live]) expect(prompt).toContain("Do not change files");
   });

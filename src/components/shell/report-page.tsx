@@ -33,7 +33,7 @@ import { ReportHeader } from "./report-header";
 
 /**
  * `timeZone` is the store's SourceMedium time zone; `today` is its current date there.
- * `currency` is the verified reporting currency configured for this store, or null when unverified.
+ * `currency` is the store's reporting currency (dim_stores or an app.config.ts override), or null when unknown.
  */
 export type ReportContext = {
   filters: ReportFilters;
@@ -245,12 +245,12 @@ export async function ReportPage({
             ? ` The same calendar dates are used in each store's local time. Default dates use ${zoneLabel}.`
             : ` Dates are calendar dates in the store's time zone, ${zoneLabel}.`)}
         {dates && range.to === today && " Today may be incomplete."}
-        {/* A verified currency is already named under the title; the footer only carries what the header cannot. */}
+        {/* A known currency is already named under the title; the footer only carries what the header cannot. */}
         {(allStores || !currency) && (
           <span className="mt-1 block">
             {allStores
               ? "Reporting currencies are shown per store. Amounts are never added across stores."
-              : "Reporting currency unverified; amounts are unlabeled."}
+              : "Reporting currency unknown; amounts are unlabeled."}
           </span>
         )}
       </footer>

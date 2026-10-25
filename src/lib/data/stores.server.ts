@@ -9,8 +9,8 @@ import { cache } from "react";
 import { appConfig } from "@/app.config";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { isCurrency, isTimeZone } from "@/lib/format";
-import { CACHE_POLICY } from "@/lib/data/query-cache";
 import { SAMPLE_STORES } from "@/lib/sample/stores";
+import { recallStoreFacts, rememberStoreFacts, type StoreFacts } from "./store-facts.server";
 import { queryOrderTimeZone, queryStoreRoster } from "./store-roster.server";
 import { WarehouseError } from "./warehouse-error";
 
@@ -77,7 +77,7 @@ export function reportingCurrency(
 export type ReportingCurrencyConfig = {
   /** The deployment's validated code, or null when unset or unrecognized. */
   currency: string | null;
-  /** A configured deployment code Intl does not accept; it is ignored, so amounts stay unlabeled. */
+  /** A configured deployment code Intl does not accept; it is ignored, so store metadata applies. */
   invalidCurrency: string | null;
   /** Stores with their own validated code. */
   labeledStores: number;
@@ -124,27 +124,20 @@ export const loadStores = cache(async (): Promise<StoreOption[]> => {
 });
 
 /**
- * Store zones are configuration, not viewer data, and retain their existing
- * one-hour reuse policy. Currency always comes from the current roster,
- * whose query cache expires after five minutes and supports Refresh data.
+ * The store's zone and dim_stores currency from one list read, remembered
+ * (src/lib/data/store-facts.server.ts) unless this request is a Refresh. The
+ * zone is dim_stores.store_timezone, or the offset SourceMedium applied to the
+ * store's recent orders when that is missing, the store is not listed, or the
+ * store list failed. Null for an unlisted store with neither zone. Never a
+ * guess: a listed store with neither zone throws, as does a failed store list.
+ * Only facts read with a successful store list are remembered, so a failed
+ * list never pins a store unlabeled.
  */
-const knownStores = new Map<string, { zone: string; until: number }>();
-const REMEMBER_MS = CACHE_POLICY.storeTimeZone.maxAgeSeconds * 1000;
-
-/**
- * The store's zone from one list read. The zone is
- * dim_stores.store_timezone, or the offset SourceMedium applied to the store's
- * recent orders when that is missing, the store is not listed, or the store
- * list failed. Null for an unlisted store with neither zone. Never a guess: a
- * listed store with neither zone throws, as does a failed store list.
- */
-async function storeFacts(
-  storeId: string,
-  stores?: StoreOption[],
-): Promise<{ zone: string; currency: string | null } | null> {
+async function storeFacts(storeId: string, stores?: StoreOption[]): Promise<StoreFacts | null> {
   const access = await requireViewer({ storeId });
   const key = `${access.mode}|${access.mode === "live" ? access.warehouse.applicationId : ""}|${storeId}`;
-  const known = knownStores.get(key);
+  const known = access.request.bypassCache ? null : recallStoreFacts(key);
+  if (known) return known;
   let listed: StoreOption[] | null = null;
   let failure: WarehouseError | null = null;
   try {
@@ -154,14 +147,11 @@ async function storeFacts(
     failure = error;
   }
   const store = listed?.find((option) => option.id === storeId);
-  const zone =
-    (known && known.until > Date.now() ? known.zone : null) ??
-    store?.timeZone ??
-    (access.mode === "live" ? await queryOrderTimeZone(access.warehouse, storeId) : null);
+  const zone = store?.timeZone ?? (access.mode === "live" ? await queryOrderTimeZone(access.warehouse, storeId) : null);
   if (zone) {
-    const facts = { zone };
-    if (!known || known.until <= Date.now()) knownStores.set(key, { ...facts, until: Date.now() + REMEMBER_MS });
-    return { ...facts, currency: store?.currency ?? null };
+    const facts = { zone, currency: store?.currency ?? null };
+    if (listed) rememberStoreFacts(key, facts);
+    return facts;
   }
   if (failure) throw failure;
   if (!store) return null;

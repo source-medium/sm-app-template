@@ -53,7 +53,7 @@ export function ReportHeader({
   mode: ViewerAccess["mode"];
   /** Absent when no store can be shown; then the report is not loaded. */
   storeId?: string;
-  /** The selected store's verified reporting currency, or null when unverified. */
+  /** The selected store's reporting currency (dim_stores or an app.config.ts override), or null when unknown. */
   currency?: string | null;
   allStores?: boolean;
   /** Absent when the store's date is unknown; then the report is not loaded. */
@@ -93,7 +93,7 @@ export function ReportHeader({
               ? "Currencies shown per store; no combined totals"
               : currency
                 ? `Reporting currency: ${currency}`
-                : "Currency unverified; amounts are unlabeled"}
+                : "Currency unknown; amounts are unlabeled"}
           </span>
         </p>
       </div>
