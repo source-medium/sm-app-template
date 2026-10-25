@@ -43,6 +43,9 @@ export default defineConfig({
           env: sampleEnvironment,
           testTimeout: 30_000,
           environment: "jsdom",
+          // Node 25+ defines its own localStorage global, unusable without --localstorage-file,
+          // which shadows jsdom's. The browser's storage is the one under test.
+          execArgv: ["--no-experimental-webstorage"],
           include: ["tests/components/**/*.test.tsx", "src/features/**/*.test.tsx"],
           setupFiles: ["tests/helpers/setup-dom.ts"],
         },
