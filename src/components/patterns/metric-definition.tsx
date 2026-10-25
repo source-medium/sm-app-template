@@ -15,7 +15,7 @@ export function MetricDefinition({ binding, scope }: { binding: MetricBinding; s
     ["Report population", binding.population],
     ["Date basis", binding.dateBasis],
     ["Timezone", scope?.timeZone],
-    ["Reporting currency", scope ? (scope.currency ?? "Unverified; amounts unlabeled") : undefined],
+    ["Reporting currency", scope ? (scope.currency ?? "Unknown; amounts unlabeled") : undefined],
     ["Attribution", binding.attribution],
     [
       "Dependency status",

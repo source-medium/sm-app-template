@@ -4,7 +4,7 @@
  * requireViewer(), REST client and fake BigQuery.
  */
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { goLive, requestHeaders, rowsResponse } from "../helpers/live";
+import { goLive, requestHeaders, ROSTER_FIELDS, rowsResponse, storeRow } from "../helpers/live";
 import { googleError } from "../fake-bigquery/fake-bigquery";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { CACHE_MAX_ENTRY_BYTES, CACHE_POLICY } from "@/lib/data/query-cache";
@@ -17,6 +17,7 @@ import {
   type CacheStore,
 } from "@/lib/data/query-cache.server";
 import { requestRefresh } from "@/lib/refresh";
+import { resolveReportStore } from "@/lib/data/stores.server";
 import { setLogEmitter, type LogEvent } from "@/lib/data/log";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { TEST_PASSWORD } from "../helpers/service-account";
@@ -55,6 +56,7 @@ function fakeStore(): CacheStore & { map: Map<string, { value: string; ttl: numb
 }
 
 beforeEach(() => {
+  nextCache.refresh.mockClear();
   setQueryCacheEnabled(true);
   resetQueryCache();
   setQueryCacheStore(null);
@@ -145,9 +147,29 @@ it("coalesces separate concurrent requests into one job and traces every consume
       .sort(),
   ).toEqual(consumers.map((viewer) => viewer.request.id).sort());
   expect(lines.filter((line) => line.event === "app_cache").every((line) => line.cache_tier === "inflight")).toBe(true);
-  expect(consumers.map((viewer) => viewer.request.provenance)).toEqual(
-    Array.from({ length: 2 }, () => ({ oldestQueriedAt: results[0]?.queriedAt, servedFromCache: 1 })),
+  // The shared job finished during each consumer's request, so no page says it shows an older cached result.
+  expect(viewers.map((viewer) => viewer.request.provenance)).toEqual(
+    Array.from({ length: 3 }, () => ({ oldestQueriedAt: null, servedFromCache: 0 })),
   );
+});
+
+it("rereads a store's remembered currency for a Refresh", async () => {
+  const basic = () => new Headers({ authorization: `Basic ${btoa(`viewer:${TEST_PASSWORD}`)}` });
+  let currency = "USD";
+  const fake = await goLive({
+    submit: () => rowsResponse(ROSTER_FIELDS, [storeRow("refresh-facts", "UTC", currency)]),
+  });
+  expect(await resolveReportStore("refresh-facts")).toMatchObject({ currency: "USD" });
+  currency = "CAD";
+  requestHeaders.current = basic();
+  expect(await resolveReportStore("refresh-facts")).toMatchObject({ currency: "USD" });
+  requestHeaders.current = basic();
+  await requestRefresh();
+  expect(await resolveReportStore("refresh-facts")).toMatchObject({ currency: "CAD" });
+  // The next ordinary request keeps what the Refresh read.
+  requestHeaders.current = basic();
+  expect(await resolveReportStore("refresh-facts")).toMatchObject({ currency: "CAD" });
+  expect(fake.calls.filter((call) => call.kind === "submit")).toHaveLength(2);
 });
 
 it("keys on the store, the SQL and the parameters, so another store never reads this one's result", async () => {

@@ -107,11 +107,11 @@ to delete any of them.
   `result_too_large` unless a list that says it is partial sets `partial: true`
   and shows `result.truncated`. Totals are never computed from a truncated list.
 - INT64 decodes to `bigint`, FLOAT64 to a finite number, DATE stays a string.
-- Label money with the verified reporting currency in `app.config.ts`: `currency`
-  for the deployment and `reportingCurrencies` for per-store overrides. Null
-  leaves live money unlabeled. `dim_stores.store_currency_code` is nominal
-  metadata and does not establish the currency of published report inputs.
-  The setting formats amounts; it does not convert them. Keep NUMERIC exact,
+- Label money with the report's reporting currency. Each store's
+  `dim_stores.store_currency_code` is the source of truth; `app.config.ts`
+  `currency` (deployment) and `reportingCurrencies` (per store) are explicit
+  overrides. A missing or unrecognized code leaves live money unlabeled.
+  A label formats amounts; it does not convert them. Keep NUMERIC exact,
   add with `sumDecimals`, format with `formatMoney`, and pass the report's
   reporting currency. Read each field's type: platform-reported revenue is
   FLOAT64. Never add across stores. Do not label from `order_currency_code`.

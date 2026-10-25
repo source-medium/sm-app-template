@@ -45,7 +45,7 @@ it("labels verified currencies per row, leaves unknown money unlabeled, and expo
   expect(rows).toHaveLength(4);
   expect(rows[1]).toHaveTextContent("USD$1,234.56");
   expect(rows[2]).toHaveTextContent("GBP£1,234.56");
-  expect(rows[3]).toHaveTextContent("Unverified1,234.56");
+  expect(rows[3]).toHaveTextContent("Unknown1,234.56");
   for (const header of ["Net revenue", "Ad spend"])
     expect(within(screen.getByRole("columnheader", { name: header })).queryByRole("button")).not.toBeInTheDocument();
   expect(screen.getByRole("link", { name: "UK" })).toHaveAttribute(

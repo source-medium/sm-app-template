@@ -110,8 +110,10 @@ is needed. Only trusted branches may receive preview credentials. Never use
 `--ignore-base-config`. Keep
 `APP_REQUIRE_LIVE`, production's `preview_urls: false`, and the viewer guard on
 every hostname. If issuance is unavailable, sample setup can continue, but
-live iteration is not ready. When connecting data, set `currency` in
-`app.config.ts` as `docs/connect.md#connect-a-hosted-app` describes. With
+live iteration is not ready. Money labels come from each store's
+`dim_stores.store_currency_code` with no setup
+(`docs/data.md#money-and-currency`); set `app.config.ts` currency only as a
+deliberate override. With
 authorization, give each Worker an `APP_QUERY_CACHE` KV namespace
 (`docs/cloud.md#query-cache`) so the query cache survives restarts; without it
 the app still works, memory only, and the Connection page says so.

@@ -282,8 +282,9 @@ Existing `app.config.ts` customizations remain explicit overrides: a store's
 `reportingCurrencies` entry takes precedence over the deployment's `currency`,
 which otherwise defaults to the metadata code. A null per-store override leaves
 that store unlabeled. Neither metadata nor an override performs FX conversion.
-Synthetic sample amounts stay in USD. Currency metadata follows the roster's
-five-minute cache, and Refresh data bypasses that cache.
+Synthetic sample amounts stay in USD. A store's currency is reused with its
+time zone for up to an hour ([speed and cost](#speed-and-cost)); Refresh data
+rereads both.
 
 A recognized code must be a real ISO 4217 code the runtime publishes (`isCurrency`
 in `src/lib/format.ts`). Formatting respects minor units (JPY has none, BHD has
@@ -301,13 +302,16 @@ Pass the report store's currency into `formatMoney`. Chart axis ticks stay
 compact numbers without a currency symbol, because that formatter is shared
 with counts.
 
-When currency conversion is enabled, supported standard monetary fields use
-the configured reporting currency, which can differ from nominal store currency.
+When SourceMedium's currency conversion is enabled for a store, supported
+standard monetary fields are converted to that store's configured output
+currency. The label is right only when that output currency equals the store's
+`store_currency_code`. If they differ, ask SourceMedium to correct the store's
+currency; an `app.config.ts` override only relabels this one app.
 Unsupported ad sources retain account currency. Amazon Ads uses the store's
 configured currency independently of workspace reporting currency. Manually
-configured costs are not automatically converted. Before labeling reports or
-combining inputs, verify order, ad, platform-reported revenue, and cost currencies
-for the selected store. Gross profit requires costs in the revenue currency.
+configured costs are not automatically converted. Before combining inputs,
+confirm order, ad, platform-reported revenue, and cost currencies match for the
+selected store. Gross profit requires costs in the revenue currency.
 If inputs differ, align them upstream or narrow the affected view's scope;
 setting a label or leaving it blank cannot repair mixed-currency calculations.
 See SourceMedium's [reporting currency rules](https://sourcemedium.com/docs/help-center/core-concepts/data-definitions/reporting-currency).
@@ -317,7 +321,7 @@ See SourceMedium's [reporting currency rules](https://sourcemedium.com/docs/help
   is FLOAT64: decode with `bq.float64()`; it is approximate at the source.
 - Add NUMERIC values with `sumDecimals` (`src/lib/data/decimal.ts`), never as
   JavaScript numbers. Ratios use `decimalToNumber` and `ratio`.
-- Never add money across stores. Each store is labeled with its verified reporting currency
+- Never add money across stores. Each store is labeled with its own reporting currency
   code. Use a separately scoped app when a deployment should show one store.
 
 For order reconciliation, inspect `order_original_currency_code`,
@@ -711,7 +715,7 @@ with the same campaign query as the table. It includes all loaded campaigns
 across the table's pages, up to 200, in the query's spend order. It does not
 run the chart query or start a background export job. Unapplied filter edits
 are ignored. Each row includes the store, inclusive dates, sample/live mode,
-the selected store's verified reporting currency (blank when unverified), and `export_truncated`.
+the selected store's reporting currency (blank when unknown), and `export_truncated`.
 A bounded partial result sets that flag to `true` and uses `-partial-` in the
 filename; it is not a complete campaign export.
 
@@ -809,7 +813,8 @@ the existing text fallback. Never put app credentials in image URLs.
 ## Speed and cost
 
 A page's dates follow its store's time zone, so its queries wait for that zone.
-A server reuses each store's zone for an hour after looking it up, so later pages
+A server reuses each store's zone and currency for an hour after reading them
+with a successful store list (Refresh data rereads them), so later pages
 whose URL names the store, as the filter bar and navigation keep doing, run their
 queries in parallel with the store list. Each BigQuery query
 still takes a moment (on the demo warehouse, pages took 1 to 2.5 seconds from

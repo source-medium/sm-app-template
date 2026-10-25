@@ -235,7 +235,8 @@ export async function cachedQuery(
   const key = await cacheKey(scope, request);
   const started = now();
   const serve = (result: QueryResult, tier: CacheTier): QueryResult => {
-    if (result.queriedAt) recordCachedResult(context, result.queriedAt);
+    // A shared in-flight query completes during this request, so it is no older than the page.
+    if (result.queriedAt && tier !== "inflight") recordCachedResult(context, result.queriedAt);
     logEvent({
       event: "app_cache",
       level: "info",

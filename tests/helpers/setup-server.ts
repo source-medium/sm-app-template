@@ -8,6 +8,7 @@
 import { afterEach, vi } from "vitest";
 import { requestHeaders } from "./live";
 import { resetQueryCache, setQueryCacheEnabled } from "@/lib/data/query-cache.server";
+import { resetStoreFacts } from "@/lib/data/store-facts.server";
 
 // Feature tests script one response per query; only the cache's own tests turn the query cache on.
 setQueryCacheEnabled(false);
@@ -31,7 +32,8 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   requestHeaders.current = new Headers();
-  // The query cache outlives a request by design; a test's results must not outlive the test.
+  // The query cache and remembered store facts outlive a request by design; a test's results must not outlive the test.
   resetQueryCache();
+  resetStoreFacts();
   setQueryCacheEnabled(false);
 });

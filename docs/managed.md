@@ -1,7 +1,7 @@
 # Apps SourceMedium hosts
 
-When SourceMedium hosts your app, your team still owns the code. GitHub is
-optional. There is no Google key, hosting account or warehouse
+When SourceMedium hosts your app, your team still owns the code in a private
+GitHub repository, but there is no Google key, hosting account or warehouse
 setting to manage. Every query goes through SourceMedium's data API, which
 holds the credential, runs your SQL read-only, and checks on every request
 that the person or token behind it still has access.
@@ -156,11 +156,12 @@ active; ask a workspace admin.
   app's error or safe Connection report to SourceMedium's request log. CSV
   and dictionary errors include the same ID as `request_id`. A transport
   failure without a server response has no support code.
-- Hosted requests also carry a gateway-generated `X-SM-Request-ID`. Query and
-  cache logs record it as `app_request_id`; SourceMedium's RPC logs record it
-  as `parent_request_id`. Each data call keeps its own support code. Cached
-  results still require a fresh data context on every request, and concurrent
-  requests sharing one query each record their own cache use.
+- When SourceMedium's gateway sends `X-SM-Request-ID` (a UUID per browser
+  request), query and cache logs record it as `app_request_id` and
+  SourceMedium's data RPC logs record it as `parent_request_id`; otherwise the
+  app generates its own `app_request_id`. Each data call keeps its own support
+  code. Cached results still require a fresh data context on every request,
+  and each request that joins a shared in-flight query logs its own cache hit.
 - Report headers say when warehouse freshness or reporting currency is
   unknown. A successful query or connection check does not establish either.
   Reports use each store's `dim_stores.store_currency_code` automatically,

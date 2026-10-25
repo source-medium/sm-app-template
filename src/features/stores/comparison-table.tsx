@@ -50,7 +50,7 @@ export function StoreComparisonTable({
             href: path ? switchStoreHref(path, { ...params, ...range }, store.id) : undefined,
           },
           brand: { display: store.brand ?? "—" },
-          currency: { display: currency ?? "Unverified" },
+          currency: { display: currency ?? "Unknown" },
           revenue: { display: formatMoney(summary?.revenue ?? null, currency) },
           change: {
             display: issue
