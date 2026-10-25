@@ -12,7 +12,7 @@ export const CREATIVE_SORTS = [
   "cpo",
 ] as const;
 export type CreativeSort = (typeof CREATIVE_SORTS)[number];
-export type CreativeIdentity = readonly [channel: string, creativeId: string];
+export type CreativeIdentity = readonly [platform: string, creativeId: string];
 export function parseCreativeThreshold(value: string | undefined): string | null {
   if (!value) return null;
   return /^(?:0|[1-9]\d{0,28})(?:\.\d{1,9})?$/.test(value) ? value : null;

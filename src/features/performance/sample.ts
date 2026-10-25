@@ -10,6 +10,8 @@ import type { PerformanceFilters } from "./queries";
 import { BUSINESS_RELATION, BusinessRow, PLATFORM_RELATION, PlatformRow } from "./rows";
 
 type Wire = Record<string, string | null>;
+/** Published source_system values; the report shows them by name (src/lib/ad-platforms.ts). */
+const PLATFORMS = ["meta_ads", "google_ads", "pinterest_ads"];
 const money = (value: bigint | null) => (value === null ? null : fromUnits(value * 10_000_000n));
 function sum(rows: Wire[], fields: readonly string[]): Wire {
   return Object.fromEntries(fields.map((field) => [field, sumDecimals(rows.map((row) => row[field] ?? null))]));
@@ -68,7 +70,7 @@ export function samplePlatforms(filters: PerformanceFilters) {
   if (!channels.length) return [];
   const source: Wire[] = [];
   for (const date of datesInRange(filters.range)) {
-    for (const [index, platform] of ["Meta", "Google", "Pinterest"].entries()) {
+    for (const [index, platform] of PLATFORMS.entries()) {
       const random = seededRandom(`performance|${filters.storeId}|${date}|${platform}`);
       const impressions = Math.round(((20000 + random() * 60000) * scale) / (index + 1));
       const clicks = Math.round(impressions * (0.01 + random() * 0.02));
@@ -93,7 +95,7 @@ export function samplePlatforms(filters: PerformanceFilters) {
   const dates = [...new Set(source.map((row) => row.period_date))].sort().reverse();
   const fields = ["spend", "impressions", "clicks", "conversions", "revenue"];
   const rows: Wire[] = [];
-  for (const platform of [null, "Meta", "Google", "Pinterest"]) {
+  for (const platform of [null, ...PLATFORMS]) {
     const scoped = source.filter((row) => platform === null || row.platform === platform);
     const base = { platform, combined: String(platform === null) };
     for (const date of dates)

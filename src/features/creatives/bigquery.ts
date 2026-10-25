@@ -1,11 +1,13 @@
 /**
- * Creatives, live: one row per creative over the range. The sort column is
- * chosen from a fixed map in code; the browser only picks the key.
+ * Creatives, live: one row per ad platform and creative over the range. The
+ * sort column is chosen from a fixed map in code; the browser only picks the
+ * key. The `channel` parameter and alias carry the ad platform (AD_PLATFORM_SQL).
  */
 import "server-only";
 import type { ReportFilters } from "@/lib/filters";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { adNamePredicate } from "@/lib/data/ad-name-sql";
+import { AD_PLATFORM_SQL } from "@/lib/data/channel-sql";
 import { decodeRows } from "@/lib/data/decode";
 import type { CreativesData, CreativesFilters } from "./queries";
 import type { CreativeSort } from "./filters";
@@ -41,7 +43,7 @@ export async function queryCreatives(filters: CreativesFilters): Promise<Creativ
         ARRAY_AGG(ad_creative_thumbnail_url IGNORE NULLS ORDER BY date DESC LIMIT 1)[SAFE_OFFSET(0)] AS thumbnail_url,
         ARRAY_AGG(COALESCE(NULLIF(ad_creative_facebook_url, ''), NULLIF(ad_creative_instagram_url, '')) IGNORE NULLS ORDER BY date DESC LIMIT 1)[SAFE_OFFSET(0)] AS ad_url,
         MAX(ad_creative_call_to_action_type) AS call_to_action,
-        IFNULL(sm_channel, '(none)') AS channel,
+        ${AD_PLATFORM_SQL} AS channel,
         SUM(ad_spend) AS spend,
         SUM(ad_impressions) AS impressions,
         SUM(ad_clicks) AS clicks,
@@ -54,11 +56,11 @@ export async function queryCreatives(filters: CreativesFilters): Promise<Creativ
       WHERE sm_store_id = @store_id
         AND date BETWEEN @start_date AND @end_date
         AND ad_creative_id IS NOT NULL
-        AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
+        AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
         AND (@campaign = '' OR ad_campaign_id = @campaign)
         AND ${names.sql}
         AND (@selection = '' OR EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(@selection)) AS selected
-          WHERE IFNULL(sm_channel, '(none)') = JSON_VALUE(selected, '$[0]') AND ad_creative_id = JSON_VALUE(selected, '$[1]')))
+          WHERE ${AD_PLATFORM_SQL} = JSON_VALUE(selected, '$[0]') AND ad_creative_id = JSON_VALUE(selected, '$[1]')))
       GROUP BY creative_id, channel
       HAVING (@minimum_spend = '' OR SUM(ad_spend) >= CAST(NULLIF(@minimum_spend, '') AS NUMERIC))
         AND (@minimum_conversions = '' OR SUM(ad_platform_reported_conversions) >= CAST(NULLIF(@minimum_conversions, '') AS FLOAT64))
@@ -89,7 +91,7 @@ export async function queryCreativeChannels(filters: ReportFilters): Promise<str
     name: "creative_channels",
     cache: CACHE_POLICY.aggregate,
     maxRows: 50,
-    sql: `SELECT DISTINCT IFNULL(sm_channel, '(none)') AS channel
+    sql: `SELECT DISTINCT ${AD_PLATFORM_SQL} AS channel
       FROM ${warehouse.table(CREATIVE_RELATION)}
       WHERE sm_store_id = @store_id AND date BETWEEN @start_date AND @end_date
         AND ad_creative_id IS NOT NULL

@@ -15,7 +15,7 @@ const fields = [
   ...["latest_date", "previous_latest_date", "second_latest_date"].map((name) => ({ name, type: "DATE" })),
 ];
 
-it("reconciles sample spend and channel-filtered campaign shares without changing the denominator", async () => {
+it("reconciles sample spend and platform-filtered campaign shares without changing the denominator", async () => {
   const rows = (await sampleSpendBreakdown(filters, "channel", [baseline, null])).rows;
   const sourceCents = samplePaidSource(filters.storeId, filters.range).reduce(
     (total, row) => total + row.spendCents,
@@ -23,10 +23,10 @@ it("reconciles sample spend and channel-filtered campaign shares without changin
   );
   expect(rows[0]?.total_spend).toBe(sumDecimals(rows.map((row) => row.spend)));
   expect(Number(rows[0]?.total_spend) * 100).toBeCloseTo(Number(sourceCents), 5);
-  const campaigns = await sampleSpendBreakdown({ ...filters, channel: "Meta" }, "campaign", [null, null]);
+  const campaigns = await sampleSpendBreakdown({ ...filters, channel: "meta_ads" }, "campaign", [null, null]);
   expect(campaigns.rows).toHaveLength(3);
   expect(campaigns.rows.every((row) => row.previous_spend === null)).toBe(true);
-  expect(campaigns.rows[0]?.total_spend).toBe(rows.find((row) => row.label === "Meta")?.spend);
+  expect(campaigns.rows[0]?.total_spend).toBe(rows.find((row) => row.label === "meta_ads")?.spend);
 });
 
 it("uses typed parameters and SQL totals before top-N, retaining exact decimals", async () => {
@@ -59,6 +59,12 @@ it("uses typed parameters and SQL totals before top-N, retaining exact decimals"
   expect(body.query).toContain("sm_store_id = @store_id");
   expect(body.query).toContain("SUM(spend) OVER () AS total_spend");
   expect(body.query).toContain("LIMIT 11");
+  // Campaign IDs are unique within an ad platform; sm_channel is the sales channel.
+  expect(body.query).toContain(
+    "CONCAT(COALESCE(source_system, '(unknown platform)'), ' / ', IFNULL(ad_campaign_id, '(none)')) AS dimension_key",
+  );
+  expect(body.query).toContain("AND (@channel = '' OR COALESCE(source_system, '(unknown platform)') = @channel)");
+  expect(body.query).not.toContain("sm_channel");
   expect(body.query).not.toContain(channel);
   const params = Object.fromEntries(body.queryParameters.map((param) => [param.name, param.parameterValue.value]));
   expect(params).toMatchObject({

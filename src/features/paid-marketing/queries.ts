@@ -1,8 +1,9 @@
 /**
  * Paid marketing's data contract, from rpt_ad_performance_daily (grain: ad
- * by day). Two reads: channel-by-day series for every channel, and a
- * campaign breakdown filtered to one channel or all. Money is in the
- * warehouse's reporting currency.
+ * by day). Two reads: platform-by-day series for every ad platform, and a
+ * campaign breakdown filtered to one platform or all. Money is in the
+ * warehouse's reporting currency. `channel` is the ad platform
+ * (source_system, src/lib/ad-platforms.ts), not the relation's sm_channel.
  */
 import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
@@ -49,13 +50,13 @@ export type ChannelDay = AdMeasures & { channel: string; date: string };
 export type CampaignRow = AdMeasures & {
   campaignId: string;
   campaignName: string | null;
-  channel: string | null;
+  channel: string;
 };
 
 export type PaidMarketingFilters = ReportFilters & { channel: string | null; names?: AdNameRule[] };
 
 export type PaidMarketingData = {
-  /** Every channel, so a channel filter never repaints the others. */
+  /** Every ad platform, so a platform filter never repaints the others. */
   channelDays: ChannelDay[];
   campaigns: CampaignRow[];
   campaignsTruncated: boolean;

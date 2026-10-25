@@ -4,6 +4,12 @@ import { isSummaryOrderMeasure, type SummaryMeasure } from "@/lib/summary-measur
 export const SALES_CHANNEL_PREDICATE = `((@channel = '' OR IFNULL(sm_channel, '(none)') = @channel) AND NOT STARTS_WITH(@channel, '[')
   OR IFNULL(sm_channel, '(none)') IN UNNEST(IFNULL(JSON_VALUE_ARRAY(@channel), ARRAY<STRING>[])))`;
 
+/**
+ * The ad platform of an rpt_ad_performance_daily row, labeled by `adPlatformLabel` (src/lib/ad-platforms.ts).
+ * That relation's sm_channel is the sales channel, never the platform.
+ */
+export const AD_PLATFORM_SQL = "COALESCE(source_system, '(unknown platform)')";
+
 /** The catalog's filter on summary order count and net revenue (dashboard-metrics-v1), verbatim. */
 export const VALID_SALES_CHANNEL_SQL = `sm_channel in (${VALID_SALES_CHANNELS.map((channel) => `'${channel}'`).join(", ")})`;
 

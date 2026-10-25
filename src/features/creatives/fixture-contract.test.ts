@@ -15,7 +15,7 @@ it("only links to HTTPS platform posts and scopes campaign returns before sortin
     "http://facebook.com/post",
   ])
     expect(safeAdUrl(value)).toBeNull();
-  const data = await sampleCreatives({ ...FILTERS, sort: "cpo", channel: "Meta", campaign: "cmp-1001" });
+  const data = await sampleCreatives({ ...FILTERS, sort: "cpo", channel: "meta_ads", campaign: "cmp-1001" });
   expect(data.creatives.map((c) => c.creativeId).sort()).toEqual(["crv-01", "crv-02", "crv-07"]);
   const values = data.creatives.map((c) => c.cpo ?? Number.POSITIVE_INFINITY);
   expect(values).toEqual([...values].sort((a, b) => a - b));
@@ -72,7 +72,7 @@ describe("creatives fixture contract", () => {
       body: "b",
       thumbnail_url: null,
       call_to_action: null,
-      channel: "Meta",
+      channel: "meta_ads",
       impressions: "1",
       clicks: "0",
       conversions: "0",
@@ -93,11 +93,11 @@ describe("creatives fixture contract", () => {
   });
 });
 
-it("filters channels before sorting and does not silently substitute unknown channels", async () => {
+it("filters ad platforms before sorting and does not silently substitute unknown platforms", async () => {
   const { sampleCreativeChannels } = await import("./sample");
-  expect(sampleCreativeChannels(FILTERS)).toEqual(["Google", "Meta", "TikTok"]);
-  const google = await sampleCreatives({ ...FILTERS, sort: "spend", channel: "Google" });
+  expect(sampleCreativeChannels(FILTERS)).toEqual(["google_ads", "meta_ads", "tiktok_ads"]);
+  const google = await sampleCreatives({ ...FILTERS, sort: "spend", channel: "google_ads" });
   expect(google.creatives.length).toBeGreaterThan(0);
-  expect(google.creatives.every((row) => row.channel === "Google")).toBe(true);
+  expect(google.creatives.every((row) => row.channel === "google_ads")).toBe(true);
   expect((await sampleCreatives({ ...FILTERS, sort: "ctr", channel: "unknown" })).creatives).toEqual([]);
 });

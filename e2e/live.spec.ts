@@ -184,7 +184,7 @@ test("channel controls apply available channels and retention renders its publis
   for (const [href, label] of [
     ["/products", "Sales channel"],
     ["/orders", "Sales channel"],
-    ["/creatives", "Ad channel"],
+    ["/creatives", "Ad platform"],
   ]) {
     if (!appConfig.nav.some((item) => item.href === href)) continue;
     await page.goto(href as string);

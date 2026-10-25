@@ -19,7 +19,7 @@ const CREATIVES = [
   {
     id: "crv-01",
     campaign: "cmp-1001",
-    channel: "Meta",
+    source_system: "meta_ads",
     image: "/sample-creatives/creative-01.svg",
     title: "Meet the everyday tote",
     body: "Built for the commute, the market, and everything after. Free returns, always.",
@@ -29,7 +29,7 @@ const CREATIVES = [
   {
     id: "crv-02",
     campaign: "cmp-1001",
-    channel: "Meta",
+    source_system: "meta_ads",
     image: "/sample-creatives/creative-02.svg",
     title: "Back in stock: the linen set",
     body: "Our most-requested set is back in four colors. Restocks sell out fast.",
@@ -39,7 +39,7 @@ const CREATIVES = [
   {
     id: "crv-03",
     campaign: "cmp-1002",
-    channel: "Meta",
+    source_system: "meta_ads",
     image: "/sample-creatives/creative-03.svg",
     title: "Customers on repeat",
     body: "“I bought one and came back for three more.” See why reviewers call it a staple.",
@@ -49,7 +49,7 @@ const CREATIVES = [
   {
     id: "crv-04",
     campaign: "cmp-1002",
-    channel: "Meta",
+    source_system: "meta_ads",
     image: "/sample-creatives/creative-04.svg",
     title: "Weekend sale: 20% off",
     body: "Two days only. The whole collection, no code needed.",
@@ -59,7 +59,7 @@ const CREATIVES = [
   {
     id: "crv-05",
     campaign: "cmp-1003",
-    channel: "Meta",
+    source_system: "meta_ads",
     image: "/sample-creatives/creative-05.svg",
     title: "Gift it this season",
     body: "Wrapped, tagged, and shipped in two days.",
@@ -69,7 +69,7 @@ const CREATIVES = [
   {
     id: "crv-06",
     campaign: "cmp-1003",
-    channel: "Meta",
+    source_system: "meta_ads",
     image: "/sample-creatives/creative-06.svg",
     title: "How it's made",
     body: "A two-minute look inside the workshop where every piece is finished by hand.",
@@ -79,7 +79,7 @@ const CREATIVES = [
   {
     id: "crv-07",
     campaign: "cmp-1001",
-    channel: "Meta",
+    source_system: "meta_ads",
     image: "/sample-creatives/expired-link.svg",
     title: "Spring colors are here",
     body: "Fresh shades for longer days. This card's image link has expired, so the text shows instead.",
@@ -89,7 +89,7 @@ const CREATIVES = [
   {
     id: "crv-08",
     campaign: "cmp-2001",
-    channel: "Google",
+    source_system: "google_ads",
     image: null,
     title: "Official store – free shipping",
     body: "Shop the full collection direct, with free shipping on every order.",
@@ -99,7 +99,7 @@ const CREATIVES = [
   {
     id: "crv-09",
     campaign: "cmp-3001",
-    channel: "TikTok",
+    source_system: "tiktok_ads",
     image: null,
     title: "Creator unboxing",
     body: "Watch a creator unpack the tote and pack it for a weekend away.",
@@ -109,7 +109,7 @@ const CREATIVES = [
 ] as const;
 
 function placements(creative: (typeof CREATIVES)[number], filters: CreativesFilters) {
-  if (filters.channel && creative.channel !== filters.channel) return [];
+  if (filters.channel && creative.source_system !== filters.channel) return [];
   // The first asset runs in two campaigns, so name filtering must scope its metrics as well as its card.
   const all =
     creative.id === "crv-01"
@@ -156,7 +156,7 @@ export async function sampleCreatives(filters: CreativesFilters): Promise<Creati
         image_url: creative.image,
         thumbnail_url: null,
         call_to_action: creative.cta,
-        channel: creative.channel,
+        channel: creative.source_system,
         spend: fromUnits(spendCents * 10_000_000n),
         impressions: String(impressions),
         clicks: String(clicks),
@@ -194,7 +194,7 @@ export async function sampleCreatives(filters: CreativesFilters): Promise<Creati
 
 export function sampleCreativeChannels(filters: ReportFilters): string[] {
   return SAMPLE_STORE_SCALE.get(filters.storeId)
-    ? [...new Set(CREATIVES.map((creative) => creative.channel))].sort()
+    ? [...new Set(CREATIVES.map((creative) => creative.source_system))].sort()
     : [];
 }
 

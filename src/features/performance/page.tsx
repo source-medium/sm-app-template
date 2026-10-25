@@ -13,7 +13,8 @@ import { TIME_GRAINS } from "@/lib/time-grain";
 import { getBusiness, getPlatforms, getPerformanceChannels, type PerformanceFilters } from "./queries";
 import { BUSINESS_RELATION, PLATFORM_RELATION } from "./rows";
 import { performanceOptions } from "./filters";
-import { BusinessTable, PlatformFilter, PlatformTables, METRIC_GROUPS, platformLabel } from "./tables";
+import { BusinessTable, PlatformFilter, PlatformTables, METRIC_GROUPS } from "./tables";
+import { adPlatformLabel } from "@/lib/ad-platforms";
 
 export const metadata: Metadata = { title: "Performance tables" };
 export default async function PerformancePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -60,7 +61,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
         const reportLabel =
           view === "business"
             ? "Business"
-            : `Platform detail: ${platform ? platformLabel(platform) : "Combined platforms"}`;
+            : `Platform detail: ${platform ? adPlatformLabel(platform) : "Combined platforms"}`;
         const grainLabel = TIME_GRAINS.find((item) => item.value === grain)?.label.toLowerCase();
         const channelLabel = salesChannelLabel(channel);
         const download = (

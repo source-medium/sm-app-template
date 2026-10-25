@@ -20,7 +20,7 @@ export async function GET(request: Request): Promise<Response> {
         { header: "export_truncated", value: () => data.campaignsTruncated },
         { header: "campaign_id", value: (row) => row.campaignId },
         { header: "campaign_name", value: (row) => row.campaignName },
-        { header: "channel", value: (row) => row.channel },
+        { header: "ad_platform", value: (row) => row.channel },
         { header: "spend", value: (row) => row.spend, numeric: true },
         { header: "impressions", value: (row) => row.impressions, numeric: true },
         { header: "clicks", value: (row) => row.clicks, numeric: true },

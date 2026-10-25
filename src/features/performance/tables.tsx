@@ -10,6 +10,7 @@ import { decimalToNumber } from "@/lib/data/decimal";
 import type { PerformanceFilters } from "./queries";
 import { scopePlatformRecords, type BusinessRecord, type PlatformRecord } from "./rows";
 import { businessRatios, platformRatios } from "./measures";
+import { adPlatformLabel } from "@/lib/ad-platforms";
 
 export const METRIC_GROUPS = [
   { value: "revenue", label: "Revenue and orders" },
@@ -167,10 +168,6 @@ export function BusinessTable({
     </section>
   );
 }
-export const platformLabel = (value: string) =>
-  ({ meta_ads: "Meta", facebook_ads: "Meta", google_ads: "Google", pinterest_ads: "Pinterest", tiktok_ads: "TikTok" })[
-    value
-  ] ?? value;
 export function PlatformFilter({ records = [], platform }: { records?: PlatformRecord[]; platform: string }) {
   const platforms = [
     ...new Set(records.filter((row) => !row.combined).map((row) => row.platform ?? "(unknown platform)")),
@@ -184,7 +181,7 @@ export function PlatformFilter({ records = [], platform }: { records?: PlatformR
         { value: "", label: "Combined platforms" },
         ...[...new Set([...platforms, ...(platform ? [platform] : [])])].map((value) => ({
           value,
-          label: platformLabel(value),
+          label: adPlatformLabel(value),
         })),
       ]}
     />
@@ -208,7 +205,9 @@ export function PlatformTables({
   const compact = (row: PlatformRecord): DataTableRow => ({
     id: row.platform ?? "combined",
     cells: {
-      platform: { display: row.combined ? "Combined platforms" : platformLabel(row.platform ?? "(unknown platform)") },
+      platform: {
+        display: row.combined ? "Combined platforms" : adPlatformLabel(row.platform ?? "(unknown platform)"),
+      },
       spend: cell(row.spend, "money", currency),
       revenue: cell(row.revenue, "money", currency),
       roas: cell(platformRatios(row).roas, "multiple", currency),
@@ -217,7 +216,7 @@ export function PlatformTables({
     },
   });
   const scoped = scopePlatformRecords(records, platform);
-  const label = platform ? platformLabel(platform) : "Combined platforms";
+  const label = platform ? adPlatformLabel(platform) : "Combined platforms";
   return (
     <div className="flex flex-col gap-6">
       <p className="max-w-prose text-sm text-muted-foreground">

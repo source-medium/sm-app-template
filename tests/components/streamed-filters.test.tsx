@@ -50,17 +50,17 @@ it.each([
     ),
   },
   {
-    label: "Ad channel",
-    loading: "Loading ad channels",
-    fields: { channel: "Meta" },
+    label: "Ad platform",
+    loading: "Loading ad platforms",
+    fields: { channel: "meta_ads" },
     controls: (
       <ChannelRosterFilter
         load={() => new Promise(() => {})}
-        value="Meta"
+        value="meta_ads"
         name="channel"
-        label="Ad channel"
-        allLabel="All ad channels"
-        loadingLabel="Loading ad channels"
+        label="Ad platform"
+        allLabel="All ad platforms"
+        loadingLabel="Loading ad platforms"
       />
     ),
   },

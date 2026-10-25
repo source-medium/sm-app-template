@@ -30,7 +30,7 @@ command against your warehouse. MCP is not required for that path.
 | View           | Relation                                                              | Grain                                                                               | Columns used                                                                                                                                                           |
 | -------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Overview       | `rpt_executive_summary_daily`                                         | store, channel, sub-channel, date                                                   | `order_net_revenue`, `ad_spend` (NUMERIC), `order_count` (FLOAT64), `website_sessions` (INT64)                                                                         |
-| Paid marketing | `rpt_ad_performance_daily`                                            | ad by day                                                                           | `sm_channel`, `ad_campaign_id`, `ad_campaign_name`, `ad_spend`, `ad_impressions`, `ad_clicks`, `ad_platform_reported_conversions`, `ad_platform_reported_revenue`      |
+| Paid marketing | `rpt_ad_performance_daily`                                            | ad by day                                                                           | `source_system`, `ad_campaign_id`, `ad_campaign_name`, `ad_spend`, `ad_impressions`, `ad_clicks`, `ad_platform_reported_conversions`, `ad_platform_reported_revenue`   |
 | Creatives      | `rpt_ad_performance_daily`                                            | ad by day, aggregated to creative                                                   | `ad_creative_*` text and image URLs, the same measures                                                                                                                 |
 | Orders         | `obt_orders`                                                          | one row per order                                                                   | `sm_order_key`, `order_name`, `order_processed_at_local_datetime`, channel, type, status, quantities, and the order's revenue columns                                  |
 | Products       | `obt_order_lines`                                                     | one row per order line, aggregated to product or variant                            | `source_system`, product/variant ids and titles, `is_order_sm_valid`, `order_line_net_revenue`, `order_line_net_quantity`, `order_line_product_gross_profit` (NUMERIC) |
@@ -476,9 +476,9 @@ grain, with exact raw amounts. `row_type=period` rows are followed by one
 `row_type=total` row. Filter on row type before summing the file to avoid double
 counting. The download re-runs one bounded Overview query and fails on truncation.
 
-Paid marketing's **Spend breakdown** ranks channels, campaigns, published campaign types or tactics with
-`?breakdown=channel|campaign|type|tactic`. It adds one bounded SQL query that reads the
-selected and comparison periods with identical store/channel filters. Comparison
+Paid marketing's **Spend breakdown** ranks ad platforms, campaigns, published campaign types or tactics with
+`?breakdown=channel|campaign|type|tactic` (`channel` is the ad platform). It adds one bounded SQL query that reads the
+selected and comparison periods with identical store/ad platform filters. Comparison
 Off excludes baseline rows. Only groups with spend in the selected period are
 ranked; one active only in a comparison period is left out rather than listed
 with no spend. Shares use full-query spend before the top-10 limit;
@@ -489,17 +489,17 @@ the selected period.
 
 Paid marketing's trend also offers platform revenue, platform ROAS and cost per
 conversion, with `?grain=day|week|month`. The bounded SQL daily aggregates are
-summed before dividing, including channels folded into Other. Weeks start Monday;
+summed before dividing, including ad platforms folded into Other. Weeks start Monday;
 edge intervals include only selected dates. These are platform-attributed returns,
 not blended MER or incremental revenue. Classification values come directly from
 `ad_campaign_type` and `ad_campaign_tactic`; unclassified rows stay `(none)`.
 
 When Creatives is in the configured navigation, campaign links open it with
-`store`, dates, `channel` and `campaign` intact. Removing that view leaves plain campaign labels.
+`store`, dates, `channel` (the ad platform) and `campaign` intact. Removing that view leaves plain campaign labels.
 Creatives' `?view=delivery|returns|table` keeps delivery cards as the default and
 adds return cards and a sortable return table. Revenue, ROAS and cost per conversion
 use period sums before the top-48 bound. Spend remains the default sort; conversions
-remain visible alongside returns. Platform attribution may overlap across channels.
+remain visible alongside returns. Platform attribution may overlap across ad platforms.
 Only HTTPS Facebook/Instagram URLs published by the source become **Open ad**
 actions, with host and credential validation; URLs are never constructed from IDs.
 
@@ -574,21 +574,28 @@ query time.
 
 ## Channel filters
 
-Every example exposes `sm_channel` in its own report context. Overview, Products,
-and Orders use **Sales channel** (`?sales_channel=`); Paid marketing and Creatives
-use the advertising report's channels (`?channel=`). Retention selects one
-**Acquisition sales channel** from its published cohort report. Advertising
-channels and sales channels are different domains; navigation does not silently
-carry a channel into another view.
+Overview, Products, and Orders use **Sales channel** (`?sales_channel=`), the
+`sm_channel` of their report. Retention selects one **Acquisition sales channel**
+from its published cohort report. Paid marketing and Creatives use **Ad platform**
+(`?channel=`): `rpt_ad_performance_daily.source_system`, such as `meta_ads` or
+`google_ads`. That relation's `sm_channel` is the sales channel an ad is credited
+to (for example `online_dtc` for every platform), so it never identifies the platform.
+Performance's platform view groups by the same `source_system`. These reports show
+platforms by name with `adPlatformLabel()` (`src/lib/ad-platforms.ts`, shared with
+Performance) and keep the published value in URLs, SQL and CSV; an unlisted value
+shows as published and a missing one as `(unknown platform)`. Ad platforms and
+sales channels are different domains; navigation does not silently carry one into
+another view.
 
 The default is all channels except Retention, which keeps acquisition channels
 separate. Options come from the selected store and date range, before top-N
-limits, pagination or search. Missing warehouse channels appear as `(none)`.
+limits, pagination or search. Missing warehouse sales channels appear as `(none)`.
 Unknown URL choices remain visible with an empty result and can be reset.
 Filters use typed SQL parameters and affect Products' comparison period, ranking,
 shares and totals together. Orders keeps the channel through search and paging;
-changing it resets the cursor and closes the selected order. Creatives groups
-by both channel and creative id so equal platform ids cannot merge.
+changing it resets the cursor and closes the selected order. Campaign and creative
+IDs are unique only within an ad platform, so Paid marketing's campaigns and
+Creatives group by both platform and ID.
 
 `ChannelRosterFilter` owns consistent picker behavior, including keeping the
 applied channel in the report form while its roster loads or fails; each
@@ -768,8 +775,9 @@ own layer.
 
 ## CSV downloads
 
-Paid marketing's **Download CSV** re-reads the applied store, dates and channel
-with the same campaign query as the table. It includes all loaded campaigns
+Paid marketing's **Download CSV** re-reads the applied store, dates and ad platform
+with the same campaign query as the table. Each campaign row carries its
+`ad_platform` (the published `source_system` value). It includes all loaded campaigns
 across the table's pages, up to 200, in the query's spend order. It does not
 run the chart query or start a background export job. Unapplied filter edits
 are ignored. Each row includes the store, inclusive dates, sample/live mode,

@@ -5,6 +5,7 @@ import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { DataRegion } from "@/components/patterns/data-region";
 import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
 import { WarehouseError } from "@/lib/data/warehouse-error";
+import { adPlatformLabel } from "@/lib/ad-platforms";
 
 vi.mock("@/lib/auth/require-viewer", () => ({
   requireViewer: async () => ({
@@ -43,4 +44,20 @@ it("names a channel list carried from a multi-channel report by its channels", a
   await renderRoster({ load: async () => ["Amazon"], value: '["Amazon","Online DTC"]', loadingLabel: "Loading" });
   expect(screen.getByRole("option", { name: "Amazon, Online DTC" })).toHaveValue('["Amazon","Online DTC"]');
   expect(screen.getByRole("option", { name: "Amazon" })).toBeInTheDocument();
+});
+
+it("names ad platform options by platform while submitting the published value", async () => {
+  await renderRoster({
+    load: async () => ["meta_ads", "google_ads"],
+    value: "snapchat_ads",
+    name: "channel",
+    label: "Ad platform",
+    allLabel: "All ad platforms",
+    optionLabel: adPlatformLabel,
+    loadingLabel: "Loading ad platforms",
+  });
+  expect(screen.getByRole("option", { name: "Meta" })).toHaveValue("meta_ads");
+  expect(screen.getByRole("option", { name: "Google" })).toHaveValue("google_ads");
+  expect(screen.getByLabelText("Ad platform")).toHaveValue("snapchat_ads");
+  expect(screen.getByRole("option", { name: "snapchat_ads" })).toBeInTheDocument();
 });

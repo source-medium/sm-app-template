@@ -43,11 +43,30 @@ describe("paid marketing fixture contract", () => {
       expect(data.campaigns).toEqual([]);
     },
   );
-  it("decodes through the live row schemas and covers every channel and date", async () => {
+  it("decodes through the live row schemas and covers every ad platform and date", async () => {
     const data = await samplePaidMarketing(FILTERS);
-    const channels = new Set(data.channelDays.map((day) => day.channel));
-    expect(channels).toEqual(new Set(["Meta", "Google", "TikTok", "Pinterest"]));
-    expect(data.channelDays).toHaveLength(channels.size * 14);
+    const platforms = new Set(data.channelDays.map((day) => day.channel));
+    expect(platforms).toEqual(new Set(["meta_ads", "google_ads", "tiktok_ads", "pinterest_ads"]));
+    expect(data.channelDays).toHaveLength(platforms.size * 14);
+  });
+
+  it("groups ad platforms by source_system, not the sales channel every platform shares", async () => {
+    const source = samplePaidSource(FILTERS.storeId, FILTERS.range);
+    expect(new Set(source.map((row) => row.sm_channel))).toEqual(new Set(["online_dtc"]));
+    const data = await samplePaidMarketing(FILTERS);
+    expect(new Set(data.channelDays.map((day) => day.channel))).toEqual(
+      new Set(source.map((row) => row.source_system)),
+    );
+    expect(new Set(data.campaigns.map((row) => row.channel)).size).toBe(4);
+    const breakdown = await sampleSpendBreakdown(FILTERS, "channel", [null, null]);
+    expect(breakdown.rows.map((row) => row.dimension_key).sort()).toEqual([
+      "google_ads",
+      "meta_ads",
+      "pinterest_ads",
+      "tiktok_ads",
+    ]);
+    const campaigns = await sampleSpendBreakdown(FILTERS, "campaign", [null, null]);
+    expect(campaigns.rows.map((row) => row.dimension_key)).toContain("meta_ads / cmp-1001");
   });
 
   it("series and campaign totals agree with an independent sum of the source rows, money exactly", async () => {
@@ -63,9 +82,10 @@ describe("paid marketing fixture contract", () => {
     expect(sumDecimals(data.campaigns.map((campaign) => campaign.spend))).toBe(expectedSpend);
   });
 
-  it("filters campaigns by channel but keeps every channel's series", async () => {
-    const data = await samplePaidMarketing({ ...FILTERS, channel: "Google" });
-    expect(data.campaigns.every((campaign) => campaign.channel === "Google")).toBe(true);
+  it("filters campaigns by ad platform but keeps every platform's series", async () => {
+    const data = await samplePaidMarketing({ ...FILTERS, channel: "google_ads" });
+    expect(data.campaigns.map((campaign) => campaign.campaignId).sort()).toEqual(["cmp-2001", "cmp-2002"]);
+    expect(data.campaigns.every((campaign) => campaign.channel === "google_ads")).toBe(true);
     expect(new Set(data.channelDays.map((day) => day.channel)).size).toBe(4);
   });
 

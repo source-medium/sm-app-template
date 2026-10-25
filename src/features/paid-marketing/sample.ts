@@ -1,7 +1,8 @@
 /**
  * Paid marketing, sample. Synthetic campaign-by-day rows aggregated exactly
  * as the live SQL does, in BigQuery's wire format, decoded through the same
- * row schemas. Spend is generated in whole cents so sums stay exact.
+ * row schemas. Spend is generated in whole cents so sums stay exact. As in the
+ * warehouse, source_system is the ad platform and sm_channel the sales channel.
  */
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits } from "@/lib/data/decimal";
@@ -23,7 +24,7 @@ const CAMPAIGNS = [
     type: "Social",
     tactic: "Prospecting",
     name: SAMPLE_CAMPAIGN_NAMES["cmp-1001"],
-    channel: "Meta",
+    source_system: "meta_ads",
     reach: 1,
     cpm: 1180,
   },
@@ -32,7 +33,7 @@ const CAMPAIGNS = [
     type: "Social",
     tactic: "Retargeting",
     name: SAMPLE_CAMPAIGN_NAMES["cmp-1002"],
-    channel: "Meta",
+    source_system: "meta_ads",
     reach: 0.45,
     cpm: 1640,
   },
@@ -41,7 +42,7 @@ const CAMPAIGNS = [
     type: "Social",
     tactic: "Mixed",
     name: SAMPLE_CAMPAIGN_NAMES["cmp-1003"],
-    channel: "Meta",
+    source_system: "meta_ads",
     reach: 0.8,
     cpm: 1320,
   },
@@ -50,7 +51,7 @@ const CAMPAIGNS = [
     type: "Search",
     tactic: "Brand",
     name: SAMPLE_CAMPAIGN_NAMES["cmp-2001"],
-    channel: "Google",
+    source_system: "google_ads",
     reach: 0.3,
     cpm: 2650,
   },
@@ -59,7 +60,7 @@ const CAMPAIGNS = [
     type: "Cross-network",
     tactic: "Mixed",
     name: SAMPLE_CAMPAIGN_NAMES["cmp-2002"],
-    channel: "Google",
+    source_system: "google_ads",
     reach: 0.9,
     cpm: 980,
   },
@@ -68,7 +69,7 @@ const CAMPAIGNS = [
     type: "Social",
     tactic: "Prospecting",
     name: SAMPLE_CAMPAIGN_NAMES["cmp-3001"],
-    channel: "TikTok",
+    source_system: "tiktok_ads",
     reach: 0.6,
     cpm: 760,
   },
@@ -77,7 +78,7 @@ const CAMPAIGNS = [
     type: "Shopping",
     tactic: "Prospecting",
     name: SAMPLE_CAMPAIGN_NAMES["cmp-4001"],
-    channel: "Pinterest",
+    source_system: "pinterest_ads",
     reach: 0.25,
     cpm: 640,
   },
@@ -85,7 +86,8 @@ const CAMPAIGNS = [
 
 export type PaidSourceRow = {
   names: AdNames;
-  channel: string;
+  source_system: string;
+  sm_channel: string;
   campaign: (typeof CAMPAIGNS)[number];
   date: string;
   spendCents: bigint;
@@ -107,7 +109,8 @@ export function samplePaidSource(storeId: string, range: DateRange): PaidSourceR
       // Platforms report modeled conversions, so the value can be fractional.
       const conversions = Math.round(clicks * (0.02 + random() * 0.03) * 4) / 4;
       const total = {
-        channel: campaign.channel,
+        source_system: campaign.source_system,
+        sm_channel: "online_dtc",
         campaign,
         date,
         spendCents: BigInt(Math.round((impressions / 1000) * campaign.cpm * (0.9 + random() * 0.2))),
@@ -158,18 +161,18 @@ export async function sampleSpendBreakdown(
   ] as const) {
     if (!range) continue;
     for (const row of samplePaidSource(filters.storeId, range)) {
-      if (filters.channel && row.channel !== filters.channel) continue;
+      if (filters.channel && row.source_system !== filters.channel) continue;
       if (!matchesAdNames(row.names, filters.names)) continue;
       const key =
         dimension === "channel"
-          ? row.channel
+          ? row.source_system
           : dimension === "campaign"
-            ? `${row.channel} / ${row.campaign.id}`
+            ? `${row.source_system} / ${row.campaign.id}`
             : row.campaign[dimension];
       const sums = grouped.get(key) ?? {
         label:
           dimension === "channel"
-            ? row.channel
+            ? row.source_system
             : dimension === "campaign"
               ? row.campaign.name
               : row.campaign[dimension],
@@ -233,8 +236,8 @@ export async function samplePaidMarketing(filters: PaidMarketingFilters): Promis
 
   const series = new Map<string, Sums & { channel: string; date: string }>();
   for (const row of source) {
-    const key = `${row.date}|${row.channel}`;
-    const sums = series.get(key) ?? { ...empty(), channel: row.channel, date: row.date };
+    const key = `${row.date}|${row.source_system}`;
+    const sums = series.get(key) ?? { ...empty(), channel: row.source_system, date: row.date };
     add(sums, row);
     series.set(key, sums);
   }
@@ -250,17 +253,19 @@ export async function samplePaidMarketing(filters: PaidMarketingFilters): Promis
       platform_revenue: String(sums.revenue),
     }));
 
+  // A campaign is its ad platform and ID, as in the live SQL.
   const campaigns = new Map<string, Sums & { id: string; name: string; channel: string }>();
   for (const row of source) {
-    if (filters.channel && row.channel !== filters.channel) continue;
-    const sums = campaigns.get(row.campaign.id) ?? {
+    if (filters.channel && row.source_system !== filters.channel) continue;
+    const key = `${row.source_system} / ${row.campaign.id}`;
+    const sums = campaigns.get(key) ?? {
       ...empty(),
       id: row.campaign.id,
       name: row.campaign.name,
-      channel: row.channel,
+      channel: row.source_system,
     };
     add(sums, row);
-    campaigns.set(row.campaign.id, sums);
+    campaigns.set(key, sums);
   }
   const campaignWire = [...campaigns.values()]
     .sort((a, b) => (a.spend === b.spend ? a.id.localeCompare(b.id) : a.spend > b.spend ? -1 : 1))
@@ -286,7 +291,8 @@ export function samplePaidNames(filters: PaidMarketingFilters) {
   return sampleNameMatches(
     samplePaidSource(filters.storeId, filters.range)
       .filter(
-        (row) => (!filters.channel || row.channel === filters.channel) && matchesAdNames(row.names, filters.names),
+        (row) =>
+          (!filters.channel || row.source_system === filters.channel) && matchesAdNames(row.names, filters.names),
       )
       .map((row) => row.names),
   );

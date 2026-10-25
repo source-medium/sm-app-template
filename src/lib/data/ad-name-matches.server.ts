@@ -5,6 +5,7 @@ import type { ReportFilters } from "../filters";
 import { MAX_MATCHED_NAMES, type AdNameMatches, type AdNameRule } from "../ad-name-filters";
 import { bq, decodeRows } from "./decode";
 import { adNamePredicate } from "./ad-name-sql";
+import { AD_PLATFORM_SQL } from "./channel-sql";
 
 const NameRow = z.object({
   campaign: bq.string().nullable(),
@@ -12,7 +13,7 @@ const NameRow = z.object({
   ad: bq.string().nullable(),
 });
 
-/** A bounded inspection list, never a source of report totals or selectable facets. */
+/** A bounded inspection list, never a source of report totals or selectable facets. `channel` is the ad platform. */
 export async function queryAdNameMatches(
   filters: ReportFilters & { channel?: string | null; campaign?: string | null; names?: AdNameRule[] },
   creativeOnly: boolean,
@@ -26,7 +27,7 @@ export async function queryAdNameMatches(
     sql: `SELECT DISTINCT ad_campaign_name AS campaign, ad_group_name AS ad_group, ad_name AS ad
       FROM ${warehouse.table("rpt_ad_performance_daily")}
       WHERE sm_store_id = @store_id AND date BETWEEN @start_date AND @end_date
-        AND (@channel = '' OR IFNULL(sm_channel, '(none)') = @channel)
+        AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
         AND (@campaign = '' OR ad_campaign_id = @campaign)
         ${creativeOnly ? "AND ad_creative_id IS NOT NULL" : ""}
         AND ${names.sql}
