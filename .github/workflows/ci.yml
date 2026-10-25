@@ -16,13 +16,16 @@ concurrency:
 
 jobs:
   check:
-    name: pnpm check (${{ matrix.os }})
+    name: pnpm check (${{ matrix.os }}, Node ${{ matrix.node }})
     strategy:
       fail-fast: false
       matrix:
         # The template itself also checks Windows, where symlinks or CRLF would break it for customers'
-        # agents. A copy of the template checks Linux only; add windows-latest back if you develop there.
+        # agents, and the latest Node release, so a new Node breaks the template's CI before a
+        # customer's copy. A copy of the template checks Linux on its pinned Node only.
         os: ${{ github.repository == 'source-medium/sm-app-template' && fromJSON('["ubuntu-latest","windows-latest"]') || fromJSON('["ubuntu-latest"]') }}
+        node: [pinned]
+        include: ${{ github.repository == 'source-medium/sm-app-template' && fromJSON('[{"os":"ubuntu-latest","node":"latest"}]') || fromJSON('[]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
@@ -30,7 +33,9 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
+          # .node-version for the pinned job; node-version wins when it is set.
           node-version-file: .node-version
+          node-version: ${{ matrix.node != 'pinned' && matrix.node || '' }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
