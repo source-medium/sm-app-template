@@ -568,7 +568,9 @@ test("overview changes loaded series without a server request and restores it on
       new URL(await page.evaluate(() => navigator.clipboard.readText())).searchParams.get("show_trends"),
     )
     .toBe("all");
-  await showAll.click();
+  await page.getByRole("button", { name: "Show selected trend", exact: true }).click();
+  await expect(page.getByRole("img", { name: "Net revenue by day chart", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View as table", exact: true })).toHaveCount(1);
   await page.getByRole("button", { name: "Copy report link", exact: true }).click();
   await expect
     .poll(async () =>

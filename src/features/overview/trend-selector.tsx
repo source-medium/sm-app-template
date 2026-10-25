@@ -29,8 +29,8 @@ export function OverviewTrendSelector(props: MetricChartProps) {
     <div className="space-y-3">
       {all && <input type="hidden" name="show_trends" value="all" form={REPORT_FILTER_FORM_ID} />}
       <div className="flex justify-end">
-        <Button variant="ghost" size="sm" inert={!hydrated} aria-pressed={all} onClick={toggleAll}>
-          Show all trends
+        <Button variant="ghost" size="sm" inert={!hydrated} onClick={toggleAll}>
+          {all ? "Show selected trend" : "Show all trends"}
         </Button>
       </div>
       {all ? (
