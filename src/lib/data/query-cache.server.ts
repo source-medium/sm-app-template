@@ -15,10 +15,11 @@
  *
  * Entries hold rows in BigQuery's wire format (strings), so decoders run after
  * the cache and exact decimals and integers survive it. Errors are never
- * stored. The key names the deployment, app, project, datasets, SQL, typed
- * parameters and bounds, never a viewer or a token: every signed-in viewer of
- * a deployment sees the same data (AGENTS.md), and the checks that decide who
- * is signed in and which store they may see run before this code.
+ * stored. The key names the source, environment (APP_ENVIRONMENT), app,
+ * project, datasets, SQL, typed parameters and bounds, never a viewer or a
+ * token: every signed-in viewer of a deployment sees the same data
+ * (AGENTS.md), and the checks that decide who is signed in and which store
+ * they may see run before this code.
  */
 import "server-only";
 import { getCloudflareContext } from "@opennextjs/cloudflare/cloudflare-context";
