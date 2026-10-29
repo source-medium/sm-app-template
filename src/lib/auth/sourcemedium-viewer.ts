@@ -34,7 +34,9 @@ export type SourceMediumViewer = {
   organizationId: string;
 };
 
-const MAX_HEADER_LENGTH = 2048;
+// The gateway owns this bound: Urchin's managed-apps gateway (browser-boundary.mjs) refuses
+// to send a longer header, and one at the schema maxima encodes to about 2,300 characters.
+const MAX_HEADER_LENGTH = 4096;
 
 /** The gateway's viewer, or null when the header is missing or malformed. */
 export function readSourceMediumViewer(headers: Headers): SourceMediumViewer | null {

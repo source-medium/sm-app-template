@@ -84,11 +84,31 @@ describe("the gateway's viewer header", () => {
     expect(readSourceMediumViewer(new Headers({ [VIEWER_HEADER]: encode(value) }))).toBeNull();
   });
 
+  it("reads a header at the schema's maximum lengths, which the gateway sends", () => {
+    // Three UTF-8 bytes per character: about 2,300 characters encoded.
+    const longest = { ...member, email: "€".repeat(320), name: "€".repeat(200) };
+    expect(encode(longest).length).toBeGreaterThan(2048);
+    expect(readSourceMediumViewer(new Headers({ [VIEWER_HEADER]: encode(longest) }))).toMatchObject({
+      email: longest.email,
+      name: longest.name,
+    });
+  });
+
+  it("reads a header up to the gateway's 4,096 characters and refuses a longer one", () => {
+    const json = JSON.stringify(member);
+    // JSON whitespace pads a valid header to `bytes` bytes; 3,072 bytes encode to 4,096 characters.
+    const padded = (bytes: number) =>
+      Buffer.from(`{${" ".repeat(bytes - Buffer.byteLength(json))}${json.slice(1)}`).toString("base64url");
+    expect(padded(3072)).toHaveLength(4096);
+    expect(readSourceMediumViewer(new Headers({ [VIEWER_HEADER]: padded(3072) }))).not.toBeNull();
+    expect(readSourceMediumViewer(new Headers({ [VIEWER_HEADER]: padded(3073) }))).toBeNull();
+  });
+
   it.each([
     ["missing", null],
     ["not base64url", "not+base64/=="],
     ["not JSON", Buffer.from("member").toString("base64url")],
-    ["oversized", "A".repeat(4096)],
+    ["oversized", "A".repeat(4097)],
   ])("refuses a %s header", (_name, raw) => {
     expect(readSourceMediumViewer(new Headers(raw === null ? {} : { [VIEWER_HEADER]: raw }))).toBeNull();
   });
