@@ -170,7 +170,7 @@ test("store switching is visible and usable on a small touch screen", async ({ p
 
 test("report fields have room for their values on the smallest phones", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
-  await page.goto(appConfig.nav[0]?.href ?? "/");
+  await page.goto(`${appConfig.nav[0]?.href ?? "/"}?from=2026-09-01&to=2026-09-28`);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   const form = page.getByRole("form", { name: "Report filters" });
   await expect(form).toBeVisible();
