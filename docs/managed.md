@@ -6,6 +6,9 @@ setting to manage. Every query goes through SourceMedium's data API, which
 holds the credential, runs your SQL read-only, and checks on every request
 that the person or token behind it still has access.
 
+SourceMedium-hosted apps open at `<app-name>.sourcemedium.app`. The same
+domain hosts workspace Metabase dashboards, with each app on its own origin.
+
 This guide covers managed development and hosting. The data adapter and
 manually deployed apps with workspace sign-in are verified. Self-service
 repository creation, builds and the Agent setup panel are not available yet;

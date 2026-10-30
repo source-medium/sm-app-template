@@ -9,7 +9,7 @@ rework a view, or build your next report. The app and its source code are yours.
 
 **[Run it locally](#run-it-locally)** ·
 [See the reports](#ten-reports-to-start-from) ·
-[Open the demo](https://sm-app-starter-demo.source-medium.workers.dev)
+[Open the demo](https://app-demo.sourcemedium.app)
 
 <picture>
   <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/images/reel-dark-still.webp">
