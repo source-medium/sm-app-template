@@ -6,7 +6,10 @@ setting to manage. Every query goes through SourceMedium's data API, which
 holds the credential, runs your SQL read-only, and checks on every request
 that the person or token behind it still has access.
 
-SourceMedium-hosted apps open at `<app-name>.sourcemedium.app`. The same
+SourceMedium-hosted apps open at `<workspace>-app.sourcemedium.app`, such as
+`democo-app.sourcemedium.app`. Dashboards in the same workspace use
+`<workspace>-dashboards.sourcemedium.app`. Your workspace address stays the
+same when you rename or replace an app. Links to running apps continue to work. The same
 domain hosts workspace Metabase dashboards, with each app on its own origin.
 
 This guide covers managed development and hosting. The data adapter and
