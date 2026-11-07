@@ -1,8 +1,8 @@
 # Apps SourceMedium hosts
 
-When SourceMedium hosts your app, your team still owns the code in a private
-GitHub repository, but there is no Google key, hosting account or warehouse
-setting to manage. Every query goes through SourceMedium's data API, which
+When SourceMedium hosts your app, it deploys the standard reporting template
+for your workspace. There is no prerequisite GitHub repository, Google key,
+hosting account or warehouse setting to manage. Every query goes through SourceMedium's data API, which
 holds the credential, runs your SQL read-only, and checks on every request
 that the person or token behind it still has access.
 
@@ -12,10 +12,12 @@ SourceMedium-hosted apps open at `<workspace>-app.sourcemedium.app`, such as
 same when you rename or replace an app. Links to running apps continue to work. The same
 domain hosts workspace Metabase dashboards, with each app on its own origin.
 
-This guide covers managed development and hosting. The data adapter and
-manually deployed apps with workspace sign-in are verified. Self-service
-repository creation, builds and the Agent setup panel are not available yet;
-until the panel exists, a workspace admin or editor creates the developer token
+This guide covers managed development and hosting. In a workspace with app
+hosting enabled, **Create app** starts deployment of a reviewed template release.
+SourceMedium checks the app and its warehouse connection before offering
+**Open app**. Setup can be retried without creating a second app. Admins and
+editors can pause, resume or remove it; workspace members open it with their
+own sign-in. For custom development, an admin or editor creates a developer token
 ([Local development](#local-development)).
 A self-hosted app keeps using [connect.md](connect.md); the two never mix.
 
@@ -36,12 +38,10 @@ offline schema snapshot.
 Hosted mode is set by SourceMedium's deploy. `pnpm dev`, `pnpm diagnose` and
 `pnpm schema` refuse it; use `managed-dev` on your computer.
 
-The member staging pilot uses individual workspace sign-in and
-`SM_GATEWAY_AUTH=workspace`. The earlier M0 probe remains separate: it uses
-shared probe access with a fixed test viewer and `SM_GATEWAY_AUTH=probe`.
-Both set `APP_ENVIRONMENT=staging`; the app labels its access mode accordingly.
-These labels never authorize a request: the gateway viewer and the data API's
-app, deployment and membership checks still apply.
+Hosted apps use individual workspace sign-in and `SM_GATEWAY_AUTH=workspace`.
+SourceMedium sets `APP_ENVIRONMENT` for the deployment's environment. These
+labels never authorize a request: the gateway viewer and the data API's app,
+deployment and membership checks still apply.
 
 ## What your app can read
 
@@ -61,8 +61,7 @@ The data API only reads. A query runs for at most 30 seconds, scans at most
 1. A workspace admin or editor creates a developer token named "Local" with
    SourceMedium's app management API, from a signed-in SourceMedium browser
    session. It is shown once and carries that person's access. SourceMedium
-   staff cannot create one on a workspace's behalf. The planned **Agent
-   setup** panel will replace this manual step.
+   staff cannot create one on a workspace's behalf.
 2. Put these in `.env.local` (git-ignored), removing any self-hosted values:
 
    ```sh
@@ -123,8 +122,7 @@ Ask your agent to change one report query, run it against your data, and show
 the rendered result before committing or pushing. Finding tables through the
 SourceMedium MCP connector helps write the query, but only the app's own query
 through its own adapter proves the change works. SourceMedium records a
-successful token query; the planned setup UI will use that receipt for
-"Agent connected".
+successful token query.
 
 `pnpm test:live` (or `pnpm test:live --grep Overview` for one view) builds the
 app and opens every view in a browser against your data, failing on any error
