@@ -14,15 +14,15 @@ import { kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { ProductCosts } from "./costs";
 import { ProductPhoto } from "./product-image";
-import { ProductGallery } from "./product-gallery";
 import { ReportControls } from "@/components/shell/report-controls";
 import { ReportTakeaway } from "@/components/patterns/report-takeaway";
+import { productNames } from "./names";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { planRanges, slotChanges } from "@/lib/comparison";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
-import { formatMeasure, formatMoneyIn, formatPercent } from "@/lib/format";
+import { formatMeasure, formatMoneyIn } from "@/lib/format";
 import { parseSalesChannel, salesChannelLabel, withParams, type SearchParams } from "@/lib/filters";
 import { Disclosure } from "@/components/ui/disclosure";
 import {
@@ -58,7 +58,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         },
       ]}
       title="Products"
-      description="Product and variant performance from valid-order lines, in reporting currency."
+      description="What is selling, ranked by the measure you choose."
       pathname="/products"
       params={params}
       agentFilters={{
@@ -77,8 +77,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         return (
           <>
             <ReportControls
-              collapseOnDesktop
-              summary={`${salesChannelLabel(channel)} · ${options.entity ? "Selected " : ""}${options.dimension === "product" ? "Products" : "Variants"} · ${metricLabel} · ${PRODUCT_RANKINGS.find((item) => item.value === options.ranking)?.label}`}
+              summary={[
+                salesChannelLabel(channel),
+                `${options.entity ? "Selected " : ""}${options.dimension === "product" ? "Products" : "Variants"}`,
+                metricLabel,
+                PRODUCT_RANKINGS.find((item) => item.value === options.ranking)?.label,
+              ]}
             >
               <ChannelRosterFilter
                 key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
@@ -111,22 +115,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               <SelectFilter name="metric" label="Rank by" value={options.metric} options={[...PRODUCT_METRICS]} />
             </ReportControls>
             {dataStatus}
-            <Disclosure summary="About product metrics" className="text-sm text-muted-foreground">
-              <p data-metric-definition="Product metrics" className="max-w-prose">
-                Valid orders only. Net units subtract refunded quantities. Product gross profit subtracts product cost
-                from net revenue; it excludes shipping, fulfillment and payment costs. Missing product costs can
-                overstate profit. Refund amounts and quantities are shown as positive deductions (source signs
-                reversed); reversals stay negative. Refunds are associated with orders processed in this range, not the
-                dates refunds were issued.
-              </p>
-            </Disclosure>
-            {options.ranking !== "value" && (
-              <p className="text-sm text-muted-foreground">
-                Gainers and decliners rank absolute changes against the first comparison period, using the same
-                valid-order line population. Missing comparison values sort last. Changes remain hidden when comparison
-                coverage is insufficient.
-              </p>
-            )}
             {options.entity && (
               <p className="text-sm">All totals below are scoped to the selected {options.dimension} identity.</p>
             )}
@@ -169,6 +157,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         label,
                       ),
                     );
+                  const productName = productNames(data.rows);
                   const productHref = (productKey: string) =>
                     drillDown(
                       {
@@ -206,14 +195,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         valueLabel={metricLabel}
                         description={
                           options.ranking === "value"
-                            ? "Top 10 by the selected measure. Shares and headline totals include all matching products. Shares are unavailable for zero totals or negative values."
-                            : `Top 10 ${options.ranking} by absolute change in the selected measure vs ${plan?.slots[0].label ?? "the first comparison"}. Shares and headline totals use the same full scoped population; a missing comparison is not zero.`
+                            ? "Top 10 by the selected measure."
+                            : `Top 10 ${options.ranking} vs ${plan?.slots[0].label ?? "the first comparison"}.`
                         }
                         hasMore={data.hasMore}
                         comparisonLabel={compare && baseline ? `Change vs ${baseline.label}` : undefined}
                         rows={data.rows.map((row) => ({
                           id: row.product_key,
-                          label: `${row.label} (${row.reference})`,
+                          label: productName(row),
                           chartLabel: row.label,
                           leading: <ProductPhoto images={images} productKey={row.product_key} />,
                           href: productHref(row.product_key),
@@ -221,8 +210,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                             value: decimalToNumber(row[options.metric]),
                             display: format(row[options.metric]),
                           },
-                          share: formatPercent(
-                            nonnegativeShare(row[options.metric], row[`total_${options.metric}`], row.minimum_value),
+                          share: nonnegativeShare(
+                            row[options.metric],
+                            row[`total_${options.metric}`],
+                            row.minimum_value,
                           ),
                           change: compare
                             ? kpiDelta(row[options.metric], row[slotColumn(slot, options.metric)], format).display
@@ -236,22 +227,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                     <ReportTakeaway
                       metric={metricLabel}
                       value={format(first?.[`total_${options.metric}`] ?? null)}
-                      range={filters.range}
                       change={takeawayChanges[slot]}
-                      issue={changes?.[slot].issue ?? plan?.slots[slot].note}
+                      baseline={plan?.slots[slot].label}
                     />
                   );
                   return (
                     <div className="flex flex-col gap-6">
                       {perSlot ? <ActiveBaseline a={takeaway(0)} b={takeaway(1)} /> : takeaway(0)}
-                      {plan && (
-                        <ComparisonCaption
-                          compact
-                          plan={plan}
-                          issues={changes?.map((change) => change.issue)}
-                          switchable={perSlot}
-                        />
-                      )}
                       <section aria-label="All product totals" className="grid gap-4 sm:grid-cols-2">
                         {PRODUCT_METRICS.slice(0, 2).map((item) => {
                           const formatValue = item.value === "units" ? formatMeasure : money;
@@ -260,22 +242,18 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                               key={item.value}
                               label={item.label}
                               value={formatValue(first?.[`total_${item.value}`] ?? null)}
-                              period="All matching products in the selected period"
                               deltas={deltas(item.value, formatValue)}
                             />
                           );
                         })}
                       </section>
-                      <ProductGallery
-                        measure={metricLabel}
-                        products={data.rows.map((row) => ({
-                          key: row.product_key,
-                          label: `${row.label} (${row.reference})`,
-                          href: productHref(row.product_key),
-                          image: <ProductPhoto images={images} productKey={row.product_key} className="size-20" />,
-                          value: format(row[options.metric]),
-                        }))}
-                      />
+                      {plan && (
+                        <ComparisonCaption
+                          plan={plan}
+                          issues={changes?.map((change) => change.issue)}
+                          switchable={perSlot}
+                        />
+                      )}
                       {diagnostic && (
                         <Suspense
                           key={`coverage|${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${diagnostic}|${options.entity}|${options.dimension}`}
@@ -309,6 +287,28 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                       ) : (
                         ranking(0)
                       )}
+                      <Disclosure summary="About product metrics" variant="note">
+                        <div className="max-w-prose space-y-2">
+                          <p data-metric-definition="Product metrics">
+                            Valid orders only. Net units subtract refunded quantities. Product gross profit subtracts
+                            product cost from net revenue; it excludes shipping, fulfillment and payment costs. Missing
+                            product costs can overstate profit. Refund amounts and quantities are shown as positive
+                            deductions (source signs reversed); reversals stay negative. Refunds are associated with
+                            orders processed in this range, not the dates refunds were issued.
+                          </p>
+                          <p>
+                            Shares and headline totals include all matching products. Shares are unavailable for zero
+                            totals or negative values.
+                          </p>
+                          {options.ranking !== "value" && (
+                            <p>
+                              Gainers and decliners rank absolute changes against the first comparison period, using the
+                              same valid-order line population. Missing comparison values sort last and are not zero.
+                              Changes remain hidden when comparison coverage is insufficient.
+                            </p>
+                          )}
+                        </div>
+                      </Disclosure>
                     </div>
                   );
                 }}

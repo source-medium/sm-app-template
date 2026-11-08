@@ -5,7 +5,14 @@
  */
 import { expect, test } from "@playwright/test";
 import { appConfig } from "../app.config";
-import { expectNoSeriousA11yViolations, switchStore, watchConsole } from "./helpers";
+import {
+  chooseAppearance,
+  copyReportLink,
+  expectNoSeriousA11yViolations,
+  openDates,
+  switchStore,
+  watchConsole,
+} from "./helpers";
 import { SOURCEMEDIUM_WEBSITE, TEMPLATE_DOCUMENTATION, TEMPLATE_REPOSITORY } from "../src/lib/template";
 
 const home = appConfig.nav[0]?.href ?? "/";
@@ -119,7 +126,7 @@ test("dictionary failure and missing documentation leave the report usable", asy
 });
 
 for (const width of [320, 1280])
-  for (const theme of ["Light", "Dark"]) {
+  for (const theme of ["Light", "Dark"] as const) {
     test(`metadata states remain usable at ${width}px in ${theme}`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 });
       let response: "waiting" | "failed" | "empty" | "partial" = "waiting";
@@ -143,8 +150,7 @@ for (const width of [320, 1280])
         await page.goto(home);
         const about = page.getByRole("button", { name: "About this data", exact: true });
         test.skip((await about.count()) === 0, "No report sources remain");
-        await page.getByRole("button", { name: /^Appearance:/ }).click();
-        await page.getByRole("menuitemradio", { name: theme, exact: true }).click();
+        await chooseAppearance(page, theme);
         await about.click();
         const panel = page.getByRole("dialog", { name: "About this data", exact: true });
         const capture = async (state: string) => {
@@ -247,7 +253,7 @@ test("a bookmarked date preset keeps rolling through other choices until the dat
   await expect(page).toHaveURL(/range=last-7-days/);
   const compare = page.locator('select[name="compare"]');
   if (await compare.count()) {
-    await page.getByRole("button", { name: "Comparison periods", exact: true }).click();
+    await openDates(page);
     await expect(compare).not.toHaveAttribute("inert");
     await compare.selectOption("year");
     await expect(page).toHaveURL(/compare=year/);
@@ -274,6 +280,7 @@ test("a bookmarked date preset keeps rolling through other choices until the dat
   const to = page.getByLabel("To", { exact: true });
   const appliedFrom = await from.inputValue();
   const appliedTo = await to.inputValue();
+  await openDates(page);
   await from.fill("2026-09-10");
   await to.fill("2026-09-01");
   await page.getByRole("button", { name: "Apply" }).click();
@@ -282,6 +289,7 @@ test("a bookmarked date preset keeps rolling through other choices until the dat
   await to.fill(appliedTo);
   await page.getByRole("button", { name: "Apply" }).click();
   await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+  await openDates(page);
   await page.getByLabel("From", { exact: true }).fill("2026-09-01");
   await page.getByLabel("To", { exact: true }).fill("2026-09-07");
   await page.getByRole("button", { name: "Apply" }).click();
@@ -328,8 +336,12 @@ test("appearance waits for its handlers when page scripts load slowly", async ({
     await expect(page.getByRole("button", { name: /^Appearance:/ })).toBeDisabled();
     const form = page.getByRole("form", { name: "Report filters" });
     if (await form.count()) {
-      const navigation = page.waitForURL((url) => url.searchParams.has("from"), { waitUntil: "commit" });
-      await form.getByRole("button", { name: "Apply", exact: true }).click({ noWaitAfter: true });
+      // The date button waits for scripts; a preset is a plain link and works before they arrive.
+      await expect(form.getByRole("button", { name: /^Change dates/ })).toBeDisabled();
+      const navigation = page.waitForURL((url) => url.searchParams.get("range") === "last-7-days", {
+        waitUntil: "commit",
+      });
+      await form.getByRole("link", { name: "Last 7 days", exact: true }).click({ noWaitAfter: true });
       await navigation;
       expect(new URL(page.url()).searchParams.get("store")).toBe("sample-store-b");
     }
@@ -360,8 +372,8 @@ test("collapsed navigation keeps its labels available through tooltips", async (
 test("a known reporting currency is stated once, under the title", async ({ page }) => {
   await page.goto(home);
   test.skip((await page.locator("main [data-agent-page]").count()) === 0, "the home page has no report header");
-  await expect(page.locator("main [data-agent-page]")).toContainText("Reporting currency: USD");
-  await expect(page.locator("main footer")).not.toContainText("Reporting currency");
+  await expect(page.locator("main footer")).toContainText("Reporting currency: USD");
+  await expect(page.locator('[data-slot="report-trust"]')).toHaveCount(0);
   const portfolio = appConfig.nav.find((item) => item.scope === "all-stores");
   if (portfolio) {
     await page.goto(portfolio.href);
@@ -462,8 +474,10 @@ test("copy link freezes applied defaults and ignores unapplied filter edits", as
   const store = await page.getByRole("button", { name: /^Store:/ }).getAttribute("data-store-id");
   const from = await page.getByLabel("From", { exact: true }).inputValue();
   const to = await page.getByLabel("To", { exact: true }).inputValue();
+  await openDates(page);
   await page.getByLabel("From", { exact: true }).fill("2020-01-01");
-  const copy = page.getByRole("button", { name: "Copy report link" });
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  const copy = page.getByRole("dialog", { name: "Share this view" }).getByRole("button", { name: "Copy link" });
   const bounds = await copy.boundingBox();
   await copy.click();
   await expect(page.getByText("Report link copied.", { exact: true })).toHaveCount(1);
@@ -527,7 +541,10 @@ test("agent context follows an applied store and ignores pending date edits", as
   );
   const from = page.getByLabel("From", { exact: true });
   const appliedFrom = (await from.count()) ? await from.inputValue() : null;
-  if (appliedFrom) await from.fill("2020-01-01");
+  if (appliedFrom) {
+    await openDates(page);
+    await from.fill("2020-01-01");
+  }
   await page.getByRole("button", { name: "Vibe code" }).click();
   const dialog = page.getByRole("dialog", { name: "Vibe code" });
   const prompt = await dialog.getByLabel("Prompt", { exact: true }).inputValue();
@@ -559,8 +576,8 @@ test("copy failure offers the complete applied link for manual copying", async (
     });
   });
   await page.goto(home);
-  test.skip((await page.getByRole("button", { name: "Copy report link" }).count()) === 0, "no report to share");
-  await page.getByRole("button", { name: "Copy report link" }).click();
+  test.skip((await page.getByRole("button", { name: "Share", exact: true }).count()) === 0, "no report to share");
+  await copyReportLink(page);
   await expect(page.getByText("Could not copy. Select and copy the link below.")).toBeVisible();
   const manual = new URL(await page.getByRole("textbox", { name: "Report link" }).inputValue());
   expect(manual.searchParams.get("store")).toBe(
@@ -580,7 +597,10 @@ test("refresh re-reads the report, shows progress, and keeps applied filters", a
   const before = await timestamp.getAttribute("datetime");
   const url = page.url();
   const from = page.getByLabel("From", { exact: true });
-  if (await from.count()) await from.fill("2020-01-01");
+  if (await from.count()) {
+    await openDates(page);
+    await from.fill("2020-01-01");
+  }
 
   // Hold the real server response so pending behavior is observable without a timing race. Refresh is
   // one server action whose response carries the re-rendered page; a second page request would be a

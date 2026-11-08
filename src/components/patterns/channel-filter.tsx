@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { REPORT_FILTER_FORM_ID, salesChannelValues } from "@/lib/filters";
+import { channelName, REPORT_FILTER_FORM_ID, salesChannelValues } from "@/lib/filters";
 import { DataRegion } from "./data-region";
 import { LoadingState } from "./data-states";
 import { SelectFilter } from "./select-filter";
@@ -14,8 +14,7 @@ type ChannelLabels = {
 
 /** A list of several channels carried from a multi-channel report reads as its channels, not as JSON. */
 function channelLabel(value: string): string {
-  const channels = salesChannelValues(value);
-  return channels.length > 1 ? channels.join(", ") : value;
+  return salesChannelValues(value).map(channelName).join(", ");
 }
 
 /** The channel picker. Each feature loads its own store/date-scoped channel roster for it. */

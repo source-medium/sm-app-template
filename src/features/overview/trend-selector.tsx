@@ -27,26 +27,34 @@ export function OverviewTrendSelector(props: MetricChartProps) {
     writePresentationUrl(url);
   }
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       {all && (
         <>
           <input type="hidden" name={SHOW_TRENDS_PARAM} value="all" form={REPORT_FILTER_FORM_ID} />
           <input type="hidden" name={props.param} value={choice.selected} form={REPORT_FILTER_FORM_ID} />
         </>
       )}
-      <div className="flex justify-end">
-        <Button variant="ghost" size="sm" inert={!hydrated} onClick={toggleAll}>
-          {all ? "Show selected trend" : "Show all trends"}
-        </Button>
-      </div>
       {all ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {metrics.map((metric) => (
-            <ChartCard key={metric.key} {...metricCard(card, metric, titleSuffix)} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {metrics.map((metric) => (
+              <ChartCard key={metric.key} {...metricCard(card, metric, titleSuffix)} />
+            ))}
+          </div>
+          <Button variant="ghost" size="sm" inert={!hydrated} onClick={toggleAll} className="self-start">
+            Show selected trend
+          </Button>
+        </>
       ) : (
-        <MetricChartCard {...props} {...choice} />
+        <MetricChartCard
+          {...props}
+          {...choice}
+          footer={
+            <Button variant="ghost" size="sm" inert={!hydrated} onClick={toggleAll} className="-my-1">
+              Show all trends
+            </Button>
+          }
+        />
       )}
     </div>
   );

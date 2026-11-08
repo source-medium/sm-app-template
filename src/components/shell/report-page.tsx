@@ -190,8 +190,9 @@ export async function ReportPage({
   // Read on the server, so a reload paints each chart's remembered measure without a client-side switch.
   const chartMemory = parseChartMemory((await cookies()).get(CHART_MEMORY_COOKIE)?.value);
   const zoneLabel = /^[+-]/.test(timeZone) ? `UTC${timeZone}` : timeZone;
+  // Sample mode has nothing to report: the mode chip and the footer already say what the numbers are.
   const dataStatus =
-    !issue && sources.length > 0 && !allStores ? (
+    access.mode === "live" && !issue && sources.length > 0 && !allStores ? (
       <Suspense fallback={<PendingDataStatus />}>
         <DataStatus storeId={storeId} sources={sources} bindings={bindings} />
       </Suspense>
@@ -219,6 +220,7 @@ export async function ReportPage({
         comparisonLabel={comparisonLabel}
         dates={dates}
         plan={plan}
+        dateIssue={Boolean(issue)}
         allStores={allStores}
         fixedStore={fixedStore}
       />
@@ -254,14 +256,13 @@ export async function ReportPage({
             ? ` The same calendar dates are used in each store's local time. Default dates use ${zoneLabel}.`
             : ` Dates are calendar dates in the store's time zone, ${zoneLabel}.`)}
         {dates && range.to === today && " Today may be incomplete."}
-        {/* A known currency is already named under the title; the footer only carries what the header cannot. */}
-        {(allStores || !currency) && (
-          <span className="mt-1 block">
-            {allStores
-              ? "Reporting currencies are shown per store. Amounts are never added across stores."
-              : "Reporting currency unknown; amounts are unlabeled."}
-          </span>
-        )}
+        <span className="mt-1 block">
+          {allStores
+            ? "Reporting currencies are shown per store. Amounts are never added across stores."
+            : currency
+              ? `Reporting currency: ${currency}.`
+              : "Reporting currency unknown."}
+        </span>
       </footer>
     </div>
   );

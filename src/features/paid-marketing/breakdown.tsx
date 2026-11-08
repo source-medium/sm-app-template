@@ -5,7 +5,7 @@ import { slotChanges, type ComparisonPlan } from "@/lib/comparison";
 import { kpiDelta } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
-import { formatMoney, formatMoneyIn, formatPercent } from "@/lib/format";
+import { formatMoney, formatMoneyIn } from "@/lib/format";
 import { withParams, type SearchParams } from "@/lib/filters";
 import { adPlatformLabel } from "@/lib/ad-platforms";
 import { BREAKDOWN_DIMENSIONS, type BreakdownDimension } from "./filters";
@@ -39,7 +39,7 @@ export function SpendBreakdownView({
       <RankedBreakdown
         title={`Spend by ${title}`}
         valueLabel="Spend"
-        description={`Spend in the selected period: ${formatMoney(total, currency)}. ${data.hasMore ? "Top 10 by spend. " : ""}Shares use all matching rows for this store, date range, and ad platform. Zero totals and negative spend have no share.`}
+        description={`${formatMoney(total, currency)} in the selected period.${data.hasMore ? " Top 10 by spend." : ""}`}
         comparisonLabel={compare && baseline ? `Change vs ${baseline.label}` : undefined}
         hasMore={data.hasMore}
         rows={data.rows.map((row) => ({
@@ -51,7 +51,7 @@ export function SpendBreakdownView({
                 ? adPlatformLabel(row.label)
                 : row.label,
           value: { value: decimalToNumber(row.spend), display: money(row.spend) },
-          share: formatPercent(nonnegativeShare(row.spend, total, first?.minimum_spend ?? null)),
+          share: nonnegativeShare(row.spend, total, first?.minimum_spend ?? null),
           change: compare ? kpiDelta(row.spend, row[slotColumn(slot, "spend")], money).display : undefined,
           href:
             dimension === "channel"
@@ -62,7 +62,7 @@ export function SpendBreakdownView({
     );
   };
   return (
-    <section aria-label="Spend breakdown" className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
       {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
       {(dimension === "type" || dimension === "tactic") && (
         <p className="text-sm text-muted-foreground">
@@ -71,6 +71,6 @@ export function SpendBreakdownView({
         </p>
       )}
       {plan ? <ActiveBaseline a={ranking(0)} b={ranking(1)} /> : ranking(0)}
-    </section>
+    </div>
   );
 }

@@ -1,5 +1,5 @@
-import { choose, chooseMeasure, openDisclosure } from "../../../e2e/helpers";
-import { switchStore } from "../../../e2e/helpers";
+import { choose, chooseMeasure, openDates, openDisclosure } from "../../../e2e/helpers";
+import { copyReportLink, switchStore } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
 import { CHART_MEMORY_COOKIE, serializeChartMemory } from "../../lib/chart-memory";
 
@@ -66,7 +66,8 @@ test("overview: full money values and comparison text stay inside their cards", 
     .locator('[data-slot="kpi-comparison"]')
     .first()
     .evaluate((node) => {
-      const display = node.querySelector("span span");
+      // The change is the row's first span; its label follows.
+      const display = node.querySelector("li span");
       if (!display) throw new Error("Missing change text");
       display.textContent = "+$1,234,567,890,123,456.78 (+123.45%)";
     });
@@ -102,13 +103,13 @@ test("overview: period and year comparisons survive links, navigation, and refre
   await expect(page.locator('[data-slot="kpi-comparison"]:visible')).toHaveCount(4);
   await choose(page, "Compare with", "year");
   await expect(page).toHaveURL(/compare=year/);
-  await page.getByRole("button", { name: "Copy report link" }).click();
+  await copyReportLink(page);
   await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
   expect(new URL(await page.evaluate(() => navigator.clipboard.readText())).searchParams.get("compare")).toBe("year");
   await expect(comparison).toContainText("Sep 1, 2025 – Sep 7, 2025");
   await page.reload();
   await expect(page.getByLabel("Compare with")).toHaveValue("year");
-  await page.getByRole("button", { name: "Copy report link" }).click();
+  await copyReportLink(page);
   await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
   expect(new URL(await page.evaluate(() => navigator.clipboard.readText())).searchParams.get("compare")).toBe("year");
   const refresh = page.getByRole("button", { name: "Refresh data", exact: true });
@@ -167,11 +168,11 @@ test("overview: metric definitions open and close by keyboard", async ({ page })
 
 test("overview: a chart opens as an accessible table", async ({ page }) => {
   await page.goto("/overview");
-  await chooseMeasure(page, "Net revenue", "Summary orders");
-  const card = page.locator('[data-slot="card"]', { hasText: "Summary orders by day" });
+  await chooseMeasure(page, "Net revenue", "Orders");
+  const card = page.locator('[data-slot="card"]', { hasText: "Orders by day" });
   await card.getByRole("button", { name: "View as table" }).click();
-  await expect(card.getByRole("table", { name: "Summary orders by day" })).toBeVisible();
-  await expect(card.getByRole("columnheader", { name: "Summary orders" })).toBeVisible();
+  await expect(card.getByRole("table", { name: "Orders by day" })).toBeVisible();
+  await expect(card.getByRole("columnheader", { name: "Orders" })).toBeVisible();
 });
 
 test("overview: KPI trends expose daily values and purchase measures follow filters and comparisons", async ({
@@ -186,8 +187,8 @@ test("overview: KPI trends expose daily values and purchase measures follow filt
   await expect(daily).toBeVisible();
   await expect(daily.getByRole("row")).toHaveCount(9);
   await expect(daily.getByRole("cell", { name: "Sep 1, 2026", exact: true })).toBeVisible();
-  await expect(daily.getByRole("columnheader", { name: "Revenue / summary order", exact: true })).toBeVisible();
-  await page.getByText("Secondary metrics and business details", { exact: true }).click();
+  await expect(daily.getByRole("columnheader", { name: "Revenue / order", exact: true })).toBeVisible();
+  await page.getByText("More metrics", { exact: true }).click();
   const purchases = page.getByRole("table", { name: "New vs repeat purchases", exact: true });
   await expect(purchases.getByRole("columnheader", { name: "Revenue change", exact: true })).toBeVisible();
   const first = purchases.getByRole("row").filter({ hasText: "New-customer orders" });
@@ -196,7 +197,7 @@ test("overview: KPI trends expose daily values and purchase measures follow filt
   await expect(page.getByLabel("Sales channel", { exact: true })).not.toHaveAttribute("inert");
   await choose(page, "Sales channel", "amazon");
   await expect(page).toHaveURL(/sales_channel=amazon/);
-  await openDisclosure(page, "Secondary metrics and business details");
+  await openDisclosure(page, "More metrics");
   await expect(first.getByRole("cell").nth(1)).not.toHaveText(revenueText);
   await choose(page, "Compare with", "off");
   await expect(purchases.getByRole("columnheader", { name: "Revenue change", exact: true })).toHaveCount(0);
@@ -276,16 +277,17 @@ test("overview: channel and grain filter the summary and raw export together", a
   await page.goto("/overview?store=sample-store-a&from=2026-09-02&to=2026-09-08&compare=year");
   await choose(page, "Sales channel", "amazon");
   await expect(page).toHaveURL(/sales_channel=amazon/);
-  await page.getByText("Business summary and CSV", { exact: true }).click();
+  await page.getByText("Daily summary and downloads", { exact: true }).click();
   await choose(page, "Summary rows", "week");
   await expect(page).toHaveURL(/grain=week/);
   expect(new URL(page.url()).searchParams.get("compare")).toBe("year");
-  await openDisclosure(page, "Business summary and CSV");
+  await openDisclosure(page, "Daily summary and downloads");
   const table = page.getByRole("table", { name: "Business summary", exact: true });
   await expect(table.getByRole("cell", { name: "Sep 2, 2026 – Sep 6, 2026", exact: true })).toBeVisible();
   await expect(table.getByRole("rowheader", { name: "Selected period total" })).toBeVisible();
   const href = await page.getByRole("link", { name: "Download CSV" }).getAttribute("href");
   if (!href) throw new Error("Missing summary download");
+  await openDates(page);
   await page.getByLabel("From", { exact: true }).fill("2020-01-01");
   const response = await request.get(href);
   expect(response.status()).toBe(200);
@@ -303,18 +305,20 @@ test("overview: an unknown channel stays explicit and can be reset", async ({ pa
   await expect(page.getByText("No rows match this store, sales channel, and date range.")).toBeVisible();
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("unknown");
   await choose(page, "Sales channel", "");
-  await page.getByText("Business summary and CSV", { exact: true }).click();
+  await page.getByText("Daily summary and downloads", { exact: true }).click();
   await expect(page.getByRole("table", { name: "Business summary", exact: true })).toBeVisible();
 });
 
 test("overview: date and channel drafts apply together, and invalid ranges never silently change", async ({ page }) => {
   await page.goto("/overview?store=sample-store-a&from=2026-09-09&to=2026-09-28");
+  await openDates(page);
   await page.getByLabel("From", { exact: true }).fill("2026-09-01");
   await expect(page).toHaveURL(/from=2026-09-09/);
   await choose(page, "Sales channel", "amazon");
   await expect(page).toHaveURL(
     (url) => url.searchParams.get("from") === "2026-09-01" && url.searchParams.get("sales_channel") === "amazon",
   );
+  await openDates(page);
   await page.getByLabel("From", { exact: true }).fill("2026-09-30");
   await choose(page, "Sales channel", "");
   await expect(page.getByRole("main").getByRole("alert")).toContainText("start date must be on or before");
@@ -341,7 +345,8 @@ test("overview: the first answer and full-width chart notes are readable on a ph
   const answer = page.locator('[data-agent-target="Summary"], [data-slot="kpi-value"]').first();
   const bounds = await answer.boundingBox();
   expect((bounds?.y ?? 0) + (bounds?.height ?? 0)).toBeLessThan(844);
-  const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
+  await page.goto("/products");
+  const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by product" });
   const description = await card.locator('[data-slot="card-description"]:visible').boundingBox();
   const header = await card.locator('[data-slot="card-header"]:visible').boundingBox();
   expect(description?.width).toBeGreaterThan((header?.width ?? 0) * 0.7);
@@ -367,14 +372,15 @@ test("overview: hides period changes only when the selected period's last days h
   // Sample store B has no rows on 3, 11, 13 and 19 September.
   await page.goto("/overview?store=sample-store-b&from=2026-09-13&to=2026-09-19&compare=previous");
   const totals = page.getByRole("region", { name: "Period totals" });
-  await expect(page.locator("[data-comparison-issue]").first()).toHaveText(
-    /previous 7 days: Changes are hidden because the selected period has no rows for its last 1 day, while the comparison has rows through its end/,
+  // The selected period's missing last day hides both baselines for the same reason, so it is said once.
+  await expect(page.locator("[data-comparison-issue]")).toHaveCount(1);
+  await expect(page.locator("[data-comparison-issue]")).toHaveText(
+    /^Changes are hidden because the selected period has no rows for its last 1 day, while the comparison has rows through its end/,
   );
   await expect(totals.locator('[data-slot="kpi-value"]').first()).toBeVisible();
-  // Each card keeps a row per comparison, but a hidden one explains itself instead of showing a change.
-  // The selected period's missing last day hides both baselines.
-  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "Changes hidden" })).toHaveCount(8);
-  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs previous 7 days" })).toHaveCount(4);
+  // Each card says so in one row instead of showing a change; the caption above gives the reason.
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "Changes hidden" })).toHaveCount(4);
+  await expect(totals.locator('[data-slot="kpi-delta"]')).toHaveCount(4);
   // Per-day lines align date by date, so the dashed comparison still shows.
   const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
   await expect(card.locator('.recharts-line-curve[stroke-dasharray="6 4"]')).toBeVisible();
@@ -416,7 +422,7 @@ test("overview: the report form stays in place when the first filter applies", a
   // selectOption can change an inert select before hydration. This assertion
   // covers client navigation, so wait for the form and its streamed control.
   await expect(page.getByLabel("Compare with", { exact: true })).not.toHaveAttribute("inert");
-  await openDisclosure(page, "Business summary and CSV");
+  await openDisclosure(page, "Daily summary and downloads");
   const summaryRows = page.getByLabel("Summary rows", { exact: true });
   await expect(summaryRows).not.toHaveAttribute("inert");
   const form = await page.locator("#report-filters").elementHandle();
@@ -440,7 +446,7 @@ test("overview: baseline overlays follow chart history, copied links and applied
     if (["fetch", "xhr", "document"].includes(request.resourceType())) requests.push(request.url());
   });
   await year.click();
-  await chooseMeasure(page, "Net revenue", "Summary orders");
+  await chooseMeasure(page, "Net revenue", "Orders");
   await previous.click();
   await page.goBack();
   await expect(year).toHaveAttribute("aria-pressed", "true");
@@ -449,12 +455,10 @@ test("overview: baseline overlays follow chart history, copied links and applied
   );
   await page.goForward();
   await expect(previous).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator('[data-slot="card"]', { hasText: "Summary orders by day" })).toContainText(
-    "Previous 7 days",
-  );
+  await expect(page.locator('[data-slot="card"]', { hasText: "Orders by day" })).toContainText("Previous 7 days");
   expect(requests).toEqual([]);
   await year.click();
-  await page.getByRole("button", { name: "Copy report link", exact: true }).click();
+  await copyReportLink(page);
   await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
   const shared = await page.evaluate(() => navigator.clipboard.readText());
   expect(new URL(shared).searchParams.get("baseline")).toBe("b");
@@ -547,12 +551,12 @@ test("overview changes loaded series without a server request and restores it on
   page.on("request", (request) => {
     if (["fetch", "xhr", "document"].includes(request.resourceType())) requests.push(request.url());
   });
-  await chooseMeasure(page, "Net revenue", "Summary orders");
-  await expect(page.getByRole("img", { name: "Summary orders by day chart", exact: true })).toBeVisible();
-  await chooseMeasure(page, "Summary orders", "Ad spend");
+  await chooseMeasure(page, "Net revenue", "Orders");
+  await expect(page.getByRole("img", { name: "Orders by day chart", exact: true })).toBeVisible();
+  await chooseMeasure(page, "Orders", "Ad spend");
   await expect(page.getByRole("img", { name: "Ad spend by day chart", exact: true })).toBeVisible();
   expect(requests).toEqual([]);
-  await page.getByRole("button", { name: "Copy report link", exact: true }).click();
+  await copyReportLink(page);
   await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
   const shared = new URL(await page.evaluate(() => navigator.clipboard.readText()));
   expect(shared.searchParams.get("metric")).toBe("spend");
@@ -560,10 +564,10 @@ test("overview changes loaded series without a server request and restores it on
   expect(shared.searchParams.get("from")).toBe("2026-09-01");
   expect(shared.searchParams.get("compare")).toBe("off");
   await page.goBack();
-  await expect(page.getByRole("img", { name: "Summary orders by day chart", exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Orders by day chart", exact: true })).toBeVisible();
   // The link's measure wins over the one this browser remembered last (Ad spend).
   await page.reload();
-  await expect(page.getByRole("img", { name: "Summary orders by day chart", exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Orders by day chart", exact: true })).toBeVisible();
   // The first entry was named on load, so Back returns to the default rather than the remembered measure.
   await page.goBack();
   await expect(page.getByRole("img", { name: "Net revenue by day chart", exact: true })).toBeVisible();
@@ -582,7 +586,7 @@ test("overview: all trends shares and submits the untouched default measure", as
   await expect(page.getByRole("button", { name: "Measure: Net revenue", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Show all trends", exact: true }).click();
   await expect(page.getByRole("button", { name: "View as table", exact: true })).toHaveCount(6);
-  await page.getByRole("button", { name: "Copy report link", exact: true }).click();
+  await copyReportLink(page);
   await expect(page.getByText("Report link copied.", { exact: true })).toBeVisible();
   const shared = new URL(await page.evaluate(() => navigator.clipboard.readText()));
   expect(shared.searchParams.getAll("metric")).toEqual(["revenue"]);
@@ -640,12 +644,11 @@ test("overview: the geography link carries a multi-channel scope and Geography n
   await page.goto(
     `/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&sales_channel=${encodeURIComponent(scope)}`,
   );
-  await openDisclosure(page, "Explore sales by geography");
-  await page.getByRole("link", { name: "Open valid-order geography", exact: true }).click();
+  await page.getByRole("link", { name: "Explore sales by geography", exact: true }).click();
   await expect(page).toHaveURL(
     (url) => url.pathname === "/geography" && url.searchParams.get("sales_channel") === scope,
   );
-  await expect(page.getByText("Sales channels: amazon, online_dtc.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Filters:.* · Amazon, Online DTC$/ })).toBeVisible();
 });
 
 test("overview: a date preset's comparison follows the preset, even when its dates look like another's", async ({

@@ -83,6 +83,7 @@ describe("metric changes", () => {
   it("uses metric-specific sentiment, including unchanged and neutral changes", () => {
     expect(kpiDelta("150", "100", formatMoney, "higher")).toEqual({
       display: "+50.00 (+50%)",
+      short: "+50%",
       comparedTo: "100.00",
       direction: "up",
       good: true,
@@ -96,7 +97,9 @@ describe("metric changes", () => {
       good: null,
       direction: "flat",
     });
+    expect(kpiDelta(0n, 0n, formatCount, "higher").short).toBeUndefined();
     expect(kpiDelta("10", "0", formatMoney).display).toBe("+10.00 (zero baseline)");
+    expect(kpiDelta("10", "0", formatMoney).short).toBeUndefined();
     expect(kpiDelta("-5", "-10", formatMoney).display).toBe("+5.00 (negative baseline)");
     expect(kpiDelta(10n, null, formatCount)).toMatchObject({ display: "No comparison value", good: null });
   });

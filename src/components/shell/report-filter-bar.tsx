@@ -38,13 +38,15 @@ export type ReportFilterBarProps = {
   maxDays?: number;
   /** Present on reports that compare periods; its two slots are the comparison selects. */
   plan?: ComparisonPlan;
+  /** The URL's dates are unusable, so the suggested range is shown for applying. */
+  dateIssue?: boolean;
   fixedStore: boolean;
   allStores?: boolean;
 };
 
 export function ReportFilterBar(props: ReportFilterBarProps) {
   return (
-    <Suspense fallback={<Skeleton className="h-[4.75rem] rounded-xl" />}>
+    <Suspense fallback={<Skeleton className="h-9 rounded-md" />}>
       <RosterFilterBar {...props} />
     </Suspense>
   );
@@ -86,6 +88,7 @@ function StoreFilterBar({
   comparisonLabel,
   dates,
   plan,
+  dateIssue = false,
   fixedStore,
   allStores,
   maxDays,
@@ -94,8 +97,9 @@ function StoreFilterBar({
   const applied = dates && dateParams ? withDates(params, dateParams.live) : params;
   const presets =
     dates && today !== null && range !== null
-      ? datePresets(today, maxDays).map(({ value, label }) => ({
+      ? datePresets(today, maxDays).map(({ value, label, quick }) => ({
           label,
+          quick,
           href: withParams(pathname, params, {
             store: storeId,
             range: value,
@@ -136,6 +140,7 @@ function StoreFilterBar({
         comparison={plan?.slots[0].mode}
         comparison2={plan?.slots[1].mode}
         rangeLabel={range ? formatDateRange(range) : undefined}
+        defaultOpen={dateIssue}
       />
     </>
   );

@@ -81,8 +81,8 @@ export function OverviewSummary({
           [
             { key: "period", header: "Period", sortable: false },
             { key: "revenue", header: "Net revenue", align: "right" },
-            { key: "orders", header: "Summary orders", align: "right" },
-            { key: "average", header: "Revenue / summary order", align: "right" },
+            { key: "orders", header: "Orders", align: "right" },
+            { key: "average", header: "Revenue / order", align: "right" },
             { key: "spend", header: "Ad spend", align: "right" },
             { key: "mer", header: "MER", align: "right" },
             { key: "sessions", header: "Sessions", align: "right" },

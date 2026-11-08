@@ -54,9 +54,9 @@ catalog definition. **Sales channel** defaults to **All sales channels**; select
 KPIs, trends, comparisons, summaries and CSV to it. Selecting a non-valid channel shows its spend
 and no sales. The options are queried for the selected store and dates. The Looker template may
 open on `online_dtc`, so match its channel before comparing numbers. This is an implementation
-match, not an independent numerical reconciliation. Summary orders are published order measures
-and can differ from valid orders in `obt_orders`. The UI labels that count and its revenue ratio
-explicitly; do not present the ratio as valid-order AOV without reconciling the definitions,
+match, not an independent numerical reconciliation. Overview's Orders are published order measures
+and can differ from valid orders in `obt_orders`. Reports that count valid orders say so, and each
+card defines its count; do not present revenue per order as valid-order AOV without reconciling the definitions,
 dates and store.
 
 Overview's ad spend reads `rpt_executive_summary_daily`; Paid marketing and
@@ -92,9 +92,9 @@ unresolved. The app does not query that count or expose acquisition ratios.
 The existing new/repeat purchase table continues to report order measures.
 
 Overview's KPI trends reuse its daily rows with no additional queries. Each
-trend links to the existing **Business summary** in Daily mode, with the same
-store, dates, channel and comparison. This table includes revenue per summary
-order alongside the other KPI measures. Missing dates remain gaps; unsafe
+trend links to the existing **Daily summary and downloads** table in Daily mode,
+with the same store, dates, channel and comparison. This table includes revenue
+per order alongside the other KPI measures. Missing dates remain gaps; unsafe
 INT64 values use the table only. Daily ratios are computed
 per day, while headline ratios continue to use full-period totals.
 
@@ -454,7 +454,7 @@ Percentages are `(current - baseline) / baseline`, displayed to two decimals.
 Zero, negative, and missing baselines have explicit states instead of a
 misleading percentage. Unchanged values are neutral. The default color is
 neutral; a feature must explicitly choose whether higher or lower is better.
-Overview uses higher-is-better for net revenue, Summary orders, MER and
+Overview uses higher-is-better for net revenue, orders, MER and
 website sessions. Percentage-valued metrics should label absolute changes as
 percentage points, distinct from relative percent changes. Product gainers and
 decliners are ranked in SQL against the first slot, so that list has one
@@ -464,7 +464,7 @@ intentionally left for apps that need them.
 
 ## Summary tables and ranked breakdowns
 
-Overview's **Business summary** offers Daily, Weekly and Monthly rows via
+Overview's **Daily summary and downloads** offers Daily, Weekly and Monthly rows via
 `?grain=day|week|month`. Weeks begin Monday. SQL aggregates each bucket using
 only the selected dates; edge buckets show their actual partial date range.
 Daily charts stay daily. The footer always shows the full selected-period SQL
@@ -538,31 +538,36 @@ them. Unedited dates that roll (a `range` preset or the default) submit as that
 preset, not as dates. JS-driven selects stay non-interactive until their handlers are attached,
 while retaining their values in form submissions. Early changes cannot be lost during loading. Reports and their filters require
 JavaScript. Date preset links
-use the already applied filters. **More dates** holds the less frequent presets.
-Invalid or overlong date URLs show a correction message and no report until a
-valid range is applied.
+use the already applied filters. Invalid or overlong date URLs show a correction
+message, with the date fields open, and no report until a valid range is applied.
 
-On phones, Overview and Performance use `ReportControls` to show applied scope
-above an expandable filter panel. Collapsed fields stay mounted and continue to
-submit with the report form. Channel checkboxes are drafts until submission;
+At every width the date line reads as the applied range and comparisons, beside
+the frequent presets. It unfolds the date fields, the comparison choices and the
+less frequent presets (`quick` in the preset table chooses which sit beside it);
+all of them stay in the same form while folded. Presets
+are plain links, so they work before scripts load; the date line waits for them.
+
+Every report with its own filters uses `ReportControls`: a **Filters** button,
+styled like the date button, that names the applied scope (one `summary` entry per
+filter), above an expandable panel. Collapsed fields stay mounted and
+continue to submit with the report form. Pass `keepOpen` when the report cannot
+load until a filter is corrected. Channel checkboxes are drafts until submission;
 the quick selector and scope summary keep showing the applied channels, with a
 notice for unapplied changes.
 
-Products uses the same `ReportControls` pattern on desktop and phones, with an
-applied scope summary beside **More filters**. Shared date controls keep desktop
-comparisons under **Comparison periods**; all fields remain in the same form.
 Product takeaways use the full scoped totals, existing KPI deltas and coverage
 rules, and follow the active comparison when ranking by value, without querying again.
 Gainers and decliners use the first comparison, matching their ranking. Product photos
 use the same drill-down URL as their table rows.
 
-**Saved views** in each report header stores named, applied URLs in this browser's
-local storage. Rolling dates stay rolling; fixed dates stay fixed. Live chart and
-comparison presentation choices are captured through the same helper as copied
-links, without including unapplied filter drafts. These views store no warehouse
-results and grant no access. Unknown, removed or external routes in storage are
-ignored; storage failures leave the report usable. Remove a saved view from its
-menu. Copy report links still pin exact dates for a colleague.
+**Share** in each report header copies a link that pins the exact dates for a
+colleague, or saves the view under a name in this browser's local storage; the
+sidebar lists saved views under **Saved views**. Rolling dates stay rolling; fixed
+dates stay fixed. Live chart and comparison presentation choices are captured
+through the same helper as copied links, without including unapplied filter
+drafts. Saved views store no warehouse results and grant no access. Unknown,
+removed or external routes in storage are ignored; storage failures leave the
+report usable. Remove a saved view with the button beside it in the sidebar.
 
 `FilterBar` owns the `report-filters` GET form. `SelectFilter` and the other
 feature inputs associate with it using `REPORT_FILTER_FORM_ID`, including when
@@ -891,7 +896,7 @@ reduce cost; filtering on a partition column and selecting fewer columns do.
 
 The demo warehouse applies privacy masking to numeric metrics. Summary order
 counts are scaled, while the number of order rows is not. Consequently, demo
-Summary orders need not match a count of valid order rows. Compare Overview
+orders need not match a count of valid order rows. Compare Overview
 with the catalog's summary metrics, using the same store and dates and every
 channel. Do not apply a demo-specific adjustment to customer queries.
 

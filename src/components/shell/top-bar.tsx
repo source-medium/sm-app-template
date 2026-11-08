@@ -1,15 +1,11 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { cookies } from "next/headers";
 import type { Viewer } from "@/lib/auth/require-viewer";
 import { buildId, instanceInfo, readConfig } from "@/lib/config/env.server";
-import { parseTheme, THEME_COOKIE } from "@/lib/theme";
 import { AgentPrompt } from "./agent-prompt";
 import { ModeChip } from "./mode-chip";
-import { ThemeControl } from "./theme-control";
 import { STORE_SWITCHER_SLOT } from "@/lib/store-navigation";
 
-export async function TopBar({ mode, viewer }: { mode: "sample" | "live"; viewer: Viewer }) {
-  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+export function TopBar({ mode, viewer }: { mode: "sample" | "live"; viewer: Viewer }) {
   const info = instanceInfo();
   const config = readConfig();
   const probe = config.status === "ok" && config.mode === "managed" && config.hosted.authMethod === "probe";
@@ -33,7 +29,6 @@ export async function TopBar({ mode, viewer }: { mode: "sample" | "live"; viewer
         {(probe || info.environment === "Staging") && (
           <span className="text-xs text-muted-foreground">{probe ? "Staging probe" : "Staging"}</span>
         )}
-        <ThemeControl initialTheme={theme} />
       </div>
     </header>
   );

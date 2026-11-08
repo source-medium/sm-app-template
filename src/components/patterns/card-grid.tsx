@@ -4,7 +4,6 @@
  * never shows a broken image.
  */
 import { Card, CardContent, cardGridStyles } from "@/components/ui/card";
-import { Disclosure } from "@/components/ui/disclosure";
 import { CardImage } from "./card-image";
 
 export type GridCard = {
@@ -16,9 +15,6 @@ export type GridCard = {
   metrics: { label: string; display: string }[];
   action?: { href: string; label: string };
   footer?: React.ReactNode;
-  definition?: React.ReactNode;
-  /** Names the number the definition explains when a card shows several. */
-  definitionLabel?: string;
 };
 
 export function CardGrid({ cards, label }: { cards: GridCard[]; label: string }) {
@@ -47,9 +43,6 @@ export function CardGrid({ cards, label }: { cards: GridCard[]; label: string })
                   </div>
                 ))}
               </dl>
-              {card.definition && (
-                <Disclosure summary={card.definitionLabel ?? "About this number"}>{card.definition}</Disclosure>
-              )}
               {card.footer}
               {card.action && (
                 <a

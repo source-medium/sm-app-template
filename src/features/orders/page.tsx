@@ -11,8 +11,9 @@ import { LoadingState } from "@/components/patterns/data-states";
 import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { DataTable } from "@/components/patterns/data-table";
 import { buttonVariants } from "@/components/ui/button";
+import { ReportControls } from "@/components/shell/report-controls";
 import { ReportPage } from "@/components/shell/report-page";
-import { REPORT_FILTER_FORM_ID, withParams, type SearchParams } from "@/lib/filters";
+import { channelName, REPORT_FILTER_FORM_ID, salesChannelLabel, withParams, type SearchParams } from "@/lib/filters";
 import { EMPTY_VALUE, formatCount, formatInstant, formatLabel, formatMoney, formatWallTime } from "@/lib/format";
 import { OrderDrawer } from "./order-drawer";
 import { OrderSearchForm } from "./search-form";
@@ -49,7 +50,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         },
       ]}
       title="Orders"
-      description="Explore orders for one store by the applied local date basis. Open an order to see its details."
+      description="Find an order and open it to see its details."
       pathname={PATHNAME}
       params={params}
       agentFilters={{
@@ -78,7 +79,13 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         };
         return (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-start gap-4">
+            <ReportControls
+              summary={[
+                salesChannelLabel(channel),
+                orderDateLabel(dateBasis),
+                validOnly ? "Valid orders only" : "All orders",
+              ]}
+            >
               <ChannelRosterFilter
                 key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
                 load={() => getOrderChannels(orderFilters)}
@@ -104,75 +111,74 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                   { value: "valid", label: "Valid orders" },
                 ]}
               />
-              {country && <input type="hidden" name="country" value={country} form={REPORT_FILTER_FORM_ID} />}
-              {region && <input type="hidden" name="region" value={region} form={REPORT_FILTER_FORM_ID} />}
-              <OrderSearchForm search={search ?? ""} />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Applied date basis: {orderDateLabel(dateBasis)}.{" "}
-              {validOnly ? "Valid orders only." : "All order validity states."}{" "}
-              {country && (
-                <>
-                  Shipping destination: {country}
-                  {region ? ` / ${region}` : ""}.{" "}
-                  <Link
-                    prefetch={false}
-                    href={withParams(PATHNAME, linkParams, {
-                      country: null,
-                      region: null,
-                      cursor: null,
-                      order: null,
-                      evidence: null,
-                    })}
-                    className="underline"
-                  >
-                    Clear geography
-                  </Link>
-                </>
-              )}
-            </p>
+            </ReportControls>
+            {country && <input type="hidden" name="country" value={country} form={REPORT_FILTER_FORM_ID} />}
+            {region && <input type="hidden" name="region" value={region} form={REPORT_FILTER_FORM_ID} />}
+            {country && (
+              <p className="text-sm text-muted-foreground">
+                Shipping destination: {country}
+                {region ? ` / ${region}` : ""}.{" "}
+                <Link
+                  prefetch={false}
+                  href={withParams(PATHNAME, linkParams, {
+                    country: null,
+                    region: null,
+                    cursor: null,
+                    order: null,
+                    evidence: null,
+                  })}
+                  className="underline"
+                >
+                  Clear geography
+                </Link>
+              </p>
+            )}
             {dataStatus}
+            {/* Search narrows the list below, so it sits in the list's header rather than with the page's filters. */}
+            <SectionHeader
+              id="orders-heading"
+              title="Orders, newest first"
+              headingProps={{ tabIndex: -1 }}
+              actions={<OrderSearchForm search={search ?? ""} />}
+            />
             {scopeIssue ? (
               <ErrorState title="Check order scope" remedy={scopeIssue} tone="warning" />
             ) : (
-              <>
-                <SectionHeader id="orders-heading" title="Orders, newest first" headingProps={{ tabIndex: -1 }} />
-                <Suspense
-                  key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${search}|${dateBasis}|${validOnly}|${country}|${region}|${cursor ? encodeRef(cursor) : ""}`}
-                  fallback={<LoadingState variant="table" label="Loading orders" />}
+              <Suspense
+                key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${search}|${dateBasis}|${validOnly}|${country}|${region}|${cursor ? encodeRef(cursor) : ""}`}
+                fallback={<LoadingState variant="table" label="Loading orders" />}
+              >
+                <DataRegion
+                  timestamp={timeZone}
+                  load={() => getOrders(orderFilters)}
+                  isEmpty={(data) => data.orders.length === 0}
+                  emptyMessage={
+                    search
+                      ? "No orders match that search, sales channel, and date range."
+                      : "No orders match this store, sales channel, and date range."
+                  }
+                  emptyAction={
+                    search
+                      ? { href: withParams(PATHNAME, linkParams, { q: null, cursor: null }), label: "Clear search" }
+                      : channel
+                        ? {
+                            href: withParams(PATHNAME, linkParams, { sales_channel: null, cursor: null }),
+                            label: "Show all sales channels",
+                          }
+                        : undefined
+                  }
                 >
-                  <DataRegion
-                    timestamp={timeZone}
-                    load={() => getOrders(orderFilters)}
-                    isEmpty={(data) => data.orders.length === 0}
-                    emptyMessage={
-                      search
-                        ? "No orders match that search, sales channel, and date range."
-                        : "No orders match this store, sales channel, and date range."
-                    }
-                    emptyAction={
-                      search
-                        ? { href: withParams(PATHNAME, linkParams, { q: null, cursor: null }), label: "Clear search" }
-                        : channel
-                          ? {
-                              href: withParams(PATHNAME, linkParams, { sales_channel: null, cursor: null }),
-                              label: "Show all sales channels",
-                            }
-                          : undefined
-                    }
-                  >
-                    {(data) => (
-                      <OrdersList
-                        data={data}
-                        params={linkParams}
-                        paged={cursor !== null}
-                        currency={currency}
-                        dateBasis={dateBasis}
-                      />
-                    )}
-                  </DataRegion>
-                </Suspense>
-              </>
+                  {(data) => (
+                    <OrdersList
+                      data={data}
+                      params={linkParams}
+                      paged={cursor !== null}
+                      currency={currency}
+                      dateBasis={dateBasis}
+                    />
+                  )}
+                </DataRegion>
+              </Suspense>
             )}
             {selected && (
               <OrderDrawer
@@ -266,7 +272,7 @@ function OrdersList({
               }),
             },
             processed: { display: formatWallTime(order.scopeLocal) },
-            channel: { display: [order.channel, order.subChannel].filter(Boolean).join(" · ") || EMPTY_VALUE },
+            channel: { display: orderChannel(order) },
             type: { display: formatLabel(order.orderType) },
             status: { display: formatLabel(order.paymentStatus) },
             items: { display: order.items ?? EMPTY_VALUE },
@@ -320,7 +326,7 @@ function OrderDetailList({
     ["Order id", order.orderId ?? EMPTY_VALUE],
     ["Processed (store time)", formatWallTime(order.processedLocal)],
     ["Created", order.createdAt ? formatInstant(order.createdAt.iso, timeZone) : EMPTY_VALUE],
-    ["Channel", [order.channel, order.subChannel].filter(Boolean).join(" · ") || EMPTY_VALUE],
+    ["Channel", orderChannel(order)],
     ["Sales channel", order.salesChannel ?? EMPTY_VALUE],
     ["Source system", formatLabel(order.sourceSystem)],
     ["Order type", formatLabel(order.orderType)],
@@ -358,4 +364,9 @@ function OrderDetailList({
       ))}
     </dl>
   );
+}
+
+/** The order's channel in words, with its sub-channel when one is published. */
+function orderChannel(order: { channel: string | null; subChannel: string | null }): string {
+  return [order.channel && channelName(order.channel), order.subChannel].filter(Boolean).join(" · ") || EMPTY_VALUE;
 }

@@ -5,12 +5,12 @@ import type { SourceEvidence } from "@/lib/data/evidence";
 import { formatDate } from "@/lib/format";
 import { Disclosure } from "@/components/ui/disclosure";
 
-const frame = "rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground";
+const frame = "text-sm text-muted-foreground";
 
 export function PendingDataStatus() {
   return (
-    <aside aria-label="Data status" className={frame}>
-      Checking published metadata… Pipeline freshness, period completeness and quality checks are not published.
+    <aside aria-label="Data status" className={`min-h-9 content-center ${frame}`}>
+      Checking published metadata…
     </aside>
   );
 }
@@ -21,6 +21,15 @@ function describe(source: SourceEvidence): string {
   if (source.observedDate) return `latest published metadata date ${formatDate(source.observedDate)}`;
   if (source.metadata === "accessible") return "no selected-store date published";
   return `metadata ${source.metadata}`;
+}
+
+/** The one line a viewer needs. It names a published date only when every source agrees on it. */
+function headline(sources: readonly SourceEvidence[]): string {
+  if (sources.some((source) => source.consistency === "inconsistent"))
+    return "Sources disagree on their published dates";
+  const dates = [...new Set(sources.map((source) => source.observedDate))];
+  if (dates.length === 1 && dates[0]) return `Latest published date: ${formatDate(dates[0])}`;
+  return dates.some(Boolean) ? "Published dates vary by source" : "No published date for this store";
 }
 
 export async function DataStatus({
@@ -36,29 +45,16 @@ export async function DataStatus({
     storeId,
     sources.map((source) => source.relation),
   );
-  if (data.mode === "sample")
-    return (
-      <aside aria-label="Data status" className={frame}>
-        Sample data. Coverage and pipeline health are not assessed.
-      </aside>
-    );
+  if (data.mode === "sample") return null;
   const findings = bindings.flatMap((binding) =>
     metricCompatibility(binding, data.metrics).map((finding) => `${binding.label}: ${finding}`),
   );
   return (
-    <aside aria-label="Data status" className={`space-y-1 ${frame}`}>
-      <p>
-        {data.sources.map((source) => (
-          <span key={`${source.dataset}.${source.relation}`}>
-            <span className="font-medium text-foreground">{source.relation}</span>: {describe(source)}.{" "}
-          </span>
-        ))}
-        Pipeline freshness, period completeness and quality checks are not published.
-      </p>
+    <aside aria-label="Data status" className={frame}>
       <Disclosure
-        summary={`About this evidence${findings.length ? ` (${findings.length} definition ${findings.length === 1 ? "finding" : "findings"})` : ""}`}
+        summary={`${headline(data.sources)}${findings.length ? ` (${findings.length} definition ${findings.length === 1 ? "finding" : "findings"})` : ""}`}
       >
-        <div className="space-y-2">
+        <div className="max-w-prose space-y-2">
           {findings.length > 0 && (
             <ul role="status" className="space-y-1 text-foreground">
               {findings.map((finding) => (
@@ -66,6 +62,14 @@ export async function DataStatus({
               ))}
             </ul>
           )}
+          <p>
+            {data.sources.map((source) => (
+              <span key={`${source.dataset}.${source.relation}`}>
+                <span className="font-medium text-foreground">{source.relation}</span>: {describe(source)}.{" "}
+              </span>
+            ))}
+            Pipeline freshness, period completeness and quality checks are not published.
+          </p>
           {data.truncated && <p>Partial metadata list. Missing dependencies are not passes.</p>}
           <p>
             The published metadata date may describe business activity, a carried observation, or a table modification,

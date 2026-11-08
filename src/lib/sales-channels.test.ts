@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import definitions from "../../contracts/dashboard-metrics-v1/definitions.json";
 import { VALID_SALES_CHANNEL_SQL, summaryMeasure } from "@/lib/data/channel-sql";
-import { salesChannelLabel } from "@/lib/filters";
+import { channelName, salesChannelLabel } from "@/lib/filters";
 import { countedSales, sampleSummarySource } from "@/lib/sample/executive-summary";
 import { isValidSalesChannel } from "@/lib/sales-channels";
 
@@ -72,6 +72,12 @@ it("preserves valid-row nulls and fractional counts, and keeps non-sales spend a
 
 it("names a channel scope without printing its URL encoding", () => {
   expect(salesChannelLabel(null)).toBe("All sales channels");
-  expect(salesChannelLabel("online_dtc")).toBe("online_dtc");
-  expect(salesChannelLabel('["online_dtc","amazon"]')).toBe("amazon, online_dtc");
+  expect(salesChannelLabel("online_dtc")).toBe("Online DTC");
+  expect(salesChannelLabel('["online_dtc","amazon"]')).toBe("Amazon, Online DTC");
+  // A documented key reads in words; a store's own channel, a name or a marker stays as published, never guessed.
+  expect(channelName("tiktok_shop")).toBe("TikTok Shop");
+  expect(channelName("partners_/_affiliates")).toBe("Partners and affiliates");
+  expect(channelName("b2b_portal")).toBe("b2b_portal");
+  expect(channelName("Wholesale EU")).toBe("Wholesale EU");
+  expect(channelName("(none)")).toBe("(none)");
 });

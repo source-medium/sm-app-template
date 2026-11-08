@@ -48,7 +48,7 @@ export function OverviewPurchases({
         columns={[
           { key: "purchase", header: "Purchase type", sortable: false },
           { key: "revenue", header: "Net revenue", align: "right", sortable: false },
-          { key: "orders", header: "Summary orders", align: "right", sortable: false },
+          { key: "orders", header: "Orders", align: "right", sortable: false },
           { key: "average", header: "Net revenue / order", align: "right", sortable: false },
           ...(comparedTo
             ? [{ key: "change", header: "Revenue change", align: "right" as const, sortable: false }]

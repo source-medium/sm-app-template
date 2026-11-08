@@ -3,7 +3,7 @@
 import Form from "next/form";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { CalendarDays, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -13,7 +13,8 @@ import { dateRangeIssue, REPORT_FILTER_FORM_ID } from "@/lib/filters";
 import { LinkPending, SubmitAnnouncement, SubmitPending } from "./pending";
 import { useHydrated } from "@/hooks/use-hydrated";
 
-export type FilterPreset = { label: string; href: string; active: boolean };
+/** `quick` presets sit beside the date button with the active one; the rest open with it. */
+export type FilterPreset = { label: string; href: string; active: boolean; quick?: boolean };
 
 /** One GET form owns every report control, including streamed fields associated by form id. */
 export function FilterBar({
@@ -33,6 +34,7 @@ export function FilterBar({
   carriedComparison,
   carriedComparison2,
   rangeLabel,
+  defaultOpen = false,
 }: {
   pathname: string;
   storeId: string;
@@ -54,16 +56,17 @@ export function FilterBar({
   /** Another report's comparison choices, carried through a report that has none. */
   carriedComparison?: string;
   carriedComparison2?: string;
-  /** The applied range as text; on phones the date fields collapse behind it. */
+  /** The applied range as text; the date fields stay folded behind it until someone wants to change them. */
   rangeLabel?: string;
+  /** Start unfolded, so a suggested range that still needs applying is on screen. */
+  defaultOpen?: boolean;
 }) {
   const id = useId();
   const [error, setError] = useState<string | null>(null);
-  const [datesOpen, setDatesOpen] = useState(false);
-  const [comparisonsOpen, setComparisonsOpen] = useState(false);
+  const [datesOpen, setDatesOpen] = useState(defaultOpen);
   const hydrated = useHydrated();
   const formRef = useRef<HTMLFormElement>(null);
-  // The From field takes focus once it is in the layout: after Change reveals it, or after an invalid submit.
+  // The From field takes focus once it is in the layout: after the dates unfold, or after an invalid submit.
   const focusFrom = useRef(false);
   useEffect(() => {
     if (!focusFrom.current) return;
@@ -90,7 +93,16 @@ export function FilterBar({
   const hasControls = dates || comparison !== undefined;
   /** Choices apply on change; typed dates wait for Apply. The form's own submit handler still validates dates. */
   const applyOnChange = (event: React.ChangeEvent<HTMLSelectElement>) => event.currentTarget.form?.requestSubmit();
-  const frequent = new Set(["Last 7 days", "Last 28 days"]);
+  const optionLabel = (mode: ComparisonMode) => COMPARISON_OPTIONS.find((option) => option.value === mode)?.label ?? "";
+  // Reads as a continuation of the dates: "Oct 10 – Nov 6, 2026 vs previous period and same period last year".
+  const comparisonSummary =
+    comparison === undefined
+      ? null
+      : comparison === "off"
+        ? "No comparison"
+        : `vs ${[comparison, ...(comparison2 !== undefined && comparison2 !== "off" ? [comparison2] : [])]
+            .map((mode) => optionLabel(mode).toLowerCase())
+            .join(" and ")}`;
   const presetLink = (preset: FilterPreset) => (
     <Link
       prefetch={false}
@@ -116,11 +128,7 @@ export function FilterBar({
       aria-label="Report filters"
       data-agent-target="Report filters"
       data-agent-component="FilterBar"
-      className={
-        hasControls
-          ? "grid grid-cols-1 items-end gap-3 rounded-xl border bg-card p-3 min-[24rem]:grid-cols-2 sm:flex sm:flex-wrap"
-          : "hidden"
-      }
+      className={hasControls ? "flex flex-col gap-3" : "hidden"}
       onSubmit={(event) => {
         if (!dates || maxDate === undefined) return;
         const data = new FormData(event.currentTarget);
@@ -148,151 +156,138 @@ export function FilterBar({
       )}
       <input type="hidden" name="store" value={storeId} />
       {preset && <input type="hidden" name="range" value={preset} />}
-      {comparison !== undefined && (
-        <div className="hidden min-w-0 flex-col gap-1.5 sm:order-2 sm:flex">
+      {dates && rangeLabel && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <Button
             type="button"
             variant="outline"
-            aria-expanded={comparisonsOpen}
-            aria-controls={`${id}-comparisons`}
+            aria-label={`Change dates, ${rangeLabel}`}
+            aria-describedby={comparison !== undefined ? `${id}-comparison-summary` : undefined}
+            aria-expanded={datesOpen}
+            aria-controls={`${id}-dates`}
+            data-agent-element="Change dates"
+            // A click before hydration would be lost; presets are plain links and work at once.
             disabled={!hydrated}
-            onClick={() => setComparisonsOpen(!comparisonsOpen)}
+            onClick={() => {
+              if (!datesOpen) focusFrom.current = true;
+              setDatesOpen(!datesOpen);
+            }}
+            className="h-auto min-h-9 max-w-full justify-start py-1.5 text-left whitespace-normal max-sm:w-full"
           >
-            Comparison periods
-            <ChevronDown aria-hidden className={cn("size-3.5", comparisonsOpen && "rotate-180")} />
+            <CalendarDays aria-hidden className="text-muted-foreground" />
+            <span className="flex min-w-0 flex-wrap gap-x-2">
+              <span>{rangeLabel}</span>
+              {comparisonSummary && (
+                <span id={`${id}-comparison-summary`} className="font-normal text-muted-foreground">
+                  {comparisonSummary}
+                </span>
+              )}
+            </span>
+            <ChevronDown aria-hidden className={cn("ml-auto size-3.5", datesOpen && "rotate-180")} />
           </Button>
-          <p className="max-w-64 text-xs text-muted-foreground">
-            {comparisonLabel !== "Compare with" && `${comparisonLabel}: `}
-            {[
-              comparison,
-              ...(comparison !== "off" && comparison2 !== undefined && comparison2 !== "off" ? [comparison2] : []),
-            ]
-              .map((mode) => COMPARISON_OPTIONS.find((option) => option.value === mode)?.label)
-              .join(" · ")}
-          </p>
-        </div>
-      )}
-      {(comparison !== undefined || comparison2 !== undefined) && (
-        <div
-          id={`${id}-comparisons`}
-          className={cn(
-            "col-span-full grid basis-full grid-cols-1 gap-3 min-[24rem]:grid-cols-2 sm:order-4 sm:flex sm:flex-wrap",
-            !comparisonsOpen && "sm:hidden",
-            dates && rangeLabel && !datesOpen && "max-sm:hidden",
-          )}
-        >
-          {comparison !== undefined && (
-            <div className="flex min-w-0 flex-col gap-1.5 sm:w-48">
-              <label htmlFor={`${id}-compare`} className="text-xs font-medium text-muted-foreground">
-                {comparisonLabel}
-              </label>
-              <NativeSelect
-                data-agent-element="Compare with"
-                id={`${id}-compare`}
-                name="compare"
-                defaultValue={comparison}
-                onChange={applyOnChange}
-              >
-                {COMPARISON_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-          )}
-          {comparison2 !== undefined && (
-            <div className="flex min-w-0 flex-col gap-1.5 sm:w-48">
-              <label htmlFor={`${id}-compare2`} className="text-xs font-medium text-muted-foreground">
-                Second comparison
-              </label>
-              <NativeSelect
-                data-agent-element="Second comparison"
-                id={`${id}-compare2`}
-                name="compare2"
-                defaultValue={comparison2}
-                disabled={comparison === "off"}
-                onChange={applyOnChange}
-              >
-                {COMPARISON_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
+          {presets.length > 0 && (
+            <nav aria-label="Date presets" className="flex flex-wrap items-center gap-1">
+              {presets.filter((preset) => preset.quick || preset.active).map(presetLink)}
+            </nav>
           )}
         </div>
-      )}
-      {dates && rangeLabel && !datesOpen && (
-        // Phones: the applied range reads as text until someone wants to change it; wider screens show the fields.
-        <button
-          type="button"
-          aria-label={`Change dates, ${rangeLabel}`}
-          aria-describedby={comparison !== undefined ? `${id}-comparison-summary` : undefined}
-          data-agent-element="Change dates"
-          onClick={() => {
-            setDatesOpen(true);
-            focusFrom.current = true;
-          }}
-          className="col-span-full flex min-h-11 items-center justify-between gap-3 rounded-md border border-input bg-background px-3 py-2 text-left text-sm sm:hidden"
-        >
-          <span className="min-w-0">
-            <span className="block text-xs font-medium text-muted-foreground">Dates</span>
-            <span className="block">{rangeLabel}</span>
-            {comparison !== undefined && (
-              <span id={`${id}-comparison-summary`} className="block text-xs text-muted-foreground">
-                {comparisonLabel}: {COMPARISON_OPTIONS.find((option) => option.value === comparison)?.label}
-                {comparison2 !== undefined &&
-                  comparison !== "off" &&
-                  `; and ${COMPARISON_OPTIONS.find((option) => option.value === comparison2)?.label?.toLowerCase()}`}
-              </span>
-            )}
-          </span>
-          <span className="shrink-0 text-xs font-medium text-primary">Change</span>
-        </button>
       )}
       {dates ? (
         <div
-          className={cn(
-            "col-span-full grid min-w-0 grid-cols-1 gap-3 min-[24rem]:grid-cols-2 sm:order-1",
-            rangeLabel && !datesOpen && "max-sm:hidden",
-          )}
+          id={`${id}-dates`}
+          hidden={Boolean(rangeLabel) && !datesOpen}
+          className="flex flex-col gap-3 rounded-lg border bg-card p-3"
         >
-          <div className="flex min-w-0 flex-col gap-1.5 sm:w-36">
-            <label htmlFor={`${id}-from`} className="text-xs font-medium text-muted-foreground">
-              From
-            </label>
-            <Input
-              data-agent-element="From"
-              id={`${id}-from`}
-              type="date"
-              name="from"
-              defaultValue={from}
-              max={maxDate}
-              min="0001-01-01"
-              required
-              aria-invalid={Boolean(error)}
-              aria-describedby={error ? `${id}-error` : undefined}
-            />
+          {presets.length > 0 && (
+            <nav aria-label="More date presets" className="flex flex-wrap items-center gap-1">
+              {presets.filter((preset) => !preset.quick && !preset.active).map(presetLink)}
+            </nav>
+          )}
+          <div className="grid grid-cols-1 items-end gap-3 min-[24rem]:grid-cols-2 sm:flex sm:flex-wrap">
+            <div className="flex min-w-0 flex-col gap-1.5 sm:w-36">
+              <label htmlFor={`${id}-from`} className="text-xs font-medium text-muted-foreground">
+                From
+              </label>
+              <Input
+                data-agent-element="From"
+                id={`${id}-from`}
+                type="date"
+                name="from"
+                defaultValue={from}
+                max={maxDate}
+                min="0001-01-01"
+                required
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? `${id}-error` : undefined}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col gap-1.5 sm:w-36">
+              <label htmlFor={`${id}-to`} className="text-xs font-medium text-muted-foreground">
+                To
+              </label>
+              <Input
+                data-agent-element="To"
+                id={`${id}-to`}
+                type="date"
+                name="to"
+                defaultValue={to}
+                max={maxDate}
+                min="0001-01-01"
+                required
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? `${id}-error` : undefined}
+              />
+            </div>
+            <Button data-agent-element="Apply" type="submit" className="col-span-full sm:col-auto">
+              <SubmitPending idle="Apply" pending="Updating…" />
+            </Button>
+            {comparison !== undefined && (
+              <div className="flex min-w-0 flex-col gap-1.5 sm:w-48">
+                <label htmlFor={`${id}-compare`} className="text-xs font-medium text-muted-foreground">
+                  {comparisonLabel}
+                </label>
+                <NativeSelect
+                  data-agent-element="Compare with"
+                  id={`${id}-compare`}
+                  name="compare"
+                  defaultValue={comparison}
+                  onChange={applyOnChange}
+                >
+                  {COMPARISON_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </div>
+            )}
+            {comparison2 !== undefined && (
+              <div className="flex min-w-0 flex-col gap-1.5 sm:w-48">
+                <label htmlFor={`${id}-compare2`} className="text-xs font-medium text-muted-foreground">
+                  Second comparison
+                </label>
+                <NativeSelect
+                  data-agent-element="Second comparison"
+                  id={`${id}-compare2`}
+                  name="compare2"
+                  defaultValue={comparison2}
+                  disabled={comparison === "off"}
+                  onChange={applyOnChange}
+                >
+                  {COMPARISON_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </div>
+            )}
           </div>
-          <div className="flex min-w-0 flex-col gap-1.5 sm:w-36">
-            <label htmlFor={`${id}-to`} className="text-xs font-medium text-muted-foreground">
-              To
-            </label>
-            <Input
-              data-agent-element="To"
-              id={`${id}-to`}
-              type="date"
-              name="to"
-              defaultValue={to}
-              max={maxDate}
-              min="0001-01-01"
-              required
-              aria-invalid={Boolean(error)}
-              aria-describedby={error ? `${id}-error` : undefined}
-            />
-          </div>
+          {error && (
+            <p id={`${id}-error`} role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
         </div>
       ) : (
         !rolling &&
@@ -304,34 +299,7 @@ export function FilterBar({
           </>
         )
       )}
-      <Button
-        data-agent-element="Apply"
-        type="submit"
-        variant="secondary"
-        className={cn("sm:order-3", dates && rangeLabel && !datesOpen && "max-sm:hidden")}
-      >
-        <SubmitPending idle="Apply" pending="Updating…" />
-      </Button>
       <SubmitAnnouncement pending="Updating the report." />
-      {error && (
-        <p id={`${id}-error`} role="alert" className="col-span-full basis-full text-sm text-destructive sm:order-4">
-          {error}
-        </p>
-      )}
-      {presets.length > 0 && (
-        <nav aria-label="Date presets" className="col-span-full flex basis-full flex-wrap items-start gap-1 sm:order-5">
-          {presets.filter((preset) => frequent.has(preset.label)).map(presetLink)}
-          <details className="group">
-            <summary className="flex min-h-9 w-fit cursor-pointer list-none items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden">
-              More dates
-              <ChevronDown className="size-3.5 transition-transform group-open:rotate-180" aria-hidden />
-            </summary>
-            <div className="flex flex-wrap gap-1">
-              {presets.filter((preset) => !frequent.has(preset.label)).map(presetLink)}
-            </div>
-          </details>
-        </nav>
-      )}
     </Form>
   );
 }

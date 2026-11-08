@@ -7,7 +7,7 @@
  * fonts, radius) and the app icon at src/app/icon.svg.
  */
 import {
-  BookOpen,
+  Database,
   Map,
   ImageIcon,
   LayoutDashboard,
@@ -101,7 +101,7 @@ export const appConfig = {
       metrics: ["order_net_revenue", "order_count"],
     },
     { group: "Sales", href: "/orders", label: "Orders", icon: ShoppingBag },
-    { href: "/data", label: "Explore your data", icon: BookOpen, group: "Reference" },
+    { href: "/data", label: "Explore your data", icon: Database, group: "Reference" },
   ] satisfies NavItem[] as NavItem[],
   /** Optional overrides for dim_stores.store_name. Names and brand groups otherwise come from SourceMedium. */
   storeLabels: {} as Record<string, string>,

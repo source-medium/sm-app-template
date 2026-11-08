@@ -9,6 +9,14 @@ const LABELS = new Map([
   ["google_ads", "Google"],
   ["pinterest_ads", "Pinterest"],
   ["tiktok_ads", "TikTok"],
+  ["tiktok", "TikTok"],
+  // Names from SourceMedium's connector catalog for keys published in its demo warehouse.
+  ["amazon_ads", "Amazon Ads"],
+  ["bing_ads", "Microsoft Ads"],
+  ["applovin", "AppLovin"],
+  ["impact", "Impact Radius"],
+  ["superfiliate", "Superfiliate"],
+  ["shopmy", "ShopMy"],
 ]);
 
 /** A platform's display name; any other value, including `(unknown platform)`, shows as published. */

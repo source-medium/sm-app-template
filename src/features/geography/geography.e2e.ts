@@ -2,13 +2,21 @@ import { appConfig } from "@/app.config";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { expectNoSeriousA11yViolations, choose, chooseMeasure } from "../../../e2e/helpers";
+import {
+  appearanceControl,
+  chooseAppearance,
+  expectNoSeriousA11yViolations,
+  choose,
+  chooseMeasure,
+} from "../../../e2e/helpers";
 const query = "store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=off";
 test("geography preserves shipping population and created date basis through Orders and back", async ({ page }) => {
   test.skip(!appConfig.nav.some((item) => item.href === "/orders"), "Orders example removed");
   await page.goto(`/geography?${query}&country=US&region=CA&date_basis=created`);
   await expect(page.getByRole("heading", { name: "Sales by geography", exact: true })).toBeVisible();
-  await expect(page.getByText(/Created \(store time\). Valid orders only/)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Filters: Shipping to US \/ CA · Created \(store time\)/ }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "Explore these orders", exact: true }).click();
   await expect(page).toHaveURL(
     (url) =>
@@ -21,7 +29,9 @@ test("geography preserves shipping population and created date basis through Ord
   await expect(page.getByLabel("Date basis", { exact: true })).toHaveValue("created");
   await expect(page.getByLabel("Order population", { exact: true })).toHaveValue("valid");
   await page.reload();
-  await expect(page.getByText(/Applied date basis: Created/)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Filters: .* · Created \(store time\) · Valid orders only$/ }),
+  ).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(/geography/);
 });
@@ -49,12 +59,11 @@ test("geography offers keyboard selection, mobile optional maps, themes and empt
 });
 
 for (const width of [320, 1280])
-  for (const theme of ["Light", "Dark"]) {
+  for (const theme of ["Light", "Dark"] as const) {
     test(`geography ${width}px ${theme} reflows accessibly with a table alternative`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(`/geography?${query}&country=US`);
-      await page.getByRole("button", { name: /^Appearance:/ }).click();
-      await page.getByRole("menuitemradio", { name: theme, exact: true }).click();
+      await chooseAppearance(page, theme);
       await expectNoSeriousA11yViolations(page);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await page.screenshot({ path: info.outputPath(`geography-${width}-${theme}.png`), fullPage: true });
@@ -102,7 +111,8 @@ test("map geometry stays off other reports and loads only when a phone requests 
   const other = appConfig.nav.find((item) => item.href !== "/geography");
   if (other) {
     await page.goto(other.href);
-    await expect(page.getByRole("button", { name: /^Appearance:/ })).toBeEnabled();
+    // Appearance waits for scripts, so an enabled control means the page has hydrated.
+    await expect(await appearanceControl(page)).toBeEnabled();
     expect(loaded).toEqual([]);
     expect(mapRequests).toEqual([]);
   }

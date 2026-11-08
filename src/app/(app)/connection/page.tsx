@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { reportingCurrencyConfig } from "@/lib/data/stores.server";
 import { ConnectionCheck } from "@/components/shell/connection-check";
+import { TEMPLATE_DOCUMENTATION, TEMPLATE_REPOSITORY } from "@/lib/template";
 import { liveCurrencyNote, sampleCurrencyNote } from "@/components/shell/connection-currency";
 
 export const metadata: Metadata = { title: "Connection" };
@@ -112,6 +113,24 @@ export default async function ConnectionPage() {
           {currency.detail} A label never converts amounts, and amounts are never added across stores.
         </p>
       </section>
+      <p className="flex flex-wrap gap-4 text-sm">
+        <a
+          className="underline underline-offset-4"
+          href={TEMPLATE_DOCUMENTATION}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Template docs<span className="sr-only"> (opens in a new tab)</span>
+        </a>
+        <a
+          className="underline underline-offset-4"
+          href={TEMPLATE_REPOSITORY}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Template on GitHub<span className="sr-only"> (opens in a new tab)</span>
+        </a>
+      </p>
       {access.mode === "live" && (
         <p className="text-sm text-muted-foreground">
           {managed

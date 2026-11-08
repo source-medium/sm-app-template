@@ -79,17 +79,29 @@ export async function switchStore(page: Page, id: string) {
   await expect(page.getByRole("button", { name: /^Store:/ })).toHaveAttribute("data-store-id", id);
 }
 
+/** The date fields fold behind the applied range, so changing dates starts by unfolding them. */
+export async function openDates(page: Page) {
+  const from = page.getByLabel("From", { exact: true });
+  if (await from.isVisible()) return;
+  await page.getByRole("button", { name: /^Change dates/ }).click();
+  await expect(from).toBeVisible();
+}
+
+/** A report's own filters fold behind one button that keeps its place across choices. */
+export async function openFilters(page: Page) {
+  // The button names what is applied: "Filters: All sales channels · Daily values".
+  const toggle = page.getByRole("button", { name: /^Filters:/ });
+  if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
+
 /** Programmatic selection ignores inert; wait until a person could use the hydrated control. */
 export async function choose(page: Page, label: string, value: Parameters<Locator["selectOption"]>[0]) {
   const select = page.getByLabel(label, { exact: true });
   const comparison = ["compare", "compare2"].includes((await select.getAttribute("name")) ?? "");
   if (!(await select.isVisible())) {
-    const toggle = page.getByRole("button", { name: comparison ? "Comparison periods" : "More filters", exact: true });
-    if (await toggle.isVisible()) await toggle.click();
-    else {
-      const mobile = page.getByRole("button", { name: comparison ? /^Change dates/ : "Filters", exact: !comparison });
-      if (await mobile.isVisible()) await mobile.click();
-    }
+    if (comparison) await openDates(page);
+    else await openFilters(page);
   }
   await expect(select).toBeVisible();
   await expect(select).not.toHaveAttribute("inert");
@@ -115,4 +127,36 @@ export async function openDisclosure(page: Page, summary: string) {
   if (!(await details.evaluate((node) => (node as HTMLDetailsElement).open)))
     await details.locator(":scope > summary").click();
   await expect(details).toHaveAttribute("open", "");
+}
+
+/** Copy the report link from Share; returns the Share dialog, which stays open. */
+export async function copyReportLink(page: Page): Promise<Locator> {
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Share this view", exact: true });
+  await dialog.getByRole("button", { name: "Copy link", exact: true }).click();
+  return dialog;
+}
+
+/**
+ * Appearance sits in the sidebar footer. On a phone the sidebar is a sheet
+ * opened from the top bar, so this opens it first.
+ */
+export async function appearanceControl(page: Page): Promise<Locator> {
+  const button = page.getByRole("button", { name: /^Appearance:/ });
+  if (!(await button.isVisible())) {
+    await page.getByRole("button", { name: "Toggle navigation" }).click();
+    await expect(page.getByRole("dialog", { name: "Sidebar" })).toBeVisible();
+  }
+  return button;
+}
+
+/** Choose an appearance, then close the phone's navigation sheet so the report is usable again. */
+export async function chooseAppearance(page: Page, theme: "Light" | "Dark" | "System") {
+  await (await appearanceControl(page)).click();
+  await page.getByRole("menuitemradio", { name: theme, exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "Sidebar" });
+  if (await sheet.isVisible()) {
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+  }
 }

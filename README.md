@@ -35,9 +35,9 @@ SourceMedium's demo warehouse. No sign-in required._
 - **Attribution you can inspect.** Open any order and ask "Why attributed
   here?" to see the published winning source, its rank, and the supporting
   evidence, without raw click IDs or survey text.
-- **Honest data status.** A compact strip under the filters says what the
-  warehouse actually published about freshness, completeness, and quality,
-  and never infers "all current" from a recent record date.
+- **Honest data status.** One quiet line under the filters says what the
+  warehouse actually published, with the evidence a click away, and never
+  infers "all current" from a recent record date.
 - **Side-by-side creatives.** Compare two to four creatives at identical
   scope, with minimum-spend and minimum-conversion thresholds applied after
   aggregation.
@@ -122,11 +122,13 @@ Store selection travels between reports, and report filters live in shareable
 URLs. Period comparisons, CSV exports where available, chart-to-table views,
 and light and dark modes are already in place.
 
-**Saved views** keeps named filter combinations in your browser, including rolling
-date presets and chart choices. It saves applied filters, not unfinished edits or
-warehouse results. The copy-link button still pins exact dates for sharing.
-Products keeps secondary controls under **More filters**, summarizes the selected
-measure above the results, and links product photos to scoped detail reports.
+**Share** copies a link that pins the exact dates, or saves the view in your
+browser, where the sidebar lists it under **Saved views**, including rolling date
+presets and chart choices. It saves applied filters, not unfinished edits or
+warehouse results. Appearance (light, dark or system) is at the foot of the sidebar.
+Every report keeps its own filters under one **Filters** button that says what
+is applied. Products summarizes the selected measure above the results and
+links product photos to scoped detail reports.
 
 | Report                 | Start with this question                                                             |
 | ---------------------- | ------------------------------------------------------------------------------------ |
@@ -238,8 +240,8 @@ Live reports always use warehouse images.
   ratios. Missing is never shown as zero, and fractional attributed conversions
   stay fractional.
 - **Populations stay distinct.** Executive Summary orders are not valid-order
-  counts, revenue per summary order is not AOV, and platform ROAS is not store
-  marketing efficiency. The app says which one you are looking at.
+  counts, revenue per order is not AOV, and platform ROAS is not store marketing
+  efficiency. Every number's definition says which one you are looking at.
 - **Scope travels, and nothing is dropped silently.** Drill-downs carry store,
   dates, population, date basis, and compatible filters, and explain any
   transition they cannot preserve.

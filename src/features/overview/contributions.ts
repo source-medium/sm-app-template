@@ -1,5 +1,6 @@
 import { compareValues, periodChanges, type Comparison } from "@/lib/comparison";
 import { fromUnits, sumDecimals, toUnits } from "@/lib/data/decimal";
+import { channelName } from "@/lib/filters";
 import type { OverviewFilters, OverviewSlice, RevenueContribution } from "./queries";
 
 /** Same summary population as the independent totals. A missing group has no recorded rows. */
@@ -34,7 +35,7 @@ export function revenueContributions(report: OverviewSlice, filters: OverviewFil
       prior = b ? b.revenue : "0";
     return {
       id,
-      label: `${row?.channel ?? "Unclassified sales channel"} / ${row?.sub_channel ?? "Unclassified sub-channel"}`,
+      label: `${row?.channel ? channelName(row.channel) : "Unclassified sales channel"} / ${row?.sub_channel ?? "Unclassified sub-channel"}`,
       current: value,
       previous: prior,
       difference: compareValues(value, prior).difference,

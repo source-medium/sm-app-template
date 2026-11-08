@@ -1,4 +1,4 @@
-import { choose, chooseMeasure } from "../../../e2e/helpers";
+import { choose, chooseMeasure, openDates } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
 import { appConfig } from "@/app.config";
 import { MAX_NAME_FILTER_QUERY_LENGTH } from "@/lib/ad-name-filters";
@@ -59,7 +59,7 @@ test("paid marketing: ranked spend shares, dimension changes, and comparisons ho
   await expect(channelTable.getByRole("columnheader", { name: "Change vs same period last year" })).toBeVisible();
   await channelTable.getByRole("link", { name: "Meta", exact: true }).click();
   await expect(page).toHaveURL(/channel=meta_ads/);
-  await choose(page, "Break down spend by", "campaign");
+  await choose(page, "Break down by", "campaign");
   await expect(page).toHaveURL(/breakdown=campaign/);
   const params = new URL(page.url()).searchParams;
   expect(params.get("channel")).toBe("meta_ads");
@@ -77,6 +77,7 @@ test("paid marketing: downloads raw campaigns for the applied filters", async ({
   const link = page.getByRole("link", { name: "Download CSV" });
   await expect(link).toBeVisible();
   // An unsubmitted edit must not change the exported report.
+  await openDates(page);
   await page.getByLabel("From", { exact: true }).fill("2020-01-01");
   const pending = page.waitForEvent("download");
   await link.click();
@@ -96,7 +97,7 @@ test("paid marketing: downloads raw campaigns for the applied filters", async ({
 
 test("paid marketing: calendar presets preserve the store and ad platform", async ({ page }) => {
   await page.goto("/paid-marketing?store=sample-store-b&channel=google_ads&metric=clicks&compare=year");
-  await page.getByText("More dates", { exact: true }).click();
+  await openDates(page);
   const preset = page.getByRole("link", { name: "Last month", exact: true });
   const href = await preset.getAttribute("href");
   if (!href) throw new Error("Last month preset has no link");
@@ -114,7 +115,7 @@ test("paid marketing: calendar presets preserve the store and ad platform", asyn
   expect(params.get("compare")).toBe("year");
   expect(params.get("range")).toBe("last-month");
   expect(params.has("from")).toBe(false);
-  await page.getByText("More dates", { exact: true }).click();
+  // The applied preset stays on the line beside the frequent ones.
   await expect(preset).toHaveAttribute("aria-current", "true");
   // A download is a snapshot of the dates on screen.
   const from = await page.getByLabel("From", { exact: true }).inputValue();
@@ -219,7 +220,7 @@ test("paid marketing: name scope carries through comparisons, CSV, and creative 
   await expect(campaigns).toContainText("[retargeting] Site Visitors");
   await choose(page, "Compare spend breakdown with", "year");
   await expect(page).toHaveURL(/compare=year/);
-  await choose(page, "Break down spend by", "campaign");
+  await choose(page, "Break down by", "campaign");
   await expect(page.getByRole("table", { name: "Spend by campaign details" }).locator("tbody tr")).toHaveCount(1);
   const href = await page.getByRole("link", { name: "Download CSV" }).getAttribute("href");
   if (!href) throw new Error("Missing CSV link");

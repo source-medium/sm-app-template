@@ -13,51 +13,56 @@ function describe(slot: Baseline): string {
 }
 
 /**
- * One sentence naming the comparison periods, worded the same on every view.
- * Children (coverage notes) turn it into a disclosure. `issues` are each
- * slot's coverageIssue() reason changes are hidden, shown outside the disclosure.
- * `switchable` offers the switch between slots; turn it off when nothing on the
- * view has a per-slot variant.
+ * The comparison the charts and tables below use, with its exact dates and
+ * coverage notes on demand. `issues` are each slot's coverageIssue() reason
+ * changes are hidden; they stay on screen. `switchable` offers the switch
+ * between slots; turn it off when nothing on the view has a per-slot variant.
  */
 export function ComparisonCaption({
   plan,
   issues = [],
   switchable = true,
   children,
-  compact = false,
 }: {
   plan: ComparisonPlan;
   issues?: (string | null | undefined)[];
   switchable?: boolean;
   children?: React.ReactNode;
-  /** A report takeaway already names the main comparison; keep detailed dates available on demand. */
-  compact?: boolean;
 }) {
   const described = plan.slots.map(describe).filter(Boolean);
   if (!described.length) return null;
   const text = `Compared with ${described.join(" and ")}. ${dayCount(rangeLength(plan.range))} selected.`;
   return (
-    <div className="flex flex-col gap-1" data-slot="comparison-caption">
-      {children || compact ? (
+    <div className="flex flex-col gap-2" data-slot="comparison-caption">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        {switchable && (
+          <BaselineSwitch
+            labels={[switchLabel(plan.slots[0]), switchLabel(plan.slots[1])]}
+            available={[plan.slots[0].range !== null, plan.slots[1].range !== null]}
+          />
+        )}
         <Disclosure
           aria-label="Comparison periods"
-          summary={compact ? "Comparison periods and coverage" : text}
-          className="text-sm text-muted-foreground"
+          summary="Comparison dates"
+          variant="note"
+          className="open:basis-full"
         >
-          {compact && <p>{text}</p>}
+          <p>{text}</p>
           {children}
         </Disclosure>
+      </div>
+      {/* A reason both comparisons share is said once; different reasons name their comparison. */}
+      {new Set(issues.filter(Boolean)).size === 1 && issues.filter(Boolean).length > 1 ? (
+        <ComparisonIssue issue={issues.find(Boolean)} />
       ) : (
-        <p className="text-sm text-muted-foreground">{text}</p>
-      )}
-      {issues.map((issue, index) =>
-        issue ? <ComparisonIssue key={index} issue={`${plan.slots[index]?.label ?? "Comparison"}: ${issue}`} /> : null,
-      )}
-      {switchable && (
-        <BaselineSwitch
-          labels={[switchLabel(plan.slots[0]), switchLabel(plan.slots[1])]}
-          available={[plan.slots[0].range !== null, plan.slots[1].range !== null]}
-        />
+        issues.map((issue, index) =>
+          issue ? (
+            <ComparisonIssue
+              key={index}
+              issue={`${plan.slots[index] ? switchLabel(plan.slots[index]) : "Comparison"}: ${issue}`}
+            />
+          ) : null,
+        )
       )}
     </div>
   );

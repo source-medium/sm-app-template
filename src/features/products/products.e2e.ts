@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectTextContained, choose, expectNoSeriousA11yViolations } from "../../../e2e/helpers";
+import { choose, expectNoSeriousA11yViolations, openDates } from "../../../e2e/helpers";
 import { SAVED_REPORTS_KEY } from "@/lib/saved-reports";
 
 for (const ranking of ["gainers", "decliners"]) {
@@ -7,7 +7,7 @@ for (const ranking of ["gainers", "decliners"]) {
     page,
   }) => {
     await page.goto(`/products?store=sample-store-a&from=2026-09-01&to=2026-09-07&ranking=${ranking}&baseline=b`);
-    await expect(page.getByLabel("Report takeaway", { exact: true })).toContainText("vs previous 7 days");
+    await expect(page.getByLabel("Report takeaway", { exact: true })).toContainText("against the previous 7 days");
     await expect(
       page.getByRole("table", { name: "Net revenue by product details", exact: true }).getByRole("columnheader").last(),
     ).toContainText("Change vs previous 7 days");
@@ -20,20 +20,14 @@ test("products: photo links preserve report scope and table identities stay pinn
   await page.goto(
     "/products?store=sample-store-a&range=last-7-days&sales_channel=online_dtc&dimension=variant&metric=units",
   );
-  await expect(page.getByRole("button", { name: "More filters", exact: true })).toHaveAttribute(
-    "aria-expanded",
-    "false",
-  );
+  await expect(page.getByRole("button", { name: /^Filters:/ })).toHaveAttribute("aria-expanded", "false");
   const takeaway = page.getByLabel("Report takeaway", { exact: true });
-  await expect(takeaway).toContainText("Net units:");
+  await expect(takeaway).toContainText("Net units");
   const before = await takeaway.innerText();
   await page.getByRole("group", { name: "Comparison shown in charts and tables" }).getByRole("button").nth(1).click();
   await expect(takeaway).not.toHaveText(before);
-  const gallery = page.getByRole("region", { name: "Leading products", exact: true });
-  const link = gallery.getByRole("link").first();
-  const href = await link.getAttribute("href");
   const table = page.getByRole("table", { name: "Net units by variant details", exact: true });
-  expect(href).toBe(await table.getByRole("link").first().getAttribute("href"));
+  const link = table.getByRole("link").first();
   const scroller = page.getByRole("region", { name: "Net units by variant details", exact: true });
   const identity = table.locator("tbody tr").first().locator("td").first();
   const left = await identity.evaluate((node) => node.getBoundingClientRect().left);
@@ -56,12 +50,13 @@ test("products: photo links preserve report scope and table identities stay pinn
 test("products: browser-saved views restore rolling filters, survive reload and can be removed", async ({ page }) => {
   await page.goto("/products?store=sample-store-a&range=last-7-days&metric=units&compare=year");
   // An edited date draft is not part of the applied view.
+  await openDates(page);
   await page.getByLabel("From", { exact: true }).fill("2020-01-01");
-  await page.getByRole("button", { name: "Saved views", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Saved report views", exact: true });
-  await dialog.getByLabel("View name", { exact: true }).fill("Weekly units");
-  await dialog.getByRole("button", { name: "Save current view", exact: true }).click();
-  await expect(dialog.getByRole("status")).toHaveText("View saved.");
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Share this view", exact: true });
+  await dialog.getByLabel("Save in this browser as", { exact: true }).fill("Weekly units");
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(dialog.getByRole("status")).toHaveText("Saved. Find it under Saved views in the sidebar.");
   const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "[]"), SAVED_REPORTS_KEY);
   const url = new URL(saved[0].href, page.url());
   expect(url.searchParams.get("range")).toBe("last-7-days");
@@ -72,49 +67,30 @@ test("products: browser-saved views restore rolling filters, survive reload and 
   await page.reload();
   await choose(page, "Rank by", "revenue");
   await expect(page).toHaveURL((url) => url.searchParams.get("metric") === "revenue");
-  await page.getByRole("button", { name: "Saved views", exact: true }).click();
-  await dialog.getByRole("link", { name: /^Weekly units/ }).click();
+  // Saved views are places to go, so the sidebar lists them.
+  const savedViews = page.getByRole("list", { name: "Saved views" });
+  await savedViews.getByRole("link", { name: /^Weekly units/ }).click();
   await expect(page).toHaveURL(
     (url) => url.searchParams.get("metric") === "units" && url.searchParams.get("range") === "last-7-days",
   );
-  await expect(page.getByLabel("Report takeaway")).toContainText("Net units:");
+  await expect(page.getByLabel("Report takeaway")).toContainText("Net units");
   await page.setViewportSize({ width: 320, height: 740 });
-  await page.getByRole("button", { name: "Saved views", exact: true }).click();
+  await page.getByRole("button", { name: "Toggle navigation" }).click();
+  await expect(savedViews.getByRole("link", { name: /^Weekly units/ })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   await expectNoSeriousA11yViolations(page);
-  await dialog.getByRole("button", { name: "Remove Weekly units", exact: true }).click();
-  await expect(dialog.getByText("No saved views yet.")).toBeVisible();
-});
-
-test("products: leading names and large values stay within their image strip", async ({ page }) => {
-  await page.goto("/products?store=sample-store-a&from=2026-09-01&to=2026-09-07");
-  const gallery = page.getByRole("region", { name: "Leading products", exact: true });
-  await gallery
-    .locator("h2")
-    .first()
-    .evaluate((node) => {
-      node.textContent = "A product with an unusually long name and an-unbroken-catalog-reference-12345678901234567890";
-    });
-  await gallery
-    .locator("p.font-semibold")
-    .first()
-    .evaluate((node) => {
-      node.textContent = "$12,345,678,901,234.56";
-    });
-  for (const width of [320, 640, 768, 1024, 1440]) {
-    await page.setViewportSize({ width, height: 900 });
-    await expectTextContained(gallery.locator("h2, p"));
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
-  }
+  await savedViews.getByRole("button", { name: "Remove Weekly units", exact: true }).click();
+  await expect(savedViews).toHaveCount(0);
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "[]"), SAVED_REPORTS_KEY)).toEqual([]);
 });
 
 test("products: catalog photos load and an image outage leaves totals and detail links usable", async ({ page }) => {
   await page.goto("/products?store=sample-store-a&from=2026-09-01&to=2026-09-07");
-  const gallery = page.getByRole("region", { name: "Leading products", exact: true });
-  await gallery.scrollIntoViewIfNeeded();
+  const table = page.getByRole("table", { name: "Net revenue by product details", exact: true });
+  await table.scrollIntoViewIfNeeded();
   await expect
     .poll(() =>
-      gallery
+      table
         .locator("img")
         .first()
         .evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
@@ -130,30 +106,29 @@ test("products: catalog photos load and an image outage leaves totals and detail
     await route.abort();
   });
   await page.reload();
-  await gallery.scrollIntoViewIfNeeded();
+  await table.scrollIntoViewIfNeeded();
   await expect.poll(() => failedImages).toBeGreaterThan(0);
-  await expect(gallery.locator("img")).toHaveCount(0);
+  await expect(table.locator("img")).toHaveCount(0);
   expect(
     await page.getByRole("region", { name: "All product totals" }).locator('[data-slot="kpi-value"]').allTextContents(),
   ).toEqual(totals);
-  await expect(
-    page.getByRole("table", { name: "Net revenue by product details", exact: true }).getByRole("link").first(),
-  ).toBeVisible();
+  await expect(table.getByRole("link").first()).toBeVisible();
   await expect(page.locator('[data-slot="data-error"]')).toHaveCount(0);
 });
 
-test("products: chart labels are readable while tooltips and tables retain product identity", async ({ page }) => {
+test("products: charts, tooltips and tables name products plainly", async ({ page }) => {
   await page.goto("/products?store=sample-store-a&from=2026-09-01&to=2026-09-28");
   const chart = page.getByRole("img", { name: "Net revenue by product chart", exact: true });
   await expect(chart.getByText("Sample pack", { exact: true })).toBeVisible();
   await expect(chart).not.toContainText("shopify");
   await chart.locator(".recharts-bar-rectangle").first().hover();
   const tooltip = chart.locator('[data-slot="chart-tooltip"]');
-  await expect(tooltip).toContainText("Sample pack (shopify / p12)");
+  await expect(tooltip).toContainText("Sample pack");
+  await expect(tooltip).not.toContainText("shopify");
   await page.getByRole("button", { name: "View as table", exact: true }).click();
-  await expect(page.getByRole("table", { name: "Net revenue by product", exact: true })).toContainText(
-    "Sample pack (shopify / p12)",
-  );
+  const chartTable = page.getByRole("table", { name: "Net revenue by product", exact: true });
+  await expect(chartTable).toContainText("Sample pack");
+  await expect(chartTable).not.toContainText("shopify");
   await expect(page.getByRole("button", { name: "View as table", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -203,7 +178,6 @@ test("products: ranking and variant filters preserve comparison dates and full t
   expect(new URL(page.url()).searchParams.get("compare")).toBe("year");
   await expect(page.getByText("Showing the first 10 rows; more rows matched than this view loads.")).toBeVisible();
   await choose(page, "Compare with", "off");
-  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/compare=off/);
   await expect(page.getByRole("columnheader", { name: "Change vs comparison" })).toHaveCount(0);
 });

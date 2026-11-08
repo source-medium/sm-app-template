@@ -102,9 +102,11 @@ export const PERIOD_START: Record<DatePeriod, (date: string) => string> = {
  * holding yesterday through yesterday, so on a period's first day it is the
  * whole period that just ended, never empty.
  */
-export type DatePreset = { value: string; label: string } & (
-  { days: number } | { period: DatePeriod; toDate: boolean }
-);
+export type DatePreset = {
+  value: string;
+  label: string;
+  /** Shown beside the date button; the rest open with it. */ quick?: boolean;
+} & ({ days: number } | { period: DatePeriod; toDate: boolean });
 
 /**
  * The presets, in the order the filter bar lists them. A URL names one as
@@ -113,7 +115,12 @@ export type DatePreset = { value: string; label: string } & (
  */
 const DATE_PRESETS: readonly DatePreset[] = [
   { value: "yesterday", label: "Yesterday", days: 1 },
-  ...[7, 14, 28, 30, 90, 365].map((days) => ({ value: `last-${days}-days`, label: `Last ${days} days`, days })),
+  ...[7, 14, 28, 30, 90, 365].map((days) => ({
+    value: `last-${days}-days`,
+    label: `Last ${days} days`,
+    days,
+    quick: days === 7 || days === 28,
+  })),
   { value: "week-to-date", label: "Week to date", period: "week", toDate: true },
   { value: "last-week", label: "Last week", period: "week", toDate: false },
   { value: "month-to-date", label: "Month to date", period: "month", toDate: true },
@@ -142,10 +149,12 @@ export function presetRange(preset: DatePreset, today: string): DateRange {
 export function datePresets(
   today: string,
   maxDays = appConfig.dateRange.maxDays,
-): { value: string; label: string; range: DateRange }[] {
+): { value: string; label: string; quick: boolean; range: DateRange }[] {
   return DATE_PRESETS.flatMap((preset) => {
     const range = presetRange(preset, today);
-    return rangeLength(range) <= maxDays ? [{ value: preset.value, label: preset.label, range }] : [];
+    return rangeLength(range) <= maxDays
+      ? [{ value: preset.value, label: preset.label, quick: preset.quick === true, range }]
+      : [];
   });
 }
 
@@ -290,9 +299,31 @@ export function matchesSalesChannel(selection: string | null | undefined, channe
   const values = salesChannelValues(selection);
   return values.length === 0 || values.includes(channel ?? "(none)");
 }
+/**
+ * SourceMedium's standard `sm_channel` values in words, from the docs' Sales
+ * channel table. A store can map orders to its own channels, so any other
+ * value is shown exactly as the warehouse stores it rather than guessed at.
+ */
+const CHANNEL_NAMES: Record<string, string> = {
+  online_dtc: "Online DTC",
+  amazon: "Amazon",
+  retail: "Retail",
+  wholesale: "Wholesale",
+  tiktok_shop: "TikTok Shop",
+  amazon_via_shopify: "Amazon via Shopify",
+  tiktok_shop_via_shopify: "TikTok Shop via Shopify",
+  mirakl: "Mirakl",
+  "partners_/_affiliates": "Partners and affiliates",
+  exchanged: "Exchanged",
+  draft_orders: "Draft orders",
+  excluded: "Excluded",
+};
+export function channelName(value: string): string {
+  return CHANNEL_NAMES[value] ?? value;
+}
 /** A channel scope as report copy names it: no selection means every sales channel. */
 export function salesChannelLabel(selection: string | null | undefined): string {
-  return salesChannelValues(selection).join(", ") || "All sales channels";
+  return salesChannelValues(selection).map(channelName).join(", ") || "All sales channels";
 }
 export function summarySalesChannel(params: SearchParams): string | null {
   return single(params, "sales_channel") === undefined

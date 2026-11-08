@@ -23,11 +23,16 @@ export function KpiTrend({ label, values: raw, tableHref }: KpiTrendData & { lab
     .map((point, index) => (point ? `${coordinates[index - 1] ? "L" : "M"}${point.x},${point.y}` : ""))
     .join(" ");
   return (
-    <div className="mt-2 min-w-0">
+    <a
+      href={tableHref}
+      aria-label={`View daily values for ${label}`}
+      title="View daily values"
+      className="mt-2 block min-w-0 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+    >
       {plottable && present.length > 0 ? (
         <svg
           role="img"
-          aria-label={`${label}: daily trend for the selected period. Missing days are gaps. Follow Daily values for the detail table.`}
+          aria-label={`${label}: daily trend for the selected period. Missing days are gaps.`}
           viewBox="0 0 200 44"
           preserveAspectRatio="none"
           className="h-11 w-full text-chart-1"
@@ -40,17 +45,10 @@ export function KpiTrend({ label, values: raw, tableHref }: KpiTrendData & { lab
           )}
         </svg>
       ) : (
-        <p className="flex h-11 items-center text-xs text-muted-foreground">
+        <span className="flex h-11 items-center text-xs text-muted-foreground">
           {plottable ? "No daily values" : "Daily values available in the table"}
-        </p>
+        </span>
       )}
-      <a
-        href={tableHref}
-        aria-label={`View daily values for ${label}`}
-        className="mt-1 inline-flex min-h-6 items-center rounded-sm text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11"
-      >
-        Daily values
-      </a>
-    </div>
+    </a>
   );
 }

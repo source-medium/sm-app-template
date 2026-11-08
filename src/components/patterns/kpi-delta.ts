@@ -39,7 +39,15 @@ export function kpiDelta<T extends MetricValue>(
             : "percentage unavailable";
     display = change.direction === "flat" ? "No change" : `${amount} (${relative})`;
   }
-  return { display, direction: change.direction, good, comparedTo: format(baseline), label };
+  return {
+    display,
+    // The percentage reads at a glance; a change with none keeps its amount.
+    short: change.direction !== "flat" && change.percent !== null ? formatChangePercent(change.percent) : undefined,
+    direction: change.direction,
+    good,
+    comparedTo: format(baseline),
+    label,
+  };
 }
 
 /** How a KPI row names its baseline: "vs previous 28 days". */

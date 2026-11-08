@@ -3,12 +3,14 @@
  * configuration error replaces the whole app with its explanation, and the
  * mode chip and viewer email come from the same decision the data reads use.
  */
+import { cookies } from "next/headers";
 import { ConfigErrorScreen, DataAccessErrorScreen } from "@/components/shell/config-error";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { TopBar } from "@/components/shell/top-bar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConfigurationError, requireViewer, type ViewerAccess } from "@/lib/auth/require-viewer";
+import { parseTheme, THEME_COOKIE } from "@/lib/theme";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   let access: ViewerAccess;
@@ -29,6 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       />
     );
   }
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
     <TooltipProvider>
       <SidebarProvider>
@@ -39,7 +42,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         >
           Skip to report
         </a>
-        <AppSidebar fixedStore={access.storeId !== null} />
+        <AppSidebar fixedStore={access.storeId !== null} sample={access.mode === "sample"} theme={theme} />
         <SidebarInset>
           <TopBar mode={access.mode} viewer={access.viewer} />
           {/* scroll-mt keeps the report title below the sticky top bar when the skip link scrolls to it. */}

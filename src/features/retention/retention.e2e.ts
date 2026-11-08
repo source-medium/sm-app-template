@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { chooseMeasure, switchStore } from "../../../e2e/helpers";
+import { chooseMeasure, openFilters, switchStore } from "../../../e2e/helpers";
 
 for (const query of ["range=last-365-days", "range=last-year&from=2025-01-01&to=2025-12-31"]) {
   const dates = new URLSearchParams(query);
   test(`retention: carries ${dates.get("range")} unchanged through controls and store switching`, async ({ page }) => {
     await page.goto(`/retention?store=sample-store-a&${dates}`);
+    await openFilters(page);
     const expectDates = () => {
       const params = new URL(page.url()).searchParams;
       for (const key of ["range", "from", "to"]) expect(params.get(key)).toBe(dates.get(key));
@@ -26,6 +27,7 @@ test("retention: long segment values and search controls stay usable on a small 
     acquisition_segment: "Long campaign ".repeat(30),
   });
   await page.goto(`/retention?${params}`);
+  await openFilters(page);
   await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveValue(
     params.get("acquisition_segment") ?? "",
   );
@@ -58,6 +60,7 @@ test("retention: acquisition segments are explicit, searchable, shareable and re
   page,
 }) => {
   await page.goto("/retention?store=sample-store-a&as_of=2026-09&measure=second");
+  await openFilters(page);
   await page.getByLabel("Segment cohorts by", { exact: true }).selectOption("campaign");
   await expect(page.getByText("Choose a segment to load its cohorts", { exact: true })).toBeVisible();
   // selectOption can change a streamed select while inert still blocks real user input.
@@ -70,6 +73,7 @@ test("retention: acquisition segments are explicit, searchable, shareable and re
   await page.getByRole("combobox", { name: "Acquisition segment", exact: true }).selectOption("Brand search");
   await expect(page).toHaveURL(/acquisition_segment=Brand(?:\+|%20)search/);
   await page.reload();
+  await openFilters(page);
   await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveValue("Brand search");
   const context = JSON.parse((await page.locator("main [data-agent-page]").getAttribute("data-agent-page")) ?? "{}");
   expect(context.filters.acquisition_dimension).toBe("campaign");
@@ -89,6 +93,7 @@ test("retention: an unavailable segment remains explicit and can be changed", as
   await page.goto(
     "/retention?store=sample-store-a&as_of=2026-09&acquisition_dimension=campaign&acquisition_segment=unavailable",
   );
+  await openFilters(page);
   await expect(page.getByText(/No published cohorts match this acquisition segment/)).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Acquisition segment", exact: true })).toHaveValue("unavailable");
   await page.getByRole("combobox", { name: "Acquisition segment", exact: true }).selectOption("Prospecting");
@@ -96,14 +101,15 @@ test("retention: an unavailable segment remains explicit and can be changed", as
 });
 test("retention: second purchases have their own cumulative measure and mature ages", async ({ page }) => {
   await page.goto("/retention?store=sample-store-a&as_of=2026-09");
+  await openFilters(page);
   await page.getByLabel("Matrix measure", { exact: true }).selectOption("second");
   await expect(page).toHaveURL(/measure=second/);
   const table = page.getByRole("table", { name: "Purchased a second time", exact: true });
   await expect(table).toBeVisible();
   await expect(table.locator('td[data-state="immature"]').first()).toHaveText("—");
   await expect(table.locator('td[data-state="value"]').first()).not.toHaveText("100%");
-  // The measure's definition sits behind "About this measure" above the matrix.
-  await page.locator("summary").filter({ hasText: "About this measure" }).click();
+  // The measure's definition sits behind "About these cohorts" under the matrix.
+  await page.locator("summary").filter({ hasText: "About these cohorts" }).click();
   await expect(page.getByText("Customers who have placed a second order", { exact: false })).toBeVisible();
 });
 import { expectNoSeriousA11yViolations } from "../../../e2e/helpers";
@@ -112,6 +118,7 @@ test("retention: incomplete months, published gaps, and measure/channel selectio
   page,
 }) => {
   await page.goto("/retention?store=sample-store-a&as_of=2026-09&channel=online_dtc");
+  await openFilters(page);
   const table = page.getByRole("table", { name: "Monthly retention", exact: true });
   await expect(table).toBeVisible();
   await expect(page.getByRole("form", { name: "Report filters", exact: true })).toBeHidden();
@@ -145,6 +152,7 @@ test("retention: incomplete months, published gaps, and measure/channel selectio
 
 test("retention: an unknown channel is never silently replaced", async ({ page }) => {
   await page.goto("/retention?store=sample-store-b&channel=unknown&as_of=2026-09");
+  await openFilters(page);
   await expect(page.getByText("No cohorts for this channel. Choose another acquisition sales channel.")).toBeVisible();
   await expect(page.getByLabel("Acquisition sales channel", { exact: true })).toHaveValue("unknown");
   await page.getByLabel("Acquisition sales channel", { exact: true }).selectOption("online_dtc");
@@ -155,6 +163,7 @@ test("retention: separate retention and LTV curves share channel/window controls
   page,
 }) => {
   await page.goto("/retention?store=sample-store-a&as_of=2026-09");
+  await openFilters(page);
   const curves = page.getByRole("region", { name: "Retention and lifetime value curves", exact: true });
   const rate = page.getByRole("img", { name: "Retention by cohort age chart", exact: true });
   await expect(rate).toBeVisible();
@@ -181,6 +190,7 @@ test("retention: each curve card switches between measures on its own scale and 
   page,
 }) => {
   await page.goto("/retention?store=sample-store-a&as_of=2026-09");
+  await openFilters(page);
   await chooseMeasure(page, "Retention", "Second-purchase rate");
   await expect(page.getByRole("img", { name: "Second-purchase rate by cohort age chart", exact: true })).toBeVisible();
   await chooseMeasure(page, "Gross profit LTV", "Revenue LTR");

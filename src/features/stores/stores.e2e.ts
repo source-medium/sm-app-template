@@ -1,11 +1,12 @@
 import { appConfig } from "@/app.config";
 import { expect, test } from "@playwright/test";
-import { expectNoSeriousA11yViolations, switchStore, watchConsole } from "../../../e2e/helpers";
+import { expectNoSeriousA11yViolations, openDates, switchStore, watchConsole } from "../../../e2e/helpers";
 
 const period = "from=2026-09-01&to=2026-09-07";
 test("switches independently of invalid date drafts and clears campaign drill-through", async ({ page }) => {
   test.skip(!appConfig.nav.some((item) => item.href === "/creatives"), "No Creatives view");
   await page.goto(`/creatives?store=sample-store-a&${period}&campaign=cmp-1002&sort=spend`);
+  await openDates(page);
   await page.getByLabel("From", { exact: true }).fill("2026-09-10");
   await switchStore(page, "sample-store-b");
   const params = new URL(page.url()).searchParams;

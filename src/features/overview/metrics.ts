@@ -29,7 +29,7 @@ export const overviewBindings = [
   {
     ...base,
     id: "orders",
-    label: "Summary orders",
+    label: "Orders",
     canonical: reviewedMetric("order_count_summary"),
     calculation: `SUM(${summaryMeasure("order_count")})`,
     fields: ["order_count"],
@@ -58,10 +58,10 @@ export const overviewBindings = [
   {
     ...base,
     id: "average",
-    label: "Revenue per summary order",
+    label: "Revenue per order",
     calculation: `SUM(${summaryMeasure("order_net_revenue")}) / SUM(${summaryMeasure("order_count")})`,
     numerator: "Summary net revenue",
-    denominator: "Summary orders, not valid-order count",
+    denominator: "Orders, not valid-order count",
     fields: ["order_net_revenue", "order_count"],
     format: "currency",
   },

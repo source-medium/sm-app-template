@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectTextContained } from "../../../e2e/helpers";
+import { expectTextContained, openFilters } from "../../../e2e/helpers";
 
 test("creatives: large metric values cannot overlap adjacent cells", async ({ page }) => {
   await page.goto("/creatives");
@@ -31,6 +31,7 @@ test("creatives: ad platform filtering survives sorting and unknown selections c
   await page.goto("/creatives?store=sample-store-a&channel=google_ads");
   await expect(page.getByRole("heading", { name: "Official store – free shipping", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Meet the everyday tote", exact: true })).toHaveCount(0);
+  await openFilters(page);
   await page.getByLabel("Sort by", { exact: true }).selectOption("ctr");
   await expect(page.getByLabel("Ad platform", { exact: true })).toHaveValue("google_ads");
   await page.getByLabel("Ad platform", { exact: true }).selectOption("Meta");
@@ -42,6 +43,7 @@ test("creatives: ad platform filtering survives sorting and unknown selections c
   await page.goto("/creatives?store=sample-store-a&channel=unknown");
   await expect(page.getByText("No ad creatives match this store, ad platform, and date range.")).toBeVisible();
   await expect(page.getByLabel("Ad platform", { exact: true })).toHaveValue("unknown");
+  await openFilters(page);
   await page.getByLabel("Ad platform", { exact: true }).selectOption("");
   await expect(page.getByRole("heading", { name: "Meet the everyday tote", exact: true })).toBeVisible();
 });
@@ -59,18 +61,20 @@ test("creatives: name filters wait for their handlers when scripts load slowly",
   const filters = page.getByRole("region", { name: "Name filters", exact: true });
   try {
     await page.goto(`/creatives?names=${encodeURIComponent(names)}`, { waitUntil: "commit" });
-    for (const name of ["Add name filter", /^Edit Campaign/, /^Remove Campaign/, "Clear name filters"]) {
-      await expect(filters.getByRole("button", { name })).toBeDisabled();
-    }
+    // Applied rules still read in the summary while the panel that edits them waits for its handlers.
+    await expect(page.getByText(/1 name filter/)).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Filters:/ })).toBeDisabled();
   } finally {
     release();
   }
+  await openFilters(page);
   await filters.getByRole("button", { name: /^Remove Campaign/ }).click();
   await expect(page).toHaveURL((url) => !url.searchParams.has("names"));
 });
 
 test("creatives: literal name rules combine, inspect, edit, survive sorting and clear", async ({ page }) => {
   await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  await openFilters(page);
   await page.getByRole("button", { name: "Add name filter" }).click();
   await expect(page.getByRole("combobox", { name: "Name field", exact: true })).toBeFocused();
   await page.getByLabel("Values, one per line").fill("[RETARGETING]\nno such campaign");
@@ -95,6 +99,7 @@ test("creatives: literal name rules combine, inspect, edit, survive sorting and 
   const names = new URL(page.url()).searchParams.get("names");
   expect(JSON.parse(names ?? "[]")).toEqual([...first, { field: "ad", operator: "excludes", values: ["draft"] }]);
   await page.reload();
+  await openFilters(page);
   await expect(page.getByRole("button", { name: /^Edit Ad name does not contain/ })).toBeVisible();
   await page.getByRole("button", { name: /^Remove Ad name does not contain/ }).click();
   await expect.poll(() => new URL(page.url()).searchParams.get("names")).toBe(JSON.stringify(first));

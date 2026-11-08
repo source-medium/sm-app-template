@@ -17,6 +17,7 @@ import { AdNameFilter } from "@/components/patterns/ad-name-filter";
 import { AdNameMatchesRegion } from "@/components/patterns/ad-name-matches";
 import { serializeAdNameFilters } from "@/lib/ad-name-filters";
 import { adPlatformLabel } from "@/lib/ad-platforms";
+import { ReportControls } from "@/components/shell/report-controls";
 import { ReportPage } from "@/components/shell/report-page";
 import { single, withParams, REPORT_FILTER_FORM_ID, type ReportFilters, type SearchParams } from "@/lib/filters";
 import { formatCount, formatAttributedConversions, formatMoney, formatPercent, formatMultiple } from "@/lib/format";
@@ -35,6 +36,12 @@ const SORT_LABELS: Record<CreativeSort, string> = {
   revenue: "Most platform revenue",
   roas: "Highest platform ROAS",
   cpo: "Lowest cost / conversion",
+};
+
+const VIEW_LABELS: Record<"delivery" | "returns" | "table", string> = {
+  delivery: "Delivery cards",
+  returns: "Performance cards",
+  table: "Performance table",
 };
 
 export default async function CreativesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -63,7 +70,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
         },
       ]}
       title="Creatives"
-      description="Explore creative performance with spend, platform attribution and conversion volume together."
+      description="Spend and results for each ad creative."
       pathname={PATHNAME}
       params={params}
       agentFilters={{
@@ -82,7 +89,79 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
     >
       {({ filters, timeZone, currency, params: applied, dataStatus }) => (
         <div className="flex flex-col gap-4">
-          <AdNameFilter pathname={PATHNAME} params={applied} rules={names.rules} error={names.error} />
+          <ReportControls
+            keepOpen={Boolean(names.error) || Boolean(thresholdError)}
+            summary={[
+              VIEW_LABELS[view],
+              channel ? adPlatformLabel(channel) : "All ad platforms",
+              SORT_LABELS[sort],
+              ...(minimumSpend ? [`Minimum spend ${minimumSpend}`] : []),
+              ...(minimumConversions ? [`Minimum conversions ${minimumConversions}`] : []),
+              ...(names.rules.length
+                ? [`${names.rules.length} name ${names.rules.length === 1 ? "filter" : "filters"}`]
+                : []),
+            ]}
+          >
+            <div className="flex w-full flex-col gap-3">
+              <AdNameFilter pathname={PATHNAME} params={applied} rules={names.rules} error={names.error} />
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <label htmlFor="creative-min-spend" className="text-xs font-medium text-muted-foreground">
+                    Minimum spend
+                  </label>
+                  <Input
+                    id="creative-min-spend"
+                    name="min_spend"
+                    inputMode="decimal"
+                    defaultValue={minimumSpend ?? ""}
+                    form={REPORT_FILTER_FORM_ID}
+                    placeholder="No minimum"
+                    className="sm:w-40"
+                  />
+                </div>
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <label htmlFor="creative-min-conversions" className="text-xs font-medium text-muted-foreground">
+                    Minimum conversions
+                  </label>
+                  <Input
+                    id="creative-min-conversions"
+                    name="min_conversions"
+                    inputMode="decimal"
+                    defaultValue={minimumConversions ?? ""}
+                    form={REPORT_FILTER_FORM_ID}
+                    placeholder="No minimum"
+                    className="sm:w-40"
+                  />
+                </div>
+                {!names.error && !thresholdError && (
+                  <>
+                    <SelectFilter
+                      name="view"
+                      label="View"
+                      value={view}
+                      options={Object.entries(VIEW_LABELS).map(([value, label]) => ({ value, label }))}
+                    />
+                    <ChannelRosterFilter
+                      key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
+                      load={() => getCreativeChannels(filters)}
+                      value={channel}
+                      name="channel"
+                      label="Ad platform"
+                      allLabel="All ad platforms"
+                      loadingLabel="Loading ad platforms"
+                      optionLabel={adPlatformLabel}
+                    />
+                    <SelectFilter
+                      name="sort"
+                      label="Sort by"
+                      value={sort}
+                      options={CREATIVE_SORTS.map((value) => ({ value, label: SORT_LABELS[value] }))}
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+          </ReportControls>
           {campaign && <input type="hidden" name="campaign" value={campaign} form={REPORT_FILTER_FORM_ID} />}
           {campaign && (
             <p className="text-sm">
@@ -104,30 +183,6 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
               </Link>
             </p>
           )}
-          <div className="flex flex-wrap gap-4">
-            <label htmlFor="creative-min-spend" className="space-y-1 text-sm">
-              Minimum spend
-              <Input
-                id="creative-min-spend"
-                name="min_spend"
-                inputMode="decimal"
-                defaultValue={minimumSpend ?? ""}
-                form={REPORT_FILTER_FORM_ID}
-                placeholder="No minimum"
-              />
-            </label>
-            <label htmlFor="creative-min-conversions" className="space-y-1 text-sm">
-              Minimum conversions
-              <Input
-                id="creative-min-conversions"
-                name="min_conversions"
-                inputMode="decimal"
-                defaultValue={minimumConversions ?? ""}
-                form={REPORT_FILTER_FORM_ID}
-                placeholder="No minimum"
-              />
-            </label>
-          </div>
           {thresholdError && (
             <p role="status">
               Minimums must be non-negative decimal amounts with at most nine decimal places. Correct or clear the
@@ -145,34 +200,6 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                   />
                 </Disclosure>
               )}
-              <div className="flex flex-wrap gap-4">
-                <SelectFilter
-                  name="view"
-                  label="View"
-                  value={view}
-                  options={[
-                    { value: "delivery", label: "Delivery cards" },
-                    { value: "returns", label: "Performance cards" },
-                    { value: "table", label: "Performance table" },
-                  ]}
-                />
-                <ChannelRosterFilter
-                  key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
-                  load={() => getCreativeChannels(filters)}
-                  value={channel}
-                  name="channel"
-                  label="Ad platform"
-                  allLabel="All ad platforms"
-                  loadingLabel="Loading ad platforms"
-                  optionLabel={adPlatformLabel}
-                />
-                <SelectFilter
-                  name="sort"
-                  label="Sort by"
-                  value={sort}
-                  options={CREATIVE_SORTS.map((value) => ({ value, label: SORT_LABELS[value] }))}
-                />
-              </div>
               {dataStatus}
               {selection.items.length > 0 && (
                 <input
@@ -188,9 +215,8 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                     Creative comparison ({selection.items.length}/4)
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Choose two to four creatives. Every value uses the same store, dates and filters. Platform-reported
-                    conversions can be fractional; attribution models, windows and conversion-event settings are
-                    unverified. Different platforms do not establish comparable winners.
+                    Choose two to four creatives. Platforms attribute differently, so compare across platforms with
+                    care.
                   </p>
                   <Link
                     prefetch={false}
@@ -325,13 +351,6 @@ function CreativesView({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <Disclosure summary="About these numbers" className="text-sm text-muted-foreground">
-        <p data-metric-definition="Creative metrics" className="max-w-prose">
-          CTR is clicks divided by impressions. Revenue and conversions use each platform&apos;s attribution and may
-          overlap across ad platforms. ROAS is revenue / spend; cost per conversion is spend / conversions. Both use
-          period totals. Compare spend and conversion volume before interpreting a high return.
-        </p>
-      </Disclosure>
       {view === "table" ? (
         <DataTable
           caption="Creative performance"
@@ -370,17 +389,6 @@ function CreativesView({
                 .join(" · ") || null,
             badge: adPlatformLabel(creative.channel),
             imageUrl: creative.imageUrl,
-            definitionLabel: "About platform ROAS",
-            definition: (
-              <MetricDefinition
-                binding={creativeBinding("roas")}
-                scope={{
-                  filters: { ...scopeFilters, ad_platform: creative.channel },
-                  currency,
-                  timeZone,
-                }}
-              />
-            ),
             footer: (() => {
               const identity: CreativeIdentity = [creative.channel, creative.creativeId];
               const selected = selection.some(([platform, id]) => platform === identity[0] && id === identity[1]);
@@ -410,9 +418,14 @@ function CreativesView({
                     { label: "Platform ROAS", display: formatMultiple(creative.roas) },
                     { label: "Cost / conversion", display: formatMoney(creative.cpo, currency) },
                     { label: "Conversions", display: formatAttributedConversions(creative.conversions) },
-                    { label: "Platform revenue", display: formatMoney(creative.revenue, currency) },
-                    { label: "Impressions", display: formatCount(creative.impressions) },
-                    { label: "CTR", display: formatPercent(creative.ctr) },
+                    // A side-by-side comparison keeps every measure; a browsing card keeps the four that decide.
+                    ...(comparison
+                      ? [
+                          { label: "Platform revenue", display: formatMoney(creative.revenue, currency) },
+                          { label: "Impressions", display: formatCount(creative.impressions) },
+                          { label: "CTR", display: formatPercent(creative.ctr) },
+                        ]
+                      : []),
                   ]
                 : [
                     {
@@ -431,6 +444,17 @@ function CreativesView({
           Showing the top {data.creatives.length} creatives; more ran in these dates.
         </p>
       )}
+      <Disclosure summary="About these numbers" variant="note">
+        <div className="max-w-prose space-y-3">
+          <p data-metric-definition="Creative metrics">
+            CTR is clicks divided by impressions. Revenue and conversions use each platform&apos;s attribution and may
+            overlap across ad platforms. ROAS is revenue / spend; cost per conversion is spend / conversions. Both use
+            period totals. Compare spend and conversion volume before interpreting a high return. Platform-reported
+            conversions can be fractional; attribution models, windows and conversion-event settings are unverified.
+          </p>
+          <MetricDefinition binding={creativeBinding("roas")} scope={{ filters: scopeFilters, currency, timeZone }} />
+        </div>
+      </Disclosure>
     </div>
   );
 }

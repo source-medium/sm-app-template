@@ -15,6 +15,7 @@ import { AdNameFilter } from "@/components/patterns/ad-name-filter";
 import { AdNameMatchesRegion } from "@/components/patterns/ad-name-matches";
 import { serializeAdNameFilters } from "@/lib/ad-name-filters";
 import { adPlatformLabel } from "@/lib/ad-platforms";
+import { ReportControls } from "@/components/shell/report-controls";
 import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber } from "@/lib/data/decimal";
@@ -78,7 +79,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
         },
       ]}
       title="Paid marketing"
-      description="Spend and delivery by ad platform and campaign for one store."
+      description="Ad spend and results by platform and campaign."
       pathname={PATHNAME}
       params={params}
       chartParams={["metric"]}
@@ -98,21 +99,35 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
         paidData?.catch(() => undefined); // Both regions handle the same query's failure.
         return (
           <>
-            <AdNameFilter pathname={PATHNAME} params={applied} rules={names.rules} error={names.error} />
+            <ReportControls
+              keepOpen={Boolean(names.error)}
+              summary={[
+                channel ? adPlatformLabel(channel) : "All ad platforms",
+                TIME_GRAINS.find((item) => item.value === grain)?.label,
+                names.rules.length > 0 &&
+                  `${names.rules.length} name ${names.rules.length === 1 ? "filter" : "filters"}`,
+              ]}
+            >
+              <div className="flex w-full flex-col gap-3">
+                <AdNameFilter pathname={PATHNAME} params={applied} rules={names.rules} error={names.error} />
+                {paidData && (
+                  <div className="flex flex-wrap items-end gap-4">
+                    <SelectFilter name="grain" label="Trend interval" value={grain} options={[...TIME_GRAINS]} />
+                    <ChannelRosterFilter
+                      load={async () => [...new Set((await paidData).channelDays.map((day) => day.channel))].sort()}
+                      value={channel}
+                      name="channel"
+                      label="Ad platform"
+                      allLabel="All ad platforms"
+                      loadingLabel="Loading ad platforms"
+                      optionLabel={adPlatformLabel}
+                    />
+                  </div>
+                )}
+              </div>
+            </ReportControls>
             {paidData && (
               <>
-                <div className="flex flex-wrap items-end gap-4">
-                  <SelectFilter name="grain" label="Trend interval" value={grain} options={[...TIME_GRAINS]} />
-                  <ChannelRosterFilter
-                    load={async () => [...new Set((await paidData).channelDays.map((day) => day.channel))].sort()}
-                    value={channel}
-                    name="channel"
-                    label="Ad platform"
-                    allLabel="All ad platforms"
-                    loadingLabel="Loading ad platforms"
-                    optionLabel={adPlatformLabel}
-                  />
-                </div>
                 {dataStatus}
                 {names.rules.length > 0 && (
                   <Disclosure summary="Matching names">
@@ -145,34 +160,44 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                     )}
                   </DataRegion>
                 </Suspense>
-                <SelectFilter
-                  name="breakdown"
-                  label="Break down spend by"
-                  value={breakdown}
-                  options={[...BREAKDOWN_DIMENSIONS]}
-                />
-                <Suspense
-                  key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${plan?.slots[0].mode}|${plan?.slots[1].mode}|${breakdown}|${nameKey}`}
-                  fallback={<LoadingState variant="chart" label="Loading spend breakdown" />}
-                >
-                  <DataRegion
-                    timestamp={timeZone}
-                    load={() => getSpendBreakdown(paidFilters, breakdown, planRanges(plan))}
-                    isEmpty={(data) => data.rows.length === 0}
-                    emptyMessage="No spend rows match these filters."
-                  >
-                    {(data) => (
-                      <SpendBreakdownView
-                        data={data}
-                        filters={paidFilters}
-                        dimension={breakdown}
-                        plan={plan}
-                        params={applied}
-                        currency={currency}
+                {/* The breakdown's own control sits in its header, so it reads as scoped to this section. */}
+                <section aria-labelledby="spend-breakdown-heading" className="mt-4 flex flex-col gap-3">
+                  <SectionHeader
+                    id="spend-breakdown-heading"
+                    title="Spend breakdown"
+                    actions={
+                      <SelectFilter
+                        name="breakdown"
+                        label="Break down by"
+                        value={breakdown}
+                        options={[...BREAKDOWN_DIMENSIONS]}
+                        inline
                       />
-                    )}
-                  </DataRegion>
-                </Suspense>
+                    }
+                  />
+                  <Suspense
+                    key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${plan?.slots[0].mode}|${plan?.slots[1].mode}|${breakdown}|${nameKey}`}
+                    fallback={<LoadingState variant="chart" label="Loading spend breakdown" />}
+                  >
+                    <DataRegion
+                      timestamp={timeZone}
+                      load={() => getSpendBreakdown(paidFilters, breakdown, planRanges(plan))}
+                      isEmpty={(data) => data.rows.length === 0}
+                      emptyMessage="No spend rows match these filters."
+                    >
+                      {(data) => (
+                        <SpendBreakdownView
+                          data={data}
+                          filters={paidFilters}
+                          dimension={breakdown}
+                          plan={plan}
+                          params={applied}
+                          currency={currency}
+                        />
+                      )}
+                    </DataRegion>
+                  </Suspense>
+                </section>
               </>
             )}
           </>
@@ -254,19 +279,6 @@ function PaidMarketingView({
         />
       ) : (
         <>
-          <Disclosure summary="About these numbers" className="text-sm text-muted-foreground">
-            <div data-metric-definition="Paid marketing metrics" className="max-w-prose space-y-2">
-              <p>
-                Platform attribution can overlap across ad platforms. ROAS is attributed revenue / spend; cost per
-                conversion is spend / platform conversions. Ratios use summed inputs within each interval, including
-                Other. Missing or zero denominators stay unavailable.
-              </p>
-              <p>
-                Weekly intervals start on Monday and monthly intervals follow the calendar. Boundary intervals include
-                only the selected dates; missing observations are not filled with zeros.
-              </p>
-            </div>
-          </Disclosure>
           <MetricChart
             param="metric"
             metrics={metrics}
@@ -301,12 +313,6 @@ function PaidMarketingView({
                 </a>
               }
             />
-            <p className="text-xs text-muted-foreground">
-              CSV includes all loaded campaigns, up to {MAX_CAMPAIGNS}, with raw values and a partial-results flag.
-              {hasCreatives &&
-                " Select an ad platform, then a campaign to inspect its creatives. Campaign links preserve the selected period and name filters; the separate spend-breakdown comparison does not apply to creative cards."}{" "}
-              Spend without a campaign ID appears as (none) in the spend breakdown by campaign.
-            </p>
             <DataTable
               caption="Campaigns by spend"
               truncated={data.campaignsTruncated}
@@ -369,6 +375,25 @@ function PaidMarketingView({
                 };
               })}
             />
+            <Disclosure summary="About these numbers" variant="note">
+              <div data-metric-definition="Paid marketing metrics" className="max-w-prose space-y-2">
+                <p>
+                  Platform attribution can overlap across ad platforms. ROAS is attributed revenue / spend; cost per
+                  conversion is spend / platform conversions. Ratios use summed inputs within each interval, including
+                  Other. Missing or zero denominators stay unavailable.
+                </p>
+                <p>
+                  Weekly intervals start on Monday and monthly intervals follow the calendar. Boundary intervals include
+                  only the selected dates; missing observations are not filled with zeros.
+                </p>
+                <p>
+                  CSV includes all loaded campaigns, up to {MAX_CAMPAIGNS}, with raw values and a partial-results flag.
+                  {hasCreatives &&
+                    " Select an ad platform, then a campaign to inspect its creatives. Campaign links preserve the selected period and name filters; the separate spend-breakdown comparison does not apply to creative cards."}{" "}
+                  Spend without a campaign ID appears as (none) in the spend breakdown by campaign.
+                </p>
+              </div>
+            </Disclosure>
           </section>
         </>
       )}
