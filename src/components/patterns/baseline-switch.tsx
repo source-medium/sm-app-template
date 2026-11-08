@@ -52,24 +52,35 @@ export function BaselineSwitch({ labels, available }: { labels: [string, string]
   const hydrated = useHydrated();
   if (!context || available.filter(Boolean).length < 2) return null;
   return (
-    <div role="group" aria-label="Comparison shown in charts and tables" className="flex flex-wrap items-center gap-2">
-      {labels.map((label, index) => {
-        const slot = index as Slot;
-        return (
-          <Button
-            key={label}
-            type="button"
-            size="sm"
-            variant={context.active === slot ? "default" : "outline"}
-            aria-pressed={context.active === slot}
-            disabled={!available[slot]}
-            inert={!hydrated}
-            onClick={() => context.choose(slot)}
-          >
-            {label}
-          </Button>
-        );
-      })}
+    <div className="flex flex-wrap items-center gap-2">
+      {/* KPI cards show both comparisons; this picks the one the charts and tables use. */}
+      <span aria-hidden className="text-sm text-muted-foreground">
+        Compared with
+      </span>
+      <div
+        role="group"
+        aria-label="Comparison shown in charts and tables"
+        className="flex w-fit flex-wrap rounded-md bg-muted p-1"
+      >
+        {labels.map((label, index) => {
+          const slot = index as Slot;
+          return (
+            <Button
+              key={label}
+              type="button"
+              size="sm"
+              variant="ghost"
+              aria-pressed={context.active === slot}
+              disabled={!available[slot]}
+              inert={!hydrated}
+              onClick={() => context.choose(slot)}
+              className="px-2.5 aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-card"
+            >
+              {label}
+            </Button>
+          );
+        })}
+      </div>
     </div>
   );
 }

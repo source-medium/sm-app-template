@@ -17,20 +17,20 @@ const props = {
   sources: [],
 };
 
-it("places freshness and currency uncertainty beside the report title", () => {
-  const { container, rerender } = render(<ReportHeader {...props} mode="live" />, { wrapper: TooltipProvider });
-  const trust = container.querySelector('[data-slot="report-trust"]');
-  expect(trust).toHaveTextContent("Warehouse freshness: unknown");
-  expect(trust).toHaveTextContent("Currency unknown; amounts are unlabeled");
-  expect(screen.getByRole("heading", { name: "Revenue" }).parentElement).toContainElement(trust as HTMLElement);
-  rerender(<ReportHeader {...props} mode="live" currency="CAD" />);
-  expect(trust).toHaveTextContent("Reporting currency: CAD");
-  expect(trust).not.toHaveTextContent("Currency unknown");
-  rerender(<ReportHeader {...props} mode="live" allStores />);
-  expect(trust).toHaveTextContent("Currencies shown per store; no combined totals");
-  rerender(<ReportHeader {...props} mode="sample" currency="USD" />);
-  expect(trust).toHaveTextContent("Synthetic sample data");
-  expect(trust).not.toHaveTextContent("Warehouse freshness");
+it("keeps an unknown currency beside the report title and says nothing when it is known", () => {
+  const { container, rerender } = render(<ReportHeader {...props} mode="live" storeId="a" />, {
+    wrapper: TooltipProvider,
+  });
+  const trust = () => container.querySelector('[data-slot="report-trust"]');
+  expect(trust()).toHaveTextContent("Currency unknown; amounts are unlabeled");
+  expect(screen.getByRole("heading", { name: "Revenue" }).parentElement).toContainElement(trust() as HTMLElement);
+  rerender(<ReportHeader {...props} mode="live" storeId="a" currency="CAD" />);
+  expect(trust()).toBeNull();
+  // Each store carries its own currency there, and with no store no amounts are shown.
+  rerender(<ReportHeader {...props} mode="live" storeId="a" allStores />);
+  expect(trust()).toBeNull();
+  rerender(<ReportHeader {...props} mode="live" />);
+  expect(trust()).toBeNull();
 });
 
 it("copies native-history presentation choices while retaining resolved store and date defaults", async () => {
@@ -56,7 +56,8 @@ it("copies native-history presentation choices while retaining resolved store an
       />,
       { wrapper: TooltipProvider },
     );
-    fireEvent.click(screen.getByRole("button", { name: "Copy report link" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Share" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
     const copied = new URL(writeText.mock.calls[0]?.[0] ?? "");
     expect(Object.fromEntries(copied.searchParams)).toEqual({
@@ -70,7 +71,7 @@ it("copies native-history presentation choices while retaining resolved store an
     });
     await screen.findByText("Report link copied.");
     window.history.replaceState(null, "", "/overview?metric=revenue");
-    fireEvent.click(screen.getByRole("button", { name: "Copy report link" }));
+    fireEvent.click(screen.getByRole("button", { name: /^(Copy link|Link copied)$/ }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
     expect(new URL(writeText.mock.calls[1]?.[0] ?? "").searchParams.has("show_trends")).toBe(false);
   } finally {
@@ -109,7 +110,8 @@ it.each(["?baseline=b", "?metric=spend&baseline=b"])(
         </>,
         { wrapper: TooltipProvider },
       );
-      fireEvent.click(screen.getByRole("button", { name: "Copy report link" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Share" }));
+      fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
       await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
       expect(Object.fromEntries(new URL(writeText.mock.calls[0]?.[0] ?? "").searchParams)).toEqual({
         store: "resolved-store",

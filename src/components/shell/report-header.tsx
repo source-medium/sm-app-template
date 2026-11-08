@@ -1,17 +1,17 @@
 import type { MetricBinding } from "@/lib/metric-binding";
 /**
- * The report's title row: About this data, refresh, and a share link, with
- * the page's context for agent prompts on the element itself.
+ * The report's title row: About this data, refresh, and Share (a link that
+ * pins the applied dates, or a view saved in this browser), with the page's
+ * context for agent prompts on the element itself.
  */
 import type { AgentReportContext } from "@/lib/agent-prompt";
 import type { ViewerAccess } from "@/lib/auth/require-viewer";
-import { planParams, type ComparisonPlan } from "@/lib/comparison";
+import type { ComparisonPlan } from "@/lib/comparison";
 import { withDates, withParams, type DateParams, type DateRange, type SearchParams } from "@/lib/filters";
 import type { ReportSource } from "@/lib/report-data";
 import { AboutData } from "./about-data";
-import { CopyReportLink } from "./copy-report-link";
 import { RefreshReport } from "./refresh-report";
-import { SavedReports } from "./saved-reports";
+import { ShareReport } from "./share-report";
 
 /** The applied report state, once the store's date is known. */
 export type ReportView = {
@@ -64,9 +64,20 @@ export function ReportHeader({
   /** Absent when the store's date is unknown; then the report is not loaded. */
   view?: ReportView;
 }) {
-  // Shared links pin the applied dates, so a colleague sees exactly this period and its comparisons.
+  // Shared links pin the applied dates and both comparisons, defaults included, so a colleague sees exactly
+  // this period and its comparisons. Other links leave a default second comparison out (planParams).
+  const pinned: Record<string, string> = view?.plan
+    ? { compare: view.plan.slots[0].mode, compare2: view.plan.slots[1].mode }
+    : {};
   const shareHref =
-    storeId && view ? withParams(pathname, dates ? withDates(params, view.fixed) : params, { store: storeId }) : null;
+    storeId && view
+      ? withParams(pathname, dates ? withDates(params, view.fixed) : params, { store: storeId, ...pinned })
+      : null;
+  // Saved views keep rolling presets rolling, and only a view that loads is worth saving.
+  const saveHref =
+    storeId && view && !view.issue
+      ? withParams(pathname, dates ? withDates(params, view.live) : params, { store: storeId })
+      : undefined;
   const agentContext: AgentReportContext = {
     pathname,
     title,
@@ -75,7 +86,7 @@ export function ReportHeader({
       ...view?.derived,
       ...(storeId ? { store: storeId } : {}),
       ...(view && dates && !view.issue ? view.range : {}),
-      ...(view?.plan && !view.issue ? planParams(view.plan) : {}),
+      ...(view?.plan && !view.issue ? { compare: view.plan.slots[0].mode, compare2: view.plan.slots[1].mode } : {}),
     },
     currency,
     ...(allStores ? { storeScope: "all" as const } : {}),
@@ -92,18 +103,14 @@ export function ReportHeader({
       <div className="flex min-w-0 flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="max-w-prose text-sm text-muted-foreground">{description}</p>
-        <p data-slot="report-trust" className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span>{mode === "sample" ? "Synthetic sample data" : "Warehouse freshness: unknown"}</span>
-          <span>
-            {allStores
-              ? "Currencies shown per store; no combined totals"
-              : currency
-                ? `Reporting currency: ${currency}`
-                : "Currency unknown; amounts are unlabeled"}
-          </span>
-        </p>
+        {/* It changes how every amount reads, so it stays here; a known currency sits in the footer. */}
+        {storeId && !allStores && !currency && (
+          <p data-slot="report-trust" className="text-xs text-warning">
+            Currency unknown; amounts are unlabeled
+          </p>
+        )}
       </div>
-      <div className="flex flex-wrap items-start gap-2">
+      <div className="flex flex-wrap items-center gap-1">
         {sources.length > 0 && (
           <AboutData
             key={JSON.stringify(agentContext)}
@@ -115,14 +122,13 @@ export function ReportHeader({
           />
         )}
         <RefreshReport />
-        {storeId && view && !view.issue && (
-          <SavedReports
-            href={withParams(pathname, dates ? withDates(params, view.live) : params, { store: storeId })}
+        {shareHref && (
+          <ShareReport
+            key={shareHref}
+            shareHref={shareHref}
+            saveHref={saveHref}
             clientPresentationParams={clientPresentationParams}
           />
-        )}
-        {shareHref && (
-          <CopyReportLink key={shareHref} href={shareHref} clientPresentationParams={clientPresentationParams} />
         )}
       </div>
     </header>

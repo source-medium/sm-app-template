@@ -165,7 +165,6 @@ export function MetricExplorer({
                 </span>
                 <span className="flex shrink-0 flex-wrap gap-1.5 text-xs text-muted-foreground">
                   <Badge>{UNIT_LABELS[metric.value_format ?? ""] ?? "Unit not published"}</Badge>
-                  <Badge>{metric.category}</Badge>
                   {reportsFor(metric).length > 0 && <Badge tone="accent">In a report</Badge>}
                 </span>
               </button>

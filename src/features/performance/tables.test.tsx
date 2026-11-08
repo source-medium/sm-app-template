@@ -26,7 +26,7 @@ it("sorts money numerically in both directions and keeps missing values last", (
     />,
   );
   const headers = screen.getAllByRole("columnheader").map((header) => header.textContent);
-  expect(headers.slice(0, 4)).toEqual(["Period", "Net revenue", "Summary orders", "Net revenue / order"]);
+  expect(headers.slice(0, 4)).toEqual(["Period", "Net revenue", "Orders", "Net revenue / order"]);
   const revenueIndex = headers.indexOf("Net revenue");
   const values = () =>
     screen

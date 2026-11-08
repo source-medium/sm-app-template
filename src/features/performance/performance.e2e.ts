@@ -1,4 +1,4 @@
-import { choose } from "../../../e2e/helpers";
+import { choose, openDisclosure, openFilters } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
 
 test("performance: invalid report options fall back identically in the controls and CSV", async ({ page, request }) => {
@@ -90,6 +90,7 @@ test("performance: platform summary and individual platform tables share daily, 
   const rows = parseCsv(await response.text());
   expect(rows.length).toBeGreaterThan(1);
   expect(rows.every((row) => row.platform === "meta_ads")).toBe(true);
+  await openDisclosure(page, "Attribution and ratio definitions");
   await expect(page.getByText(/Combined revenue and conversions sum platform claims/)).toBeVisible();
   await page.setViewportSize({ width: 375, height: 812 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -103,9 +104,10 @@ test("performance: multiple channels survive reload and CSV includes the full ye
   const table = page.getByRole("table", { name: "Revenue and orders", exact: true });
   await expect(table).toBeVisible();
   const original = await table.locator("tfoot td").allTextContents();
+  await openFilters(page);
   await page.getByText("Choose multiple channels", { exact: true }).click();
-  await page.getByRole("checkbox", { name: "online_dtc", exact: true }).check();
-  await page.getByRole("checkbox", { name: "amazon", exact: true }).check();
+  await page.getByRole("checkbox", { name: "Online DTC", exact: true }).check();
+  await page.getByRole("checkbox", { name: "Amazon", exact: true }).check();
   await page.getByRole("button", { name: "Apply channels", exact: true }).click();
   await expect(page).toHaveURL((url) => url.searchParams.get("sales_channel") === '["amazon","online_dtc"]');
   await page.reload();

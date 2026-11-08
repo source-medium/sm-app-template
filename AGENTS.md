@@ -95,6 +95,17 @@ Copy `products` for a simple page (KPIs, one chart, one table; the simplest view
 `retention` (cohorts), all in `src/features`. See `docs/removing-the-example.md`
 to delete any of them.
 
+## Keep reports simple
+
+A viewer should see the answer before anything else. When you add or change a report:
+
+- Lead with the answer: one plain sentence, then the numbers, then the detail.
+- Every control sits with what it changes. Filters for the whole report go in `ReportControls`, first in the report, with one `summary` entry per filter; keep the entries in step with the filters, or the button describes a filter that no longer applies. A control for one section (a breakdown, a download, a search) goes in that section's `SectionHeader` `actions`, never loose between sections.
+- Say each thing once. The shell owns the dates, sample status, currency and load time; do not repeat them on cards or sections.
+- Put explanations in a `Disclosure variant="note"` ("About these numbers") at the end of the section it explains. Keep on screen only what changes how a number reads, such as hidden changes or an unknown currency.
+- Use the words a store owner would: no table names or raw keys in the default view (`channelName`, `adPlatformLabel`). They belong in **About this data**. Name only values you know; show anything else as stored rather than guessing at its casing.
+- Add an icon only where it says something the words do not. Text buttons carry no decorative icons, and the header keeps its three actions (About this data, refresh, Share); add report actions to a section instead.
+
 ## SQL and data
 
 - SQL is written by developers, never built from browser input. Browser input
@@ -138,7 +149,9 @@ overlay). Reuse `lib/comparison.ts` (`planRanges`, `slotChanges`, `planParams`),
 and `patterns/kpi-delta.ts`; build one-query comparisons with `lib/data/period-sql.ts`
 (`slotColumn`, and `periodFields` for the row schema); show a slot's changes only when `slotChanges()` allows, KPI rows with
 `KpiCard deltas={slotDeltas(...)}`, and per-slot tables or charts inside `ActiveBaseline`
-(docs/data.md#period-comparisons).
+(docs/data.md#period-comparisons). Every compared measure declares `better` (`higher`,
+`lower` or `neutral`) beside its definition, as `PRODUCT_METRICS` does; never infer it from
+a name. Pass it to `kpiDelta`, and use `changeCell` for a table's change column.
 Copy Products for simple pages and rankings, Overview for multi-measure summaries,
 Retention for `CohortMatrix`. Section titles use `patterns/section-header`; an empty region offers its way
 out through `DataRegion emptyAction`. Collapsible explanations use `components/ui/disclosure`.

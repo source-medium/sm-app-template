@@ -1,7 +1,7 @@
 "use client";
 import { lazy, Suspense, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { MapProps } from "./map-shapes";
 const Shapes = lazy(() => import("./map-shapes"));
 /** Mobile stays table-first and loads geometry only when requested. Desktop loads it in this feature alone. */
@@ -16,24 +16,23 @@ export function GeographyMap(props: MapProps) {
   return (
     <Card className="min-w-0">
       <CardHeader>
-        <CardTitle>Shipping destinations</CardTitle>
+        <CardTitle>Where orders ship</CardTitle>
+        <CardAction>
+          <Button variant="ghost" size="sm" onClick={() => setChosen(!shown)}>
+            {shown ? "Hide map" : "Show map"}
+          </Button>
+        </CardAction>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Button variant="outline" size="sm" onClick={() => setChosen(!shown)}>
-          {shown ? "Hide map" : "Show map"}
-        </Button>
         {shown && (
           <Suspense fallback={<p role="status">Loading local map…</p>}>
             <Shapes {...props} />
           </Suspense>
         )}
-        <p className="text-sm text-muted-foreground">
-          Darker fill indicates more valid orders. No matching orders use an outline. Negative revenue remains signed in
-          the table. Select a destination in the map or table.
-        </p>
         <p className="text-xs text-muted-foreground">
-          Natural Earth 5.1.1, public domain. Simplified de facto boundaries; small or unmapped destinations remain in
-          the table. {props.country === "US" && "Alaska and Hawaii are shown in separately scaled insets."}
+          Darker means more valid orders. Select a destination to drill in. Natural Earth 5.1.1, public domain.
+          Simplified de facto boundaries; small or unmapped destinations remain in the table.{" "}
+          {props.country === "US" && "Alaska and Hawaii are shown in separately scaled insets."}
         </p>
       </CardContent>
     </Card>

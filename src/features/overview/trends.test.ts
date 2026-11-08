@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { overviewTrends, trendDays } from "./trends";
+import { overviewTrends, SPARKLINE_DAILY_DAYS, sparklineValues, trendDays } from "./trends";
 import type { OverviewDay } from "./queries";
 
 const day = (
@@ -101,4 +101,27 @@ it("offers every KPI measure, dividing running totals for cumulative ratios", ()
   expect(cumulative.find((chart) => chart.key === "sessions")?.data.map((row) => row.sessions)).toEqual([10, 20]);
   const missing = overviewTrends([days[0] as OverviewDay], range, "daily", "USD").find((chart) => chart.key === "mer");
   expect(missing?.data[1]?.mer__display).toBe("No data");
+});
+
+it("keeps one sparkline point per day up to eight weeks, with missing days as gaps", () => {
+  const days = [day("2026-09-01", "10"), undefined, day("2026-09-03", "30")];
+  expect(sparklineValues(days, "revenue", "USD")).toEqual([10, null, 30]);
+});
+
+it("shows long periods as weekly points ending on the last date: daily averages, exact ratios, no dip", () => {
+  // One leftover date, then eight full weeks: revenue 70 a day and spend 10 a day, except a 0-revenue date in the last week.
+  const days: (OverviewDay | undefined)[] = Array.from({ length: SPARKLINE_DAILY_DAYS + 1 }, (_, index) =>
+    day(`d${index}`, index === SPARKLINE_DAILY_DAYS - 3 ? "0" : "70", 1, "10"),
+  );
+  days[SPARKLINE_DAILY_DAYS - 10] = undefined; // a date without rows is left out of its week's average
+  const revenue = sparklineValues(days, "revenue", "USD");
+  expect(revenue).toHaveLength(9);
+  expect(revenue[0]).toBe(70); // the leftover oldest date is a full day's value, not a seventh of a week
+  expect(revenue[8]).toBe(60); // the newest week: (6 × 70 + 0) / 7
+  expect(revenue[7]).toBe(70); // six dates with rows, each 70
+  const mer = sparklineValues(days, "mer", "USD");
+  expect(mer[8]).toBe(420 / 70); // the week's revenue over its spend, not an average of daily ratios
+  // A date with rows but a missing input makes its week unknown, never a smaller total.
+  days[SPARKLINE_DAILY_DAYS - 20] = day("x", null);
+  expect(sparklineValues(days, "revenue", "USD")[6]).toBeNull();
 });

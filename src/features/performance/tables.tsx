@@ -22,7 +22,7 @@ type Metric = readonly [key: string, label: string];
 const BUSINESS_COLUMNS: Record<MetricGroup, readonly Metric[]> = {
   revenue: [
     ["revenue", "Net revenue"],
-    ["orders", "Summary orders"],
+    ["orders", "Orders"],
     ["average", "Net revenue / order"],
     ["sessions", "Sessions"],
     ["gross", "Gross revenue"],
@@ -34,7 +34,7 @@ const BUSINESS_COLUMNS: Record<MetricGroup, readonly Metric[]> = {
     ["revenue", "Net revenue"],
     ["spend", "Ad spend"],
     ["mer", "MER"],
-    ["cpo", "Spend / summary order"],
+    ["cpo", "Spend / order"],
     ["cps", "Spend / session"],
     ["spend_share", "Spend / net revenue"],
   ],
@@ -122,11 +122,7 @@ export function BusinessTable({
   const label = METRIC_GROUPS.find((item) => item.value === group)?.label ?? "Revenue and orders";
   return (
     <section className="flex flex-col gap-3" aria-labelledby="business-table-heading">
-      <SectionHeader
-        id="business-table-heading"
-        title={label}
-        description="Newest periods first. Weeks start Monday; edge weeks and months include only the selected dates. Totals cover the full selection."
-      />
+      <SectionHeader id="business-table-heading" title={label} actions={actions} />
       <DataTable
         caption={label}
         columns={[
@@ -153,16 +149,13 @@ export function BusinessTable({
           );
         })}
       />
-      {actions && <div className="flex flex-wrap items-end gap-3">{actions}</div>}
-      <p className="text-sm text-muted-foreground">
-        Summary orders are published order measures. New and repeat purchases are not unique customers.
-      </p>
-      <Disclosure summary="Metric definitions">
+      <Disclosure summary="Metric definitions" variant="note">
         <p className="max-w-prose text-sm text-muted-foreground">
-          Demand is the published gross revenue after discounts, before returns. Refunds and discounts retain their
-          published signs. Summary orders include every selected sales channel. New and repeat figures are order
-          measures, not unique customers; classification may not cover every order. MER uses net revenue. Ratios use
-          period sums; missing or zero denominators stay blank.
+          Newest periods first. Weeks start Monday; edge weeks and months include only the selected dates. Totals cover
+          the full selection. Demand is the published gross revenue after discounts, before returns. Refunds and
+          discounts retain their published signs. Orders are published order measures across every selected sales
+          channel. New and repeat figures are order measures, not unique customers; classification may not cover every
+          order. MER uses net revenue. Ratios use period sums; missing or zero denominators stay blank.
         </p>
       </Disclosure>
     </section>
@@ -219,16 +212,8 @@ export function PlatformTables({
   const label = platform ? adPlatformLabel(platform) : "Combined platforms";
   return (
     <div className="flex flex-col gap-6">
-      <p className="max-w-prose text-sm text-muted-foreground">
-        Platform attribution can overlap. Combined revenue and conversions sum platform claims, not deduplicated store
-        sales or orders.
-      </p>
       <section className="space-y-3" aria-labelledby="platform-comparison-heading">
-        <SectionHeader
-          id="platform-comparison-heading"
-          title="Platform comparison"
-          description="Totals for the full selected dates and sales channels."
-        />
+        <SectionHeader id="platform-comparison-heading" title="Platform comparison" />
         <DataTable
           caption="Platform comparison"
           columns={[
@@ -280,12 +265,14 @@ export function PlatformTables({
           <p className="text-sm text-muted-foreground">No rows for this platform. Choose a listed platform above.</p>
         )}
       </section>
-      <Disclosure summary="Attribution and ratio definitions">
+      <Disclosure summary="Attribution and ratio definitions" variant="note">
         <p className="max-w-prose text-sm text-muted-foreground">
-          CVR is platform conversions / clicks. CPO is spend / platform conversions. CTR is clicks / impressions. CPM is
-          spend per thousand impressions. CPC is spend / clicks. ROAS is platform revenue / spend. Ratios use period
-          sums and stay blank for missing or zero denominators. Weeks start Monday. Clicks use ad_clicks; reference
-          dashboards may use a different click field or attribution window.
+          Platform attribution can overlap. Combined revenue and conversions sum platform claims, not deduplicated store
+          sales or orders. Platform comparison totals cover the full selected dates and sales channels. CVR is platform
+          conversions / clicks. CPO is spend / platform conversions. CTR is clicks / impressions. CPM is spend per
+          thousand impressions. CPC is spend / clicks. ROAS is platform revenue / spend. Ratios use period sums and stay
+          blank for missing or zero denominators. Weeks start Monday. Clicks use ad_clicks; reference dashboards may use
+          a different click field or attribution window.
         </p>
       </Disclosure>
     </div>

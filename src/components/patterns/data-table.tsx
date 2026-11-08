@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { Disclosure } from "@/components/ui/disclosure";
+import type { ChangeTone } from "@/lib/comparison";
+import { CHANGE_TONE_CLASS } from "./change-tone";
 
 export type DataTableColumn = {
   key: string;
@@ -36,6 +38,8 @@ export type DataTableColumn = {
 };
 export type DataTableCell = {
   display: string;
+  /** A change that is good or bad for its measure, colored like a KPI card's; see changeCell(). */
+  tone?: ChangeTone;
   sort?: string | number | null;
   href?: string;
   leading?: React.ReactNode;
@@ -46,23 +50,26 @@ export type DataTableRow = { id: string; cells: Record<string, DataTableCell> };
 function DataCell({ row, column }: CellContext<DataTableRow, unknown>) {
   const cell = row.original.cells[column.id];
   if (!cell) return null;
-  const content = cell.href ? (
+  // A leading image belongs to the row's link: the picture opens the same detail as its name.
+  const content = cell.leading ? (
+    <div className="flex min-w-0 items-center gap-3">
+      {cell.leading}
+      <span className="min-w-0">{cell.display}</span>
+    </div>
+  ) : cell.tone ? (
+    <span className={cn("font-medium", CHANGE_TONE_CLASS[cell.tone])}>{cell.display}</span>
+  ) : (
+    cell.display
+  );
+  return cell.href ? (
     <Link
       prefetch={false}
       href={cell.href}
       scroll={false}
-      className="font-medium text-primary underline-offset-4 hover:underline"
+      className={cn("font-medium text-primary underline-offset-4 hover:underline", cell.leading && "block")}
     >
-      {cell.display}
+      {content}
     </Link>
-  ) : (
-    cell.display
-  );
-  return cell.leading ? (
-    <div className="flex min-w-0 items-center gap-3">
-      {cell.leading}
-      <span className="min-w-0">{content}</span>
-    </div>
   ) : (
     content
   );
@@ -118,7 +125,11 @@ export function DataTable({
 
   return (
     <div data-agent-target={caption} data-agent-component="DataTable" className="flex flex-col gap-3">
-      <Table containerClassName="max-h-[32rem] rounded-xl border bg-card" regionLabel={caption}>
+      {/* Only a long table scrolls inside itself under a sticky header; a short one shows every row. */}
+      <Table
+        containerClassName={cn("rounded-xl border bg-card", table.getRowModel().rows.length > 12 && "max-h-[32rem]")}
+        regionLabel={caption}
+      >
         <caption className="sr-only">{caption}</caption>
         <TableHeader className="sticky top-0 z-10 bg-muted">
           {table.getHeaderGroups().map((group) => (
@@ -140,13 +151,20 @@ export function DataTable({
                         data-agent-element={`Sort by ${column?.header}`}
                         onClick={header.column.getToggleSortingHandler()}
                         className={cn(
-                          "inline-flex min-h-9 items-center gap-2 rounded-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11",
+                          "group/sort inline-flex min-h-9 items-center gap-2 rounded-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11",
                           column?.align === "right" && "flex-row-reverse",
                           sorted && "text-primary",
                         )}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
-                        <Icon className="size-3.5" aria-hidden />
+                        {/* Only the sorted column shows its arrow; the others show theirs on hover or focus, in reserved space. */}
+                        <Icon
+                          aria-hidden
+                          className={cn(
+                            "size-3.5",
+                            !sorted && "opacity-0 group-hover/sort:opacity-100 group-focus-visible/sort:opacity-100",
+                          )}
+                        />
                       </button>
                     ) : (
                       flexRender(header.column.columnDef.header, header.getContext())
@@ -200,15 +218,19 @@ export function DataTable({
           </TableFooter>
         )}
       </Table>
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-        <div className="flex flex-col gap-1">
-          <span aria-live="polite" aria-atomic="true">
-            {paginated
-              ? `${firstVisible}–${lastVisible} of ${rows.length} rows`
-              : `${rows.length} ${rows.length === 1 ? "row" : "rows"}`}
-          </span>
-          {truncated && <span>{`Showing the first ${rows.length} rows; more rows matched than this view loads.`}</span>}
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground empty:hidden">
+        {(paginated || truncated) && (
+          <div className="flex flex-col gap-1">
+            {paginated && (
+              <span aria-live="polite" aria-atomic="true">
+                {`${firstVisible}–${lastVisible} of ${rows.length} rows`}
+              </span>
+            )}
+            {truncated && (
+              <span>{`Showing the first ${rows.length} rows; more rows matched than this view loads.`}</span>
+            )}
+          </div>
+        )}
         {paginated ? (
           <div className="flex items-center gap-2">
             <Button

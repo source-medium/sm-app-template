@@ -1,8 +1,14 @@
 import { ChartCard } from "@/components/charts/chart-card";
 import { buildChartData, type PointValue } from "@/components/charts/chart-data";
-import { DataTable } from "./data-table";
+import { formatPercent } from "@/lib/format";
+import { DataTable, type DataTableCell } from "./data-table";
 
-/** The feature supplies ranking, full-query shares, and formatted changes. This pattern only presents them. */
+/**
+ * The feature supplies ranking, full-query shares, and formatted changes. This
+ * pattern only presents them. A share is null where it is undefined (a negative
+ * value in the set); when no row has one, the column is left out rather than
+ * filled with dashes.
+ */
 export function RankedBreakdown({
   title,
   description,
@@ -19,8 +25,9 @@ export function RankedBreakdown({
     label: string;
     chartLabel?: string;
     value: PointValue;
-    share: string;
-    change?: string;
+    share: number | null;
+    /** From changeCell(), so the change is colored by its measure's polarity. */
+    change?: DataTableCell;
     href?: string;
     leading?: React.ReactNode;
   }[];
@@ -47,7 +54,9 @@ export function RankedBreakdown({
         columns={[
           { key: "name", header: "Name", sortable: false },
           { key: "value", header: valueLabel, align: "right", sortable: false },
-          { key: "share", header: "Share of total", align: "right", sortable: false },
+          ...(rows.some((row) => row.share !== null)
+            ? [{ key: "share", header: "Share of total", align: "right" as const, sortable: false }]
+            : []),
           ...(comparisonLabel
             ? [{ key: "change", header: comparisonLabel, align: "right" as const, sortable: false }]
             : []),
@@ -57,8 +66,8 @@ export function RankedBreakdown({
           cells: {
             name: { display: row.label, href: row.href, leading: row.leading },
             value: { display: row.value.display },
-            share: { display: row.share },
-            change: { display: row.change ?? "—" },
+            share: { display: formatPercent(row.share) },
+            change: row.change ?? { display: "—" },
           },
         }))}
       />

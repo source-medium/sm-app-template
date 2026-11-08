@@ -1,3 +1,4 @@
+import { openDates } from "./helpers";
 import { expect, test } from "@playwright/test";
 import { appConfig } from "../app.config";
 
@@ -28,6 +29,7 @@ for (const item of appConfig.nav.filter((item) => item.scope !== "all-stores")) 
       if (await preset.count()) {
         await preset.click();
         await expect(page).toHaveURL(/store=sample-store-b/);
+        await openDates(page);
         await page
           .getByRole("form", { name: "Report filters" })
           .getByRole("button", { name: "Apply", exact: true })
@@ -77,7 +79,17 @@ test("downloads use the fixed store and reject changed store parameters", async 
       const response = await request.get(url.href);
       expect(response.status()).toBe(200);
       const csv = await response.text();
-      expect(csv).toContain('"sample","sample-store-b"');
+      // Every export starts with scopeColumns(): data_mode, an optional report name, then store_id.
+      const [header = [], ...rows] = csv
+        .trim()
+        .split(/\r?\n/)
+        .map((line) => [...line.matchAll(/"((?:[^"]|"")*)"/g)].map((match) => match[1]));
+      expect(header.slice(0, 3)).toContain("store_id");
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) {
+        expect(row[header.indexOf("data_mode")]).toBe("sample");
+        expect(row[header.indexOf("store_id")]).toBe("sample-store-b");
+      }
       expect(csv).not.toContain("sample-store-a");
       url.searchParams.set("store", "sample-store-a");
       expect((await request.get(url.href)).status()).toBe(403);

@@ -101,7 +101,7 @@ const TARGET_KINDS = new Map([
   ["StoreSwitcher", "Filter"],
   ["SelectFilter", "Filter"],
   ["RefreshReport", "Button"],
-  ["CopyReportLink", "Button"],
+  ["ShareReport", "Button"],
   ["AdNameFilter", "Filters"],
   ["ChartCard", "Chart"],
   ["DataTable", "Table"],

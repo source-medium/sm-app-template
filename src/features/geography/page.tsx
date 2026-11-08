@@ -3,6 +3,9 @@ import { geographyOptions } from "./filters";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { Download } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { ReportControls } from "@/components/shell/report-controls";
 import { ReportPage } from "@/components/shell/report-page";
 import { DataRegion } from "@/components/patterns/data-region";
 import { ErrorState, LoadingState } from "@/components/patterns/data-states";
@@ -13,7 +16,7 @@ import { MetricChart } from "@/components/charts/metric-chart";
 import { buildChartData, type PointValue } from "@/components/charts/chart-data";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
-import { kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
+import { changeCell, kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { Disclosure } from "@/components/ui/disclosure";
 import { formatCount, formatDate, formatMoneyIn, formatPercent } from "@/lib/format";
@@ -29,6 +32,7 @@ import { getGeography } from "./queries";
 import { GEOGRAPHY_RELATION, geographicReconciliation, type GeographyRow } from "./rows";
 import { geographyBindings } from "./metrics";
 import { GeographyMap } from "./map";
+import { SectionHeader } from "@/components/patterns/section-header";
 
 export const metadata: Metadata = { title: "Sales by geography" };
 export default async function GeographyPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -40,7 +44,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
     <ReportPage
       dataStatusAfterControls
       title="Sales by geography"
-      description="Where are valid-order sales happening, and which shipping destinations are changing?"
+      description="Where orders ship, and which destinations are changing."
       pathname="/geography"
       params={params}
       comparisons
@@ -90,7 +94,13 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
         const selectedOrders = drillDown({ ...context, comparison: "off", comparison2: "off" }, destination);
         return (
           <>
-            <div className="flex flex-wrap items-end gap-3">
+            <ReportControls
+              summary={[
+                country ? `Shipping to ${country}${region ? ` / ${region}` : ""}` : "All shipping countries",
+                orderDateLabel(dateBasis),
+                channel && salesChannelLabel(channel),
+              ]}
+            >
               <SelectFilter
                 name="date_basis"
                 label="Date basis"
@@ -100,10 +110,12 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                   { value: "created", label: "Created" },
                 ]}
               />
-              {country && <input name="country" type="hidden" value={country} form={REPORT_FILTER_FORM_ID} />}
-              {region && <input name="region" type="hidden" value={region} form={REPORT_FILTER_FORM_ID} />}
-              {channel && <input name="sales_channel" type="hidden" value={channel} form={REPORT_FILTER_FORM_ID} />}
-              {country && (
+            </ReportControls>
+            {country && <input name="country" type="hidden" value={country} form={REPORT_FILTER_FORM_ID} />}
+            {region && <input name="region" type="hidden" value={region} form={REPORT_FILTER_FORM_ID} />}
+            {channel && <input name="sales_channel" type="hidden" value={channel} form={REPORT_FILTER_FORM_ID} />}
+            {country && (
+              <nav aria-label="Shipping destination" className="flex flex-wrap items-center gap-3">
                 <Link
                   prefetch={false}
                   className="py-2 text-sm underline"
@@ -111,31 +123,18 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                 >
                   All countries
                 </Link>
-              )}
-              {region && (
-                <Link
-                  prefetch={false}
-                  className="py-2 text-sm underline"
-                  href={withParams("/geography", applied, { region: null })}
-                >
-                  All regions in {country}
-                </Link>
-              )}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {orderDateLabel(dateBasis)}. Valid orders only.{" "}
-              {country ? `Shipping: ${country}${region ? ` / ${region}` : ""}.` : "All shipping countries."}{" "}
-              {channel && `Sales channels: ${salesChannelLabel(channel)}.`} Shipping destinations describe where orders
-              were sent, not residence or advertising reach.
-            </p>
+                {region && (
+                  <Link
+                    prefetch={false}
+                    className="py-2 text-sm underline"
+                    href={withParams("/geography", applied, { region: null })}
+                  >
+                    All regions in {country}
+                  </Link>
+                )}
+              </nav>
+            )}
             {dataStatus}
-            <Link
-              prefetch={false}
-              className="text-sm underline"
-              href={withParams("/geography/export", {}, { ...scope.filters, population: null })}
-            >
-              Download geographic sales CSV
-            </Link>
             {issue ? (
               <ErrorState title="Check geographic scope" remedy={issue} tone="warning" />
             ) : (
@@ -170,14 +169,14 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                                 data.total.revenue,
                                 slotValue(data.total, slot, "revenue"),
                                 money,
-                                "neutral",
+                                "higher",
                                 label,
                               )
                             : kpiDelta(
                                 String(data.total.orders),
                                 slotValue(data.total, slot, "orders"),
                                 (value) => formatCount(value === null ? null : BigInt(value)),
-                                "neutral",
+                                "higher",
                                 label,
                               ),
                       );
@@ -236,7 +235,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                               ? [
                                   {
                                     key: "change",
-                                    header: `Revenue change vs ${baseline.label}`,
+                                    header: `Change vs ${baseline.short}`,
                                     align: "right" as const,
                                     sortable: false,
                                   },
@@ -249,15 +248,15 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                               location: { display: label(row.location), href: link(row.location) },
                               orders: { display: formatCount(row.orders) },
                               revenue: { display: row.records === 0n ? "No matching records" : money(row.revenue) },
-                              change: {
-                                display: kpiDelta(row.revenue, slotValue(row, slot, "revenue"), money).display,
-                              },
+                              change: changeCell(
+                                kpiDelta(row.revenue, slotValue(row, slot, "revenue"), money, "higher"),
+                              ),
                             },
                           }))}
                           totals={{
                             id: "total",
                             cells: {
-                              location: { display: "Independent total" },
+                              location: { display: "Total" },
                               orders: { display: formatCount(data.total.orders) },
                               revenue: { display: money(data.total.revenue) },
                             },
@@ -267,7 +266,6 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                     };
                     return (
                       <div className="space-y-6">
-                        {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
                         {!reconciled && (
                           <ErrorState
                             title="Geographic totals disagree"
@@ -276,9 +274,8 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                         )}
                         <section aria-label="Geographic sales totals" className="grid gap-4 sm:grid-cols-3">
                           <KpiCard
-                            label="Valid-order net revenue"
+                            label="Net revenue"
                             value={money(data.total.revenue)}
-                            period="Selected shipping population"
                             binding={bindings[0]}
                             scope={scope}
                             deltas={deltas("revenue")}
@@ -286,7 +283,6 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                           <KpiCard
                             label="Valid orders"
                             value={formatCount(data.total.orders)}
-                            period="Selected shipping population"
                             binding={bindings[1]}
                             scope={scope}
                             deltas={deltas("orders")}
@@ -301,50 +297,56 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                                   : "Unavailable"
                             }
                             period={
-                              country && country !== "US"
-                                ? "Region boundaries unavailable for this country"
-                                : "Same selected population as the total"
+                              country && country !== "US" ? "Region boundaries unavailable for this country" : undefined
                             }
                             description="Orders assigned to a bundled boundary divided by the independently queried valid-order count. Unknown, unmapped and remainder orders remain in the denominator. This measures boundary coverage, not data completeness."
                           />
                         </section>
-                        <div className="grid min-w-0 gap-5 lg:grid-cols-2">
-                          <section className="min-w-0 lg:order-2" aria-label="Ranked shipping destinations">
-                            {plan ? <ActiveBaseline a={table(0)} b={table(1)} /> : table(0)}
-                            <p className="mt-3 text-sm text-muted-foreground">
-                              All groups, including unknown, unmapped and any remainder,{" "}
-                              {reconciled ? "reconcile to the independent total" : "have an unreconciled difference"}.
-                              Table pagination does not change totals.{" "}
-                              {data.groups.some((row) => row.kind === "remainder") &&
-                                "The first 500 destinations are listed individually; all others are combined in the remainder."}
-                            </p>
-                          </section>
-                          {!country || country === "US" ? (
-                            <div className="min-w-0 lg:order-1">
-                              <GeographyMap
-                                country={country}
-                                locations={data.groups
-                                  .filter((row) => row.kind !== "remainder")
-                                  .map((row) => ({
-                                    code: row.location,
-                                    label: label(row.location),
-                                    orders: formatCount(row.orders),
-                                    href: link(row.location),
-                                    intensity: maxOrders === 0n ? 0 : Number((row.orders * 1000n) / maxOrders) / 1000,
-                                  }))}
-                              />
+                        {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
+                        <section aria-labelledby="destinations-heading" className="flex min-w-0 flex-col gap-3">
+                          <SectionHeader
+                            id="destinations-heading"
+                            title="Shipping destinations"
+                            actions={
+                              <Link
+                                prefetch={false}
+                                className={buttonVariants({ variant: "outline", size: "sm" })}
+                                href={withParams("/geography/export", {}, { ...scope.filters, population: null })}
+                              >
+                                <Download aria-hidden /> Download CSV
+                              </Link>
+                            }
+                          />
+                          <div className="grid min-w-0 gap-5 lg:grid-cols-5">
+                            <div className="flex min-w-0 flex-col gap-3 lg:order-2 lg:col-span-3">
+                              {plan ? <ActiveBaseline a={table(0)} b={table(1)} /> : table(0)}
                             </div>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              Region maps are currently available for U.S. states. This country’s regions are available
-                              in the table.
-                            </p>
-                          )}
-                        </div>
+                            {!country || country === "US" ? (
+                              <div className="min-w-0 lg:order-1 lg:col-span-2">
+                                <GeographyMap
+                                  country={country}
+                                  locations={data.groups
+                                    .filter((row) => row.kind !== "remainder")
+                                    .map((row) => ({
+                                      code: row.location,
+                                      label: label(row.location),
+                                      orders: formatCount(row.orders),
+                                      href: link(row.location),
+                                      intensity: maxOrders === 0n ? 0 : Number((row.orders * 1000n) / maxOrders) / 1000,
+                                    }))}
+                                />
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground lg:col-span-2">
+                                Region maps are currently available for U.S. states. This country’s regions are
+                                available in the table.
+                              </p>
+                            )}
+                          </div>
+                        </section>
                         <MetricChart
                           param="metric"
                           titleSuffix={`by day in ${region ? label(region) : (country ?? "all destinations")}`}
-                          description="Valid orders in the selected shipping population, by local date. Dates without matching orders remain gaps, not zeros."
                           categoryHeader="Date"
                           kind="line"
                           metrics={[
@@ -377,6 +379,21 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                               )}
                             </Disclosure>
                           ))}
+                        <Disclosure summary="About these numbers" variant="note">
+                          <div className="max-w-prose space-y-2">
+                            <p>
+                              Valid orders only. Shipping destinations describe where orders were sent, not residence or
+                              advertising reach. Dates without matching orders remain gaps, not zeros.
+                            </p>
+                            <p>
+                              All groups, including unknown, unmapped and any remainder,{" "}
+                              {reconciled ? "reconcile to the independent total" : "have an unreconciled difference"}.
+                              Table pagination does not change totals.{" "}
+                              {data.groups.some((row) => row.kind === "remainder") &&
+                                "The first 500 destinations are listed individually; all others are combined in the remainder."}
+                            </p>
+                          </div>
+                        </Disclosure>
                       </div>
                     );
                   }}

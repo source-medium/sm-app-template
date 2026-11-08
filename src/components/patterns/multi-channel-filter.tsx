@@ -4,7 +4,7 @@ import { createContext, useContext, useId, useRef, useState, type Dispatch, type
 import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import { Disclosure } from "@/components/ui/disclosure";
-import { encodeSalesChannels, REPORT_FILTER_FORM_ID, salesChannelValues } from "@/lib/filters";
+import { channelName, encodeSalesChannels, REPORT_FILTER_FORM_ID, salesChannelValues } from "@/lib/filters";
 
 const ChannelScope = createContext<{
   applied: string[];
@@ -53,7 +53,7 @@ export function MultiChannelFilter({ channels }: { channels: string[] }) {
   const pending = encodeSalesChannels(selected) !== encodeSalesChannels(applied);
   const options = [...new Set([...applied, ...selected, ...channels])].sort();
   return (
-    <div className="max-w-full min-w-0 rounded-lg border bg-card px-3 py-1" data-agent-target="Sales channels">
+    <div className="max-w-full min-w-0" data-agent-target="Sales channels">
       <label htmlFor={`${id}-quick`} className="block pb-1 text-xs font-medium text-muted-foreground">
         Sales channel
       </label>
@@ -71,7 +71,7 @@ export function MultiChannelFilter({ channels }: { channels: string[] }) {
         {applied.length > 1 && <option value="__multiple">{applied.length} selected</option>}
         {options.map((channel) => (
           <option key={channel} value={channel}>
-            {channel}
+            {channelName(channel)}
           </option>
         ))}
       </NativeSelect>
@@ -104,7 +104,7 @@ export function MultiChannelFilter({ channels }: { channels: string[] }) {
                     )
                   }
                 />
-                {channel}
+                {channelName(channel)}
               </label>
             ))}
           </div>

@@ -10,11 +10,9 @@
  * are two or more series.
  */
 import { useId, useState } from "react";
-import { ChartNoAxesCombined, Table2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Table, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -41,7 +39,10 @@ export type ChartCardProps = {
   /** Shown in place of `title`, such as a measure menu; `title` still names the chart. */
   heading?: React.ReactNode;
   description?: string;
+  /** How the number is defined; it follows the chart, as the card's last line. */
   definition?: React.ReactNode;
+  /** A control for the card as a whole, such as showing every measure; it sits beside the definition. */
+  footer?: React.ReactNode;
   kind: "line" | "bar";
   horizontal?: boolean;
   series: ChartSeries[];
@@ -61,6 +62,7 @@ export function ChartCard({
   heading,
   description,
   definition,
+  footer,
   kind,
   horizontal = false,
   series,
@@ -87,11 +89,6 @@ export function ChartCard({
       <CardHeader>
         <CardTitle>{heading ?? title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
-        {definition && (
-          <Disclosure summary="About this number">
-            <div className="pb-1">{definition}</div>
-          </Disclosure>
-        )}
         <CardAction>
           {plottable && (
             // A click before hydration would be lost, so the toggle accepts none until it can apply one.
@@ -102,27 +99,22 @@ export function ChartCard({
               className="flex rounded-md bg-muted p-1"
             >
               {[
-                { label: "Chart", table: false, icon: ChartNoAxesCombined },
-                { label: "Table", table: true, icon: Table2 },
-              ].map(({ label, table, icon: Icon }) => (
-                <Tooltip key={label}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`View as ${label.toLowerCase()}`}
-                      data-agent-element={`View as ${label.toLowerCase()}`}
-                      aria-pressed={showTable === table}
-                      aria-controls={regionId}
-                      onClick={() => setTableChosen(table)}
-                      className="min-w-8 px-2 aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-card"
-                    >
-                      <Icon aria-hidden />
-                      <span className="hidden @min-[28rem]/card-header:inline">{label}</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{label} view</TooltipContent>
-                </Tooltip>
+                { label: "Chart", table: false },
+                { label: "Table", table: true },
+              ].map(({ label, table }) => (
+                <Button
+                  key={label}
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`View as ${label.toLowerCase()}`}
+                  data-agent-element={`View as ${label.toLowerCase()}`}
+                  aria-pressed={showTable === table}
+                  aria-controls={regionId}
+                  onClick={() => setTableChosen(table)}
+                  className="px-2.5 aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-card"
+                >
+                  {label}
+                </Button>
               ))}
             </div>
           )}
@@ -202,6 +194,18 @@ export function ChartCard({
               )}
             </Plot>
           </ChartContainer>
+        )}
+        {(definition || footer) && (
+          <div className="mt-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+            {definition ? (
+              <Disclosure summary="About this number" variant="note" className="min-w-0 flex-1 open:basis-full">
+                <div className="pb-1">{definition}</div>
+              </Disclosure>
+            ) : (
+              <span />
+            )}
+            {footer}
+          </div>
         )}
       </CardContent>
     </Card>

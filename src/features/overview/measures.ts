@@ -4,7 +4,7 @@
  */
 import "server-only";
 import { overviewBindings } from "./metrics";
-import type { MetricValue } from "@/lib/comparison";
+import type { MetricValue, Polarity } from "@/lib/comparison";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { formatCount, formatMeasure, formatMetricValue, formatMoney, formatMultiple } from "@/lib/format";
@@ -20,8 +20,10 @@ export type PresentedMeasure = {
   /** Exact amount for kpiDelta. Money stays decimal text. */
   amount: MetricValue | null;
   format: (value: MetricValue | null) => string;
-  /** Neutral unless the card has chosen that higher is better. */
-  better: "higher" | "neutral";
+  /** Which way is good; see Polarity. Spend is neither on its own; MER says whether it paid off. */
+  better: Polarity;
+  /** Adds up across days. A ratio (revenue per order, MER) does not; it divides its own totals. */
+  additive: boolean;
 };
 
 export type OverviewPresentation = Record<OverviewMeasureKey, PresentedMeasure>;
@@ -55,6 +57,7 @@ export function presentOverviewMeasures(
       amount: measures?.netRevenue ?? null,
       format: money,
       better: "higher",
+      additive: true,
     },
     orders: {
       display: formatMetricValue(orders, "count", overviewBindings[1].canonical.value_format, currency),
@@ -62,13 +65,15 @@ export function presentOverviewMeasures(
       amount: orders,
       format: measure,
       better: "higher",
+      additive: true,
     },
     average: {
       display: formatMoney(average, currency),
       sort: average,
       amount: average,
       format: money,
-      better: "neutral",
+      better: "higher",
+      additive: false,
     },
     spend: {
       display: formatMoney(measures?.adSpend ?? null, currency),
@@ -76,14 +81,23 @@ export function presentOverviewMeasures(
       amount: measures?.adSpend ?? null,
       format: money,
       better: "neutral",
+      additive: true,
     },
-    mer: { display: formatMultiple(mer), sort: mer, amount: mer, format: multiple, better: "higher" },
+    mer: {
+      display: formatMultiple(mer),
+      sort: mer,
+      amount: mer,
+      format: multiple,
+      better: "higher",
+      additive: false,
+    },
     sessions: {
       display: formatCount(sessions),
       sort: sessions === null ? null : toChartNumber(sessions),
       amount: sessions,
       format: count,
       better: "higher",
+      additive: true,
     },
   };
 }

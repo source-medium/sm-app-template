@@ -6,7 +6,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { appConfig } from "../app.config";
-import { choose, openDisclosure, watchConsole } from "./helpers";
+import { choose, openDisclosure, openFilters, watchConsole } from "./helpers";
 
 /** Empty results are successful queries; failed or missing regions are not. */
 async function expectLiveReport(page: Page, timestamp = true) {
@@ -70,6 +70,8 @@ test("Overview summaries and exports work at each grain with a sales-channel fil
   const problems = watchConsole(page);
   await page.goto("/overview");
   await expectLiveReport(page);
+  // The report's own filters fold under Filters.
+  await openFilters(page);
   const channel = page.getByLabel("Sales channel", { exact: true });
   await expect(channel).toBeVisible({ timeout: 30_000 });
   const option = channel.locator('option:not([value=""])').first();
@@ -85,11 +87,11 @@ test("Overview summaries and exports work at each grain with a sales-channel fil
     "No Overview rows in the selected period; summary interactions require rows",
   );
   for (const grain of ["week", "month"]) {
-    await openDisclosure(page, "Business summary and CSV");
+    await openDisclosure(page, "Daily summary and downloads");
     await page.getByLabel("Summary rows", { exact: true }).selectOption(grain);
     await expect(page).toHaveURL(new RegExp(`grain=${grain}`));
     await expectLiveReport(page);
-    await openDisclosure(page, "Business summary and CSV");
+    await openDisclosure(page, "Daily summary and downloads");
     await expect(page.getByRole("table", { name: "Business summary", exact: true })).toBeVisible();
     const href = await page.getByRole("link", { name: "Download CSV" }).getAttribute("href");
     if (!href) throw new Error("Missing summary download");
@@ -190,7 +192,7 @@ test("channel controls apply available channels and retention renders its publis
     await page.goto(href as string);
     await expectLiveReport(page);
     const select = page.getByLabel(label as string, { exact: true });
-    if (href === "/products") await page.getByRole("button", { name: "More filters", exact: true }).click();
+    await page.getByRole("button", { name: /^Filters:/ }).click();
     await expect(select).toBeVisible({ timeout: 30000 });
     const option = select.locator('option:not([value=""])').first();
     // Stores without sales or ad delivery legitimately have no channel options.
@@ -231,6 +233,8 @@ test("retention acquisition segments load published options and one cohort slice
   await segment.selectOption(value);
   await expectLiveReport(page);
   await expect(page.getByRole("table", { name: "Monthly retention", exact: true })).toBeVisible();
+  // Choosing the segment let the filters fold again; the measure is one of them.
+  await openFilters(page);
   await page.getByLabel("Matrix measure", { exact: true }).selectOption("revenue");
   await expectLiveReport(page);
   await expect(segment).toHaveValue(value);

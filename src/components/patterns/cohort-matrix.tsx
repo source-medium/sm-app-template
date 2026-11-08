@@ -32,7 +32,7 @@ export function CohortMatrix({
           <TableHead>Cohort</TableHead>
           <TableHead className="text-right">Customers</TableHead>
           {columns.map((column) => (
-            <TableHead key={column} className="text-right">
+            <TableHead key={column} className="px-2 text-right">
               {column}
             </TableHead>
           ))}
@@ -41,7 +41,7 @@ export function CohortMatrix({
       <TableBody>
         {rows.map((row) => (
           <TableRow key={row.id}>
-            <TableHead scope="row" className="font-medium text-foreground">
+            <TableHead scope="row" className="font-medium whitespace-nowrap! text-foreground">
               {row.label}
             </TableHead>
             <TableCell className="text-right tabular-nums">{row.size}</TableCell>
@@ -52,7 +52,7 @@ export function CohortMatrix({
                 aria-label={`${row.label}, ${columns[index]}: ${cell.description}`}
                 data-state={cell.state}
                 className={cn(
-                  "min-w-20 text-right tabular-nums",
+                  "min-w-16 px-2 text-right tabular-nums",
                   cell.state === "immature" && "bg-muted/30 text-muted-foreground",
                   cell.state === "missing" && "text-muted-foreground",
                   cell.state === "value" &&

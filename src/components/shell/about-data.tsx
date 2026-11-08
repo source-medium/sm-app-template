@@ -3,7 +3,6 @@
 import type { MetricBinding } from "@/lib/metric-binding";
 import { currencyValue, MetricDefinition } from "@/components/patterns/metric-definition";
 import { useEffect, useId, useRef, useState } from "react";
-import { BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -39,8 +38,7 @@ export function AboutData({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm">
-          <BookOpen aria-hidden />
+        <Button variant="ghost" size="sm">
           About this data
         </Button>
       </SheetTrigger>

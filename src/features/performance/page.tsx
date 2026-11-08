@@ -31,7 +31,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
       dataStatusAfterControls
       maxDays={appConfig.summaryMaxDays}
       title="Performance tables"
-      description="Review business and platform performance over time, using one calendar grain and explicit sales-channel scope."
+      description="Business and ad platform results, by day, week or month."
       pathname="/performance"
       params={{ ...params, sales_channel: channel ?? "" }}
       agentFilters={{
@@ -46,7 +46,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
           relation: view === "business" ? BUSINESS_RELATION : PLATFORM_RELATION,
           scope:
             view === "business"
-              ? "Selected store, dates and sales channels, aggregated into calendar periods. Summary orders are published order measures; revenue and orders count valid sales channels."
+              ? "Selected store, dates and sales channels, aggregated into calendar periods. Orders are published order measures; revenue and orders count valid sales channels."
               : "Selected store, dates and sales channels, aggregated by advertising source_system and calendar period. Platform attribution is not deduplicated.",
         },
       ]}
@@ -93,7 +93,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
         );
         return (
           <div className="flex flex-col gap-4 sm:gap-6">
-            <ReportControls summary={`${reportLabel}, ${grainLabel}. ${channelLabel}.`}>
+            <ReportControls summary={[`${reportLabel}, ${grainLabel}`, channelLabel]}>
               <SelectFilter
                 name="view"
                 label="Report"

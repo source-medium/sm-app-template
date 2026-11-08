@@ -9,25 +9,21 @@ type Curve = { key: RetentionMetric; description: string };
 const RATE_CURVES: Curve[] = [
   {
     key: "retention",
-    description:
-      "Purchasing customers in each month / original cohort size. Month 0 includes the acquisition purchase. Each line is one cohort, with no averages across cohorts.",
+    description: "Share of each cohort purchasing in a month. Month 0 includes the first purchase.",
   },
   {
     key: "second",
-    description:
-      "Customers who have placed a second order by each month of age / original cohort size. Cumulative, including second orders in Month 0. Each line is one cohort, with no averages across cohorts.",
+    description: "Share of each cohort that has placed a second order by that month. Cumulative.",
   },
 ];
 const VALUE_CURVES: Curve[] = [
   {
     key: "profit",
-    description:
-      "Cumulative gross profit / original cohort size, in reporting currency. Includes acquisition purchases and published costs; missing costs can overstate LTV.",
+    description: "Cumulative gross profit per customer. Missing costs can overstate it.",
   },
   {
     key: "revenue",
-    description:
-      "Cumulative net revenue / original cohort size, in reporting currency. Includes the acquisition month and every later month through each age.",
+    description: "Cumulative net revenue per customer, from the first purchase on.",
   },
 ];
 

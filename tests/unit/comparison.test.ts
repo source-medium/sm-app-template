@@ -8,7 +8,7 @@ import {
   type ComparisonMode,
 } from "@/lib/comparison";
 import { rangeLength, type DateRange } from "@/lib/filters";
-import { kpiDelta } from "@/components/patterns/kpi-delta";
+import { changeCell, kpiDelta } from "@/components/patterns/kpi-delta";
 import { formatCount, formatMoney } from "@/lib/format";
 
 /** A range with no calendar intent, compared the way any custom range is. */
@@ -80,25 +80,41 @@ describe("metric changes", () => {
     expect(() => compareValues<string | number>("10", 5)).toThrow("same type");
   });
 
-  it("uses metric-specific sentiment, including unchanged and neutral changes", () => {
+  it("colors a change by the measure's declared polarity, never by direction alone", () => {
     expect(kpiDelta("150", "100", formatMoney, "higher")).toEqual({
       display: "+50.00 (+50%)",
+      short: "+50%",
       comparedTo: "100.00",
       direction: "up",
-      good: true,
+      tone: "good",
       label: "vs comparison",
     });
     expect(kpiDelta("150", "100", formatMoney, "higher", "vs previous 28 days").label).toBe("vs previous 28 days");
-    expect(kpiDelta("150", "100", formatMoney)).toMatchObject({ good: null });
-    expect(kpiDelta(5n, 10n, formatCount, "lower")).toMatchObject({ good: true });
+    expect(kpiDelta("150", "100", formatMoney, "neutral")).toMatchObject({ tone: null });
+    // Refunds as positive amounts: a rise is bad, a fall is good.
+    expect(kpiDelta("150", "100", formatMoney, "lower")).toMatchObject({ direction: "up", tone: "bad" });
+    expect(kpiDelta(5n, 10n, formatCount, "lower")).toMatchObject({ direction: "down", tone: "good" });
+    expect(kpiDelta(5n, 10n, formatCount, "higher")).toMatchObject({ tone: "bad" });
+    // Signed deductions: refunds moving from -10 to -5 are closer to zero, so better.
+    expect(kpiDelta("-5", "-10", formatMoney, "higher")).toMatchObject({ tone: "good" });
     expect(kpiDelta(0n, 0n, formatCount, "higher")).toMatchObject({
       display: "No change",
-      good: null,
+      tone: null,
       direction: "flat",
     });
-    expect(kpiDelta("10", "0", formatMoney).display).toBe("+10.00 (zero baseline)");
-    expect(kpiDelta("-5", "-10", formatMoney).display).toBe("+5.00 (negative baseline)");
-    expect(kpiDelta(10n, null, formatCount)).toMatchObject({ display: "No comparison value", good: null });
+    expect(kpiDelta(0n, 0n, formatCount, "higher").short).toBeUndefined();
+    expect(kpiDelta("10", "0", formatMoney, "higher").display).toBe("+10.00 (zero baseline)");
+    expect(kpiDelta("10", "0", formatMoney, "higher").short).toBeUndefined();
+    expect(kpiDelta("-5", "-10", formatMoney, "higher").display).toBe("+5.00 (negative baseline)");
+    expect(kpiDelta(10n, null, formatCount, "higher")).toMatchObject({ display: "No comparison value", tone: null });
+  });
+
+  it("puts the same tone on a table cell", () => {
+    expect(changeCell(kpiDelta("90", "100", formatMoney, "higher"))).toEqual({
+      display: "-10.00 (-10%)",
+      tone: "bad",
+    });
+    expect(changeCell(kpiDelta("90", "100", formatMoney, "neutral"))).toEqual({ display: "-10.00 (-10%)" });
   });
 });
 

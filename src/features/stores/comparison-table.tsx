@@ -1,6 +1,6 @@
 import { DataTable } from "@/components/patterns/data-table";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
-import { compareValues, slotChanges, type ComparisonPlan } from "@/lib/comparison";
+import { changeTone, compareValues, slotChanges, type ComparisonPlan } from "@/lib/comparison";
 import { calendarDate, formatChangePercent, formatDate, formatMeasure, formatMoney } from "@/lib/format";
 import { withDates, type DateParams, type DateRange, type SearchParams } from "@/lib/filters";
 import { storeReportPath, switchStoreHref } from "@/lib/store-navigation";
@@ -45,7 +45,7 @@ export function StoreComparisonTable({
       if (issue) notes.push({ id: store.id, label: store.label, issue });
       const status = !summary?.latest_date
         ? "No rows in selected period"
-        : `Latest recorded summary date: ${formatDate(summary.latest_date)}${incomplete ? " · Today may be incomplete" : coverage.issue ? " · Changes hidden" : ""}`;
+        : `${formatDate(summary.latest_date)}${incomplete ? " · Today may be incomplete" : coverage.issue ? " · Changes hidden" : ""}`;
       return {
         id: store.id,
         cells: {
@@ -70,6 +70,7 @@ export function StoreComparisonTable({
                       ? "Negative baseline"
                       : "No comparison value",
             sort: coverage.show && !issue && change.percent !== null ? Number(change.percent) : null,
+            tone: coverage.show && !issue ? (changeTone(change.direction, "higher") ?? undefined) : undefined,
           },
           orders: { display: formatMeasure(summary?.orders ?? null), sort: summary?.orders ?? null },
           spend: { display: formatMoney(summary?.spend ?? null, currency) },
@@ -91,15 +92,15 @@ export function StoreComparisonTable({
               ? [
                   {
                     key: "change",
-                    header: `Revenue change vs ${compared.label}`,
+                    header: `Change vs ${compared.label}`,
                     align: "right" as const,
                     sortable: false,
                   },
                 ]
               : []),
-            { key: "orders", header: "Summary orders", align: "right" },
+            { key: "orders", header: "Orders", align: "right" },
             { key: "spend", header: "Ad spend", align: "right", sortable: false },
-            { key: "status", header: "Selected-period records", sortable: false },
+            { key: "status", header: "Latest record", sortable: false },
           ]}
         />
         {!!notes.length && (
@@ -118,14 +119,10 @@ export function StoreComparisonTable({
   };
   return (
     <div className="flex flex-col gap-4">
-      <p className="max-w-prose text-sm text-muted-foreground">
-        Each store uses its own reporting currency. Revenue and spend are shown separately, without combined totals or
-        rankings across currencies. Summary orders can include fractional attribution.
-      </p>
       {slots.length ? <ActiveBaseline a={table(0)} b={table(1)} /> : table(0)}
       <p className="text-xs text-muted-foreground">
-        Selected-period records describe rows in the selected dates, not warehouse freshness. Pipeline freshness, period
-        completeness and quality checks are not published for any store.{" "}
+        Latest record means rows in the selected dates, not warehouse freshness. Pipeline freshness, period completeness
+        and quality checks are not published for any store. Orders can include fractional attribution.{" "}
         {data.some(({ store }) => store.timeZone === null) &&
           "Some stores have no known time zone; their current-day completeness is unknown."}
       </p>

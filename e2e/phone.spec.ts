@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { appConfig } from "../app.config";
-import { watchConsole, expectNoSeriousA11yViolations, choose } from "./helpers";
+import { appearanceControl, watchConsole, expectNoSeriousA11yViolations, choose, openFilters } from "./helpers";
 
 test("Overview fits a 320px viewport before chart hydration", async ({ page }) => {
   test.skip(!appConfig.nav.some((item) => item.href === "/overview"), "Example view removed");
@@ -30,7 +30,7 @@ for (const route of ["overview", "performance"]) {
     test.skip(!appConfig.nav.some((item) => item.href === `/${route}`), "Example view removed");
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/${route}?store=sample-store-a&from=2026-09-01&to=2026-09-07`);
-    const toggle = page.getByRole("button", { name: "Filters", exact: true });
+    const toggle = page.getByRole("button", { name: /^Filters:/ });
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
     const result =
       route === "overview"
@@ -54,7 +54,7 @@ for (const route of ["overview", "performance"]) {
     const channel = page.getByRole("combobox", { name: "Sales channel", exact: true });
     await expect(channel).toBeVisible();
     await page.getByText("Choose multiple channels", { exact: true }).tap();
-    await page.getByRole("checkbox", { name: "amazon", exact: true }).check();
+    await page.getByRole("checkbox", { name: "Amazon", exact: true }).check();
     await expect(channel).toHaveValue("");
     await expect(page).toHaveURL(appliedURL);
     await expect(csv).toHaveAttribute("href", appliedCSV ?? "");
@@ -127,7 +127,6 @@ test("the top bar fits a small touch screen", async ({ page }) => {
     page.getByRole("button", { name: "Toggle navigation" }),
     page.getByRole("button", { name: "Vibe code" }),
     page.getByTestId("mode-chip"),
-    page.getByRole("button", { name: /^Appearance:/ }),
   ];
   for (const control of controls) {
     const box = await control.boundingBox();
@@ -190,6 +189,7 @@ test("the retention month and its apply action fit a small phone", async ({ page
   test.skip(!appConfig.nav.some((item) => item.href === "/retention"), "Retention was removed");
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto("/retention?as_of=2026-09");
+  await openFilters(page);
   const group = page.getByRole("group", { name: "Cohort observation window" });
   const month = group.getByLabel("Through completed month");
   const apply = group.getByRole("button", { name: "Apply month", exact: true });
@@ -235,7 +235,8 @@ test("the navigation and appearance menu respect reduced motion", async ({ page 
   expect(duration).toBeLessThanOrEqual(0.001);
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
-  await page.getByRole("button", { name: /^Appearance:/ }).click();
+  // Appearance lives in the navigation sheet's footer.
+  await (await appearanceControl(page)).click();
   const menu = page.getByRole("menu", { name: "Appearance" });
   await expect(menu).toBeVisible();
   expect(await menu.evaluate((element) => parseFloat(getComputedStyle(element).animationDuration))).toBeLessThanOrEqual(
@@ -272,7 +273,7 @@ test("the agent prompt composer fits a phone", async ({ page }) => {
 test("appearance can be changed on a phone", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto(appConfig.nav[0]?.href ?? "/");
-  await page.getByRole("button", { name: /^Appearance:/ }).tap();
+  await (await appearanceControl(page)).tap();
   const menu = page.getByRole("menu", { name: "Appearance" });
   const bounds = await menu.boundingBox();
   if (!bounds) throw new Error("The appearance menu is not visible");
@@ -317,6 +318,7 @@ test("phone: name filters fit and the element picker selects by touch", async ({
   test.skip(!appConfig.nav.some((item) => item.href === "/creatives"), "No Creatives view");
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  await openFilters(page);
   await page.getByRole("button", { name: "Add name filter" }).tap();
   await page.getByLabel("Values, one per line").fill("[retargeting]");
   await expectNoSeriousA11yViolations(page);

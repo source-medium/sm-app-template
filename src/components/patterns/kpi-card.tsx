@@ -3,17 +3,22 @@
  * delta row only when its comparison is real, with its dates explained by the
  * report; a card can carry one row per comparison slot.
  */
-import { ArrowDownRight, ArrowUpRight, Info, Minus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { MetricBinding } from "@/lib/metric-binding";
 import { MetricDefinition, type MetricScope } from "@/components/patterns/metric-definition";
 import { cn } from "@/lib/utils";
 import { KpiTrend, type KpiTrendData } from "@/components/charts/kpi-trend";
+import type { ChangeTone } from "@/lib/comparison";
+import { CHANGE_TONE_CLASS } from "./change-tone";
 
 export type KpiDelta = {
+  /** The full change: amount and percentage, or why there is none. */
   display: string;
+  /** The card's at-a-glance form; `display` stays in the card's details. */
+  short?: string;
   direction: "up" | "down" | "flat" | null;
-  good: boolean | null;
+  /** Good or bad for this measure, from its declared polarity; null when neither. */
+  tone: ChangeTone | null;
   comparedTo: string;
   /** Which comparison this row is: "vs previous 28 days". */
   label: string;
@@ -37,7 +42,8 @@ export function KpiCard({
   label: string;
   value: string;
   fullValue?: string;
-  period: string;
+  /** Only what the page's filters do not already say, such as why a value does not apply. */
+  period?: string;
   /** One comparison row per slot, from slotDeltas(). */
   deltas?: KpiDelta[];
   /** A short, query-specific definition. Native details works with touch, keyboard, and no JavaScript. */
@@ -45,14 +51,26 @@ export function KpiCard({
   /** Optional selected-period daily values, with calendar gaps preserved by the caller. */
   trend?: KpiTrendData;
 }) {
+  const compared = deltas.filter((row) => !row.unavailable && row.comparedTo);
+  // Every comparison hidden for one reason reads once; the report's comparison caption says why.
+  const first = deltas[0];
+  const rows =
+    first && deltas.length > 1 && deltas.every((row) => row.unavailable && row.display === first.display)
+      ? [{ ...first, label: "" }]
+      : deltas;
   return (
     <Card data-agent-target={label} data-agent-component="KpiCard" className="gap-2 py-5">
       <CardContent className="flex flex-col gap-1 px-5">
-        {description || binding ? (
+        {description || binding || compared.length > 0 ? (
           <details className="text-sm text-muted-foreground">
             <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
-              <span data-slot="kpi-label">{label}</span>
-              <Info className="size-3.5 shrink-0" aria-hidden />
+              {/* The dotted underline is the cue that the label opens its definition. */}
+              <span
+                data-slot="kpi-label"
+                className="underline decoration-muted-foreground/50 decoration-dotted underline-offset-4"
+              >
+                {label}
+              </span>
               <span className="sr-only">definition. About this number</span>
             </summary>
             {binding && (
@@ -60,9 +78,20 @@ export function KpiCard({
                 <MetricDefinition binding={binding} scope={scope} />
               </div>
             )}
-            <p data-metric-definition={label} className="pt-1 pb-2 text-xs leading-relaxed">
-              {description}
-            </p>
+            {description && (
+              <p data-metric-definition={label} className="pt-1 pb-2 text-xs leading-relaxed">
+                {description}
+              </p>
+            )}
+            {compared.length > 0 && (
+              <ul className="flex flex-col gap-1 pt-1 pb-2 text-xs">
+                {compared.map((row) => (
+                  <li key={row.label}>
+                    {row.display} {row.label}: {row.comparedTo}
+                  </li>
+                ))}
+              </ul>
+            )}
           </details>
         ) : (
           <span data-slot="kpi-label" className="text-sm text-muted-foreground">
@@ -73,39 +102,24 @@ export function KpiCard({
           <span aria-hidden={fullValue && fullValue !== value ? true : undefined}>{value}</span>
           {fullValue && fullValue !== value && <span className="sr-only">{fullValue}</span>}
         </span>
-        <span className="text-xs text-muted-foreground">{period}</span>
-        {deltas.length > 0 && (
-          <ul data-slot="kpi-comparison" className="mt-1 flex flex-col gap-1.5 text-xs">
-            {deltas.map((row) => {
-              const Arrow = row.direction === "flat" ? Minus : row.direction === "down" ? ArrowDownRight : ArrowUpRight;
-              return (
-                <li key={row.label} className="flex flex-col gap-0.5" data-slot="kpi-delta">
-                  <span
-                    className={cn(
-                      "flex items-center gap-1 font-medium",
-                      row.unavailable || row.good === null
-                        ? "text-muted-foreground"
-                        : row.good
-                          ? "text-success"
-                          : "text-destructive",
-                      row.unavailable && "font-normal",
-                    )}
-                  >
-                    {row.direction && <Arrow className="size-3.5 shrink-0" aria-hidden />}
-                    <span className="min-w-0">{row.display}</span>
-                  </span>
-                  <span className="text-muted-foreground">
-                    {row.label}
-                    {row.comparedTo && (
-                      <>
-                        {": "}
-                        <span>{row.comparedTo}</span>
-                      </>
-                    )}
-                  </span>
-                </li>
-              );
-            })}
+        {period && <span className="text-xs text-muted-foreground">{period}</span>}
+        {rows.length > 0 && (
+          <ul data-slot="kpi-comparison" className="mt-1 flex flex-col gap-0.5 text-xs">
+            {/* The signed change and its color carry the direction, so no arrow sits beside it. */}
+            {rows.map((row) => (
+              <li key={row.label} className="flex flex-wrap items-center gap-x-1.5" data-slot="kpi-delta">
+                <span
+                  className={cn(
+                    "font-medium",
+                    row.unavailable || !row.tone ? "text-muted-foreground" : CHANGE_TONE_CLASS[row.tone],
+                    row.unavailable && "font-normal",
+                  )}
+                >
+                  {row.short ?? row.display}
+                </span>
+                <span className="text-muted-foreground">{row.label}</span>
+              </li>
+            ))}
           </ul>
         )}
         {trend && <KpiTrend label={label} {...trend} />}

@@ -9,10 +9,11 @@ import { Disclosure } from "@/components/ui/disclosure";
 import { DataRegion } from "@/components/patterns/data-region";
 import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { KpiCard, type KpiDelta } from "@/components/patterns/kpi-card";
+import type { KpiTrendData } from "@/components/charts/kpi-trend";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
-import { planParams, planRanges, slotChanges, type ComparisonPlan } from "@/lib/comparison";
+import { comparisonDates, planParams, planRanges, slotChanges, type ComparisonPlan } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
 import {
   parseChoice,
@@ -23,7 +24,6 @@ import {
   type ReportDates,
   type SearchParams,
 } from "@/lib/filters";
-import { decimalToNumber } from "@/lib/data/decimal";
 import { MetricDefinition } from "@/components/patterns/metric-definition";
 import { compactHeadline, formatDateRange } from "@/lib/format";
 import { presentOverviewMeasures, type OverviewMeasureKey } from "./measures";
@@ -35,8 +35,7 @@ import { OverviewRevenue } from "./revenue";
 import { OverviewPurchases } from "./purchases";
 import { OverviewHighlights } from "./highlights";
 import { SelectFilter } from "@/components/patterns/select-filter";
-import { overviewTrends, TREND_MODES } from "./trends";
-import { SectionHeader } from "@/components/patterns/section-header";
+import { overviewTrends, SPARKLINE_DAILY_DAYS, sparklineValues, TREND_MODES } from "./trends";
 import { overviewHeadline } from "./headline";
 import { ReportControls } from "@/components/shell/report-controls";
 
@@ -67,7 +66,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         },
       ]}
       title="Overview"
-      description="Executive Summary metrics for one store, with an explicit sales-channel scope."
+      description="How the store is doing across sales, orders, ad spend and efficiency."
       pathname="/overview"
       params={{ ...params, sales_channel: channel ?? "" }}
       agentFilters={{ sales_channel: channel, grain, trend: trendMode }}
@@ -79,7 +78,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         return (
           <>
             <ReportControls
-              summary={`${salesChannelLabel(channel)}. ${TREND_MODES.find((mode) => mode.value === trendMode)?.label}.`}
+              summary={[salesChannelLabel(channel), TREND_MODES.find((mode) => mode.value === trendMode)?.label]}
             >
               <OverviewControls filters={selected} />
               <SelectFilter name="trend" label="Trend values" value={trendMode} options={[...TREND_MODES]} />
@@ -112,55 +111,43 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                     currency={currency}
                     trendMode={trendMode}
                     timeZone={timeZone}
+                    contextHref={withParams(
+                      "/overview/export.json",
+                      {},
+                      {
+                        store: filters.storeId,
+                        ...dates.fixed,
+                        sales_channel: channel ?? "",
+                        grain,
+                        ...comparisonParams,
+                      },
+                    )}
                   />
                 )}
               </DataRegion>
             </Suspense>
-            <div className="flex flex-wrap gap-4 text-sm">
-              <a
-                className="underline"
-                href={withParams(
-                  "/overview/export.json",
-                  {},
-                  {
-                    store: filters.storeId,
-                    ...dates.fixed,
-                    sales_channel: channel ?? "",
-                    grain,
-                    ...comparisonParams,
-                  },
-                )}
-              >
-                Download JSON with context
-              </a>
-              {appConfig.nav.some((item) => item.href === "/geography") && (
-                <Disclosure summary="Explore sales by geography">
-                  <p className="mb-2 max-w-prose text-muted-foreground">
-                    Geography uses valid-order sales and the canonical processed date with a created-date fallback.
-                    Executive Summary uses published summary totals and its own date basis. This transition preserves
-                    store, dates and sales channels but changes the population; geography does not reconcile summary
-                    revenue.
-                  </p>
-                  <Link
-                    prefetch={false}
-                    className="underline"
-                    href={withParams(
-                      "/geography",
-                      {},
-                      {
-                        store: filters.storeId,
-                        ...dates.live,
-                        sales_channel: channel ?? "",
-                        ...comparisonParams,
-                        date_basis: "processed",
-                      },
-                    )}
-                  >
-                    Open valid-order geography
-                  </Link>
-                </Disclosure>
-              )}
-            </div>
+            {appConfig.nav.some((item) => item.href === "/geography") && (
+              <p className="text-sm text-muted-foreground">
+                <Link
+                  prefetch={false}
+                  className="font-medium text-foreground underline underline-offset-4"
+                  href={withParams(
+                    "/geography",
+                    {},
+                    {
+                      store: filters.storeId,
+                      ...dates.live,
+                      sales_channel: channel ?? "",
+                      ...comparisonParams,
+                      date_basis: "processed",
+                    },
+                  )}
+                >
+                  Explore sales by geography
+                </Link>
+                . It counts valid orders by processed date, so its totals can differ from these.
+              </p>
+            )}
           </>
         );
       }}
@@ -176,8 +163,11 @@ function OverviewView({
   currency,
   trendMode,
   timeZone,
+  contextHref,
 }: {
   timeZone: string;
+  /** The JSON export of this exact report. */
+  contextHref: string;
   report: OverviewReport;
   filters: OverviewFilters;
   dateParams: ReportDates;
@@ -187,8 +177,7 @@ function OverviewView({
 }) {
   const data = report.current;
   const changes = plan ? slotChanges(plan, report.coverage) : null;
-  const period = formatDateRange(filters.range);
-  const presentedDays = new Map(data.days.map((day) => [day.date, presentOverviewMeasures(day, currency)]));
+  const dayByDate = new Map(data.days.map((day) => [day.date, day]));
   const currentMeasures = presentOverviewMeasures(data.totals, currency);
   const baselineMeasures = report.baselines.map((entry) =>
     presentOverviewMeasures(entry?.data?.totals ?? null, currency),
@@ -199,13 +188,27 @@ function OverviewView({
     filters.grain === "day"
       ? "#summary-heading"
       : `${withParams("/overview", {}, { store: filters.storeId, ...dateParams.live, sales_channel: filters.channel ?? "", ...planParams(plan), grain: "day" })}#summary-heading`;
-  function trend(key: OverviewMeasureKey) {
+  // Each comparison's days lined up with the selected dates the way the main chart lines them up.
+  const selectedDays = dates.map((date) => dayByDate.get(date));
+  const comparisonDays = (plan?.slots ?? []).map((slot, index) => {
+    const days = report.baselines[index]?.data?.days;
+    if (!slot.range || !days) return null;
+    const byDate = new Map(days.map((day) => [day.date, day]));
+    return {
+      label: slot.short,
+      days: comparisonDates(filters.range, slot).map((date) => (date ? byDate.get(date) : undefined)),
+    };
+  });
+  function trend(key: OverviewMeasureKey): KpiTrendData {
     return {
       tableHref: dailyTableHref,
-      values: dates.map((date) => {
-        const amount = presentedDays.get(date)?.[key].amount ?? null;
-        return typeof amount === "string" ? decimalToNumber(amount) : amount;
-      }),
+      grain: dates.length > SPARKLINE_DAILY_DAYS ? "week" : "day",
+      values: sparklineValues(selectedDays, key, currency),
+      comparisons: plan
+        ? comparisonDays.map((slot) =>
+            slot ? { label: slot.label, values: sparklineValues(slot.days, key, currency) } : null,
+          )
+        : undefined,
     };
   }
   /** One row per comparison slot: the change when coverage allows it, otherwise why not. */
@@ -244,15 +247,15 @@ function OverviewView({
     },
     {
       key: "orders",
-      label: "Summary orders",
+      label: "Orders",
       description:
-        "Published order counts on the valid sales channels within the selected scope. Draft, exchanged and excluded rows are not sales, and this published measure can still differ from the number of valid orders.",
+        "Published order counts on the valid sales channels within the selected scope. Draft, exchanged and excluded rows are not sales, and this published measure can include fractional attribution and differ from the number of valid orders.",
     },
     {
       key: "average",
-      label: "Revenue per summary order",
+      label: "Revenue per order",
       description:
-        "Net revenue divided by Summary orders for the same store and period. It uses the published summary count, so it can differ from average revenue per valid order.",
+        "Net revenue divided by Orders for the same store and period. It uses the published summary count, so it can differ from average revenue per valid order.",
     },
     {
       key: "spend",
@@ -319,11 +322,6 @@ function OverviewView({
           kind="line"
           categoryHeader="Date"
           titleSuffix={trendMode === "cumulative" ? "to date" : "by day"}
-          description={
-            showLines
-              ? `Selected period and dashed comparison (${baseline?.label ?? "comparison"}). Comparison dates appear in the table and tooltip.`
-              : "Selected period"
-          }
           metrics={charts.map((chart) => ({
             ...chart,
             definition: (
@@ -338,7 +336,7 @@ function OverviewView({
                 ? [
                     {
                       key: `previous_${chart.key}`,
-                      label: capitalize(baseline?.label ?? "comparison"),
+                      label: capitalize(baseline?.short ?? "comparison"),
                       color: "var(--chart-2)",
                       dashed: true,
                     },
@@ -373,6 +371,7 @@ function OverviewView({
 
   return (
     <div className="flex flex-col gap-6">
+      {pick("headline")}
       <section aria-label="Period totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards
           .filter((card) => ["revenue", "orders", "spend", "mer"].includes(card.key))
@@ -394,12 +393,11 @@ function OverviewView({
                 fullValue={current.display}
                 trend={trend(card.key)}
                 deltas={deltas(card.key)}
-                period={period}
               />
             );
           })}
       </section>
-      {/* Comparison coverage sits right under the primary metrics, so results stay above the fold. */}
+      {/* The switch scopes what follows; the KPI cards above show both comparisons. */}
       {plan && (
         <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)}>
           <p>
@@ -439,52 +437,53 @@ function OverviewView({
           />
         ) : null,
       )}
-      {pick("headline")}
-      <section aria-labelledby="trends-heading" className="flex flex-col gap-3">
-        <SectionHeader
-          id="trends-heading"
-          title="Performance trends"
-          description={
-            trendMode === "cumulative"
-              ? "Each line starts at its own period's first day. A missing date or measure stops its cumulative line; missing values are never treated as zeros. KPI cards and the business summary remain period totals."
-              : undefined
-          }
-        />
+      <section aria-label="Performance trends" className="flex flex-col gap-3">
+        {trendMode === "cumulative" && (
+          <p className="max-w-prose text-sm text-muted-foreground">
+            Each line starts at its own period&apos;s first day. A missing date or measure stops its cumulative line;
+            missing values are never treated as zeros. KPI cards and the business summary remain period totals.
+          </p>
+        )}
         {pick("charts")}
       </section>
       {pick("highlights")}
-      <Disclosure summary="Secondary metrics and business details">
-        <div className="space-y-6">
-          <section aria-label="Secondary metrics" className="grid gap-4 sm:grid-cols-2">
-            {cards
-              .filter((card) => ["average", "sessions"].includes(card.key))
-              .map((card) => (
-                <KpiCard
-                  key={card.key}
-                  label={card.label}
-                  value={currentMeasures[card.key].display}
-                  period={period}
-                  description={card.description}
-                  binding={overviewBindings.find((binding) => binding.id === card.key)}
-                  scope={scope}
-                  trend={trend(card.key)}
-                  deltas={deltas(card.key)}
-                />
-              ))}
-          </section>
-          {pick("purchases")}
-        </div>
-      </Disclosure>
-      {pick("revenue")}
-      <Disclosure summary="Business summary and CSV" id="summary-details">
-        <OverviewSummary
-          data={data}
-          filters={filters}
-          dates={dateParams.fixed}
-          currency={currency}
-          timeZone={timeZone}
-        />
-      </Disclosure>
+      {/* More of the report, folded: set apart from the sections above so it never reads as their notes. */}
+      <div className="flex flex-col gap-1 border-t pt-3">
+        <Disclosure summary="More metrics">
+          <div className="space-y-6">
+            <section aria-label="Secondary metrics" className="grid gap-4 sm:grid-cols-2">
+              {cards
+                .filter((card) => ["average", "sessions"].includes(card.key))
+                .map((card) => (
+                  <KpiCard
+                    key={card.key}
+                    label={card.label}
+                    value={currentMeasures[card.key].display}
+                    description={card.description}
+                    binding={overviewBindings.find((binding) => binding.id === card.key)}
+                    scope={scope}
+                    trend={trend(card.key)}
+                    deltas={deltas(card.key)}
+                  />
+                ))}
+            </section>
+            {pick("purchases")}
+          </div>
+        </Disclosure>
+        {pick("revenue")}
+        <Disclosure summary="Daily summary and downloads" id="summary-details">
+          <OverviewSummary
+            data={data}
+            filters={filters}
+            dates={dateParams.fixed}
+            currency={currency}
+            timeZone={timeZone}
+          />
+          <a className="mt-3 inline-block text-sm underline underline-offset-4" href={contextHref}>
+            Download JSON with context
+          </a>
+        </Disclosure>
+      </div>
     </div>
   );
 }

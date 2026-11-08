@@ -20,7 +20,7 @@ export function RefreshReport() {
         <TooltipTrigger asChild>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="icon-sm"
             disabled={pending}
             aria-label="Refresh data"

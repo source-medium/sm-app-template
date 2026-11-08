@@ -1,31 +1,32 @@
 /** Server-side presentation for a KPI comparison; metric meaning stays with its feature. */
 import "server-only";
 import {
+  changeTone,
   compareValues,
   type Baseline,
   type ComparisonPlan,
   type MetricValue,
   type PeriodChanges,
+  type Polarity,
 } from "@/lib/comparison";
 import { formatChangePercent, formatDateRange } from "@/lib/format";
+import type { DataTableCell } from "./data-table";
 import type { KpiDelta } from "./kpi-card";
 
 /**
- * One change row for a KPI card. `label` names the baseline the row compares
- * with ("vs previous 28 days"); slotDeltas() builds it from each plan slot.
+ * One change for a KPI card or a table cell. `better` comes from the measure's
+ * own definition: it decides the color, so a rise in refunds never reads as
+ * good. `label` names the baseline the row compares with ("vs previous 28
+ * days"); slotDeltas() builds it from each plan slot.
  */
 export function kpiDelta<T extends MetricValue>(
   current: T | null,
   baseline: T | null,
   format: (value: T | null) => string,
-  better: "higher" | "lower" | "neutral" = "neutral",
+  better: Polarity,
   label = "vs comparison",
 ): KpiDelta {
   const change = compareValues(current, baseline);
-  const good =
-    better === "neutral" || change.direction === null || change.direction === "flat"
-      ? null
-      : (change.direction === "up") === (better === "higher");
   let display = baseline === null ? "No comparison value" : "No current value";
   if (change.difference !== null) {
     const amount = `${change.direction === "up" ? "+" : ""}${format(change.difference)}`;
@@ -39,12 +40,25 @@ export function kpiDelta<T extends MetricValue>(
             : "percentage unavailable";
     display = change.direction === "flat" ? "No change" : `${amount} (${relative})`;
   }
-  return { display, direction: change.direction, good, comparedTo: format(baseline), label };
+  return {
+    display,
+    // The percentage reads at a glance; a change with none keeps its amount.
+    short: change.direction !== "flat" && change.percent !== null ? formatChangePercent(change.percent) : undefined,
+    direction: change.direction,
+    tone: changeTone(change.direction, better),
+    comparedTo: format(baseline),
+    label,
+  };
 }
 
-/** How a KPI row names its baseline: "vs previous 28 days". */
+/** A table's change cell: the full change, colored the same way as a KPI card. */
+export function changeCell(delta: KpiDelta): DataTableCell {
+  return { display: delta.display, tone: delta.tone ?? undefined };
+}
+
+/** How a KPI row names its baseline: "vs previous 28 days", "vs last year". */
 function baselineLabel(slot: Baseline): string {
-  return `vs ${slot.label}`;
+  return `vs ${slot.short}`;
 }
 
 /** A row that explains why a slot has no change, in place of a delta. */
@@ -52,7 +66,7 @@ function unavailableDelta(slot: Baseline, reason?: string | null): KpiDelta {
   return {
     display: reason ?? slot.note ?? "Unavailable",
     direction: null,
-    good: null,
+    tone: null,
     comparedTo: slot.range ? formatDateRange(slot.range) : "",
     label: baselineLabel(slot),
     unavailable: true,
@@ -73,7 +87,8 @@ export function slotDeltas(
 ): KpiDelta[] {
   if (!plan) return [];
   return plan.slots.flatMap((baseline, index) => {
-    if (baseline.mode === "off") return [];
+    // A second slot that repeats the first adds no row; the comparison caption says why.
+    if (baseline.mode === "off" || baseline.repeatsFirst) return [];
     const slot = index as 0 | 1;
     const coverage = changes?.[slot];
     const row = coverage?.show ? change(baselineLabel(baseline), slot) : null;
