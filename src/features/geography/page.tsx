@@ -16,7 +16,7 @@ import { MetricChart } from "@/components/charts/metric-chart";
 import { buildChartData, type PointValue } from "@/components/charts/chart-data";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
-import { kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
+import { changeCell, kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { Disclosure } from "@/components/ui/disclosure";
 import { formatCount, formatDate, formatMoneyIn, formatPercent } from "@/lib/format";
@@ -169,14 +169,14 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                                 data.total.revenue,
                                 slotValue(data.total, slot, "revenue"),
                                 money,
-                                "neutral",
+                                "higher",
                                 label,
                               )
                             : kpiDelta(
                                 String(data.total.orders),
                                 slotValue(data.total, slot, "orders"),
                                 (value) => formatCount(value === null ? null : BigInt(value)),
-                                "neutral",
+                                "higher",
                                 label,
                               ),
                       );
@@ -235,7 +235,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                               ? [
                                   {
                                     key: "change",
-                                    header: `Change vs ${baseline.label}`,
+                                    header: `Change vs ${baseline.short}`,
                                     align: "right" as const,
                                     sortable: false,
                                   },
@@ -248,9 +248,9 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                               location: { display: label(row.location), href: link(row.location) },
                               orders: { display: formatCount(row.orders) },
                               revenue: { display: row.records === 0n ? "No matching records" : money(row.revenue) },
-                              change: {
-                                display: kpiDelta(row.revenue, slotValue(row, slot, "revenue"), money).display,
-                              },
+                              change: changeCell(
+                                kpiDelta(row.revenue, slotValue(row, slot, "revenue"), money, "higher"),
+                              ),
                             },
                           }))}
                           totals={{

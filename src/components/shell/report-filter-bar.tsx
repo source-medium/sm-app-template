@@ -11,7 +11,7 @@ import { FilterBar } from "@/components/shell/filter-bar";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { StoreOption } from "@/lib/data/stores.server";
 import { WarehouseError } from "@/lib/data/warehouse-error";
-import type { ComparisonPlan } from "@/lib/comparison";
+import { defaultSecondComparison, type ComparisonPlan } from "@/lib/comparison";
 import {
   datePresets,
   single,
@@ -139,6 +139,7 @@ function StoreFilterBar({
         dates={dates && today !== null}
         comparison={plan?.slots[0].mode}
         comparison2={plan?.slots[1].mode}
+        comparison2Default={plan ? defaultSecondComparison(plan.slots[0].mode, plan.intent) : undefined}
         rangeLabel={range ? formatDateRange(range) : undefined}
         defaultOpen={dateIssue}
       />

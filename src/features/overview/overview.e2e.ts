@@ -399,7 +399,7 @@ test("overview: every headline shows two comparison rows, and the overlay switch
   await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07");
   const totals = page.getByRole("region", { name: "Period totals" });
   await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs previous 7 days" })).toHaveCount(4);
-  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs same period last year" })).toHaveCount(4);
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs last year" })).toHaveCount(4);
   await expect(page.getByLabel("Second comparison")).toHaveValue("year");
   const caption = page.locator('details[aria-label="Comparison periods"]');
   await expect(caption).toContainText("Aug 25, 2026 – Aug 31, 2026 (previous 7 days, 7 days)");
@@ -407,13 +407,14 @@ test("overview: every headline shows two comparison rows, and the overlay switch
   const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
   await expect(card).toContainText("Previous 7 days");
   const group = page.getByRole("group", { name: "Comparison shown in charts and tables" });
-  await group.getByRole("button", { name: "Same period last year" }).click();
+  await group.getByRole("button", { name: "Last year" }).click();
   await expect(page).toHaveURL(/baseline=b/);
-  await expect(card).toContainText("Same period last year");
-  // The second slot is a duplicate of the first: it says so and is shown once.
+  await expect(card).toContainText("Last year");
+  // The second slot is a duplicate of the first: cards show it once and the comparison dates say why.
   await choose(page, "Second comparison", "previous");
-  await expect(page.getByText("This matches the first comparison", { exact: false }).first()).toBeVisible();
-  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs previous 7 days" })).toHaveCount(8);
+  await expect(caption).toContainText("This matches the first comparison");
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs previous 7 days" })).toHaveCount(4);
+  await expect(group).toBeHidden();
 });
 
 test("overview: the report form stays in place when the first filter applies", async ({ page }) => {
@@ -431,6 +432,21 @@ test("overview: the report form stays in place when the first filter applies", a
   expect(await form?.evaluate((node) => node.isConnected)).toBe(true);
 });
 
+test("overview: a new range gets its own second comparison unless one was chosen", async ({ page }) => {
+  await page.goto("/overview?store=sample-store-a");
+  const totals = page.getByRole("region", { name: "Period totals" });
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs last year" })).toHaveCount(4);
+  await page.getByRole("button", { name: /^Change dates/ }).click();
+  await page.getByRole("link", { name: "Yesterday", exact: true }).click();
+  await expect(page).toHaveURL(/range=yesterday/);
+  await expect(page).not.toHaveURL(/compare2=/);
+  // A single day's date last year is usually another weekday, so its default matches weekdays.
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs same weekday last year" })).toHaveCount(4);
+  await choose(page, "Second comparison", "year");
+  await expect(page).toHaveURL(/compare2=year/);
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs last year" })).toHaveCount(4);
+});
+
 test("overview: baseline overlays follow chart history, copied links and applied filters", async ({
   page,
   context,
@@ -439,7 +455,7 @@ test("overview: baseline overlays follow chart history, copied links and applied
   await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07");
   const group = page.getByRole("group", { name: "Comparison shown in charts and tables" });
   const previous = group.getByRole("button", { name: "Previous 7 days", exact: true });
-  const year = group.getByRole("button", { name: "Same period last year", exact: true });
+  const year = group.getByRole("button", { name: "Last year", exact: true });
   await expect(year).not.toHaveAttribute("inert");
   const requests: string[] = [];
   page.on("request", (request) => {
@@ -450,9 +466,7 @@ test("overview: baseline overlays follow chart history, copied links and applied
   await previous.click();
   await page.goBack();
   await expect(year).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator('[data-slot="card"]', { hasText: "Net revenue by day" })).toContainText(
-    "Same period last year",
-  );
+  await expect(page.locator('[data-slot="card"]', { hasText: "Net revenue by day" })).toContainText("Last year");
   await page.goForward();
   await expect(previous).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-slot="card"]', { hasText: "Orders by day" })).toContainText("Previous 7 days");

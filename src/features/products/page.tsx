@@ -10,7 +10,7 @@ import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { KpiCard, type KpiDelta } from "@/components/patterns/kpi-card";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
-import { kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
+import { changeCell, kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { ProductCosts } from "./costs";
 import { ProductPhoto } from "./product-image";
@@ -33,6 +33,7 @@ import {
   productOptions,
   PRODUCT_DIMENSIONS,
   PRODUCT_METRICS,
+  productPolarity,
   PRODUCT_RANKINGS,
 } from "./queries";
 
@@ -153,7 +154,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         first?.[`total_${metric}`] ?? null,
                         first?.[`total_${slotColumn(slot, metric)}`] ?? null,
                         formatValue,
-                        "higher",
+                        productPolarity(metric),
                         label,
                       ),
                     );
@@ -199,7 +200,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                             : `Top 10 ${options.ranking} vs ${plan?.slots[0].label ?? "the first comparison"}.`
                         }
                         hasMore={data.hasMore}
-                        comparisonLabel={compare && baseline ? `Change vs ${baseline.label}` : undefined}
+                        comparisonLabel={compare && baseline ? `Change vs ${baseline.short}` : undefined}
                         rows={data.rows.map((row) => ({
                           id: row.product_key,
                           label: productName(row),
@@ -216,7 +217,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                             row.minimum_value,
                           ),
                           change: compare
-                            ? kpiDelta(row[options.metric], row[slotColumn(slot, options.metric)], format).display
+                            ? changeCell(
+                                kpiDelta(
+                                  row[options.metric],
+                                  row[slotColumn(slot, options.metric)],
+                                  format,
+                                  productPolarity(options.metric),
+                                ),
+                              )
                             : undefined,
                         }))}
                       />

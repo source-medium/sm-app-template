@@ -6,7 +6,7 @@ import type { MetricBinding } from "@/lib/metric-binding";
  */
 import type { AgentReportContext } from "@/lib/agent-prompt";
 import type { ViewerAccess } from "@/lib/auth/require-viewer";
-import { planParams, type ComparisonPlan } from "@/lib/comparison";
+import type { ComparisonPlan } from "@/lib/comparison";
 import { withDates, withParams, type DateParams, type DateRange, type SearchParams } from "@/lib/filters";
 import type { ReportSource } from "@/lib/report-data";
 import { AboutData } from "./about-data";
@@ -64,9 +64,15 @@ export function ReportHeader({
   /** Absent when the store's date is unknown; then the report is not loaded. */
   view?: ReportView;
 }) {
-  // Shared links pin the applied dates, so a colleague sees exactly this period and its comparisons.
+  // Shared links pin the applied dates and both comparisons, defaults included, so a colleague sees exactly
+  // this period and its comparisons. Other links leave a default second comparison out (planParams).
+  const pinned: Record<string, string> = view?.plan
+    ? { compare: view.plan.slots[0].mode, compare2: view.plan.slots[1].mode }
+    : {};
   const shareHref =
-    storeId && view ? withParams(pathname, dates ? withDates(params, view.fixed) : params, { store: storeId }) : null;
+    storeId && view
+      ? withParams(pathname, dates ? withDates(params, view.fixed) : params, { store: storeId, ...pinned })
+      : null;
   // Saved views keep rolling presets rolling, and only a view that loads is worth saving.
   const saveHref =
     storeId && view && !view.issue
@@ -80,7 +86,7 @@ export function ReportHeader({
       ...view?.derived,
       ...(storeId ? { store: storeId } : {}),
       ...(view && dates && !view.issue ? view.range : {}),
-      ...(view?.plan && !view.issue ? planParams(view.plan) : {}),
+      ...(view?.plan && !view.issue ? { compare: view.plan.slots[0].mode, compare2: view.plan.slots[1].mode } : {}),
     },
     currency,
     ...(allStores ? { storeScope: "all" as const } : {}),

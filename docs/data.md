@@ -380,18 +380,18 @@ Quarter to date in October compares with the previous quarter even though its
 dates look like Month to date, and a to-date preset that reached its period's
 end is the full period. Dates without a preset are judged against the store's date:
 
-| Selected range                   | Previous period                                     | Same period last year       | 52 weeks earlier |
-| -------------------------------- | --------------------------------------------------- | --------------------------- | ---------------- |
-| One day                          | Same weekday a week earlier                         | Same calendar date          | 364 days earlier |
-| Rolling N days ending yesterday  | The N days before                                   | Both dates one year earlier | 364 days earlier |
-| A full week / week to date       | The week before / its same weekdays                 | Both dates one year earlier | 364 days earlier |
-| A full calendar month            | The previous full month, lengths may differ         | The same month last year    | 364 days earlier |
-| Month to date                    | The previous month through the same day, or its end | The same dates last year    | 364 days earlier |
-| A full quarter / quarter to date | The previous quarter / its matching days            | The same quarter last year  | 364 days earlier |
-| A full year / year to date       | The previous year / its same dates (= last year)    | The same dates last year    | 364 days earlier |
-| Anything else                    | The equal-length range before                       | Both dates one year earlier | 364 days earlier |
+| Selected range                   | Previous period                                     | Same period last year       | Same weekdays last year |
+| -------------------------------- | --------------------------------------------------- | --------------------------- | ----------------------- |
+| One day                          | Same weekday a week earlier                         | Same calendar date          | 364 days earlier        |
+| Rolling N days ending yesterday  | The N days before                                   | Both dates one year earlier | 364 days earlier        |
+| A full week / week to date       | The week before / its same weekdays                 | Both dates one year earlier | 364 days earlier        |
+| A full calendar month            | The previous full month, lengths may differ         | The same month last year    | 364 days earlier        |
+| Month to date                    | The previous month through the same day, or its end | The same dates last year    | 364 days earlier        |
+| A full quarter / quarter to date | The previous quarter / its matching days            | The same quarter last year  | 364 days earlier        |
+| A full year / year to date       | The previous year / its same dates (= last year)    | The same dates last year    | 364 days earlier        |
+| Anything else                    | The equal-length range before                       | Both dates one year earlier | 364 days earlier        |
 
-Position-aligned baselines (previous N days or weeks, 52 weeks earlier, quarter
+Position-aligned baselines (previous N days or weeks, same weekdays last year, quarter
 to date) require equal day counts. Calendar-aligned ones (last year, a previous
 month, quarter or year) may differ in length; the caption shows both day counts,
 and daily overlays leave days the shorter period lacks as gaps. Month to date
@@ -403,11 +403,19 @@ The settings live in the URL: `compare` is the first slot (`previous`, `year`,
 `weekday`, `off`; `off` turns both off). Older links keep working, but
 `previous` now follows the table above, so a link to a single day or a full
 month compares with a different period than it used to. `compare2` is the
-second slot (default `year`, or `previous` when the first is already last
-year), and `baseline=a|b` picks which slot the charts and tables show. A second
-slot that resolves to the same dates as the first is not queried; it says it
-matches. KPI cards show one change row per slot, each labelled with its baseline
-("vs previous 28 days") and exact dates. Charts overlay one baseline and tables
+second slot (default `year`; `weekday` for a single day, whose date last year
+usually falls on another weekday; `previous` when the first is already last
+year), and `baseline=a|b` picks which slot the charts and tables show. Links
+and the filter form leave `compare2` out while it is the range's default, so
+moving from Last 28 days to Yesterday gives Yesterday's default; a second
+comparison someone chose is kept. A shared link pins both, defaults included. A second
+slot that resolves to the same dates as the first is not queried: KPI cards show
+it once and the comparison dates say why. KPI cards show one change row per
+slot, each labelled with its baseline's short name ("vs previous 28 days", "vs
+last year"), which the switch, chart legends and change columns also use; the
+caption and summary sentences use the full name ("same period last year").
+KPI sparklines draw the comparison the switch shows dashed behind the selected
+period, on one scale and lined up the way the main chart lines them up. Charts overlay one baseline and tables
 show one change column; the caption's switch changes both without a request,
 because both slots' data arrive with the page. Comparison settings survive
 filters, report links and sidebar navigation to another comparison-enabled view.
@@ -452,10 +460,16 @@ Ratios are recomputed from each period's totals, not averaged from daily ratios.
 owns server-formatted KPI changes. Absolute money/count changes stay exact.
 Percentages are `(current - baseline) / baseline`, displayed to two decimals.
 Zero, negative, and missing baselines have explicit states instead of a
-misleading percentage. Unchanged values are neutral. The default color is
-neutral; a feature must explicitly choose whether higher or lower is better.
-Overview uses higher-is-better for net revenue, orders, MER and
-website sessions. Percentage-valued metrics should label absolute changes as
+misleading percentage. Unchanged values are neutral. Every compared measure
+declares which way is good beside its definition (`Polarity` in
+`lib/comparison.ts`): `higher` (revenue, orders, revenue per order, units,
+profit, MER, sessions),
+`lower` (refunds and refunded units as positive amounts) or `neutral` (spend,
+discounts, where a move is neither good nor bad on its own).
+A signed deduction stored as a negative number is `higher`, because closer to
+zero is better. `kpiDelta()` requires it, and `changeCell()` gives a table's
+change column the same color, so a card and a table never disagree. Color is
+never the only cue: every change keeps its sign. Percentage-valued metrics should label absolute changes as
 percentage points, distinct from relative percent changes. Product gainers and
 decliners are ranked in SQL against the first slot, so that list has one
 variant and offers no switch; choose last year as the first comparison to rank

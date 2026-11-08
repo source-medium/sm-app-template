@@ -4,6 +4,7 @@ import {
   comparisonDates,
   coverageIssue,
   parseComparisonPlan,
+  planParams,
   rangeIntent,
   slotChanges,
 } from "@/lib/comparison";
@@ -58,7 +59,7 @@ describe("baselines by intent", () => {
     });
   });
 
-  it("uses the previous quarter, the preceding days, the same weekday, and 52 weeks earlier", () => {
+  it("uses the previous quarter, the preceding days, the same weekday, and the same weekdays last year", () => {
     expect(baselineFor({ from: "2026-07-01", to: "2026-09-30" }, "full_quarter", "previous")).toMatchObject({
       range: { from: "2026-04-01", to: "2026-06-30" },
       alignment: "calendar",
@@ -79,7 +80,13 @@ describe("baselines by intent", () => {
     expect(baselineFor({ from: "2026-09-26", to: "2026-10-23" }, "rolling", "weekday")).toMatchObject({
       range: { from: "2025-09-27", to: "2025-10-24" },
       alignment: "position",
-      label: "same weekdays 52 weeks earlier",
+      label: "same weekdays last year",
+      short: "same weekdays last year",
+    });
+    // KPI rows and the switch use the short name; the caption and headline keep the exact one.
+    expect(baselineFor({ from: "2026-09-26", to: "2026-10-23" }, "rolling", "year")).toMatchObject({
+      label: "same period last year",
+      short: "last year",
     });
   });
 
@@ -110,6 +117,42 @@ describe("comparison plan", () => {
     expect(off.slots.map((slot) => slot.range)).toEqual([null, null]);
     expect(off.slots[off.active]).toMatchObject({ mode: "off", range: null });
     expect(parseComparisonPlan({ compare: "injected" }, range, today).slots[0].mode).toBe("previous");
+  });
+
+  it("matches weekdays last year for a single day, where the same date is usually another weekday", () => {
+    // Friday Oct 23, 2026: last year's Oct 23 was a Thursday, 364 days earlier is Friday Oct 24, 2025.
+    const day = { from: "2026-10-23", to: "2026-10-23" };
+    const plan = parseComparisonPlan({}, day, today);
+    expect(plan.slots.map((slot) => slot.mode)).toEqual(["previous", "weekday"]);
+    expect(plan.slots[0]).toMatchObject({
+      range: { from: "2026-10-16", to: "2026-10-16" },
+      short: "same weekday last week",
+    });
+    expect(plan.slots[1]).toMatchObject({
+      range: { from: "2025-10-24", to: "2025-10-24" },
+      short: "same weekday last year",
+    });
+    // An explicit choice still wins.
+    expect(parseComparisonPlan({ compare2: "year" }, day, today).slots[1].range).toEqual({
+      from: "2025-10-23",
+      to: "2025-10-23",
+    });
+    expect(parseComparisonPlan({ compare: "weekday" }, day, today).slots[1].mode).toBe("previous");
+  });
+
+  it("leaves a default second comparison out of links, so another range gets its own default", () => {
+    const day = { from: "2026-10-23", to: "2026-10-23" };
+    expect(planParams(parseComparisonPlan({}, range, today))).toEqual({ compare: "previous", compare2: null });
+    expect(planParams(parseComparisonPlan({}, day, today))).toEqual({ compare: "previous", compare2: null });
+    // A chosen one that differs from the default is kept.
+    expect(planParams(parseComparisonPlan({ compare2: "year" }, day, today))).toEqual({
+      compare: "previous",
+      compare2: "year",
+    });
+    expect(planParams(parseComparisonPlan({ compare: "off" }, range, today))).toEqual({
+      compare: "off",
+      compare2: null,
+    });
   });
 
   it("explains a duplicate second slot instead of querying it twice, and picks the active overlay", () => {

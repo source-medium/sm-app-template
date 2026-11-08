@@ -80,7 +80,7 @@ describe("overview headline", () => {
     );
   });
 
-  it("names each baseline by what it compares: a weekday, a calendar month, 52 weeks earlier", () => {
+  it("names each baseline by what it compares: a weekday, a calendar month, the same weekday last year", () => {
     const day = { storeId: "s", range: { from: "2026-09-28", to: "2026-09-28" } };
     expect(
       overviewHeadline(
@@ -108,7 +108,7 @@ describe("overview headline", () => {
         baselineFor(day.range, "single_day", "weekday"),
         "USD",
       ),
-    ).toMatch(/against the same weekday 52 weeks earlier\./);
+    ).toMatch(/against the same weekday last year\./);
   });
 
   it("says nothing without a trustworthy comparison", () => {

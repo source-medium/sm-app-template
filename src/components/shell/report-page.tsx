@@ -184,7 +184,10 @@ export async function ReportPage({
   const issue = dates ? dateRangeIssue(params, today, maxDays) : null;
   const dateParams = reportDates(params, range, issue);
   const plan = comparisons && dates ? parseComparisonPlan(params, range, today) : undefined;
-  if (plan) params = { ...params, ...planParams(plan) };
+  if (plan) {
+    const carried = planParams(plan);
+    params = { ...params, compare: carried.compare, compare2: carried.compare2 ?? undefined };
+  }
   // Which slot the charts and tables show is a presentation choice made without a request.
   const presentationParams = plan ? [...livePresentationParams, BASELINE_PARAM] : livePresentationParams;
   // Read on the server, so a reload paints each chart's remembered measure without a client-side switch.

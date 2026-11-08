@@ -1,6 +1,6 @@
 import { DataTable } from "@/components/patterns/data-table";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
-import { compareValues, slotChanges, type ComparisonPlan } from "@/lib/comparison";
+import { changeTone, compareValues, slotChanges, type ComparisonPlan } from "@/lib/comparison";
 import { calendarDate, formatChangePercent, formatDate, formatMeasure, formatMoney } from "@/lib/format";
 import { withDates, type DateParams, type DateRange, type SearchParams } from "@/lib/filters";
 import { storeReportPath, switchStoreHref } from "@/lib/store-navigation";
@@ -70,6 +70,7 @@ export function StoreComparisonTable({
                       ? "Negative baseline"
                       : "No comparison value",
             sort: coverage.show && !issue && change.percent !== null ? Number(change.percent) : null,
+            tone: coverage.show && !issue ? (changeTone(change.direction, "higher") ?? undefined) : undefined,
           },
           orders: { display: formatMeasure(summary?.orders ?? null), sort: summary?.orders ?? null },
           spend: { display: formatMoney(summary?.spend ?? null, currency) },

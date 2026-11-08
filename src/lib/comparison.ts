@@ -28,7 +28,7 @@ import {
 export const COMPARISON_OPTIONS = [
   { value: "previous", label: "Previous period" },
   { value: "year", label: "Same period last year" },
-  { value: "weekday", label: "52 weeks earlier" },
+  { value: "weekday", label: "Same weekdays last year" },
   { value: "off", label: "Off" },
 ] as const;
 export type ComparisonMode = (typeof COMPARISON_OPTIONS)[number]["value"];
@@ -42,10 +42,14 @@ export type Alignment = "position" | "calendar";
 export type Comparison = { mode: ComparisonMode; range: DateRange | null; alignment?: Alignment };
 export type Baseline = Comparison & {
   alignment: Alignment;
-  /** How the caption and KPI rows name it: "previous 28 days", "same period last year". */
+  /** How the caption and headline name it: "previous 28 days", "same period last year". */
   label: string;
+  /** How KPI rows and the switch name it: "previous 28 days", "last year". */
+  short: string;
   /** Why there is no range, when there is none. */
   note: string | null;
+  /** The second slot resolved to the first slot's dates, so views show it once (Last year vs previous year). */
+  repeatsFirst?: boolean;
 };
 export type RangeIntent =
   | "single_day"
@@ -167,13 +171,15 @@ export function baselineFor(range: DateRange, intent: RangeIntent, mode: Compari
   ): Baseline => ({
     mode,
     label,
+    short: mode === "year" ? "last year" : label,
     alignment,
     range: candidate ? supported(candidate) : null,
     note: candidate && supported(candidate) === null ? "The comparison period is before any supported date." : note,
   });
   if (mode === "off") return make("off", "position", null);
   if (mode === "weekday") {
-    const label = intent === "single_day" ? "same weekday 52 weeks earlier" : "same weekdays 52 weeks earlier";
+    // 52 weeks (364 days) earlier, so each day lines up with the same weekday.
+    const label = intent === "single_day" ? "same weekday last year" : "same weekdays last year";
     return make(label, "position", { from: addDays(range.from, -364), to: addDays(range.to, -364) });
   }
   if (mode === "year") {
@@ -236,10 +242,22 @@ export function baselineFor(range: DateRange, intent: RangeIntent, mode: Compari
 const sameRange = (a: DateRange, b: DateRange) => a.from === b.from && a.to === b.to;
 
 /**
+ * The second comparison when the URL names none: last year, unless the first
+ * already is. A single day compares with the same weekday last year, because
+ * the same date last year usually falls on another weekday and weekdays sell
+ * differently. Longer periods compare calendar dates, as financial reports do.
+ */
+export function defaultSecondComparison(first: ComparisonMode, intent: RangeIntent): ComparisonMode {
+  if (first === "off") return "off";
+  if (first === "year" || first === "weekday") return "previous";
+  return intent === "single_day" ? "weekday" : "year";
+}
+
+/**
  * Both baselines from the URL: `compare` (the first; it accepts the same
  * values as before, `previous` now follows what the range is, and `off` turns
  * both off), `compare2` (the second, defaulting to
- * last year unless the first already is) and `baseline=a|b` (which one the
+ * defaultSecondComparison()) and `baseline=a|b` (which one the
  * charts and tables show). A second slot that resolves to the first's dates
  * is not queried; it says it matches instead.
  */
@@ -247,11 +265,11 @@ export function parseComparisonPlan(params: SearchParams, range: DateRange, toda
   const intent = rangeIntent(range, today, rangePreset(params, range));
   const first = parseChoice(params, "compare", MODES, "previous");
   const second =
-    first === "off" ? "off" : parseChoice(params, "compare2", MODES, first === "year" ? "previous" : "year");
+    first === "off" ? "off" : parseChoice(params, "compare2", MODES, defaultSecondComparison(first, intent));
   const a = baselineFor(range, intent, first);
   let b = baselineFor(range, intent, second);
   if (a.range && b.range && sameRange(a.range, b.range))
-    b = { ...b, range: null, note: "This matches the first comparison, so it is shown once." };
+    b = { ...b, range: null, note: "This matches the first comparison, so it is shown once.", repeatsFirst: true };
   const active = activeBaseline(parseChoice(params, BASELINE_PARAM, BASELINE_VALUES, "a"), [!!a.range, !!b.range]);
   return { range, intent, slots: [a, b], active };
 }
@@ -270,9 +288,22 @@ export function planRanges(plan: ComparisonPlan | undefined): BaselineRanges {
   return plan ? [plan.slots[0].range, plan.slots[1].range] : [null, null];
 }
 
-/** Both slots' modes as URL parameters, so links and exports keep the plan they were made from. */
-export function planParams(plan: ComparisonPlan | undefined): { compare: ComparisonMode; compare2: ComparisonMode } {
-  return { compare: plan?.slots[0].mode ?? "off", compare2: plan?.slots[1].mode ?? "off" };
+/**
+ * Both slots' modes as URL parameters, so links and exports keep the plan they
+ * were made from. The second is left out (null) while it is its range's
+ * default, so a link to another range, such as Yesterday from Last 28 days,
+ * gets that range's default instead of carrying this one's.
+ */
+export function planParams(plan: ComparisonPlan | undefined): {
+  compare: ComparisonMode;
+  compare2: ComparisonMode | null;
+} {
+  if (!plan) return { compare: "off", compare2: "off" };
+  const [first, second] = plan.slots;
+  return {
+    compare: first.mode,
+    compare2: second.mode === defaultSecondComparison(first.mode, plan.intent) ? null : second.mode,
+  };
 }
 
 /**
@@ -374,6 +405,22 @@ export function slotChanges(
       b.alignment,
     ),
   ];
+}
+
+/**
+ * Which way a measure should move: `higher` (revenue, orders), `lower` (refunds
+ * as positive amounts, cost per order) or `neutral` (spend, prices, mix, where
+ * a move is neither good nor bad on its own). Declared with the measure, never
+ * guessed from its name; a signed deduction stored as a negative number is
+ * `higher`, because closer to zero is better.
+ */
+export type Polarity = "higher" | "lower" | "neutral";
+export type ChangeTone = "good" | "bad";
+
+/** Whether a move is good or bad for a measure, or null when it is neither. */
+export function changeTone(direction: MetricChange<MetricValue>["direction"], polarity: Polarity): ChangeTone | null {
+  if (polarity === "neutral" || direction === null || direction === "flat") return null;
+  return (direction === "up") === (polarity === "higher") ? "good" : "bad";
 }
 
 export type MetricValue = string | bigint | number;

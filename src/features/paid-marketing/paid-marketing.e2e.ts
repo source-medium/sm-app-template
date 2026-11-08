@@ -56,7 +56,7 @@ test("paid marketing: ranked spend shares, dimension changes, and comparisons ho
   const region = page.getByRole("region", { name: "Spend breakdown", exact: true });
   const channelTable = region.getByRole("table", { name: "Spend by ad platform details", exact: true });
   await expect(channelTable.getByRole("columnheader", { name: "Share of total" })).toBeVisible();
-  await expect(channelTable.getByRole("columnheader", { name: "Change vs same period last year" })).toBeVisible();
+  await expect(channelTable.getByRole("columnheader", { name: "Change vs last year" })).toBeVisible();
   await channelTable.getByRole("link", { name: "Meta", exact: true }).click();
   await expect(page).toHaveURL(/channel=meta_ads/);
   await choose(page, "Break down by", "campaign");

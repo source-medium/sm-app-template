@@ -1,6 +1,6 @@
 import "server-only";
-import { DataTable } from "@/components/patterns/data-table";
-import type { Comparison } from "@/lib/comparison";
+import { DataTable, type DataTableCell } from "@/components/patterns/data-table";
+import { changeTone, type Comparison, type Polarity } from "@/lib/comparison";
 import { revenueContributions } from "./contributions";
 import { largestRevenueChanges } from "./revenue-changes";
 import { toUnits } from "@/lib/data/decimal";
@@ -8,6 +8,16 @@ import { formatDate, formatMoney } from "@/lib/format";
 import type { OverviewFilters, OverviewSlice } from "./queries";
 import { SectionHeader } from "@/components/patterns/section-header";
 import { Disclosure } from "@/components/ui/disclosure";
+
+/** A signed revenue difference, colored by `better`; a reconciliation residual passes "neutral". */
+function revenueChange(difference: string | null, currency: string | null, better: Polarity): DataTableCell {
+  const units = difference === null ? null : toUnits(difference);
+  return {
+    display: `${units !== null && units > 0n ? "+" : ""}${formatMoney(difference, currency)}`,
+    tone:
+      units === null ? undefined : (changeTone(units > 0n ? "up" : units < 0n ? "down" : "flat", better) ?? undefined),
+  };
+}
 
 export function OverviewHighlights({
   report,
@@ -48,7 +58,7 @@ export function OverviewHighlights({
               baseline: { display: formatDate(row.baselineDate) },
               current: { display: formatMoney(row.current, currency) },
               previous: { display: formatMoney(row.previous, currency) },
-              change: { display: `${toUnits(row.difference) > 0n ? "+" : ""}${formatMoney(row.difference, currency)}` },
+              change: revenueChange(row.difference, currency, "higher"),
             },
           }))}
         />
@@ -98,7 +108,7 @@ export function OverviewHighlights({
                     group: { display: row.label },
                     current: { display: formatMoney(row.current, currency) },
                     previous: { display: formatMoney(row.previous, currency) },
-                    change: { display: formatMoney(row.difference, currency) },
+                    change: revenueChange(row.difference, currency, row.id === "residual" ? "neutral" : "higher"),
                   },
                 }))}
               />

@@ -2,7 +2,7 @@ import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { slotChanges, type ComparisonPlan } from "@/lib/comparison";
-import { kpiDelta } from "@/components/patterns/kpi-delta";
+import { changeCell, kpiDelta } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatMoney, formatMoneyIn } from "@/lib/format";
@@ -40,7 +40,7 @@ export function SpendBreakdownView({
         title={`Spend by ${title}`}
         valueLabel="Spend"
         description={`${formatMoney(total, currency)} in the selected period.${data.hasMore ? " Top 10 by spend." : ""}`}
-        comparisonLabel={compare && baseline ? `Change vs ${baseline.label}` : undefined}
+        comparisonLabel={compare && baseline ? `Change vs ${baseline.short}` : undefined}
         hasMore={data.hasMore}
         rows={data.rows.map((row) => ({
           id: row.dimension_key,
@@ -52,7 +52,10 @@ export function SpendBreakdownView({
                 : row.label,
           value: { value: decimalToNumber(row.spend), display: money(row.spend) },
           share: nonnegativeShare(row.spend, total, first?.minimum_spend ?? null),
-          change: compare ? kpiDelta(row.spend, row[slotColumn(slot, "spend")], money).display : undefined,
+          // Spend is neither good nor bad on its own, so its change stays uncolored.
+          change: compare
+            ? changeCell(kpiDelta(row.spend, row[slotColumn(slot, "spend")], money, "neutral"))
+            : undefined,
           href:
             dimension === "channel"
               ? withParams("/paid-marketing", params, { store: filters.storeId, channel: row.dimension_key })

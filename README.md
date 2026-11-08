@@ -15,7 +15,7 @@ rework a view, or build your next report. The app and its source code are yours.
   <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/images/reel-dark-still.webp">
   <source media="(prefers-reduced-motion: reduce)" srcset="docs/images/reel-light-still.webp">
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/reel-dark.webp">
-  <img alt="A 21-second tour of the app: Overview cards compare each number with the previous period and the same period last year; switching the comparison updates the summary and trend chart without a new query; About this number shows the published definition and calculation; a map shows sales by shipping destination; and Vibe code prepares a change request for your coding agent." src="docs/images/reel-light.webp" width="1280">
+  <img alt="A 21-second tour of the app: Overview cards compare each number with the previous period and the same period last year; switching the comparison redraws the cards' sparklines and the trend chart without a new query; About this number shows the published definition and calculation; a map shows sales by shipping destination; and Vibe code prepares a change request for your coding agent." src="docs/images/reel-light.webp" width="1280">
 </picture>
 
 _Every screenshot and the tour use synthetic sample data. The hosted demo reads
@@ -47,9 +47,10 @@ SourceMedium's demo warehouse. No sign-in required._
   documentation and source availability sit beside it, served from the same
   adapter the reports use.
 - **Two comparisons at once.** Every headline number compares with the previous
-  period and the same period last year (or 52 weeks earlier), aware of what the
-  range is: a full month against the previous month, a rolling week against the
-  week before, a single day against the same weekday.
+  period and the same period last year, aware of what the range is: a full
+  month against the previous month, a rolling week against the week before, a
+  single day against the same weekday last week and last year. Green and red
+  follow whether more is better for that number, so rising refunds read red.
 - **A query cache.** Repeated reads are served from a private cache inside the
   app, in memory and optionally in Cloudflare KV, with hard expiry and a Refresh
   button that bypasses it. Warm pages run no warehouse jobs.

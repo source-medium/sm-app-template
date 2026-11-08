@@ -8,6 +8,8 @@ import type { MetricBinding } from "@/lib/metric-binding";
 import { MetricDefinition, type MetricScope } from "@/components/patterns/metric-definition";
 import { cn } from "@/lib/utils";
 import { KpiTrend, type KpiTrendData } from "@/components/charts/kpi-trend";
+import type { ChangeTone } from "@/lib/comparison";
+import { CHANGE_TONE_CLASS } from "./change-tone";
 
 export type KpiDelta = {
   /** The full change: amount and percentage, or why there is none. */
@@ -15,7 +17,8 @@ export type KpiDelta = {
   /** The card's at-a-glance form; `display` stays in the card's details. */
   short?: string;
   direction: "up" | "down" | "flat" | null;
-  good: boolean | null;
+  /** Good or bad for this measure, from its declared polarity; null when neither. */
+  tone: ChangeTone | null;
   comparedTo: string;
   /** Which comparison this row is: "vs previous 28 days". */
   label: string;
@@ -108,11 +111,7 @@ export function KpiCard({
                 <span
                   className={cn(
                     "font-medium",
-                    row.unavailable || row.good === null
-                      ? "text-muted-foreground"
-                      : row.good
-                        ? "text-success"
-                        : "text-destructive",
+                    row.unavailable || !row.tone ? "text-muted-foreground" : CHANGE_TONE_CLASS[row.tone],
                     row.unavailable && "font-normal",
                   )}
                 >

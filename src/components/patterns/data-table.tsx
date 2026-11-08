@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { Disclosure } from "@/components/ui/disclosure";
+import type { ChangeTone } from "@/lib/comparison";
+import { CHANGE_TONE_CLASS } from "./change-tone";
 
 export type DataTableColumn = {
   key: string;
@@ -36,6 +38,8 @@ export type DataTableColumn = {
 };
 export type DataTableCell = {
   display: string;
+  /** A change that is good or bad for its measure, colored like a KPI card's; see changeCell(). */
+  tone?: ChangeTone;
   sort?: string | number | null;
   href?: string;
   leading?: React.ReactNode;
@@ -52,6 +56,8 @@ function DataCell({ row, column }: CellContext<DataTableRow, unknown>) {
       {cell.leading}
       <span className="min-w-0">{cell.display}</span>
     </div>
+  ) : cell.tone ? (
+    <span className={cn("font-medium", CHANGE_TONE_CLASS[cell.tone])}>{cell.display}</span>
   ) : (
     cell.display
   );

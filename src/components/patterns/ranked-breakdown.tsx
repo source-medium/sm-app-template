@@ -1,7 +1,7 @@
 import { ChartCard } from "@/components/charts/chart-card";
 import { buildChartData, type PointValue } from "@/components/charts/chart-data";
 import { formatPercent } from "@/lib/format";
-import { DataTable } from "./data-table";
+import { DataTable, type DataTableCell } from "./data-table";
 
 /**
  * The feature supplies ranking, full-query shares, and formatted changes. This
@@ -26,7 +26,8 @@ export function RankedBreakdown({
     chartLabel?: string;
     value: PointValue;
     share: number | null;
-    change?: string;
+    /** From changeCell(), so the change is colored by its measure's polarity. */
+    change?: DataTableCell;
     href?: string;
     leading?: React.ReactNode;
   }[];
@@ -66,7 +67,7 @@ export function RankedBreakdown({
             name: { display: row.label, href: row.href, leading: row.leading },
             value: { display: row.value.display },
             share: { display: formatPercent(row.share) },
-            change: { display: row.change ?? "—" },
+            change: row.change ?? { display: "—" },
           },
         }))}
       />

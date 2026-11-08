@@ -149,7 +149,9 @@ overlay). Reuse `lib/comparison.ts` (`planRanges`, `slotChanges`, `planParams`),
 and `patterns/kpi-delta.ts`; build one-query comparisons with `lib/data/period-sql.ts`
 (`slotColumn`, and `periodFields` for the row schema); show a slot's changes only when `slotChanges()` allows, KPI rows with
 `KpiCard deltas={slotDeltas(...)}`, and per-slot tables or charts inside `ActiveBaseline`
-(docs/data.md#period-comparisons).
+(docs/data.md#period-comparisons). Every compared measure declares `better` (`higher`,
+`lower` or `neutral`) beside its definition, as `PRODUCT_METRICS` does; never infer it from
+a name. Pass it to `kpiDelta`, and use `changeCell` for a table's change column.
 Copy Products for simple pages and rankings, Overview for multi-measure summaries,
 Retention for `CohortMatrix`. Section titles use `patterns/section-header`; an empty region offers its way
 out through `DataRegion emptyAction`. Collapsible explanations use `components/ui/disclosure`.

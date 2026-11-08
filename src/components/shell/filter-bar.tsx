@@ -30,6 +30,7 @@ export function FilterBar({
   dates = true,
   comparison,
   comparison2,
+  comparison2Default,
   comparisonLabel = "Compare with",
   carriedComparison,
   carriedComparison2,
@@ -52,6 +53,8 @@ export function FilterBar({
   /** The first and second comparison slots' modes; absent on a report without comparisons. */
   comparison?: ComparisonMode;
   comparison2?: ComparisonMode;
+  /** The second slot's default for the applied range; a submit that keeps it leaves `compare2` out, so new dates get their own default. */
+  comparison2Default?: ComparisonMode;
   comparisonLabel?: string;
   /** Another report's comparison choices, carried through a report that has none. */
   carriedComparison?: string;
@@ -89,6 +92,16 @@ export function FilterBar({
     form.addEventListener("formdata", keepPreset);
     return () => form.removeEventListener("formdata", keepPreset);
   }, [dates, rolling, from, to]);
+  // A second comparison left at its default is not a choice: drop it, so Yesterday gets the same weekday last year.
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form || !comparison2Default) return;
+    const keepDefault = ({ formData }: FormDataEvent) => {
+      if (formData.get("compare2") === comparison2Default) formData.delete("compare2");
+    };
+    form.addEventListener("formdata", keepDefault);
+    return () => form.removeEventListener("formdata", keepDefault);
+  }, [comparison2Default]);
   // Keep the form for controls rendered by the report, even when it has no visible fields of its own.
   const hasControls = dates || comparison !== undefined;
   /** Choices apply on change; typed dates wait for Apply. The form's own submit handler still validates dates. */

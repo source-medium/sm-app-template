@@ -1,5 +1,6 @@
 import { DataTable } from "@/components/patterns/data-table";
-import { kpiDelta } from "@/components/patterns/kpi-delta";
+import { changeCell, kpiDelta } from "@/components/patterns/kpi-delta";
+import type { Polarity } from "@/lib/comparison";
 import { fromUnits, toUnits } from "@/lib/data/decimal";
 import { formatMoneyIn } from "@/lib/format";
 import type { RevenueDeductions } from "./queries";
@@ -26,12 +27,13 @@ export function OverviewRevenue({
 }) {
   const money = formatMoneyIn(currency);
   const difference = revenueDifference(current);
+  // Deductions keep their source signs (negative), so refunds closer to zero are better. Discounts are a choice, not a result.
   const measures = [
-    { key: "gross", label: "Gross revenue" },
-    { key: "discounts", label: "Discounts" },
-    { key: "refunds", label: "Refunds" },
-    { key: "net", label: "Net revenue" },
-  ] as const;
+    { key: "gross", label: "Gross revenue", better: "higher" },
+    { key: "discounts", label: "Discounts", better: "neutral" },
+    { key: "refunds", label: "Refunds", better: "higher" },
+    { key: "net", label: "Net revenue", better: "higher" },
+  ] as const satisfies readonly { key: string; label: string; better: Polarity }[];
   return (
     <Disclosure summary="Revenue and deductions">
       <div className="flex min-w-0 flex-col gap-3">
@@ -49,12 +51,12 @@ export function OverviewRevenue({
               ? [{ key: "change", header: "Change vs comparison", align: "right" as const, sortable: false }]
               : []),
           ]}
-          rows={measures.map(({ key, label }) => ({
+          rows={measures.map(({ key, label, better }) => ({
             id: key,
             cells: {
               measure: { display: label },
               value: { display: money(current?.[key] ?? null) },
-              change: { display: kpiDelta(current?.[key] ?? null, previous?.[key] ?? null, money).display },
+              change: changeCell(kpiDelta(current?.[key] ?? null, previous?.[key] ?? null, money, better)),
             },
           }))}
         />

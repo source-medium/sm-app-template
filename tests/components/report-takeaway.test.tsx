@@ -9,7 +9,7 @@ const change: KpiDelta = {
   short: "+11.11%",
   label: "vs previous 7 days",
   direction: "up",
-  good: true,
+  tone: "good",
   comparedTo: "$90.00",
 };
 
@@ -55,7 +55,7 @@ it("says nothing rather than a misleading delta when the comparison is unavailab
         label: "vs previous 7 days",
         unavailable: true,
         direction: null,
-        good: null,
+        tone: null,
         comparedTo: "",
       }}
     />,

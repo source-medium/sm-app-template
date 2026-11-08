@@ -31,7 +31,7 @@ describe("overview measure presentation", () => {
     expect(presented.average).toMatchObject({
       display: formatMoney(ratio(revenue, measures.orders)),
       sort: ratio(revenue, measures.orders),
-      better: "neutral",
+      better: "higher",
     });
     expect(presented.spend.better).toBe("neutral");
     expect(presented.spend.display).toBe(formatMoney(measures.adSpend));

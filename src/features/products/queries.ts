@@ -4,20 +4,21 @@ import { parseChoice, single, type ReportFilters, type SearchParams } from "@/li
 import { queryProductChannels, queryProducts, queryProductCoverage, queryProductImages } from "./bigquery";
 import type { Product, ProductCoverage } from "./rows";
 import { sampleProductSource, sampleProducts, aggregateProductCoverage } from "./sample";
-import type { BaselineRanges } from "@/lib/comparison";
+import type { BaselineRanges, Polarity } from "@/lib/comparison";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 
 export const PRODUCT_DIMENSIONS = [
   { value: "product", label: "Product" },
   { value: "variant", label: "Variant" },
 ] as const;
+/** `better` colors each change; refunds are positive amounts here, so fewer is better. */
 export const PRODUCT_METRICS = [
-  { value: "revenue", label: "Net revenue" },
-  { value: "units", label: "Net units" },
-  { value: "profit", label: "Product gross profit" },
-  { value: "refunds", label: "Refund amount" },
-  { value: "refunded_units", label: "Refunded units" },
-] as const;
+  { value: "revenue", label: "Net revenue", better: "higher" },
+  { value: "units", label: "Net units", better: "higher" },
+  { value: "profit", label: "Product gross profit", better: "higher" },
+  { value: "refunds", label: "Refund amount", better: "lower" },
+  { value: "refunded_units", label: "Refunded units", better: "lower" },
+] as const satisfies readonly { value: string; label: string; better: Polarity }[];
 export const PRODUCT_RANKINGS = [
   { value: "value", label: "Largest value" },
   { value: "gainers", label: "Period gainers" },
@@ -25,6 +26,10 @@ export const PRODUCT_RANKINGS = [
 ] as const;
 export type ProductDimension = (typeof PRODUCT_DIMENSIONS)[number]["value"];
 export type ProductMetric = (typeof PRODUCT_METRICS)[number]["value"];
+/** Which way a product metric should move, from PRODUCT_METRICS. */
+export function productPolarity(metric: ProductMetric): Polarity {
+  return PRODUCT_METRICS.find((item) => item.value === metric)?.better ?? "neutral";
+}
 export type ProductFilters = ReportFilters & {
   dimension: ProductDimension;
   metric: ProductMetric;

@@ -12,6 +12,23 @@ const columns = [
 ];
 
 describe("DataTable", () => {
+  it("colors a change cell by its measure's tone and leaves other cells plain", () => {
+    render(
+      <DataTable
+        caption="Changes"
+        columns={[{ key: "change", header: "Change" }]}
+        rows={[
+          { id: "a", cells: { change: { display: "+5%", tone: "good" } } },
+          { id: "b", cells: { change: { display: "+3%", tone: "bad" } } },
+          { id: "c", cells: { change: { display: "+1%" } } },
+        ]}
+      />,
+    );
+    expect(screen.getByText("+5%")).toHaveClass("text-success");
+    expect(screen.getByText("+3%")).toHaveClass("text-destructive");
+    expect(screen.getByRole("cell", { name: "+1%" }).querySelector("span")).toBeNull();
+  });
+
   it("shows the visible range as the reader moves between pages", () => {
     render(<DataTable caption="Things" columns={columns} rows={rows} pageSize={1} />);
     expect(screen.getByText("1–1 of 2 rows")).toBeInTheDocument();

@@ -9,10 +9,11 @@ import { Disclosure } from "@/components/ui/disclosure";
 import { DataRegion } from "@/components/patterns/data-region";
 import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { KpiCard, type KpiDelta } from "@/components/patterns/kpi-card";
+import type { KpiTrendData } from "@/components/charts/kpi-trend";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
-import { planParams, planRanges, slotChanges, type ComparisonPlan } from "@/lib/comparison";
+import { comparisonDates, planParams, planRanges, slotChanges, type ComparisonPlan } from "@/lib/comparison";
 import { ReportPage } from "@/components/shell/report-page";
 import {
   parseChoice,
@@ -23,7 +24,6 @@ import {
   type ReportDates,
   type SearchParams,
 } from "@/lib/filters";
-import { decimalToNumber } from "@/lib/data/decimal";
 import { MetricDefinition } from "@/components/patterns/metric-definition";
 import { compactHeadline, formatDateRange } from "@/lib/format";
 import { presentOverviewMeasures, type OverviewMeasureKey } from "./measures";
@@ -35,7 +35,7 @@ import { OverviewRevenue } from "./revenue";
 import { OverviewPurchases } from "./purchases";
 import { OverviewHighlights } from "./highlights";
 import { SelectFilter } from "@/components/patterns/select-filter";
-import { overviewTrends, TREND_MODES } from "./trends";
+import { overviewTrends, SPARKLINE_DAILY_DAYS, sparklineValues, TREND_MODES } from "./trends";
 import { overviewHeadline } from "./headline";
 import { ReportControls } from "@/components/shell/report-controls";
 
@@ -177,7 +177,7 @@ function OverviewView({
 }) {
   const data = report.current;
   const changes = plan ? slotChanges(plan, report.coverage) : null;
-  const presentedDays = new Map(data.days.map((day) => [day.date, presentOverviewMeasures(day, currency)]));
+  const dayByDate = new Map(data.days.map((day) => [day.date, day]));
   const currentMeasures = presentOverviewMeasures(data.totals, currency);
   const baselineMeasures = report.baselines.map((entry) =>
     presentOverviewMeasures(entry?.data?.totals ?? null, currency),
@@ -188,13 +188,27 @@ function OverviewView({
     filters.grain === "day"
       ? "#summary-heading"
       : `${withParams("/overview", {}, { store: filters.storeId, ...dateParams.live, sales_channel: filters.channel ?? "", ...planParams(plan), grain: "day" })}#summary-heading`;
-  function trend(key: OverviewMeasureKey) {
+  // Each comparison's days lined up with the selected dates the way the main chart lines them up.
+  const selectedDays = dates.map((date) => dayByDate.get(date));
+  const comparisonDays = (plan?.slots ?? []).map((slot, index) => {
+    const days = report.baselines[index]?.data?.days;
+    if (!slot.range || !days) return null;
+    const byDate = new Map(days.map((day) => [day.date, day]));
+    return {
+      label: slot.short,
+      days: comparisonDates(filters.range, slot).map((date) => (date ? byDate.get(date) : undefined)),
+    };
+  });
+  function trend(key: OverviewMeasureKey): KpiTrendData {
     return {
       tableHref: dailyTableHref,
-      values: dates.map((date) => {
-        const amount = presentedDays.get(date)?.[key].amount ?? null;
-        return typeof amount === "string" ? decimalToNumber(amount) : amount;
-      }),
+      grain: dates.length > SPARKLINE_DAILY_DAYS ? "week" : "day",
+      values: sparklineValues(selectedDays, key, currency),
+      comparisons: plan
+        ? comparisonDays.map((slot) =>
+            slot ? { label: slot.label, values: sparklineValues(slot.days, key, currency) } : null,
+          )
+        : undefined,
     };
   }
   /** One row per comparison slot: the change when coverage allows it, otherwise why not. */
@@ -322,7 +336,7 @@ function OverviewView({
                 ? [
                     {
                       key: `previous_${chart.key}`,
-                      label: capitalize(baseline?.label ?? "comparison"),
+                      label: capitalize(baseline?.short ?? "comparison"),
                       color: "var(--chart-2)",
                       dashed: true,
                     },

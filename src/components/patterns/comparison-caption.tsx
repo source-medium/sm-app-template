@@ -69,7 +69,7 @@ export function ComparisonCaption({
 }
 
 function switchLabel(slot: Baseline): string {
-  return slot.label.charAt(0).toUpperCase() + slot.label.slice(1);
+  return slot.short.charAt(0).toUpperCase() + slot.short.slice(1);
 }
 
 /** Why period changes are hidden, for views that learn it only after their data loads. */

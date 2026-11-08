@@ -1,6 +1,6 @@
 import "server-only";
 import { DataTable } from "@/components/patterns/data-table";
-import { kpiDelta } from "@/components/patterns/kpi-delta";
+import { changeCell, kpiDelta } from "@/components/patterns/kpi-delta";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { formatMeasure, formatMoney, formatMoneyIn } from "@/lib/format";
 import type { PurchaseMix } from "./queries";
@@ -31,7 +31,7 @@ export function OverviewPurchases({
         revenue: { display: formatMoney(revenue, currency) },
         orders: { display: formatMeasure(orders) },
         average: { display: formatMoney(ratio(decimalToNumber(revenue), orders), currency) },
-        change: { display: kpiDelta(revenue, baseline?.netRevenue ?? null, money).display },
+        change: changeCell(kpiDelta(revenue, baseline?.netRevenue ?? null, money, "higher")),
       },
     };
   });
