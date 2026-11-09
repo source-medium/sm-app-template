@@ -26,7 +26,15 @@ const EMPTY_PAGE: AgentPageSnapshot = { pathname: "/", title: "Page", filters: {
 const targetKey = (target: AgentTarget) => JSON.stringify(target);
 
 /** Compose from declared report context, refreshing as navigation and streamed regions settle. */
-export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: string }) {
+export function AgentPrompt({
+  mode,
+  build,
+  hosting,
+}: {
+  mode: "sample" | "live";
+  build: string;
+  hosting?: "sourcemedium";
+}) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
@@ -45,7 +53,7 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
   const [metric, setMetric] = useState<AgentMetric>();
   const { state, copy } = useCopy();
   const target = page.targets.find((item) => targetKey(item) === targetId);
-  const prompt = composeAgentPrompt(intentId, request, { ...page, mode, build }, target, field, metric);
+  const prompt = composeAgentPrompt(intentId, request, { ...page, mode, build, hosting }, target, field, metric);
   const copyState = state === "copied" && lastCopied !== prompt ? "idle" : state;
 
   const refreshPage = useCallback(() => {
@@ -148,7 +156,7 @@ export function AgentPrompt({ mode, build }: { mode: "sample" | "live"; build: s
     const latestPrompt = composeAgentPrompt(
       intentId,
       request,
-      { ...snapshot, mode, build },
+      { ...snapshot, mode, build, hosting },
       selected?.item && !sameScope ? undefined : selected,
       snapshot.filters.store === page.filters.store ? field : undefined,
       metric,
