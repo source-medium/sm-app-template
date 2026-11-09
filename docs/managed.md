@@ -62,8 +62,8 @@ connect_code=<code>`). This one run proves the repository is yours; the code
    (`.github/workflows/sourcemedium.yml`). It sends the commit to SourceMedium,
    which installs, builds and checks it, then prints the preview address, or
    the build log if the build failed.
-5. Admins and editors open the preview signed in to SourceMedium. A workspace
-   admin publishes it; **Restore** brings back an earlier version.
+5. Admins and editors open the preview signed in to SourceMedium and publish
+   it; **Restore** brings back an earlier version.
 
 Every push gets its own preview, and nothing goes live until it is published.
 A newer push to a branch replaces that branch's build if it is still waiting.
