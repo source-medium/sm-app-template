@@ -8,7 +8,9 @@
 name: SourceMedium preview
 
 on:
+  # Branches only: SourceMedium builds branch pushes, never tags.
   push:
+    branches: ["**"]
   workflow_dispatch:
     inputs:
       connect_code:
