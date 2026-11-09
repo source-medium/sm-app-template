@@ -10,6 +10,11 @@ name: SourceMedium preview
 on:
   push:
   workflow_dispatch:
+    inputs:
+      connect_code:
+        description: The connect code SourceMedium showed (first run only)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -37,3 +42,4 @@ jobs:
         env:
           # Staging rehearsals set this repository variable; customers never need to.
           SOURCEMEDIUM_URL: ${{ vars.SOURCEMEDIUM_URL }}
+          SOURCEMEDIUM_CONNECT_CODE: ${{ inputs.connect_code }}

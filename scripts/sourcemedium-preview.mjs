@@ -56,16 +56,27 @@ async function readJson(response) {
  */
 export async function runPreview({ env, fetch: request, archive, sleep, log, summary, now = Date.now }) {
   const origin = sourcemediumOrigin(env.SOURCEMEDIUM_URL);
+  // Only the run that connects the repository carries the manager's code.
+  const connectCode = env.SOURCEMEDIUM_CONNECT_CODE?.trim();
   const call = async (path, init = {}) =>
     request(`${origin}/api/app-sources/v1/${path}`, {
       ...init,
-      headers: { ...init.headers, Authorization: `Bearer ${await identityToken(env, origin, request)}` },
+      headers: {
+        ...init.headers,
+        ...(connectCode ? { "X-SourceMedium-Connect-Code": connectCode } : {}),
+        Authorization: `Bearer ${await identityToken(env, origin, request)}`,
+      },
     });
 
   const repository = await call("repository");
   const connection = await readJson(repository);
   if (repository.status === 503 || (repository.ok && connection.connected === false)) {
-    log("::notice::This repository isn't connected to a SourceMedium-hosted app, so nothing was sent.");
+    log(
+      connectCode
+        ? "::error::SourceMedium didn't accept that connect code for this repository. Check the repository name in SourceMedium, or connect again for a new code."
+        : "::notice::This repository isn't connected to a SourceMedium-hosted app, so nothing was sent. To connect it, run this workflow from the Actions tab with the connect code SourceMedium shows.",
+    );
+    if (connectCode && repository.status !== 503) return 1;
     return 0;
   }
   if (!repository.ok) {

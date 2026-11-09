@@ -46,6 +46,19 @@ describe("SourceMedium preview workflow", () => {
     });
   });
 
+  it("sends the connect code only when one was given, and fails when SourceMedium rejects it", async () => {
+    const code = `smc_${"ab".repeat(24)}`;
+    const refused = services({ repository: [[200, { connected: false }]] });
+    const { result, log } = run(refused.fetch, { ...ENV, SOURCEMEDIUM_CONNECT_CODE: code });
+    await expect(result).resolves.toBe(1);
+    expect(refused.calls[1]?.init?.headers).toMatchObject({ "X-SourceMedium-Connect-Code": code });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("didn't accept that connect code"));
+
+    const plain = services({ repository: [[200, { connected: false }]] });
+    await run(plain.fetch).result;
+    expect(plain.calls[1]?.init?.headers).not.toHaveProperty("X-SourceMedium-Connect-Code");
+  });
+
   it("also sends nothing while SourceMedium builds are switched off", async () => {
     const { fetch } = services({ repository: [[503, { error: { code: "BUILDS_UNAVAILABLE" } }]] });
     const { result, archive } = run(fetch);

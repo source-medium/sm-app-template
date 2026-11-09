@@ -52,19 +52,25 @@ same sign-in and data.
 1. In SourceMedium, open the app's settings and choose **Make changes**. Create
    the repository from this template when it offers to; GitHub makes a private
    copy in your account or organization.
-2. Enter the repository as `owner/name` and choose **Connect**.
-3. Push a commit. The **SourceMedium preview** workflow
-   (`.github/workflows/sourcemedium.yml`) sends it to SourceMedium, which
-   installs, builds and checks it, then prints the preview address, or the
-   build log if the build failed.
-4. Admins and editors open the preview signed in to SourceMedium. A workspace
+2. Enter the repository as `owner/name` and choose **Connect**. SourceMedium
+   shows a connect code once.
+3. In the repository's **Actions** tab, run the **SourceMedium preview**
+   workflow with that code (or `gh workflow run sourcemedium.yml -f
+connect_code=<code>`). This one run proves the repository is yours; the code
+   expires after 72 hours and works once.
+4. From then on, every push runs the workflow
+   (`.github/workflows/sourcemedium.yml`). It sends the commit to SourceMedium,
+   which installs, builds and checks it, then prints the preview address, or
+   the build log if the build failed.
+5. Admins and editors open the preview signed in to SourceMedium. A workspace
    admin publishes it; **Restore** brings back an earlier version.
 
 Every push gets its own preview, and nothing goes live until it is published.
 A newer push to a branch replaces that branch's build if it is still waiting.
-The workflow uses no secret: GitHub signs a short-lived identity token for
-the repository and commit, and SourceMedium accepts only the connected
-repository. A renamed repository keeps working; one moved to another owner
+The workflow stores no secret: GitHub signs a short-lived identity token for
+the repository and commit, and SourceMedium accepts only the repository the
+connect code proved. Naming a repository in SourceMedium alone connects
+nothing. A renamed repository keeps working; one moved to another owner
 must be connected again. Each app builds at most 40 times a day.
 
 SourceMedium builds with `pnpm install --frozen-lockfile` and
