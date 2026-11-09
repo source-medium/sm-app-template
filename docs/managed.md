@@ -163,7 +163,10 @@ run `pnpm diagnose`, then `pnpm dev`, and open http://127.0.0.1:3000.
 
 What it saves is a developer token that reads your app's data as you for 30
 days: `SM_HOSTING=managed-dev`, `SM_DATA_API_URL` and `SM_DEVELOPER_TOKEN`.
-Running `pnpm signin` again replaces this computer's token. It comments out
+Running `pnpm signin` again replaces this computer's token. Every token,
+including `pnpm signin`'s "Local sign-in" ones, is listed under **Manage
+developer tokens** in the app's settings, where any admin or editor can
+revoke it. It comments out
 any self-hosted settings in `.env.local`, which managed development refuses.
 To sign in to SourceMedium's staging site instead, set
 `SOURCEMEDIUM_URL=https://urchin-staging.sourcemedium.com` first.
@@ -183,9 +186,10 @@ app, and a tunnel that rewrites the Host header would pass that check.
 Both environments get the same two plain variables, `SM_HOSTING=managed-dev`
 and `SM_DATA_API_URL`, and allow network access to your SourceMedium host.
 
-A cloud environment has no browser to sign in with. Run `pnpm signin` on your
-own computer and copy `SM_DEVELOPER_TOKEN` from `.env.local` into the
-environment's secret:
+A cloud environment has no browser to sign in with. Give it a token of its
+own: in SourceMedium, open the app's settings, choose **Manage developer
+tokens**, name one (for example "Codex") and choose **Create token**. Then
+put it in the environment's secret:
 
 - **Codex cloud** (new Cloud environments only; Legacy environments give
   secrets to setup scripts alone): add the token as a network secret named
@@ -238,8 +242,8 @@ and the first task does not depend on it.
 
 A token lasts 30 days. Expired, revoked and mistyped tokens all read as
 "SourceMedium did not accept the developer token". Run `pnpm signin` again
-(and copy the new token into a cloud environment's network secret), then run
-`pnpm diagnose`. A token also stops working when the
+(for a cloud environment, create a new token under **Manage developer
+tokens** and replace its network secret), then run `pnpm diagnose`. A token also stops working when the
 person who created it no longer has direct, workspace-wide admin or editor
 access, or when the app is paused or removed or its workspace is no longer
 active; ask a workspace admin.
