@@ -81,6 +81,19 @@ template has them; a build that changes them is refused with the reason. To
 work against real data on your computer, use a developer token
 ([Local development](#local-development)).
 
+Every hosted app shares the `sourcemedium.app` domain with other workspaces'
+apps, so SourceMedium adds rules of its own in the browser:
+
+- Pages call only their own address. A `fetch`, beacon or websocket to any
+  other site is blocked (`connect-src 'self'`), so client-side analytics or
+  third-party APIs called from the page don't work. Images, scripts, styles
+  and links to other sites work as usual.
+- Forms and other writes reach the app only from its own pages.
+- No other site can show the app in a frame, and the app can't install a
+  service worker.
+
+A blocked request shows in the browser console of the preview.
+
 ## What your app can read
 
 Every store in your organization, from SourceMedium's published and
