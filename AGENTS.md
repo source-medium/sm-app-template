@@ -22,6 +22,7 @@ Keep only UI components the app uses; add more when a view needs them.
 - `pnpm check`: format, lint, types, auth and store-scope coverage, skill copies, all tests. Under a minute.
 - `pnpm schema <relation>`: a relation's columns and types (never rows).
 - `pnpm skills:sync`: run after editing anything in `.agents/skills`.
+- `pnpm template:update`: bring in the template's newer changes as one commit, keeping yours; on conflicts it commits nothing and prints how to finish (docs/managed.md#update-from-the-template).
 
 Cloud setup/previews/publishing: use `sm-cloud` and `docs/cloud.md`. Default to Cloudflare Artifacts + Workers Builds; GitHub is optional. Deploy commands run `pnpm check:deploy` before uploading; do not bypass that gate. Hosted previews use guarded live data; samples are for first setup and tests.
 Also: `pnpm diagnose`, `pnpm test:e2e`, `pnpm build`, `pnpm build:cloudflare`. Use `pnpm run deploy`, never `pnpm deploy` (a pnpm built-in).
