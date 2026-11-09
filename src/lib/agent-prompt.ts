@@ -196,7 +196,7 @@ export function composeAgentPrompt(
           "- Run pnpm check when done, and pnpm test:e2e after UI changes.",
           "- Tell me separately what you verified on sample data and what still needs live data.",
           context.hosting === "sourcemedium"
-            ? "- SourceMedium hosts this app. Change it in the app's GitHub repository (if none is connected, ask a workspace admin to connect one in SourceMedium's App settings): commit on a branch and push. The SourceMedium preview workflow builds each push and prints its preview link; read it with gh run watch. Never publish or merge without my approval: a workspace admin publishes in SourceMedium."
+            ? "- SourceMedium hosts this app. Change it in the app's GitHub repository (if none is connected, ask a workspace admin or editor to connect one in SourceMedium's App settings): commit on a branch and push. The SourceMedium preview workflow builds each push and prints its preview link; read it with gh run watch. Never publish or merge without my approval: a workspace admin or editor publishes in SourceMedium."
             : "- Do not merge or publish without my approval. If I asked for a hosted preview, follow the sm-cloud skill and return its URL; otherwise explain how to preview locally.",
         ]
       : []),

@@ -13,6 +13,7 @@
     "setup:agent": "node scripts/setup-agent.mjs",
     "dev": "node scripts/managed-node.mjs tsx --conditions=react-server scripts/diagnose.ts --offline && node scripts/managed-node.mjs next dev --hostname 127.0.0.1 --port 3000",
     "diagnose": "node scripts/managed-node.mjs tsx --conditions=react-server scripts/diagnose.ts",
+    "signin": "node scripts/managed-node.mjs tsx --conditions=react-server scripts/signin.ts",
     "schema": "node scripts/managed-node.mjs tsx --conditions=react-server scripts/schema.ts",
     "check": "tsx scripts/check.ts",
     "skills:sync": "tsx scripts/skills-sync.ts",

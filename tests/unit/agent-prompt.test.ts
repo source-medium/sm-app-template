@@ -98,7 +98,7 @@ describe("composeAgentPrompt", () => {
     const hosted = composeAgentPrompt("add", "Add a chart", { ...context, mode: "live", hosting: "sourcemedium" });
     expect(hosted).toContain("Change it in the app's GitHub repository");
     expect(hosted).toContain("gh run watch");
-    expect(hosted).toContain("a workspace admin publishes in SourceMedium");
+    expect(hosted).toContain("a workspace admin or editor publishes in SourceMedium");
     expect(hosted).not.toContain("sm-cloud");
     expect(composeAgentPrompt("ask", "Why?", { ...context, hosting: "sourcemedium" })).not.toContain("gh run watch");
   });
