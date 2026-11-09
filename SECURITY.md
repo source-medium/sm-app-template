@@ -15,9 +15,12 @@ the app in **Dashboards & Apps**.
 
 Until the first release, security fixes go to `main`; afterward they go to the
 latest release of this template. Your copy is your
-code: to take a fix, compare the files that carry a "Template version" header
-(the configuration parser, the viewer guards, the Google token exchange, and
-the BigQuery client) with `main` or the latest published release.
+code: to take a fix, commit your work and run `pnpm template:update`, which
+brings the template's changes into your copy and keeps yours
+([docs/managed.md](docs/managed.md#update-from-the-template)). The files that
+carry a "Template version" header (the configuration parser, the viewer
+guards, the Google token exchange, and the BigQuery client) are where fixes
+usually land.
 
 ## Scope and design limits
 
