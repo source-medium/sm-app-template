@@ -61,9 +61,22 @@ describe("SourceMedium preview workflow", () => {
 
   it("also sends nothing while SourceMedium builds are switched off", async () => {
     const { fetch } = services({ repository: [[503, { error: { code: "BUILDS_UNAVAILABLE" } }]] });
-    const { result, archive } = run(fetch);
+    const { result, archive, log } = run(fetch);
     await expect(result).resolves.toBe(0);
     expect(archive).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("::notice::"));
+  });
+
+  it("doesn't blame the connect code when SourceMedium builds are switched off", async () => {
+    // 503 says builds are off for this SourceMedium, not that the code was refused, so the
+    // run stays green and quiet and the code can be used again.
+    const { fetch } = services({ repository: [[503, { error: { code: "BUILDS_UNAVAILABLE" } }]] });
+    const { result, log, archive } = run(fetch, { ...ENV, SOURCEMEDIUM_CONNECT_CODE: `smc_${"ab".repeat(24)}` });
+    await expect(result).resolves.toBe(0);
+    expect(archive).not.toHaveBeenCalled();
+    expect(log).not.toHaveBeenCalledWith(expect.stringContaining("::error::"));
+    expect(log).not.toHaveBeenCalledWith(expect.stringContaining("connect code"));
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("isn't building apps from repositories"));
   });
 
   it("sends the commit and reports the preview once SourceMedium has built it", async () => {
@@ -133,10 +146,19 @@ describe("SourceMedium preview workflow", () => {
     expect(log).toHaveBeenCalledWith(expect.stringContaining("Connect it again."));
   });
 
-  it("explains a missing id-token permission and refuses a plain-http SourceMedium", async () => {
+  it("explains a missing id-token permission and sends only to SourceMedium or your computer", async () => {
     const { fetch } = services({});
     await expect(run(fetch, { GITHUB_SHA: ENV.GITHUB_SHA }).result).rejects.toThrow("id-token: write");
     expect(() => sourcemediumOrigin("http://urchin.example")).toThrow("https");
     expect(sourcemediumOrigin(undefined)).toBe("https://urchin.sourcemedium.com");
+    // The source archive and this repository's identity token go nowhere else, whatever a
+    // repository or organization variable says.
+    expect(() => sourcemediumOrigin("https://urchin.example.com")).toThrow("sourcemedium.com");
+    expect(() => sourcemediumOrigin("https://sourcemedium.com.example.test")).toThrow("sourcemedium.com");
+    expect(sourcemediumOrigin("https://urchin-staging.sourcemedium.com")).toBe(
+      "https://urchin-staging.sourcemedium.com",
+    );
+    expect(sourcemediumOrigin("http://localhost:8787")).toBe("http://localhost:8787");
+    expect(sourcemediumOrigin("http://127.0.0.1:8787/api")).toBe("http://127.0.0.1:8787");
   });
 });

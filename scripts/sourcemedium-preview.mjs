@@ -19,12 +19,20 @@ import { pathToFileURL } from "node:url";
 export const DEFAULT_SOURCEMEDIUM_URL = "https://urchin.sourcemedium.com";
 const POLL_MS = 15_000;
 const WAIT_MS = 25 * 60_000;
+/** The largest commit SourceMedium accepts, so an oversized one is named here. */
+const ARCHIVE_MAX_BYTES = 20 * 1024 * 1024;
 
-/** SourceMedium's origin: the token's audience and the API's base. */
+/**
+ * SourceMedium's origin: the token's audience and the API's base. This run sends the
+ * repository's source and an identity token for it, so only SourceMedium's own hosts are
+ * accepted (a staging rehearsal sets one), plus your own computer for development.
+ */
 export function sourcemediumOrigin(value) {
   const url = new URL(value || DEFAULT_SOURCEMEDIUM_URL);
-  if (url.protocol !== "https:" && url.hostname !== "localhost")
-    throw new Error("SOURCEMEDIUM_URL must be an https URL.");
+  const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (loopback && (url.protocol === "http:" || url.protocol === "https:")) return url.origin;
+  if (url.protocol !== "https:" || !/(^|\.)sourcemedium\.com$/.test(url.hostname))
+    throw new Error("SOURCEMEDIUM_URL must be an https sourcemedium.com URL, or http on localhost.");
   return url.origin;
 }
 
@@ -70,14 +78,21 @@ export async function runPreview({ env, fetch: request, archive, sleep, log, sum
 
   const repository = await call("repository");
   const connection = await readJson(repository);
-  if (repository.status === 503 || (repository.ok && connection.connected === false)) {
+  // Builds are switched off for this SourceMedium environment, which says nothing about
+  // the repository or a connect code: nothing to report and nothing to fix here.
+  if (repository.status === 503) {
+    log(
+      "::notice::SourceMedium isn't building apps from repositories right now, so nothing was sent. Try again later, or ask SourceMedium.",
+    );
+    return 0;
+  }
+  if (repository.ok && connection.connected === false) {
     log(
       connectCode
         ? "::error::SourceMedium didn't accept that connect code for this repository. Check the repository name in SourceMedium, or connect again for a new code."
         : "::notice::This repository isn't connected to a SourceMedium-hosted app, so nothing was sent. To connect it, run this workflow from the Actions tab with the connect code SourceMedium shows.",
     );
-    if (connectCode && repository.status !== 503) return 1;
-    return 0;
+    return connectCode ? 1 : 0;
   }
   if (!repository.ok) {
     log(`::error::SourceMedium refused this repository: ${connection.error?.message ?? repository.status}`);
@@ -141,9 +156,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     fetch,
     archive: () => {
       const result = spawnSync("git", ["archive", "--format=tar.gz", "HEAD"], {
-        maxBuffer: 20 * 1024 * 1024,
+        maxBuffer: ARCHIVE_MAX_BYTES,
       });
-      if (result.status !== 0) throw new Error("git archive failed");
+      // A commit over the limit fails here, before SourceMedium would refuse it, so say so.
+      if (result.error?.code === "ENOBUFS")
+        throw new Error(`This commit is larger than the ${ARCHIVE_MAX_BYTES / 1024 / 1024} MB SourceMedium accepts.`);
+      if (result.status !== 0)
+        throw new Error(`git archive failed (${result.error?.message ?? `exit ${result.status}`}).`);
       return result.stdout;
     },
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
