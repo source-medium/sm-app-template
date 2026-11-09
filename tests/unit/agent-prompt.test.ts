@@ -93,4 +93,13 @@ describe("composeAgentPrompt", () => {
     }
     expect(composeAgentPrompt("ask", "Why?", context)).toContain("Do not change any files.");
   });
+
+  it("sends a SourceMedium-hosted app's changes through its repository and preview, never sm-cloud", () => {
+    const hosted = composeAgentPrompt("add", "Add a chart", { ...context, mode: "live", hosting: "sourcemedium" });
+    expect(hosted).toContain("Change it in the app's GitHub repository");
+    expect(hosted).toContain("gh run watch");
+    expect(hosted).toContain("a workspace admin publishes in SourceMedium");
+    expect(hosted).not.toContain("sm-cloud");
+    expect(composeAgentPrompt("ask", "Why?", { ...context, hosting: "sourcemedium" })).not.toContain("gh run watch");
+  });
 });

@@ -24,7 +24,11 @@ export function TopBar({ mode, viewer }: { mode: "sample" | "live"; viewer: View
             {viewer.name ?? viewer.email}
           </span>
         )}
-        <AgentPrompt mode={mode} build={buildId()} />
+        <AgentPrompt
+          mode={mode}
+          build={buildId()}
+          hosting={config.status === "ok" && config.mode === "managed" ? "sourcemedium" : undefined}
+        />
         <ModeChip mode={mode} />
         {(probe || info.environment === "Staging") && (
           <span className="text-xs text-muted-foreground">{probe ? "Staging probe" : "Staging"}</span>

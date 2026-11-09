@@ -1,0 +1,47 @@
+# Sends each pushed commit to SourceMedium, which builds it as a private
+# preview of your SourceMedium-hosted app; a workspace admin publishes it in
+# SourceMedium (docs/managed.md#change-a-hosted-app). No secret is involved:
+# GitHub signs a short-lived identity token for this repository and commit.
+# Nothing is sent unless this repository is connected to a hosted app, so a
+# self-hosted copy of the template sends no code. You may delete this file if
+# you host the app yourself.
+name: SourceMedium preview
+
+on:
+  # Branches only: SourceMedium builds branch pushes, never tags.
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+    inputs:
+      connect_code:
+        description: The connect code SourceMedium showed (first run only)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: sourcemedium-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: SourceMedium preview
+    # The template itself is never connected to an app.
+    if: github.repository != 'source-medium/sm-app-template'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - run: node scripts/sourcemedium-preview.mjs
+        env:
+          # Staging rehearsals set this repository variable; customers never need to.
+          SOURCEMEDIUM_URL: ${{ vars.SOURCEMEDIUM_URL }}
+          SOURCEMEDIUM_CONNECT_CODE: ${{ inputs.connect_code }}
