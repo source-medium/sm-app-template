@@ -34,7 +34,7 @@ export const LIVE_VARIABLES = [
 ] as const;
 
 /** Self-hosted settings a managed app never takes: no key, viewer guard, store restriction or byte cap. */
-const SELF_HOSTED_VARIABLES = [
+export const SELF_HOSTED_VARIABLES = [
   "SM_CONNECTION",
   ...LIVE_VARIABLES,
   "APP_BASIC_AUTH",

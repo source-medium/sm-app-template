@@ -17,7 +17,7 @@ hosting enabled, **Create app** starts deployment of a reviewed template release
 SourceMedium checks the app and its warehouse connection before offering
 **Open app**. Setup can be retried without creating a second app. Admins and
 editors can pause, resume or remove it; workspace members open it with their
-own sign-in. For custom development, an admin or editor creates a developer token
+own sign-in. For custom development, an admin or editor runs `pnpm signin`
 ([Local development](#local-development)).
 A self-hosted app keeps using [connect.md](connect.md); the two never mix.
 
@@ -150,22 +150,23 @@ The data API only reads. A query runs for at most 30 seconds, scans at most
 
 ## Local development
 
-1. A workspace admin or editor creates a developer token named "Local" with
-   SourceMedium's app management API, from a signed-in SourceMedium browser
-   session. It is shown once and carries that person's access. SourceMedium
-   staff cannot create one on a workspace's behalf.
-2. Put these in `.env.local` (git-ignored), removing any self-hosted values:
+An admin or editor of the workspace runs, in the app's folder:
 
-   ```sh
-   SM_HOSTING=managed-dev
-   SM_DATA_API_URL=https://<your SourceMedium address>/api/app-data/v1
-   SM_DEVELOPER_TOKEN=smapp_…
-   ```
+```sh
+pnpm signin
+```
 
-   Use the SourceMedium address where the token was created, followed by
-   `/api/app-data/v1`.
+It opens SourceMedium in your browser. Sign in if asked and choose **Allow**;
+if you manage more than one workspace with an app, pick the one to develop.
+`pnpm signin` then saves your access in `.env.local` (git-ignored) and you
+run `pnpm diagnose`, then `pnpm dev`, and open http://127.0.0.1:3000.
 
-3. Run `pnpm diagnose`, then `pnpm dev`, and open http://127.0.0.1:3000.
+What it saves is a developer token that reads your app's data as you for 30
+days: `SM_HOSTING=managed-dev`, `SM_DATA_API_URL` and `SM_DEVELOPER_TOKEN`.
+Running `pnpm signin` again replaces this computer's token. It comments out
+any self-hosted settings in `.env.local`, which managed development refuses.
+To sign in to SourceMedium's staging site instead, set
+`SOURCEMEDIUM_URL=https://urchin-staging.sourcemedium.com` first.
 
 The development server answers only this computer. `pnpm dev` listens on
 127.0.0.1, and managed development refuses to start Next on any other
@@ -181,6 +182,10 @@ app, and a tunnel that rewrites the Host header would pass that check.
 
 Both environments get the same two plain variables, `SM_HOSTING=managed-dev`
 and `SM_DATA_API_URL`, and allow network access to your SourceMedium host.
+
+A cloud environment has no browser to sign in with. Run `pnpm signin` on your
+own computer and copy `SM_DEVELOPER_TOKEN` from `.env.local` into the
+environment's secret:
 
 - **Codex cloud** (new Cloud environments only; Legacy environments give
   secrets to setup scripts alone): add the token as a network secret named
@@ -232,9 +237,9 @@ and the first task does not depend on it.
 ## Token expired
 
 A token lasts 30 days. Expired, revoked and mistyped tokens all read as
-"SourceMedium did not accept the developer token". Ask a workspace admin or
-editor for a new token, replace `SM_DEVELOPER_TOKEN` (or the cloud environment's
-network secret), and run `pnpm diagnose`. A token also stops working when the
+"SourceMedium did not accept the developer token". Run `pnpm signin` again
+(and copy the new token into a cloud environment's network secret), then run
+`pnpm diagnose`. A token also stops working when the
 person who created it no longer has direct, workspace-wide admin or editor
 access, or when the app is paused or removed or its workspace is no longer
 active; ask a workspace admin.
