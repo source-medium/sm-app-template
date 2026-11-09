@@ -16,6 +16,7 @@
     "schema": "node scripts/managed-node.mjs tsx --conditions=react-server scripts/schema.ts",
     "check": "tsx scripts/check.ts",
     "skills:sync": "tsx scripts/skills-sync.ts",
+    "template:update": "tsx scripts/template-update.ts",
     "format": "prettier --write --cache .",
     "format:check": "prettier --check --cache .",
     "lint": "eslint --cache --max-warnings 0 .",

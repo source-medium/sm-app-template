@@ -94,6 +94,47 @@ apps, so SourceMedium adds rules of its own in the browser:
 
 A blocked request shows in the browser console of the preview.
 
+## Update from the template
+
+`pnpm template:update` brings the template's newer changes into your copy
+and keeps yours. Commit or stash your own work first, then run it:
+
+```sh
+pnpm template:update
+```
+
+It fetches the template's `main` from GitHub, finds the template version your
+copy last matched, and applies only what the template changed since then.
+Files you never changed take the template's new version, your changes stay,
+and a file you renamed still gets the template's changes. It never pushes or
+changes your git settings.
+
+- **No conflicts:** it makes one commit, `chore: update from the template (…)`,
+  and lists the files it changed. Run `pnpm install` if `package.json` or
+  `pnpm-lock.yaml` changed, then `pnpm check`.
+- **Conflicts:** where you and the template changed the same lines, or you
+  deleted a file the template changed, it commits nothing and lists the files.
+  Edit each one to keep what you want and remove the `<<<<<<<`, `=======` and
+  `>>>>>>>` markers (or `git rm` a file you want gone), `git add` it, then run
+  the `git commit` command it prints. For `pnpm-lock.yaml`, take the
+  template's copy with `git checkout --theirs pnpm-lock.yaml`, settle
+  `package.json`, then run `pnpm install`. `git reset --hard` cancels the
+  update instead.
+
+Review the commit and push it. The push builds a preview; nothing goes live
+until it is published.
+
+The commit records the template version it reached in a `Template-Commit:`
+line, so the next update starts from there; keep that line when you finish a
+conflicted update yourself. If the command can't tell which template version
+your copy started from, it says so; name that template commit with
+`SM_TEMPLATE_BASE=<commit> pnpm template:update`.
+
+A copy made before this command existed doesn't have it yet. Copy
+`scripts/template-update.ts` and `scripts/lib/template-update.ts` from the
+template, add its `template:update` line to your `package.json`, commit, then
+run it.
+
 ## What your app can read
 
 Every store in your organization, from SourceMedium's published and
