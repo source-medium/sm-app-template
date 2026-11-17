@@ -11,6 +11,11 @@
     // Files from public/ pass the viewer guard like pages do. Only the build's
     // hashed chunks (no data) skip the Worker.
     "run_worker_first": ["/*", "!/_next/static/*"],
+    // Serve each file only at its exact path, as Next.js does, so no alias
+    // (such as /page for /page.html) skips the guard. OpenNext requires this
+    // whenever the Worker runs first.
+    "html_handling": "none",
+    "not_found_handling": "none",
   },
   "observability": { "logs": { "enabled": true } },
   // Preserve runtime settings such as APP_STORE_ID across ordinary deploys.

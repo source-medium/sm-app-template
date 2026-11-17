@@ -29,16 +29,24 @@ warehouse scope. The shared password is one identity for everyone. These are
 design limits, documented in `docs/auth.md`, not vulnerabilities. Changes you
 make to your copy are outside SourceMedium's support.
 
-## Dependency review (2026-10-06)
+## Dependency review (2026-11-17)
 
-The current Next and Miniflare packages pin vulnerable PostCSS, sharp and
-undici dependencies. Narrow parent/version overrides in `pnpm-workspace.yaml`
-select their patched releases; remove them when the parents include the fixes.
+The current Next and Wrangler packages include the PostCSS, sharp and undici
+fixes that earlier overrides selected, so `pnpm-workspace.yaml` has none.
 
-One advisory remains without a published fix:
-[braces stack exhaustion](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
-It is reached only through the development ESLint plugin's `rootDir` glob
-configuration. This app does not accept glob patterns from viewers, and the
-package is not used by its request handlers. Do not run lint configuration
-from untrusted repositories. Recheck the advisory before each release; the
-current audit is not a claim of zero dependency advisories.
+Three advisories remain, all in build and development tools:
+
+- [picomatch ReDoS](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) (high,
+  no published fix), reached through OpenNext's build minifier, the
+  development ESLint plugin and Vite in the test runner.
+- [glob cancellation bypass](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)
+  (moderate), through OpenNext's build; its fixed major is outside OpenNext's
+  supported range.
+- [minimatch pattern amplification](https://github.com/advisories/GHSA-g3hv-75wg-m249)
+  (moderate), through the TypeScript lint parser.
+
+Each matches glob patterns written in this repository's configuration while
+building or linting. The app does not accept glob patterns from viewers, and
+none of these packages runs in its request handlers. Do not build or lint
+configuration from untrusted repositories. Recheck the advisories before each
+release; the current audit is not a claim of zero dependency advisories.
