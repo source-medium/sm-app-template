@@ -174,8 +174,7 @@ export function FilterBar({
           <Button
             type="button"
             variant="outline"
-            aria-label={`Change dates, ${rangeLabel}`}
-            aria-describedby={comparison !== undefined ? `${id}-comparison-summary` : undefined}
+            aria-label={[`Change dates, ${rangeLabel}`, comparisonSummary].filter(Boolean).join(" ")}
             aria-expanded={datesOpen}
             aria-controls={`${id}-dates`}
             data-agent-element="Change dates"
@@ -191,9 +190,10 @@ export function FilterBar({
             <span className="flex min-w-0 flex-wrap gap-x-2">
               <span>{rangeLabel}</span>
               {comparisonSummary && (
-                <span id={`${id}-comparison-summary`} className="font-normal text-muted-foreground">
-                  {comparisonSummary}
-                </span>
+                <>
+                  {" "}
+                  <span className="font-normal text-muted-foreground">{comparisonSummary}</span>
+                </>
               )}
             </span>
             <ChevronDown aria-hidden className={cn("ml-auto size-3.5", datesOpen && "rotate-180")} />

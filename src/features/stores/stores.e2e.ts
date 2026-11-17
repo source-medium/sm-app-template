@@ -21,10 +21,10 @@ test("compares stores separately and drills through with the same dates", async 
   const errors = watchConsole(page);
   test.skip(!appConfig.nav.some((item) => item.href === "/overview"), "No Overview view");
   await page.goto(`/overview?store=sample-store-a&${period}&sales_channel=amazon`);
-  await page.getByRole("button", { name: /^Store:/ }).click();
+  await page.getByRole("button", { name: /^(Switch store|Store):/ }).click();
   await page
     .getByRole("dialog", { name: "Switch store" })
-    .getByRole("button", { name: "All stores", exact: true })
+    .getByRole("button", { name: /^All stores / })
     .click();
   await expect(page.getByRole("button", { name: "Store: All stores" })).toHaveAttribute("data-store-id", "all");
   expect(new URL(page.url()).searchParams.has("sales_channel")).toBe(false);
@@ -62,7 +62,7 @@ test("the persistent picker supports search, keyboard recovery, and narrow scree
   await search.fill("no-such-store");
   await expect(page.getByRole("status")).toContainText("No matching stores");
   await expect(
-    page.getByRole("dialog", { name: "Switch store" }).getByRole("button", { name: "All stores", exact: true }),
+    page.getByRole("dialog", { name: "Switch store" }).getByRole("button", { name: /^All stores / }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Clear search" }).click();
   await expect(search).toBeFocused();
@@ -97,7 +97,7 @@ test("keeps the applied store label while a store navigation is in flight", asyn
     await route.continue();
   });
   try {
-    await page.getByRole("button", { name: /^Store:/ }).click();
+    await page.getByRole("button", { name: /^(Switch store|Store):/ }).click();
     await page.getByRole("dialog", { name: "Switch store" }).getByRole("button", { name: "Sample Store B" }).click();
     await expect(page.getByRole("status")).toHaveText("Switching to Sample Store B…");
     await expect(page.getByRole("button", { name: "Store: Sample Store A" })).toBeDisabled();

@@ -45,8 +45,7 @@ export function ThemeControl({ initialTheme }: { initialTheme: Theme }) {
             <SidebarMenuButton aria-label={`Appearance: ${label}`} title={`Appearance: ${label}`} disabled={!hydrated}>
               <SunIcon aria-hidden className="dark:hidden" />
               <MoonIcon aria-hidden className="hidden dark:block" />
-              <span>Appearance</span>
-              <span className="ml-auto text-xs text-muted-foreground">{label}</span>
+              <span>Appearance</span> <span className="ml-auto text-xs text-muted-foreground">{label}</span>
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" aria-label="Appearance">

@@ -29,9 +29,11 @@ it("keeps the date fields behind the applied range until someone changes them", 
       comparisonLabel="Compare spend breakdown with"
     />,
   );
-  const change = screen.getByRole("button", { name: "Change dates, Sep 1, 2026 – Sep 7, 2026" });
-  expect(change).toHaveTextContent("Sep 1, 2026 – Sep 7, 2026");
-  expect(change).toHaveAccessibleDescription("vs previous period and same period last year");
+  // The comparison shown on the button is part of its name (WCAG 2.5.3, label in name).
+  const change = screen.getByRole("button", {
+    name: "Change dates, Sep 1, 2026 – Sep 7, 2026 vs previous period and same period last year",
+  });
+  expect(change).toHaveTextContent("Sep 1, 2026 – Sep 7, 2026 vs previous period and same period last year");
   expect(change).toHaveAttribute("aria-expanded", "false");
   // The collapsed fields still carry the applied dates into the request.
   const form = screen.getByRole("form", { name: "Report filters" }) as HTMLFormElement;
@@ -68,7 +70,7 @@ it("names an unset comparison and starts open when a suggested range needs apply
       defaultOpen
     />,
   );
-  expect(screen.getByRole("button", { name: /^Change dates/ })).toHaveAccessibleDescription("No comparison");
+  expect(screen.getByRole("button", { name: /^Change dates/ })).toHaveAccessibleName(/ No comparison$/);
   expect(screen.getByLabelText("From")).toBeVisible();
 });
 

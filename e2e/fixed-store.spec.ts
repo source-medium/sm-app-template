@@ -14,7 +14,7 @@ for (const item of appConfig.nav.filter((item) => item.scope !== "all-stores")) 
     await page.goto(item.href);
     await expect(page.getByTestId("mode-chip")).toHaveText("Sample data");
     await expect(page.getByRole("status")).toHaveCount(0);
-    const picker = page.getByRole("button", { name: /^Store:/ });
+    const picker = page.getByRole("button", { name: /^(Switch store|Store):/ });
     if (await page.locator("[data-agent-page]").count()) {
       await expect(picker).toBeVisible();
       await expect(picker).toBeDisabled();
@@ -107,6 +107,6 @@ test("a fixed-store deployment redirects the portfolio to its permitted store", 
   expect(new URL(page.url()).pathname).toBe(destination);
   expect(new URL(page.url()).searchParams.get("store")).toBe("sample-store-b");
   expect(new URL(page.url()).searchParams.get("from")).toBe("2026-09-01");
-  await expect(page.getByRole("button", { name: /^Store:/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /^(Switch store|Store):/ })).toBeDisabled();
   expect((await request.get("/stores?store=sample-store-a")).status()).toBe(403);
 });

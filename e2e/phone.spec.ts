@@ -91,7 +91,7 @@ test("the data dictionary and field handoff fit a small phone", async ({ page })
   await panel.getByText("Report context", { exact: true }).click();
   expect(await panel.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
   await panel
-    .getByRole("button", { name: /^Use field / })
+    .getByRole("button", { name: /^Use this field: / })
     .first()
     .click();
   const composer = page.getByRole("dialog", { name: "Vibe code" });
@@ -153,7 +153,7 @@ test("store switching is visible and usable on a small touch screen", async ({ p
   const search = dialog.getByRole("searchbox", { name: "Search stores" });
   await expect(search).not.toBeFocused();
   await expect(dialog).toBeFocused();
-  const option = dialog.getByRole("button", { name: "Sample Store B", exact: true });
+  const option = dialog.getByRole("button", { name: /^Sample Store B b\.example\.com$/ });
   await expect(option).toContainText("b.example.com");
   expect((await option.boundingBox())?.height).toBeGreaterThanOrEqual(44);
   await expectNoSeriousA11yViolations(page);

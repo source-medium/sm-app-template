@@ -74,9 +74,9 @@ export async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
 
 /** Store selection uses applied report state, independently of editable date fields. */
 export async function switchStore(page: Page, id: string) {
-  await page.getByRole("button", { name: /^Store:/ }).click();
+  await page.getByRole("button", { name: /^(Switch store|Store):/ }).click();
   await page.getByRole("dialog", { name: "Switch store" }).locator(`[data-store-option="${id}"]`).click();
-  await expect(page.getByRole("button", { name: /^Store:/ })).toHaveAttribute("data-store-id", id);
+  await expect(page.getByRole("button", { name: /^(Switch store|Store):/ })).toHaveAttribute("data-store-id", id);
 }
 
 /** The date fields fold behind the applied range, so changing dates starts by unfolding them. */
