@@ -44,8 +44,7 @@ export function ReportControls({
       >
         <SlidersHorizontal aria-hidden className="text-muted-foreground" />
         <span className="flex min-w-0 flex-wrap gap-x-2">
-          <span>Filters</span>
-          <span className="font-normal text-muted-foreground">{applied}</span>
+          <span>Filters</span> <span className="font-normal text-muted-foreground">{applied}</span>
         </span>
         <ChevronDown aria-hidden className={cn("ml-auto size-3.5", shown && "rotate-180")} />
       </Button>

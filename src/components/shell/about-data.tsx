@@ -319,7 +319,7 @@ function Dictionary({
             <Button
               variant="outline"
               size="sm"
-              aria-label={`Use field ${field.name}`}
+              aria-label={`Use this field: ${field.name}`}
               onClick={() => onUseField({ ...field, relation, origin: report.mode })}
             >
               Use this field

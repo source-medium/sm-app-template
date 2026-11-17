@@ -62,6 +62,8 @@ export function StoreSwitcher({
     return [domain, id].filter(Boolean).join(" · ");
   };
   const label = allStores ? "All stores" : selected ? storeLabel(selected) : storeId;
+  // The trigger's visible caption, which also starts its accessible name.
+  const caption = pending ? "Switching store" : fixedStore ? "Store" : "Switch store";
   for (const store of stores) {
     if (
       ![store.label, store.id, store.domain ?? "", store.brand ?? ""]
@@ -99,7 +101,7 @@ export function StoreSwitcher({
             type="button"
             variant="outline"
             disabled={fixedStore || pending || stores.length === 0}
-            aria-label={`Store: ${label}`}
+            aria-label={`${caption}: ${label}`}
             aria-description={fixedStore ? "Only this store is available." : "Choose a store."}
             aria-busy={pending}
             data-store-id={allStores ? "all" : storeId}
@@ -128,8 +130,8 @@ export function StoreSwitcher({
             )}
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-normal text-muted-foreground">
-                {pending ? "Switching store…" : fixedStore ? "Store" : "Switch store"}
-              </span>
+                {pending ? `${caption}…` : caption}
+              </span>{" "}
               <span className="block truncate leading-4" title={label}>
                 {label}
               </span>
@@ -204,8 +206,6 @@ export function StoreSwitcher({
                     disabled={!storePath}
                     aria-current={!allStores && store.id === storeId ? "page" : undefined}
                     data-store-option={store.id}
-                    aria-label={storeLabel(store)}
-                    aria-description={storeDetail(store) || undefined}
                     onClick={() => {
                       if (!allStores && store.id === storeId) setOpen(false);
                       else if (storePath) navigate(switchStoreHref(storePath, params, store.id), storeLabel(store));
@@ -215,7 +215,10 @@ export function StoreSwitcher({
                     <span className="min-w-0 flex-1 break-words">
                       <span className="block">{store.label}</span>
                       {storeDetail(store) && (
-                        <span className="block text-xs font-normal text-muted-foreground">{storeDetail(store)}</span>
+                        <>
+                          {" "}
+                          <span className="block text-xs font-normal text-muted-foreground">{storeDetail(store)}</span>
+                        </>
                       )}
                     </span>
                     {!allStores && store.id === storeId && <Check aria-hidden className="ml-auto shrink-0" />}
@@ -248,7 +251,6 @@ export function StoreSwitcher({
                 type="button"
                 variant="ghost"
                 data-all-stores
-                aria-label="All stores"
                 className="h-auto min-h-12 w-full justify-start gap-3 px-2 py-2 text-left aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
                 aria-current={allStores ? "page" : undefined}
                 onClick={() => (allStores ? setOpen(false) : navigate(allStoresHref(portfolio, params), "All stores"))}
@@ -257,7 +259,7 @@ export function StoreSwitcher({
                   <LayoutGrid className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block">All stores</span>
+                  <span className="block">All stores</span>{" "}
                   <span className="block text-xs font-normal text-muted-foreground">
                     {stores.length === 1 ? "View store performance" : `Compare ${stores.length} stores`}
                   </span>

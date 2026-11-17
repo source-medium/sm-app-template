@@ -245,7 +245,10 @@ test("overview: chart labels and lines remain readable in both themes", async ({
 test("unknown stores remain unselected until the viewer chooses a valid store", async ({ page }) => {
   await page.goto("/overview?store=unknown-store");
   await expect(page.getByText("This store is not in the store list")).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Store:/ })).toHaveAttribute("data-store-id", "unknown-store");
+  await expect(page.getByRole("button", { name: /^(Switch store|Store):/ })).toHaveAttribute(
+    "data-store-id",
+    "unknown-store",
+  );
   await expect(page.locator('[data-slot="kpi-value"]')).toHaveCount(0);
   // Without a listed store there is no time zone, so no date to offer ranges from.
   await expect(page.getByRole("link", { name: "Last 7 days" })).toHaveCount(0);
