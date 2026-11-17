@@ -411,6 +411,32 @@ publishing tenant data in fixtures.
   mandatory, and new external consumers or per-person actions need a design
   and review beyond the shared viewer guards.
 
+## Dependency update (2026-11-17)
+
+The template now pins Next 16.4.6, React 19.3.1, OpenNext Cloudflare 1.20.17
+/ AWS 4.1.16, Wrangler 4.162.0 and workers-types 5.20261114.1, with every other
+package at its newest release within its major. The Cloudflare test pool moved
+to its renamed package, `@cloudflare/vitest-plugin`. The PostCSS, sharp, undici
+and glob overrides were removed because the new parents ship the fixed
+versions; [SECURITY.md](../../SECURITY.md#dependency-review-2026-11-17) lists
+the advisories that remain. OpenNext 1.20.16 and later require assets served
+only at their exact path when the Worker runs first, so `wrangler.jsonc` sets
+`html_handling` and `not_found_handling` to `none`.
+
+axe-core 4.14 turned on `label-content-name-mismatch` (WCAG 2.5.3). The
+Appearance, Filters, store, Change dates and Use this field controls now carry
+their visible text in their accessible names.
+
+Local verification on Node 26 / macOS:
+
+- `pnpm install --frozen-lockfile` and `pnpm check:deploy` passed: format,
+  lint, types and the unit suite in Node and workerd, 191 browser checks,
+  secret isolation (2,632 build files and 189 rendered responses) and the
+  workerd smoke.
+- `pnpm test:browser --repeat-each=8` passed 1,528 checks in 10.2 minutes,
+  reusing that build.
+- Linux and Windows CI remain required for the final pushed commit.
+
 ## Setup and reporting improvements (2026-10-22)
 
 The template now pins Next 16.4.2, OpenNext Cloudflare 1.20.13 / AWS 4.1.12,
