@@ -49,29 +49,29 @@ An admin or editor can connect the hosted app to a GitHub repository and
 change its code. SourceMedium keeps hosting it at the same address, with the
 same sign-in and data.
 
-1. In SourceMedium, open the app's settings and choose **Make changes**. Create
-   the repository from this template when it offers to; GitHub makes a private
+1. In SourceMedium, choose **Use your own code** on the app's row. Create the
+   repository from this template when it offers to; GitHub makes a private
    copy in your account or organization.
-2. Enter the repository as `owner/name` and choose **Connect**. SourceMedium
-   shows a connect code once.
-3. In the repository's **Actions** tab, run the **SourceMedium preview**
-   workflow with that code (or `gh workflow run sourcemedium.yml -f
-connect_code=<code>`). This one run proves the repository is yours; the code
-   expires after 72 hours and works once.
-4. From then on, every push runs the workflow
-   (`.github/workflows/sourcemedium.yml`). It sends the commit to SourceMedium,
-   which installs, builds and checks it, then prints the preview address, or
-   the build log if the build failed.
-5. Admins and editors open the preview signed in to SourceMedium and publish
+2. Choose **Connect GitHub** and install SourceMedium's GitHub App on that
+   account, for that repository. Back in SourceMedium, pick the repository if
+   it asks; SourceMedium then builds its default branch.
+3. From then on, every push to a branch builds a preview. SourceMedium shows
+   it in the app's settings and puts it on the commit as the **SourceMedium
+   preview** status, with the preview's address or why the build failed.
+4. Admins and editors open the preview signed in to SourceMedium and publish
    it; **Restore** brings back an earlier version.
 
 Every push gets its own preview, and nothing goes live until it is published.
 A newer push to a branch replaces that branch's build if it is still waiting.
-The workflow stores no secret: GitHub signs a short-lived identity token for
-the repository and commit, and SourceMedium accepts only the repository the
-connect code proved. Naming a repository in SourceMedium alone connects
-nothing. A renamed repository keeps working; one moved to another owner
-must be connected again. Each app builds at most 40 times a day.
+The GitHub App reads the code of only the repositories you give it and writes
+commit statuses; it cannot change your code. A renamed repository keeps
+working; one moved to another owner, or removed from the App, must be
+connected again. Each app builds at most 40 times a day.
+
+A repository made from an earlier version of this template has a
+`.github/workflows/sourcemedium.yml`. Once the repository is connected through
+the GitHub App, that workflow sends nothing; delete it, or run
+`pnpm template:update`, which removes it if you never changed it.
 
 SourceMedium builds with `pnpm install --frozen-lockfile` and
 `pnpm build:cloudflare` on the Node and pnpm versions this template pins, with
