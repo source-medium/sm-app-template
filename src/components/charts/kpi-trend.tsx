@@ -58,14 +58,14 @@ function Sparkline({
       preserveAspectRatio="none"
       className="h-11 w-full"
     >
+      {/* Full color with long dashes reads on both themes; the thinner stroke keeps it behind the period. */}
       {prior && (
         <path
           d={prior.d}
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
-          strokeDasharray="3 3"
-          strokeOpacity="0.75"
+          strokeDasharray="5 3"
           vectorEffect="non-scaling-stroke"
           className="text-chart-2"
         />
@@ -84,6 +84,19 @@ function Sparkline({
         ) : null,
       )}
     </svg>
+  );
+}
+
+/** Names the dashed line under the sparkline, drawn as the main chart's legend draws it. */
+function ComparisonKey({ label }: { label: string }) {
+  return (
+    <span aria-hidden className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+      <svg viewBox="0 0 16 4" className="h-1 w-4 shrink-0 text-chart-2">
+        <line x1="0" y1="2" x2="16" y2="2" stroke="currentColor" strokeWidth="1.5" strokeDasharray="5 3" />
+      </svg>
+      {/* Capitalized as the main chart's legend is; the label itself reads mid-sentence elsewhere. */}
+      <span className="inline-block first-letter:uppercase">{label}</span>
+    </span>
   );
 }
 
@@ -112,27 +125,36 @@ export function KpiTrend({
   });
   const plottable = exact(raw, values);
   const present = values.some((value) => value !== null);
+  const drawn = plottable && present;
   const line = (slot: 0 | 1) => (
     <Sparkline label={label} grain={grain} values={values} comparison={prior[slot] ?? null} />
   );
+  // The key sits outside the link, whose name is the link's purpose.
+  const key = (slot: 0 | 1) => {
+    const comparison = prior[slot];
+    return comparison ? <ComparisonKey label={comparison.label} /> : null;
+  };
   return (
-    <a
-      href={tableHref}
-      aria-label={`View daily values for ${label}`}
-      title="View daily values"
-      className="mt-2 block min-w-0 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-    >
-      {plottable && present ? (
-        comparisons ? (
-          <ActiveBaseline a={line(0)} b={line(1)} />
+    <div className="mt-2 min-w-0">
+      <a
+        href={tableHref}
+        aria-label={`View daily values for ${label}`}
+        title="View daily values"
+        className="block min-w-0 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        {drawn ? (
+          comparisons ? (
+            <ActiveBaseline a={line(0)} b={line(1)} />
+          ) : (
+            line(0)
+          )
         ) : (
-          line(0)
-        )
-      ) : (
-        <span className="flex h-11 items-center text-xs text-muted-foreground">
-          {plottable ? "No daily values" : "Daily values available in the table"}
-        </span>
-      )}
-    </a>
+          <span className="flex h-11 items-center text-xs text-muted-foreground">
+            {plottable ? "No daily values" : "Daily values available in the table"}
+          </span>
+        )}
+      </a>
+      {drawn && comparisons && <ActiveBaseline a={key(0)} b={key(1)} />}
+    </div>
   );
 }

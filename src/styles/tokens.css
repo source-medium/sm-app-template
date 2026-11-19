@@ -66,6 +66,10 @@
   --chart-axis: #64748b;
 
   --shadow-card: 0 1px 2px rgba(26, 31, 54, 0.04);
+  /* The shade at the edge of a table that scrolls inside its frame, where more rows or columns are. */
+  --scroll-cue: rgba(26, 31, 54, 0.16);
+  /* The selected option of a segmented switch, raised above its muted track. */
+  --segment: #ffffff;
 }
 
 :root {
@@ -117,5 +121,7 @@
     --chart-axis: #94a3b8;
 
     --shadow-card: none;
+    --scroll-cue: rgba(0, 0, 0, 0.5);
+    --segment: #2c3b5c;
   }
 }

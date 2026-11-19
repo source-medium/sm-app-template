@@ -107,7 +107,7 @@ test("retention: second purchases have their own cumulative measure and mature a
   const table = page.getByRole("table", { name: "Purchased a second time", exact: true });
   await expect(table).toBeVisible();
   await expect(table.locator('td[data-state="immature"]').first()).toHaveText("—");
-  await expect(table.locator('td[data-state="value"]').first()).not.toHaveText("100%");
+  await expect(table.locator('td[data-state="value"]').first()).not.toHaveText("100.00%");
   // The measure's definition sits behind "About these cohorts" under the matrix.
   await page.locator("summary").filter({ hasText: "About these cohorts" }).click();
   await expect(page.getByText("Customers who have placed a second order", { exact: false })).toBeVisible();
@@ -127,7 +127,7 @@ test("retention: incomplete months, published gaps, and measure/channel selectio
   await expect(table.locator('td[data-state="missing"]').first()).toHaveText("No data");
   await expect(
     table.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "Sep 2026", exact: true }) }),
-  ).toContainText("100%");
+  ).toContainText("100.00%");
   await page.getByLabel("Matrix measure", { exact: true }).selectOption("revenue");
   await expect(page).toHaveURL(/measure=revenue/);
   const revenue = page.getByRole("table", { name: "Cumulative revenue / customer (LTR)", exact: true });

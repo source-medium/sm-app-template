@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { compactNumber } from "@/components/charts/compact-number";
+import { axisTick, compactNumber, valueTicks } from "@/components/charts/compact-number";
 import {
   calendarDate,
   EMPTY_VALUE,
@@ -10,6 +10,7 @@ import {
   formatLabel,
   formatMeasure,
   formatPercent,
+  moneyAxis,
   formatWallTime,
   isTimeZone,
 } from "@/lib/format";
@@ -57,6 +58,14 @@ describe("server formatting", () => {
   it("compacts axis ticks without locale APIs", () => {
     expect([950, 1200, 45_000, 3_400_000, -2500].map(compactNumber)).toEqual(["950", "1.2K", "45K", "3.4M", "-2.5K"]);
   });
+
+  it("labels money axes with the report's currency symbol on its side", () => {
+    const usd = moneyAxis("USD");
+    expect(usd).toEqual({ prefix: "$", suffix: "" });
+    expect([12_000, 950, -2500].map((value) => axisTick(value, usd))).toEqual(["$12K", "$950", "-$2.5K"]);
+    expect(moneyAxis(null)).toEqual({ prefix: "", suffix: "" });
+    expect(axisTick(0.45, "percent")).toBe("45%");
+  });
 });
 
 it("formatDateRange writes a range once and a single day without a dash", () => {
@@ -90,4 +99,13 @@ describe("store dates", () => {
     for (const code of ["USD", "EUR", "JPY"]) expect(isCurrency(code)).toBe(true);
     for (const code of ["nope", "", "US$"]) expect(isCurrency(code)).toBe(false);
   });
+});
+
+it("ends a ranking's value axis at the first nice step past its longest bar", () => {
+  expect(valueTicks([40081.85, 30000])).toEqual([0, 10000, 20000, 30000, 40000, 50000]);
+  expect(valueTicks([50000])).toEqual([0, 10000, 20000, 30000, 40000, 50000]);
+  expect(valueTicks([-300, 1200])).toEqual([-500, 0, 500, 1000, 1500]);
+  expect(valueTicks([12, 3])).toEqual([0, 5, 10, 15]);
+  expect(valueTicks([0.37, 0.1])).toEqual([0, 0.1, 0.2, 0.3, 0.4]);
+  expect(valueTicks([])).toEqual([0]);
 });

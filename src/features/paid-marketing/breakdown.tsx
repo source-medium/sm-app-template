@@ -5,7 +5,7 @@ import { slotChanges, type ComparisonPlan } from "@/lib/comparison";
 import { changeCell, kpiDelta } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
-import { formatMoney, formatMoneyIn } from "@/lib/format";
+import { formatMoney, formatMoneyIn, moneyAxis } from "@/lib/format";
 import { withParams, type SearchParams } from "@/lib/filters";
 import { adPlatformLabel } from "@/lib/ad-platforms";
 import { BREAKDOWN_DIMENSIONS, type BreakdownDimension } from "./filters";
@@ -39,6 +39,7 @@ export function SpendBreakdownView({
       <RankedBreakdown
         title={`Spend by ${title}`}
         valueLabel="Spend"
+        valueFormat={moneyAxis(currency)}
         description={`${formatMoney(total, currency)} in the selected period.${data.hasMore ? " Top 10 by spend." : ""}`}
         comparisonLabel={compare && baseline ? `Change vs ${baseline.short}` : undefined}
         hasMore={data.hasMore}

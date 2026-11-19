@@ -39,7 +39,11 @@ Hosted mode is set by SourceMedium's deploy. `pnpm dev`, `pnpm diagnose` and
 `pnpm schema` refuse it; use `managed-dev` on your computer.
 
 Hosted apps use individual workspace sign-in and `SM_GATEWAY_AUTH=workspace`.
-SourceMedium sets `APP_ENVIRONMENT` for the deployment's environment. These
+SourceMedium sets `APP_ENVIRONMENT` for the deployment's environment, and
+`SM_APP_SOURCE` to `template` (its standard template) or `repository` (a
+build of your GitHub copy). **Vibe code** uses it to say when the app has no
+copy of its code yet and how to make one; a deploy that leaves it out, or a
+value this version does not know, shows those steps as a fallback. These
 labels never authorize a request: the gateway viewer and the data API's app,
 deployment and membership checks still apply.
 
@@ -49,9 +53,9 @@ An admin or editor can connect the hosted app to a GitHub repository and
 change its code. SourceMedium keeps hosting it at the same address, with the
 same sign-in and data.
 
-1. In SourceMedium, choose **Use your own code** on the app's row. Create the
-   repository from this template when it offers to; GitHub makes a private
-   copy in your account or organization.
+1. In SourceMedium, choose **Customize the code** on the app's row in
+   **Dashboards & Apps**. Create the repository from this template when it
+   offers to; GitHub makes a private copy in your account or organization.
 2. Choose **Connect GitHub** and install SourceMedium's GitHub App on that
    account, for that repository. Back in SourceMedium, pick the repository if
    it asks; SourceMedium then builds its default branch.

@@ -1,7 +1,7 @@
 import { rangeLength } from "@/lib/filters";
 import { SALES_CHANNEL_PREDICATE, VALID_SALES_CHANNEL_SQL, summaryMeasure } from "@/lib/data/channel-sql";
 /**
- * Overview, live. One query aggregates the store's channel and sub-channel
+ * Overview, live. One query aggregates the store's per-channel summary
  * rows to daily totals and computes the period totals in the same pass, so
  * totals are never computed from a truncated list. Order measures count the
  * valid sales channels only, as the catalog defines them; spend and traffic
@@ -30,7 +30,7 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
     maxRows: Math.min(MAX_ROWS, rangeLength(filters.range)),
     sql: `
       WITH scoped AS (
-        SELECT date, sm_channel, sm_sub_channel, ${summaryMeasure("website_sessions")}, ${summaryMeasure("ad_spend")},
+        SELECT date, sm_channel, ${summaryMeasure("website_sessions")}, ${summaryMeasure("ad_spend")},
           ${summaryMeasure("order_gross_revenue")} AS order_gross_revenue,
           ${summaryMeasure("order_discounts")} AS order_discounts,
           ${summaryMeasure("order_refunds")} AS order_refunds,
@@ -44,13 +44,13 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
         WHERE sm_store_id = @store_id AND date BETWEEN @start_date AND @end_date
           AND ${SALES_CHANNEL_PREDICATE}
       ), contributions AS (
-        SELECT sm_channel AS channel, sm_sub_channel AS sub_channel, SUM(order_net_revenue) AS revenue,
-          ROW_NUMBER() OVER (ORDER BY ABS(SUM(order_net_revenue)) DESC NULLS LAST, sm_channel, sm_sub_channel) AS rank
-        FROM scoped WHERE ${VALID_SALES_CHANNEL_SQL} GROUP BY sm_channel, sm_sub_channel
+        SELECT sm_channel AS channel, SUM(order_net_revenue) AS revenue,
+          ROW_NUMBER() OVER (ORDER BY ABS(SUM(order_net_revenue)) DESC NULLS LAST, sm_channel) AS rank
+        FROM scoped WHERE ${VALID_SALES_CHANNEL_SQL} GROUP BY sm_channel
       ), contribution_rows AS (
-        SELECT channel, sub_channel, CAST(revenue AS STRING) AS revenue, FALSE AS remainder FROM contributions WHERE rank <= 200
+        SELECT channel, CAST(revenue AS STRING) AS revenue, FALSE AS remainder FROM contributions WHERE rank <= 200
         UNION ALL
-        SELECT CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(SUM(revenue) AS STRING), TRUE FROM contributions WHERE rank > 200 HAVING COUNT(*) > 0
+        SELECT CAST(NULL AS STRING), CAST(SUM(revenue) AS STRING), TRUE FROM contributions WHERE rank > 200 HAVING COUNT(*) > 0
       ), daily AS (
         SELECT
           date,
@@ -91,7 +91,7 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
         SUM(repeat_revenue) OVER () AS total_repeat_revenue,
         SUM(repeat_orders) OVER () AS total_repeat_orders,
         IF(ROW_NUMBER() OVER (ORDER BY date) = 1,
-          (SELECT TO_JSON_STRING(ARRAY_AGG(STRUCT(channel, sub_channel, revenue, remainder) ORDER BY remainder, channel, sub_channel)) FROM contribution_rows),
+          (SELECT TO_JSON_STRING(ARRAY_AGG(STRUCT(channel, revenue, remainder) ORDER BY remainder, channel)) FROM contribution_rows),
           NULL) AS contributions_json,
         MAX(date) OVER () AS latest_date
       FROM daily

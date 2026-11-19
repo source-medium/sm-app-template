@@ -1,6 +1,26 @@
 import { REVIEWED_METRICS, reviewedMetric } from "@/lib/reviewed-metrics";
 import type { MetricBinding, ValueFormat } from "@/lib/metric-binding";
+import type { Polarity } from "@/lib/comparison";
 import { CREATIVE_RELATION } from "./rows";
+
+/**
+ * Which way each compared measure should move, declared beside its definition.
+ * Spend, impressions and clicks are delivery: more is neither good nor bad on
+ * its own. Conversions, revenue, ROAS and CTR should rise; cost per conversion
+ * should fall.
+ */
+export const CREATIVE_POLARITY = {
+  spend: "neutral",
+  impressions: "neutral",
+  clicks: "neutral",
+  conversions: "higher",
+  revenue: "higher",
+  roas: "higher",
+  cpo: "lower",
+  ctr: "higher",
+  creatives: "neutral",
+} as const satisfies Record<string, Polarity>;
+
 const measures: [string, string, string, string, string[], ValueFormat][] = [
   ["spend", "Spend", "total_ad_spend", "SUM(ad_spend)", ["ad_spend"], "currency"],
   [

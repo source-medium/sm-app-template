@@ -31,7 +31,7 @@ command against your warehouse. MCP is not required for that path.
 | -------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Overview       | `rpt_executive_summary_daily`                                         | store, channel, sub-channel, date                                                   | `order_net_revenue`, `ad_spend` (NUMERIC), `order_count` (FLOAT64), `website_sessions` (INT64)                                                                         |
 | Paid marketing | `rpt_ad_performance_daily`                                            | ad by day                                                                           | `source_system`, `ad_campaign_id`, `ad_campaign_name`, `ad_spend`, `ad_impressions`, `ad_clicks`, `ad_platform_reported_conversions`, `ad_platform_reported_revenue`   |
-| Creatives      | `rpt_ad_performance_daily`                                            | ad by day, aggregated to creative                                                   | `ad_creative_*` text and image URLs, the same measures                                                                                                                 |
+| Creatives      | `rpt_ad_performance_daily`                                            | ad by day, aggregated to creative                                                   | `ad_creative_*` text, format, image and post URLs, the same measures                                                                                                   |
 | Orders         | `obt_orders`                                                          | one row per order                                                                   | `sm_order_key`, `order_name`, `order_processed_at_local_datetime`, channel, type, status, quantities, and the order's revenue columns                                  |
 | Products       | `obt_order_lines`                                                     | one row per order line, aggregated to product or variant                            | `source_system`, product/variant ids and titles, `is_order_sm_valid`, `order_line_net_revenue`, `order_line_net_quantity`, `order_line_product_gross_profit` (NUMERIC) |
 | Retention      | `rpt_cohort_ltv_by_first_valid_purchase_attribute_no_product_filters` | channel, acquisition cohort month, month age, one acquisition dimension/value slice | `cohort_size`, `customer_count`, `cumulative_order_net_revenue`, `cumulative_order_gross_profit` (FLOAT64, cast to NUMERIC)                                            |
@@ -115,8 +115,8 @@ are descriptive date contributions, not an attribution or causal explanation.
 
 Retention defaults to the existing unsegmented cohorts. **Segment cohorts by**
 selects one published first-order attribute, then one **Acquisition segment**:
-order type, discount code, source/medium, campaign, survey attribution or
-sub-channel. The report explicitly excludes product and SKU slices. Values
+order type, discount code, source/medium, campaign or survey attribution.
+The report explicitly excludes product and SKU slices. Values
 are scoped to the selected store, channel and twelve-cohort window. A bounded,
 searchable options query runs only when segmentation is selected, using age-zero
 rows and returning at most 200 values with a visible partial-list notice.
@@ -413,7 +413,7 @@ slot that resolves to the same dates as the first is not queried: KPI cards show
 it once and the comparison dates say why. KPI cards show one change row per
 slot, each labelled with its baseline's short name ("vs previous 28 days", "vs
 last year"), which the switch, chart legends and change columns also use; the
-caption and summary sentences use the full name ("same period last year").
+caption uses the full name ("same period last year").
 KPI sparklines draw the comparison the switch shows dashed behind the selected
 period, on one scale and lined up the way the main chart lines them up. Charts overlay one baseline and tables
 show one change column; the caption's switch changes both without a request,
@@ -569,8 +569,6 @@ load until a filter is corrected. Channel checkboxes are drafts until submission
 the quick selector and scope summary keep showing the applied channels, with a
 notice for unapplied changes.
 
-Product takeaways use the full scoped totals, existing KPI deltas and coverage
-rules, and follow the active comparison when ranking by value, without querying again.
 Gainers and decliners use the first comparison, matching their ranking. Product photos
 use the same drill-down URL as their table rows.
 
@@ -706,7 +704,8 @@ all ages despite their names. The [published cohort schema](https://sourcemedium
 and [query guidance](https://sourcemedium.com/docs/data-activation/template-resources/sql-query-library/ltv-and-retention)
 describe the underlying report.
 
-`CohortMatrix` only renders formatted cells and intensity shades. Retention owns
+`CohortMatrix` only renders formatted cells and intensity shades (Month 0
+unshaded, later ages scaled to each other). Retention owns
 the formulas, eligible ages and missing-value decisions. To remove either view,
 delete its feature folder, route folder and navigation entry as usual.
 
@@ -996,8 +995,23 @@ links provide equivalent keyboard selection. Regenerate reviewed assets with
 
 ## Performance exploration and attribution
 
+Creatives opens with one sentence on how concentrated spend is and what new
+creatives took, then the scope's KPIs against both comparisons, spend and
+results by format (`ad_creative_format`; choosing a format sets `?format=` for
+the whole report), and spend by launch week. A creative's first spend is its
+first day with spend on its ad platform, on any campaign, in the 365 days before
+the range or in it (`LAUNCH_LOOKBACK_DAYS` in `creatives/rows.ts`); one that
+spent on the first of those days reads as running before, never as launched.
+Totals, formats and launches come from one grouped query over every creative
+in scope (`GROUPING SETS`), never from the bounded list, and spend without a
+creative identity is named rather than counted. Each card and table row
+compares a creative with its own delivery in the comparison period; a creative
+with none then shows no change rather than a zero. New creatives are not
+compared: a comparison period would need its own year of history.
+
 Creatives defaults to Performance (`view=returns` remains compatible). Minimum
-spend and fractional conversions apply after period aggregation, before ranking.
+spend and fractional conversions apply after period aggregation, before ranking,
+and shape only the list.
 Compound platform/creative selections are bounded to four and read independently
 of top-N cards. Platform models, attribution windows and conversion-event settings
 are unknown unless separately verified. Selection identities are excluded from

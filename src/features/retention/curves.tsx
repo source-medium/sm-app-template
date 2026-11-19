@@ -1,4 +1,6 @@
+import type { AxisFormat } from "@/components/charts/compact-number";
 import { MetricChart } from "@/components/charts/metric-chart";
+import { moneyAxis } from "@/lib/format";
 import { retentionChart } from "./chart";
 import { RETENTION_METRICS, type CohortWindow, type RetentionMetric } from "./filters";
 import type { RetentionRowData } from "./rows";
@@ -40,16 +42,19 @@ export function RetentionCurves({
   window: CohortWindow;
   currency: string | null;
 }) {
-  const curves = (list: Curve[], valueFormat: "number" | "percent") =>
+  const curves = (list: Curve[], valueFormat: AxisFormat) =>
     list.map((curve) => ({
       ...curve,
       label: RETENTION_METRICS.find((metric) => metric.value === curve.key)?.chartLabel ?? curve.key,
       valueFormat,
       ...retentionChart(rows, channel, curve.key, asOf, window, currency),
     }));
+  // Side by side, the two cards share header rows, so their plots start level however their descriptions wrap.
+  const paired = "xl:row-span-2 xl:grid xl:grid-rows-subgrid";
   return (
     <section aria-label="Retention and lifetime value curves" className="grid min-w-0 gap-6 xl:grid-cols-2">
       <MetricChart
+        className={paired}
         param="rate_curve"
         titleSuffix="by cohort age"
         kind="line"
@@ -58,12 +63,13 @@ export function RetentionCurves({
         metrics={curves(RATE_CURVES, "percent")}
       />
       <MetricChart
+        className={paired}
         param="value_curve"
         titleSuffix="by cohort age"
         kind="line"
         categoryHeader="Cohort age"
         showPoints
-        metrics={curves(VALUE_CURVES, "number")}
+        metrics={curves(VALUE_CURVES, moneyAxis(currency))}
       />
     </section>
   );

@@ -10,9 +10,17 @@ import { fromUnits, toUnits } from "@/lib/data/decimal";
 
 const integer = new Intl.NumberFormat(appConfig.locale, { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat(appConfig.locale, { maximumFractionDigits: 2 });
-const percent = new Intl.NumberFormat(appConfig.locale, { style: "percent", maximumFractionDigits: 2 });
+// Percents, changes and multiples keep two decimals, so values line up in a column ("1.20%" beside "1.19%").
+const percent = new Intl.NumberFormat(appConfig.locale, {
+  style: "percent",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const multiple = new Intl.NumberFormat(appConfig.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const wholePercent = new Intl.NumberFormat(appConfig.locale, { style: "percent", maximumFractionDigits: 0 });
 const changePercent = new Intl.NumberFormat(appConfig.locale, {
   style: "percent",
+  minimumFractionDigits: 2,
   maximumFractionDigits: 2,
   signDisplay: "exceptZero",
 });
@@ -66,9 +74,21 @@ export function formatMoneyIn(currency: string | null): (value: string | number 
   return (value) => formatMoney(value, currency);
 }
 
+/**
+ * The currency symbol for a chart's money axis and the side it sits on ("$"
+ * before, " €" after in some locales), from the same formatter as formatMoney.
+ * The browser composes the compact ticks ($12K) without locale APIs.
+ */
+export function moneyAxis(currency: string | null): { prefix: string; suffix: string } {
+  const parts = moneyFormatter(currency).formatToParts(1);
+  const digits = parts.flatMap((part, index) => (part.type === "integer" || part.type === "fraction" ? [index] : []));
+  const text = (list: Intl.NumberFormatPart[]) => list.map((part) => part.value).join("");
+  return { prefix: text(parts.slice(0, digits[0])), suffix: text(parts.slice((digits.at(-1) ?? -1) + 1)) };
+}
+
 /** A multiple such as MER or ROAS: 3.42x. */
 export function formatMultiple(value: number | null): string {
-  return value === null || !Number.isFinite(value) ? EMPTY_VALUE : `${decimal.format(value)}x`;
+  return value === null || !Number.isFinite(value) ? EMPTY_VALUE : `${multiple.format(value)}x`;
 }
 
 /** Exact integers (INT64 as bigint) keep every digit. */
@@ -86,6 +106,12 @@ export function formatMeasure(value: string | number | null): string {
 
 export function formatPercent(value: number | null): string {
   return value === null || !Number.isFinite(value) ? EMPTY_VALUE : percent.format(value);
+}
+
+/** A share in a sentence, to the whole percent: "52%", or "under 1%" rather than a rounded zero. */
+export function formatShare(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return EMPTY_VALUE;
+  return value > 0 && value < 0.005 ? `under ${wholePercent.format(0.01)}` : wholePercent.format(value);
 }
 
 /** Input is already a percentage, preserving exact decimal comparison results. */
@@ -232,12 +258,21 @@ export function compactHeadline(
   }).format(number);
 }
 
-/** Fractional platform credit must not look like zero after display rounding. */
+const attributedConversions = new Intl.NumberFormat(appConfig.locale, {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/**
+ * Platform credit can be fractional, so every count shows two decimals and
+ * whole and fractional counts line up ("201.00", "143.25"). Credit too small
+ * for that shows its own digits rather than looking like zero.
+ */
 export function formatAttributedConversions(value: number | null): string {
   if (value === null) return EMPTY_VALUE;
   if (value !== 0 && Math.abs(value) < 0.01) {
     if (Math.abs(value) < 0.000001) return value < 0 ? ">−0.000001" : "<0.000001";
     return new Intl.NumberFormat(appConfig.locale, { maximumFractionDigits: 6 }).format(value);
   }
-  return formatMeasure(value);
+  return attributedConversions.format(value);
 }

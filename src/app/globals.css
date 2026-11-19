@@ -65,6 +65,8 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --shadow-card: var(--shadow-card);
+  --color-scroll-cue: var(--scroll-cue);
+  --color-segment: var(--segment);
 }
 
 @layer base {

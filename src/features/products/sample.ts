@@ -4,6 +4,7 @@ import { fromUnits, sumDecimals, toUnits } from "@/lib/data/decimal";
 import { datesInRange, latestDate, type ReportFilters, type DateRange } from "@/lib/filters";
 import { seededRandom, randomInt } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
+import { countedSales, sampleSummarySource } from "@/lib/sample/executive-summary";
 import type { ProductFilters, ProductsData } from "./queries";
 import { periodColumns } from "@/lib/data/period-sql";
 import {
@@ -50,24 +51,76 @@ const TITLES = [
   "Seasonal blend",
   "Sample pack",
 ];
-const money = (cents: number) => fromUnits(BigInt(cents) * 10_000_000n);
+const money = (cents: bigint) => fromUnits(cents * 10_000_000n);
+const percent = (cents: bigint, share: bigint) => (cents * share) / 100n;
 
+/**
+ * Split whole cents across weights so the parts sum exactly to the total:
+ * floor shares, then one cent each to the largest remainders.
+ */
+function allocate(total: bigint, weights: bigint[]): bigint[] {
+  const sum = weights.reduce((a, b) => a + b, 0n);
+  if (sum === 0n) return weights.map(() => 0n);
+  const parts = weights.map((weight) => (total * weight) / sum);
+  let left = total - parts.reduce((a, b) => a + b, 0n);
+  const order = weights
+    .map((weight, index) => ({ index, remainder: (total * weight) % sum }))
+    .sort((a, b) => (b.remainder > a.remainder ? 1 : b.remainder < a.remainder ? -1 : a.index - b.index));
+  for (const { index } of order) {
+    if (left === 0n) break;
+    parts[index] = (parts[index] ?? 0n) + 1n;
+    left -= 1n;
+  }
+  return parts;
+}
+
+/**
+ * Order lines for one store. Each day's lines split that day's order net
+ * revenue for their sales channel, from the summary sample every other view
+ * reads, so Products and Overview agree for the same store, dates and
+ * channel. A day or channel with no orders has no lines.
+ */
 export function sampleProductSource(storeId: string, range: DateRange): ProductSource[] {
   const scale = SAMPLE_STORE_SCALE.get(storeId);
   if (!scale) return [];
+  const orderRevenue = new Map<string, bigint>();
+  for (const row of sampleSummarySource(storeId, range).map(countedSales)) {
+    const key = `${row.date}|${row.sm_channel}`;
+    orderRevenue.set(key, (orderRevenue.get(key) ?? 0n) + row.order_net_revenue_cents);
+  }
   return datesInRange(range).flatMap((date) =>
-    TITLES.flatMap((title, index) =>
-      ["Standard", "Large"].map((variant, v) => {
-        const random = seededRandom(`product|${storeId}|${date}|${index}|${v}`);
-        const units = Math.round(randomInt(random, 2, 35) * scale * 2) / 2;
-        const revenue = Math.round(units * (1200 + index * 185 + v * 900));
+    (["amazon", "online_dtc"] as const).flatMap((channel) => {
+      const revenue = orderRevenue.get(`${date}|${channel}`) ?? 0n;
+      if (revenue <= 0n) return [];
+      const lines = TITLES.flatMap((title, index) =>
+        (index % 3 === 0) === (channel === "amazon")
+          ? ["Standard", "Large"].map((variant, v) => {
+              const random = seededRandom(`product|${storeId}|${date}|${index}|${v}`);
+              const units = Math.round(randomInt(random, 2, 35) * scale * 2) / 2;
+              return {
+                title,
+                index,
+                variant,
+                v,
+                units,
+                weight: BigInt(Math.round(units * (1200 + index * 185 + v * 900))),
+              };
+            })
+          : [],
+      );
+      const amounts = allocate(
+        revenue,
+        lines.map((line) => line.weight),
+      );
+      return lines.map(({ title, index, variant, v, units }, line) => {
+        const amount = amounts[line] ?? 0n;
         return {
           storeId,
           orderLineId: `${storeId}|${date}|p${index + 1}-v${v + 1}`,
           date,
           valid: true,
-          channel: index % 3 === 0 ? "amazon" : "online_dtc",
-          source: index % 3 === 0 ? "amazon" : "shopify",
+          channel,
+          source: channel === "amazon" ? "amazon" : "shopify",
           productId: `p${index + 1}`,
           variantId: `p${index + 1}-v${v + 1}`,
           title,
@@ -80,16 +133,16 @@ export function sampleProductSource(storeId: string, range: DateRange): ProductS
                   ? "/sample-products/blend-pouch.webp"
                   : null,
           variant,
-          revenue: money(revenue),
+          revenue: money(amount),
           units: String(units),
-          profit: index === 5 ? null : index === 8 ? money(revenue) : money(Math.round(revenue * 0.58)),
-          refunds: money(index % 4 === 0 ? -1200 : 0),
+          profit: index === 5 ? null : index === 8 ? money(amount) : money(percent(amount, 58n)),
+          refunds: money(index % 4 === 0 ? -1200n : 0n),
           refunded_units: index % 4 === 0 ? "-1" : "0",
           ordered_units: String(units + (index % 4 === 0 ? 1 : 0)),
-          cost: index === 5 ? null : index === 8 ? "0" : money(Math.round(revenue * 0.42)),
+          cost: index === 5 ? null : index === 8 ? "0" : money(percent(amount, 42n)),
         };
-      }),
-    ),
+      });
+    }),
   );
 }
 

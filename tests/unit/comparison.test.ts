@@ -82,8 +82,8 @@ describe("metric changes", () => {
 
   it("colors a change by the measure's declared polarity, never by direction alone", () => {
     expect(kpiDelta("150", "100", formatMoney, "higher")).toEqual({
-      display: "+50.00 (+50%)",
-      short: "+50%",
+      display: "+50.00 (+50.00%)",
+      short: "+50.00%",
       comparedTo: "100.00",
       direction: "up",
       tone: "good",
@@ -111,10 +111,10 @@ describe("metric changes", () => {
 
   it("puts the same tone on a table cell", () => {
     expect(changeCell(kpiDelta("90", "100", formatMoney, "higher"))).toEqual({
-      display: "-10.00 (-10%)",
+      display: "-10.00 (-10.00%)",
       tone: "bad",
     });
-    expect(changeCell(kpiDelta("90", "100", formatMoney, "neutral"))).toEqual({ display: "-10.00 (-10%)" });
+    expect(changeCell(kpiDelta("90", "100", formatMoney, "neutral"))).toEqual({ display: "-10.00 (-10.00%)" });
   });
 });
 

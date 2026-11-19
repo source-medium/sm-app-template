@@ -55,7 +55,7 @@ describe("overview, live", () => {
       expect(body.query).toContain("SUM(net_revenue) OVER period");
       expect(body.query).toContain("MAX(date) OVER () AS latest_date");
       // Aggregate UNION branches need explicit types for their absent dimensions.
-      expect(body.query).toContain("SELECT CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(SUM(revenue) AS STRING)");
+      expect(body.query).toContain("SELECT CAST(NULL AS STRING), CAST(SUM(revenue) AS STRING)");
       expect(body.query).not.toContain(channel);
       expect(body.queryParameters).toContainEqual({
         name: "channel",

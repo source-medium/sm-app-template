@@ -80,8 +80,20 @@ export type ManagedApiConfig = {
   developerToken: string | null;
 };
 
+/**
+ * Where a hosted deployment's code came from: SourceMedium's standard template
+ * release, or a build of the workspace's own GitHub copy. Null when the deploy
+ * did not say (older deploys) or said something this version does not know.
+ */
+export type HostedCodeSource = "template" | "repository" | null;
+
 /** What SourceMedium's deploy names this deployment; identity, never authority. */
-export type HostedConfig = { appId: string; deploymentId: string; authMethod: "workspace" | "probe" };
+export type HostedConfig = {
+  appId: string;
+  deploymentId: string;
+  authMethod: "workspace" | "probe";
+  codeSource: HostedCodeSource;
+};
 
 export type GuardConfig =
   { kind: "basic"; username: string; password: string } | { kind: "access"; teamDomain: string; audience: string };
@@ -278,6 +290,9 @@ function parseHosted(
   if (problems.length > 0 || dataApiUrl === null || !ids.appId || !ids.deploymentId) {
     return { status: "error", problems };
   }
+  // Display only, so an unknown value reads as unknown rather than stopping the app.
+  const source = read(env, "SM_APP_SOURCE");
+  const codeSource: HostedCodeSource = source === "template" || source === "repository" ? source : null;
   return {
     status: "ok",
     mode: "managed",
@@ -287,6 +302,7 @@ function parseHosted(
       appId: ids.appId,
       deploymentId: ids.deploymentId,
       authMethod: authMethod === "probe" ? "probe" : "workspace",
+      codeSource,
     },
     storeId: null,
   };

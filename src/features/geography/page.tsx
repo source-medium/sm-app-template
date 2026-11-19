@@ -12,6 +12,7 @@ import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { KpiCard, type KpiDelta } from "@/components/patterns/kpi-card";
 import { DataTable } from "@/components/patterns/data-table";
+import type { AxisFormat } from "@/components/charts/compact-number";
 import { MetricChart } from "@/components/charts/metric-chart";
 import { buildChartData, type PointValue } from "@/components/charts/chart-data";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
@@ -19,7 +20,7 @@ import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { changeCell, kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { Disclosure } from "@/components/ui/disclosure";
-import { formatCount, formatDate, formatMoneyIn, formatPercent } from "@/lib/format";
+import { formatCount, formatDate, formatMoneyIn, formatPercent, moneyAxis } from "@/lib/format";
 import { decimalToNumber } from "@/lib/data/decimal";
 import { planRanges, slotChanges } from "@/lib/comparison";
 import { drillDown } from "@/lib/drill-down";
@@ -208,9 +209,11 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                       key: string,
                       metricLabel: string,
                       point: (row: GeographyRow | undefined) => PointValue,
+                      valueFormat: AxisFormat = "number",
                     ) => ({
                       key,
                       label: metricLabel,
+                      valueFormat,
                       series: [{ key, label: metricLabel, color: "var(--chart-1)" }],
                       ...buildChartData(
                         datesInRange(filters.range).map((date) => ({
@@ -272,6 +275,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                             remedy="The independently queried total does not match all destination groups. Coverage and changes require maintainer review."
                           />
                         )}
+                        {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
                         <section aria-label="Geographic sales totals" className="grid gap-4 sm:grid-cols-3">
                           <KpiCard
                             label="Net revenue"
@@ -302,7 +306,6 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                             description="Orders assigned to a bundled boundary divided by the independently queried valid-order count. Unknown, unmapped and remainder orders remain in the denominator. This measures boundary coverage, not data completeness."
                           />
                         </section>
-                        {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
                         <section aria-labelledby="destinations-heading" className="flex min-w-0 flex-col gap-3">
                           <SectionHeader
                             id="destinations-heading"
@@ -350,10 +353,15 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                           categoryHeader="Date"
                           kind="line"
                           metrics={[
-                            trendMetric("revenue", "Net revenue", (row) => ({
-                              value: decimalToNumber(row?.revenue ?? null),
-                              display: money(row?.revenue ?? null),
-                            })),
+                            trendMetric(
+                              "revenue",
+                              "Net revenue",
+                              (row) => ({
+                                value: decimalToNumber(row?.revenue ?? null),
+                                display: money(row?.revenue ?? null),
+                              }),
+                              moneyAxis(currency),
+                            ),
                             trendMetric("orders", "Valid orders", (row) => ({
                               value: row?.orders ?? null,
                               display: formatCount(row?.orders ?? null),

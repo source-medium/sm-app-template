@@ -7,9 +7,16 @@ export type CohortCell = {
   intensity: number | null;
   state: "value" | "missing" | "immature";
 };
-const SHADES = ["bg-primary/5", "bg-primary/10", "bg-primary/15", "bg-primary/20", "bg-primary/25"] as const;
+/** Primary's share of a shaded cell, lowest to highest value; the lightest still stands apart from an empty cell. */
+const SHADE = { lightest: 12, darkest: 52 } as const;
 
-/** Accessible presentation only. The feature supplies age eligibility, values, labels and color scale. */
+/**
+ * Accessible presentation only. The feature supplies age eligibility, values,
+ * labels and each cell's intensity. The first age column is the acquisition
+ * month, which every customer is in, so it anchors each row unshaded; the
+ * later ages shade continuously from their lowest to their highest value, so
+ * equal values match and the order of shades is the order of values.
+ */
 export function CohortMatrix({
   caption,
   columns,
@@ -19,6 +26,17 @@ export function CohortMatrix({
   columns: string[];
   rows: { id: string; label: string; size: string; cells: CohortCell[] }[];
 }) {
+  const values = rows.flatMap((row) =>
+    row.cells.slice(1).flatMap((cell) => (cell.state === "value" && cell.intensity !== null ? [cell.intensity] : [])),
+  );
+  const lowest = Math.min(...values);
+  const highest = Math.max(...values);
+  /** Primary's percentage in the cell's background, or none for Month 0 and cells without a value. */
+  const shade = (cell: CohortCell, age: number) => {
+    if (age === 0 || cell.state !== "value" || cell.intensity === null || values.length === 0) return undefined;
+    const position = highest > lowest ? (cell.intensity - lowest) / (highest - lowest) : 1;
+    return Math.round(SHADE.lightest + position * (SHADE.darkest - SHADE.lightest));
+  };
   return (
     <Table
       data-agent-target={caption}
@@ -45,24 +63,30 @@ export function CohortMatrix({
               {row.label}
             </TableHead>
             <TableCell className="text-right tabular-nums">{row.size}</TableCell>
-            {row.cells.map((cell, index) => (
-              <TableCell
-                key={columns[index]}
-                title={cell.description}
-                aria-label={`${row.label}, ${columns[index]}: ${cell.description}`}
-                data-state={cell.state}
-                className={cn(
-                  "min-w-16 px-2 text-right tabular-nums",
-                  cell.state === "immature" && "bg-muted/30 text-muted-foreground",
-                  cell.state === "missing" && "text-muted-foreground",
-                  cell.state === "value" &&
-                    cell.intensity !== null &&
-                    SHADES[Math.min(4, Math.max(0, Math.floor(cell.intensity * 5)))],
-                )}
-              >
-                {cell.display}
-              </TableCell>
-            ))}
+            {row.cells.map((cell, index) => {
+              const percent = shade(cell, index);
+              return (
+                <TableCell
+                  key={columns[index]}
+                  title={cell.description}
+                  aria-label={`${row.label}, ${columns[index]}: ${cell.description}`}
+                  data-state={cell.state}
+                  data-shade={percent}
+                  style={
+                    percent === undefined
+                      ? undefined
+                      : { backgroundColor: `color-mix(in oklab, var(--color-primary) ${percent}%, transparent)` }
+                  }
+                  className={cn(
+                    "min-w-16 px-2 text-right tabular-nums",
+                    cell.state === "immature" && "bg-muted/30 text-muted-foreground",
+                    cell.state === "missing" && "text-muted-foreground",
+                  )}
+                >
+                  {cell.display}
+                </TableCell>
+              );
+            })}
           </TableRow>
         ))}
       </TableBody>

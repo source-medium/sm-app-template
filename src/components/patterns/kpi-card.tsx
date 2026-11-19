@@ -59,7 +59,7 @@ export function KpiCard({
       ? [{ ...first, label: "" }]
       : deltas;
   return (
-    <Card data-agent-target={label} data-agent-component="KpiCard" className="gap-2 py-5">
+    <Card data-agent-target={label} data-agent-component="KpiCard" className="@container/kpi gap-2 pt-3 pb-5">
       <CardContent className="flex flex-col gap-1 px-5">
         {description || binding || compared.length > 0 ? (
           <details className="text-sm text-muted-foreground">
@@ -98,16 +98,26 @@ export function KpiCard({
             {label}
           </span>
         )}
-        <span title={fullValue} data-slot="kpi-value" className="text-3xl font-semibold tracking-tight tabular-nums">
+        <span
+          title={fullValue}
+          data-slot="kpi-value"
+          className="text-2xl font-semibold tracking-tight tabular-nums @[13rem]/kpi:text-3xl"
+        >
           <span aria-hidden={fullValue && fullValue !== value ? true : undefined}>{value}</span>
           {fullValue && fullValue !== value && <span className="sr-only">{fullValue}</span>}
         </span>
         {period && <span className="text-xs text-muted-foreground">{period}</span>}
         {rows.length > 0 && (
-          <ul data-slot="kpi-comparison" className="mt-1 flex flex-col gap-0.5 text-xs">
+          <ul data-slot="kpi-comparison" className="mt-1 flex flex-col gap-1.5 text-xs @[13rem]/kpi:gap-0.5">
             {/* The signed change and its color carry the direction, so no arrow sits beside it. */}
             {rows.map((row) => (
-              <li key={row.label} className="flex flex-wrap items-center gap-x-1.5" data-slot="kpi-delta">
+              <li
+                key={row.label}
+                // A narrow card stacks every change over its period, so rows read alike; the list's gap
+                // keeps each change with its own period.
+                className="flex flex-col @[13rem]/kpi:flex-row @[13rem]/kpi:flex-wrap @[13rem]/kpi:items-center @[13rem]/kpi:gap-x-1.5"
+                data-slot="kpi-delta"
+              >
                 <span
                   className={cn(
                     "font-medium",

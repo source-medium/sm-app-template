@@ -25,9 +25,7 @@ it("reconciles same-source groups and preserves the existing comparison coverage
   ).toBeNull();
   const unknown = {
     ...current,
-    contributions: [
-      { channel: null, sub_channel: null, revenue: current.totals?.netRevenue ?? null, remainder: false },
-    ],
+    contributions: [{ channel: null, revenue: current.totals?.netRevenue ?? null, remainder: false }],
   };
   expect(
     revenueContributions({ ...report, current: unknown }, filters, comparison)?.rows.some((row) =>
@@ -37,7 +35,7 @@ it("reconciles same-source groups and preserves the existing comparison coverage
   const limited = revenueContributions(
     {
       ...report,
-      current: { ...unknown, contributions: [{ channel: null, sub_channel: null, revenue: "1", remainder: true }] },
+      current: { ...unknown, contributions: [{ channel: null, revenue: "1", remainder: true }] },
     },
     filters,
     comparison,

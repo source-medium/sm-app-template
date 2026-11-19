@@ -41,7 +41,6 @@ export type RevenueDeductions = {
 
 export type RevenueContribution = {
   channel: string | null;
-  sub_channel: string | null;
   revenue: string | null;
   remainder: boolean;
 };
@@ -85,8 +84,8 @@ export type OverviewReport = {
 };
 
 /**
- * One slot's view of the report, in the shape the headline, highlights and
- * chart overlay read: the current period against that one baseline. `coverage`
+ * One slot's view of the report, in the shape the highlights and chart
+ * overlay read: the current period against that one baseline. `coverage`
  * is null when the slot has no data, so periodChanges() hides its changes.
  */
 export type OverviewSlice = {

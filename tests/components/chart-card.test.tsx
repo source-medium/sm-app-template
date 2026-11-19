@@ -57,6 +57,26 @@ describe("ChartCard", () => {
     expect(screen.getByRole("img", { name: "Orders by day chart" })).toBeInTheDocument();
   });
 
+  it("draws line legends with each series' dash and money ticks with the currency symbol", () => {
+    const { container } = render(
+      <ChartCard
+        title="Net revenue by day"
+        kind="line"
+        categoryHeader="Date"
+        valueFormat={{ prefix: "$", suffix: "" }}
+        series={[
+          { key: "orders", label: "Net revenue", color: "red" },
+          { key: "previous", label: "Previous 28 days", color: "blue", dashed: true },
+        ]}
+        data={DATA.map((datum) => ({ ...datum, previous: 12, previous__display: "$12.00" }))}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    const swatches = [...container.querySelectorAll(".recharts-legend-wrapper line")];
+    expect(swatches.map((line) => line.getAttribute("stroke-dasharray"))).toEqual([null, "4 3"]);
+    expect(screen.getAllByText(/^\$\d+$/).length).toBeGreaterThan(0);
+  });
+
   it("accepts no view choice until hydrated, so an early click is never silently lost", () => {
     const card = (
       <ChartCard

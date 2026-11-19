@@ -18,7 +18,7 @@ test("creatives: an unreachable image shows the card's text, never a broken imag
   await page.goto("/creatives");
   const card = page.getByRole("listitem").filter({ hasText: "Spring colors are here" });
   await card.scrollIntoViewIfNeeded();
-  await expect(card.getByText(/image link has expired/)).toBeVisible();
+  await expect(card.getByText(/Fresh shades for longer days/)).toBeVisible();
   await expect(card.getByRole("img")).toHaveCount(0);
   const sources = await page
     .getByRole("list", { name: "Ad creatives" })
@@ -162,4 +162,37 @@ test("creatives defaults to Performance, preserves explicit views and compares c
   await expect(page.getByLabel("View", { exact: true })).toHaveValue("returns");
   await expect(page.getByLabel("Minimum conversions", { exact: true })).toHaveValue("1.5");
   await expect(page.getByRole("list", { name: "Ad creatives" })).toHaveCount(0);
+});
+
+test("creatives: compares totals and each creative, and drills into a format", async ({ page }) => {
+  await page.goto("/creatives?store=sample-store-a&from=2026-09-29&to=2026-10-26");
+  const totals = page.getByRole("region", { name: "Creative totals" });
+  // The visible change lines; each card's closed definition repeats them as hidden text.
+  const deltas = (region: typeof totals) =>
+    region.locator('[data-slot="kpi-delta"]', { hasText: "vs previous 28 days" });
+  await expect(deltas(totals).first()).toBeVisible();
+  await expect(totals.getByText("New creatives")).toBeVisible();
+  const launches = page.getByRole("table", { name: "Spend and results by launch week" });
+  await expect(launches.getByText(/^Running before Sep 29, 2026$/)).toBeVisible();
+  // Each card compares the creative with itself; a new one is marked.
+  const grid = page.getByRole("list", { name: "Ad creatives" });
+  await expect(grid.getByText("New", { exact: true }).first()).toBeVisible();
+  const first = grid.locator("li").first();
+  // A change line under a value: more values than labels.
+  expect(await first.locator("dd").count()).toBeGreaterThan(await first.locator("dt").count());
+  // Choosing a format scopes the whole report to it.
+  await page
+    .getByRole("table", { name: "Spend and results by creative format" })
+    .getByRole("link", { name: "Video" })
+    .click();
+  await expect(page).toHaveURL(/format=video/);
+  await expect(page.getByText("Showing video creatives only.")).toBeVisible();
+  await expect(grid.locator("li").first()).toBeVisible();
+  await expect(grid.locator("li").filter({ hasNotText: "Video" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Show all formats" }).click();
+  await expect(page).not.toHaveURL(/format=/);
+  // With comparisons off, no change shows anywhere.
+  await page.goto("/creatives?store=sample-store-a&from=2026-09-29&to=2026-10-26&compare=off");
+  await expect(deltas(page.getByRole("region", { name: "Creative totals" }))).toHaveCount(0);
+  await expect(first.locator("dd")).toHaveCount(await first.locator("dt").count());
 });

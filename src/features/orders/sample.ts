@@ -83,11 +83,15 @@ export async function sampleOrders(filters: OrdersFilters): Promise<OrdersPage> 
   };
 }
 
-export async function sampleOrderDetail(storeId: string, ref: OrderRef): Promise<OrderDetail | null> {
+function sampleOrderRow(storeId: string, ref: OrderRef): WireOrder | undefined {
   const day = ref.processedLocal.slice(0, 10);
-  const match = scopedRows(storeId, { from: day, to: day }, ref.dateBasis).find(
+  return scopedRows(storeId, { from: day, to: day }, ref.dateBasis).find(
     (order) => order.order_key === ref.key && processed(order) === ref.processedLocal,
   );
+}
+
+export async function sampleOrderDetail(storeId: string, ref: OrderRef): Promise<OrderDetail | null> {
+  const match = sampleOrderRow(storeId, ref);
   if (!match) return null;
   const [row] = decodeRows(OrderDetailRow, [match], ORDERS_RELATION);
   return row ? toOrderDetail(row) : null;
@@ -114,7 +118,8 @@ export async function sampleOrderAttribution(storeId: string, ref: OrderRef): Pr
       {
         evidence_type: "traffic_source_candidate",
         evidence_source: "sample_traffic_capture",
-        sm_marketing_channel: order.subChannel,
+        // The sample's traffic evidence names the channel the fixture order came from.
+        sm_marketing_channel: sampleOrderRow(storeId, ref)?.sm_sub_channel ?? null,
         sm_utm_source: order.utmSource,
         sm_utm_medium: order.utmMedium,
         sm_attribution_inference_method: "raw_utm",

@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Check, Copy, MousePointer2, Sparkles } from "lucide-react";
+import { Check, Copy, ExternalLink, MousePointer2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Sheet, SheetTrigger, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AGENT_INTENTS,
+  HOSTED_CODE_GUIDE,
   agentIntent,
   agentTargetLabel,
   composeAgentPrompt,
@@ -30,10 +31,13 @@ export function AgentPrompt({
   mode,
   build,
   hosting,
+  codeSource,
 }: {
   mode: "sample" | "live";
   build: string;
   hosting?: "sourcemedium";
+  /** A hosted app's code: the standard template, the workspace's own copy, or unknown. */
+  codeSource?: "template" | "repository" | null;
 }) {
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -53,7 +57,14 @@ export function AgentPrompt({
   const [metric, setMetric] = useState<AgentMetric>();
   const { state, copy } = useCopy();
   const target = page.targets.find((item) => targetKey(item) === targetId);
-  const prompt = composeAgentPrompt(intentId, request, { ...page, mode, build, hosting }, target, field, metric);
+  const prompt = composeAgentPrompt(
+    intentId,
+    request,
+    { ...page, mode, build, hosting, codeSource },
+    target,
+    field,
+    metric,
+  );
   const copyState = state === "copied" && lastCopied !== prompt ? "idle" : state;
 
   const refreshPage = useCallback(() => {
@@ -156,7 +167,7 @@ export function AgentPrompt({
     const latestPrompt = composeAgentPrompt(
       intentId,
       request,
-      { ...snapshot, mode, build, hosting },
+      { ...snapshot, mode, build, hosting, codeSource },
       selected?.item && !sameScope ? undefined : selected,
       snapshot.filters.store === page.filters.store ? field : undefined,
       metric,
@@ -171,9 +182,9 @@ export function AgentPrompt({
     <>
       <Sheet open={open} onOpenChange={show}>
         <SheetTrigger asChild>
-          <Button type="button" variant="outline" size="sm" aria-label="Vibe code" className="px-2 sm:px-2.5">
+          <Button type="button" variant="outline" size="sm" className="px-2.5">
             <Sparkles aria-hidden />
-            <span className="hidden sm:inline">Vibe code</span>
+            Vibe code
           </Button>
         </SheetTrigger>
         {!picking && (
@@ -190,9 +201,16 @@ export function AgentPrompt({
           >
             <SheetHeader className="shrink-0">
               <SheetTitle>Vibe code</SheetTitle>
-              <SheetDescription>Prepare a request for Codex, Claude Code, or your coding agent.</SheetDescription>
+              <SheetDescription>
+                {hosting === "sourcemedium"
+                  ? "Write a request here, then paste it into Claude Code or Codex working in this app's own copy of its code."
+                  : "Prepare a request for Codex, Claude Code, or your coding agent."}
+              </SheetDescription>
             </SheetHeader>
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+              {hosting === "sourcemedium" && codeSource !== "repository" && (
+                <HostedCodeSteps fromTemplate={codeSource === "template"} />
+              )}
               {/* The kind of help comes first: it decides whether the prompt asks the agent to change code or only explain. */}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={`${id}-intent`} className="text-sm font-medium">
@@ -359,6 +377,50 @@ export function AgentPrompt({
     </>
   );
 }
+/**
+ * A hosted app on SourceMedium's standard template has no code for an agent
+ * to change until someone makes it a copy, so the panel says how first. When
+ * the deploy did not say where its code came from, the same steps read as
+ * what to do if no copy exists yet.
+ */
+function HostedCodeSteps({ fromTemplate }: { fromTemplate: boolean }) {
+  return (
+    <section aria-labelledby="hosted-code-steps" className="rounded-md border bg-muted/40 p-3 text-sm">
+      <h3 id="hosted-code-steps" className="font-medium">
+        {fromTemplate ? "Get this app's code first" : "No copy of this app's code yet?"}
+      </h3>
+      <p className="mt-1 text-muted-foreground">
+        {fromTemplate
+          ? "This app runs SourceMedium's standard template, so there is no code for an agent to change yet. A workspace admin or editor sets it up once:"
+          : "An agent changes this app in its GitHub copy. A workspace admin or editor sets one up once:"}
+      </p>
+      <ol className="mt-2 list-decimal space-y-1 pl-5">
+        <li>
+          In SourceMedium, open <strong className="font-medium">Dashboards &amp; Apps</strong> and choose{" "}
+          <strong className="font-medium">Customize the code</strong> on this app.
+        </li>
+        <li>
+          <strong className="font-medium">Create repository</strong> makes a private copy on GitHub;{" "}
+          <strong className="font-medium">Connect GitHub</strong> links it to this app.
+        </li>
+        <li>Open the copy in Claude Code or Codex and paste the prompt you write below.</li>
+      </ol>
+      <p className="mt-2 text-muted-foreground">
+        Each push builds a private preview. Nothing goes live until an admin or editor publishes it.
+      </p>
+      <a
+        href={HOSTED_CODE_GUIDE}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-2 inline-flex items-center gap-1 font-medium underline underline-offset-4"
+      >
+        How changing a hosted app works
+        <ExternalLink aria-hidden className="size-3.5" />
+      </a>
+    </section>
+  );
+}
+
 /** Read only context declared by the report and loaded shared patterns, never arbitrary URL values or row text. */
 function readPage(): AgentPageSnapshot {
   const root = document.querySelector("main");

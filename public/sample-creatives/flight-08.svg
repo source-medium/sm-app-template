@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Sample flight creative 8">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e3a8a"/><stop offset="1" stop-color="#60a5fa"/></linearGradient></defs>
+  <path d="M40 230 C120 130 200 330 280 210 S360 170 370 190 L370 330 L40 330 Z" fill="url(#g)"/><path d="M50 200 C130 100 210 300 290 180 S360 140 370 160" fill="none" stroke="#1e3a8a" stroke-width="8" stroke-dasharray="18 14" stroke-linecap="round"/>
+</svg>

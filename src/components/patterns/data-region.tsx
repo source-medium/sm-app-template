@@ -27,7 +27,8 @@ export async function DataRegion<T>({
   emptyAction?: { href: string; label: string };
   /**
    * The store's time zone (ReportContext.timeZone) to show the load time in,
-   * or false for a region that loads filter options, not the report.
+   * or false for a region that loads filter options, or whose load a later
+   * region on the view waits for and stamps (one load time per view).
    */
   timestamp: string | false;
   /** Keep applied form controls available when their options query fails. The error still renders. */

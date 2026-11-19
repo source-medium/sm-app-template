@@ -175,7 +175,10 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                           />
                         )}
                         <div className="border-t pt-6">
-                          <SectionHeader title="All twelve cohorts" />
+                          <SectionHeader
+                            title={`${metricLabel}, all twelve cohorts`}
+                            description="A dash is a month that has not elapsed yet; No data is an elapsed month with no published value."
+                          />
                         </div>
                         {rows.some((row) => row.channel === options.channel) ? (
                           <CohortMatrix

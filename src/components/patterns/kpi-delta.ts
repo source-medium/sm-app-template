@@ -51,9 +51,13 @@ export function kpiDelta<T extends MetricValue>(
   };
 }
 
-/** A table's change cell: the full change, colored the same way as a KPI card. */
-export function changeCell(delta: KpiDelta): DataTableCell {
-  return { display: delta.display, tone: delta.tone ?? undefined };
+/**
+ * A table's change cell, colored the same way as a KPI card: the full change, or with
+ * `short` only its percentage (as a KPI row shows it), for a table whose own columns
+ * already carry the amounts.
+ */
+export function changeCell(delta: KpiDelta, { short = false }: { short?: boolean } = {}): DataTableCell {
+  return { display: (short && delta.short) || delta.display, tone: delta.tone ?? undefined };
 }
 
 /** How a KPI row names its baseline: "vs previous 28 days", "vs last year". */

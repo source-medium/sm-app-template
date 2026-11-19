@@ -30,6 +30,7 @@ import {
   formatMeasure,
   formatMoney,
   formatMoneyIn,
+  moneyAxis,
   formatMultiple,
   formatPercent,
 } from "@/lib/format";
@@ -207,6 +208,9 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
   );
 }
 
+/** Measures in the store's currency, so their chart axis carries its symbol. */
+const MONEY_METRICS = new Set<PaidMetric>(["spend", "revenue", "cpo"]);
+
 function point(value: MetricValue, currency: string | null, metric: PaidMetric): PointValue {
   if (metric === "roas")
     return {
@@ -246,6 +250,7 @@ function PaidMarketingView({
   const metrics = PAID_METRICS.map((metric) => ({
     key: metric,
     label: METRIC_LABELS[metric],
+    valueFormat: MONEY_METRICS.has(metric) ? moneyAxis(currency) : ("number" as const),
     series,
     ...buildChartData(
       periods.map((date) => {

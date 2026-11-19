@@ -40,7 +40,7 @@ export function aggregateOverviewWire(
   channel: string | null = null,
 ) {
   const byDate = new Map<string, Sums>();
-  const contributions = new Map<string, { channel: string; sub_channel: string; revenue: bigint }>();
+  const contributions = new Map<string, { channel: string; revenue: bigint }>();
   let gross: bigint | null = null;
   let discounts: bigint | null = null;
   let refunds: bigint | null = null;
@@ -69,12 +69,8 @@ export function aggregateOverviewWire(
     if (row.repeat_customer_order_count !== null) repeatOrders = (repeatOrders ?? 0) + row.repeat_customer_order_count;
     // Contributions list sales channels only, as the live query's WHERE does.
     if (isValidSalesChannel(row.sm_channel)) {
-      const identity = JSON.stringify([row.sm_channel, row.sm_sub_channel]);
-      const contribution = contributions.get(identity) ?? {
-        channel: row.sm_channel,
-        sub_channel: row.sm_sub_channel,
-        revenue: 0n,
-      };
+      const identity = row.sm_channel;
+      const contribution = contributions.get(identity) ?? { channel: row.sm_channel, revenue: 0n };
       contribution.revenue += row.order_net_revenue_cents;
       contributions.set(identity, contribution);
     }

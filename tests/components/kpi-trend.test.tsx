@@ -76,7 +76,7 @@ it("draws the shown comparison dashed behind the selected period, on one scale",
   );
   const graph = screen.getByRole("img", { name: /with the previous 2 days dashed behind it/ });
   const [prior, current] = graph.querySelectorAll("path");
-  expect(prior).toHaveAttribute("stroke-dasharray", "3 3");
+  expect(prior).toHaveAttribute("stroke-dasharray", "5 3");
   // The comparison's 4 is the top of the shared scale; the selected 1 sits at the bottom.
   expect(prior?.getAttribute("d")).toMatch(/^M2,2\b/);
   expect(current?.getAttribute("d")).toMatch(/^M2,42 L198,28\.6/);

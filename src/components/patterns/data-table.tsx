@@ -142,7 +142,7 @@ export function DataTable({
                   <TableHead
                     key={header.id}
                     aria-label={column?.definition ? column.header : undefined}
-                    className={cn(column?.align === "right" && "text-right")}
+                    className={cn("text-muted-foreground", column?.align === "right" && "text-right")}
                     aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
                   >
                     {header.column.getCanSort() ? (
@@ -152,7 +152,7 @@ export function DataTable({
                         onClick={header.column.getToggleSortingHandler()}
                         className={cn(
                           "group/sort inline-flex min-h-9 items-center gap-2 rounded-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11",
-                          column?.align === "right" && "flex-row-reverse",
+                          column?.align === "right" ? "flex-row-reverse text-right" : "text-left",
                           sorted && "text-primary",
                         )}
                       >

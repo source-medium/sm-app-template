@@ -98,7 +98,32 @@ export type AgentPageContext = AgentPageSnapshot & {
   build: string;
   /** Who hosts this app: SourceMedium builds it from the connected repository. */
   hosting?: "sourcemedium";
+  /**
+   * A hosted app's code: SourceMedium's standard template (no repository yet)
+   * or the workspace's own copy. Null or absent when the deploy did not say.
+   */
+  codeSource?: "template" | "repository" | null;
 };
+
+/** The public guide to changing a hosted app's code, which the panel and the prompt both point to. */
+export const HOSTED_CODE_GUIDE =
+  "https://docs.sourcemedium.com/onboarding/analytics-tools/reporting-app-hosted-by-sourcemedium#change-the-app%E2%80%99s-code";
+
+/** How a hosted app's code changes reach it, for the prompt's working rules. */
+function hostedCodeGuidance(codeSource: AgentPageContext["codeSource"]): string[] {
+  const preview =
+    "SourceMedium builds each push as a private preview and posts it on the commit as the SourceMedium preview status, with the preview's address or why the build failed; read it with gh pr checks or the commit's statuses. Never publish or merge without my approval: a workspace admin or editor publishes in SourceMedium.";
+  const setup =
+    "a workspace admin or editor opens Dashboards & Apps in SourceMedium, chooses Customize the code on this app, then Create repository and Connect GitHub";
+  if (codeSource === "template")
+    return [
+      `- SourceMedium hosts this app from its standard template, and it has no GitHub repository yet. Before changing anything, check that you are in a clone of this app's own copy. If not, stop and ask me to set one up (${setup}; ${HOSTED_CODE_GUIDE}), then clone it.`,
+      `- Commit on a branch and push. ${preview}`,
+    ];
+  return [
+    `- SourceMedium hosts this app. Change it in the app's GitHub repository (if none is connected yet, ${setup}): commit on a branch and push. ${preview}`,
+  ];
+}
 
 const TARGET_KINDS = new Map([
   ["KpiCard", "KPI"],
@@ -195,9 +220,11 @@ export function composeAgentPrompt(
       ? [
           "- Run pnpm check when done, and pnpm test:e2e after UI changes.",
           "- Tell me separately what you verified on sample data and what still needs live data.",
-          context.hosting === "sourcemedium"
-            ? "- SourceMedium hosts this app. Change it in the app's GitHub repository (if none is connected, ask a workspace admin or editor to connect one in SourceMedium's App settings): commit on a branch and push. The SourceMedium preview workflow builds each push and prints its preview link; read it with gh run watch. Never publish or merge without my approval: a workspace admin or editor publishes in SourceMedium."
-            : "- Do not merge or publish without my approval. If I asked for a hosted preview, follow the sm-cloud skill and return its URL; otherwise explain how to preview locally.",
+          ...(context.hosting === "sourcemedium"
+            ? hostedCodeGuidance(context.codeSource)
+            : [
+                "- Do not merge or publish without my approval. If I asked for a hosted preview, follow the sm-cloud skill and return its URL; otherwise explain how to preview locally.",
+              ]),
         ]
       : []),
   ].join("\n");

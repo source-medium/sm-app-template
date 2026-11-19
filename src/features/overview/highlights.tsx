@@ -1,9 +1,10 @@
 import "server-only";
 import { DataTable, type DataTableCell } from "@/components/patterns/data-table";
-import { changeTone, type Comparison, type Polarity } from "@/lib/comparison";
+import { changeTone, type Baseline, type Polarity } from "@/lib/comparison";
 import { revenueContributions } from "./contributions";
 import { largestRevenueChanges } from "./revenue-changes";
 import { toUnits } from "@/lib/data/decimal";
+import { channelName } from "@/lib/filters";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { OverviewFilters, OverviewSlice } from "./queries";
 import { SectionHeader } from "@/components/patterns/section-header";
@@ -27,10 +28,12 @@ export function OverviewHighlights({
 }: {
   report: OverviewSlice;
   filters: OverviewFilters;
-  comparison?: Comparison;
+  comparison?: Baseline;
   currency: string | null;
 }) {
   const changes = largestRevenueChanges(report, filters, comparison);
+  // Named once for the section, so the change columns keep short headers that fit a phone.
+  const versus = comparison?.range ? `vs ${comparison.short}` : null;
   const contributions = revenueContributions(report, filters, comparison);
   if (!changes.length && !contributions) return null;
   return (
@@ -38,18 +41,20 @@ export function OverviewHighlights({
       <SectionHeader
         id="changes-heading"
         title="Biggest changes"
-        description="Where the period moved, not what caused it."
+        description={`Where the period moved, not what caused it.${versus ? ` Changes are ${versus}.` : ""}`}
       />
       <div className="mt-3 flex min-w-0 flex-col gap-3">
+        {contributions && <h3 className="mt-1 text-sm font-medium">Days with the largest revenue change</h3>}
         <DataTable
           caption="Largest daily revenue changes"
           paginate={false}
           columns={[
+            // The change is the answer, so it reads first on a phone, before the columns that scroll.
             { key: "date", header: "Selected date", sortable: false },
-            { key: "baseline", header: "Comparison date", sortable: false },
-            { key: "current", header: "Net revenue", align: "right", sortable: false },
-            { key: "previous", header: "Comparison revenue", align: "right", sortable: false },
             { key: "change", header: "Revenue change", align: "right", sortable: false },
+            { key: "current", header: "Net revenue", align: "right", sortable: false },
+            { key: "baseline", header: "Comparison date", sortable: false },
+            { key: "previous", header: "Comparison revenue", align: "right", sortable: false },
           ]}
           rows={changes.map((row) => ({
             id: row.date,
@@ -64,7 +69,7 @@ export function OverviewHighlights({
         />
         {contributions && (
           <>
-            <h3 className="mt-3 font-medium">By sales channel</h3>
+            <h3 className="mt-3 text-sm font-medium">Sales channels by revenue change</h3>
             {contributions.limited ? (
               <>
                 <p>
@@ -76,7 +81,7 @@ export function OverviewHighlights({
                     key={period.label}
                     caption={`${period.label} summary revenue groups`}
                     columns={[
-                      { key: "group", header: "Sales channel / sub-channel" },
+                      { key: "group", header: "Sales channel" },
                       { key: "revenue", header: "Net revenue", align: "right" },
                     ]}
                     rows={period.groups.map((row, index) => ({
@@ -85,7 +90,9 @@ export function OverviewHighlights({
                         group: {
                           display: row.remainder
                             ? "Other groups (bounded remainder)"
-                            : `${row.channel ?? "Unclassified sales channel"} / ${row.sub_channel ?? "Unclassified sub-channel"}`,
+                            : row.channel
+                              ? channelName(row.channel)
+                              : "Unclassified sales channel",
                         },
                         revenue: { display: formatMoney(row.revenue, currency) },
                       },
@@ -97,10 +104,10 @@ export function OverviewHighlights({
               <DataTable
                 caption="Summary revenue contributions"
                 columns={[
-                  { key: "group", header: "Sales channel / sub-channel" },
+                  { key: "group", header: "Sales channel" },
+                  { key: "change", header: "Revenue change", align: "right" },
                   { key: "current", header: "Net revenue", align: "right" },
                   { key: "previous", header: "Comparison revenue", align: "right" },
-                  { key: "change", header: "Revenue change", align: "right" },
                 ]}
                 rows={contributions.rows.map((row) => ({
                   id: row.id,

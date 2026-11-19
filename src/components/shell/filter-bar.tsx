@@ -192,7 +192,7 @@ export function FilterBar({
               {comparisonSummary && (
                 <>
                   {" "}
-                  <span className="font-normal text-muted-foreground">{comparisonSummary}</span>
+                  <span className="font-normal text-balance text-muted-foreground">{comparisonSummary}</span>
                 </>
               )}
             </span>

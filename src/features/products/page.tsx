@@ -15,14 +15,13 @@ import { slotColumn } from "@/lib/data/period-sql";
 import { ProductCosts } from "./costs";
 import { ProductPhoto } from "./product-image";
 import { ReportControls } from "@/components/shell/report-controls";
-import { ReportTakeaway } from "@/components/patterns/report-takeaway";
 import { productNames } from "./names";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { planRanges, slotChanges } from "@/lib/comparison";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
-import { formatMeasure, formatMoneyIn } from "@/lib/format";
+import { formatMeasure, formatMoneyIn, moneyAxis } from "@/lib/format";
 import { parseSalesChannel, salesChannelLabel, withParams, type SearchParams } from "@/lib/filters";
 import { Disclosure } from "@/components/ui/disclosure";
 import {
@@ -194,6 +193,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                       <RankedBreakdown
                         title={`${metricLabel} by ${options.dimension}`}
                         valueLabel={metricLabel}
+                        valueFormat={format === money ? moneyAxis(currency) : "number"}
                         description={
                           options.ranking === "value"
                             ? "Top 10 by the selected measure."
@@ -230,19 +230,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                       />
                     );
                   };
-                  const takeawayChanges = deltas(options.metric, format);
-                  const takeaway = (slot: 0 | 1) => (
-                    <ReportTakeaway
-                      metric={metricLabel}
-                      value={format(first?.[`total_${options.metric}`] ?? null)}
-                      change={takeawayChanges[slot]}
-                      baseline={plan?.slots[slot].label}
-                    />
-                  );
                   return (
                     <div className="flex flex-col gap-6">
-                      {perSlot ? <ActiveBaseline a={takeaway(0)} b={takeaway(1)} /> : takeaway(0)}
-                      <section aria-label="All product totals" className="grid gap-4 sm:grid-cols-2">
+                      {plan && (
+                        <ComparisonCaption
+                          plan={plan}
+                          issues={changes?.map((change) => change.issue)}
+                          switchable={perSlot}
+                        />
+                      )}
+                      <section aria-label="All product totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         {PRODUCT_METRICS.slice(0, 2).map((item) => {
                           const formatValue = item.value === "units" ? formatMeasure : money;
                           return (
@@ -251,17 +248,15 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                               label={item.label}
                               value={formatValue(first?.[`total_${item.value}`] ?? null)}
                               deltas={deltas(item.value, formatValue)}
+                              description={
+                                item.value === "revenue"
+                                  ? "Order line net revenue for the matching products and channels. Overview's net revenue is the order-level figure, so the two can differ."
+                                  : undefined
+                              }
                             />
                           );
                         })}
                       </section>
-                      {plan && (
-                        <ComparisonCaption
-                          plan={plan}
-                          issues={changes?.map((change) => change.issue)}
-                          switchable={perSlot}
-                        />
-                      )}
                       {diagnostic && (
                         <Suspense
                           key={`coverage|${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${diagnostic}|${options.entity}|${options.dimension}`}

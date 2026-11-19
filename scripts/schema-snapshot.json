@@ -1,5 +1,5 @@
 {
- "_note": "Column names, types, descriptions, and key flags of SourceMedium's published relations, read from the SourceMedium demo warehouse and its data dictionary on 2026-10-05. No data. Your warehouse may differ; with live configuration, pnpm schema reads your own. Products and cohort schemas added from the demo warehouse on 2026-10-07. dim_stores schema checked against a published warehouse and the reporting_queries model on 2026-10-07; metadata descriptions are from that model, not customer rows.",
+ "_note": "Column names, types, descriptions, and key flags of SourceMedium's published relations, read from the SourceMedium demo warehouse and its data dictionary on 2026-10-05. No data. Your warehouse may differ; with live configuration, pnpm schema reads your own. Products and cohort schemas added from the demo warehouse on 2026-10-07. dim_stores schema checked against a published warehouse and the reporting_queries model on 2026-10-07; metadata descriptions are from that model, not customer rows. rpt_ad_performance_daily creative name, description, video, post URL and format columns added from the reporting_queries model on 2026-11-18.",
  "relations": {
   "rpt_executive_summary_daily": {
    "dataset": "transformed",
@@ -631,6 +631,48 @@
      "type": "STRING",
      "mode": "NULLABLE",
      "description": "The URL of the ad creative as it appears on Facebook."
+    },
+    {
+     "name": "ad_creative_name",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The creative's internal name in the ad platform (Meta creative name, the ad name where the ad is the creative, the AppLovin creative set name). An advertiser label, not ad copy."
+    },
+    {
+     "name": "ad_creative_description",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "Secondary text shown with the headline: Meta's link description, Google's long headline, Microsoft's long headline."
+    },
+    {
+     "name": "ad_creative_video_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The platform's id of the creative's video, for video creatives."
+    },
+    {
+     "name": "ad_creative_video_url",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "A URL that plays the creative's video, where the platform exposes one."
+    },
+    {
+     "name": "ad_creative_post_url",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The public URL of the organic post the ad runs as, on any platform: the Facebook or Instagram post, the Pinterest pin, the X tweet, the Reddit post."
+    },
+    {
+     "name": "ad_creative_format",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The creative's shape in one cross-platform vocabulary: image, video, carousel, collection, text, product (rendered from a product feed), flexible (assembled by the platform from several assets) or other (a platform value not yet classified)."
+    },
+    {
+     "name": "ad_creative_platform_format",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": "The platform's own format or ad type for the creative (Meta object type, Google ad type, TikTok ad format), as reported."
     }
    ],
    "description": "Daily platform-native advertising performance rows. Grain is not unique at the visible keys: hidden sub-ad breakdowns can produce multiple rows for (smcid, source_system, sm_channel, date, ad_id), and ad_id may be NULL. Aggregate metrics before reporting; do not deduplicate or treat (source_system, ad_id) as unique. Date field: date. Critical filters: sm_channel and source_system. Blend with rpt_executive_summary_daily by date and sm_channel."

@@ -97,9 +97,29 @@ describe("composeAgentPrompt", () => {
   it("sends a SourceMedium-hosted app's changes through its repository and preview, never sm-cloud", () => {
     const hosted = composeAgentPrompt("add", "Add a chart", { ...context, mode: "live", hosting: "sourcemedium" });
     expect(hosted).toContain("Change it in the app's GitHub repository");
-    expect(hosted).toContain("gh run watch");
+    expect(hosted).toContain("SourceMedium preview status");
     expect(hosted).toContain("a workspace admin or editor publishes in SourceMedium");
     expect(hosted).not.toContain("sm-cloud");
-    expect(composeAgentPrompt("ask", "Why?", { ...context, hosting: "sourcemedium" })).not.toContain("gh run watch");
+    expect(composeAgentPrompt("ask", "Why?", { ...context, hosting: "sourcemedium" })).not.toContain("gh pr checks");
+  });
+
+  it("tells the agent a template-hosted app has no repository yet and how to get one", () => {
+    const fromTemplate = composeAgentPrompt("change", "Rename a card", {
+      ...context,
+      mode: "live",
+      hosting: "sourcemedium",
+      codeSource: "template",
+    });
+    expect(fromTemplate).toContain("it has no GitHub repository yet");
+    expect(fromTemplate).toContain("Customize the code");
+    expect(fromTemplate).toContain("docs.sourcemedium.com");
+    const fromRepository = composeAgentPrompt("change", "Rename a card", {
+      ...context,
+      mode: "live",
+      hosting: "sourcemedium",
+      codeSource: "repository",
+    });
+    expect(fromRepository).not.toContain("no GitHub repository yet");
+    expect(fromRepository).toContain("Change it in the app's GitHub repository");
   });
 });

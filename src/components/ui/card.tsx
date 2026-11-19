@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /** Size columns by the space left for the report, including when the sidebar is open. */
-export const cardGridStyles = "grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4";
+export const cardGridStyles = "grid grid-cols-[repeat(auto-fill,minmax(min(100%,16rem),1fr))] gap-4";
 
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (

@@ -2,6 +2,8 @@ import { expect, it } from "vitest";
 import { sumDecimals } from "@/lib/data/decimal";
 import { aggregateProducts, aggregateProductCoverage, sampleProducts, type ProductSource } from "./sample";
 import type { ProductFilters } from "./queries";
+import { aggregateOverviewWire } from "@/features/overview/sample";
+import { sampleSummarySource } from "@/lib/sample/executive-summary";
 
 const filters: ProductFilters = {
   storeId: "sample-store-a",
@@ -196,4 +198,15 @@ it("counts costs only on real lines while retaining summary adjustments in unit 
       { ...filters, channel: "Online DTC" },
     ),
   ).toEqual({ lines: 2n, missing_cost_lines: 1n, zero_cost_lines: 1n, ordered_units: "3", refunded_units: "1.5" });
+});
+
+it("splits the summary sample's order net revenue across product lines, per sales channel", () => {
+  const range = { from: "2026-09-01", to: "2026-09-14" };
+  for (const storeId of ["sample-store-a", "sample-store-b"]) {
+    for (const channel of [null, "amazon", "online_dtc"]) {
+      const overview = aggregateOverviewWire(sampleSummarySource(storeId, range), storeId, range, "day", channel);
+      const products = sampleProducts({ ...filters, storeId, range, channel }, [null, null]);
+      expect(products.rows[0]?.total_revenue).toBe(overview[0]?.total_net_revenue);
+    }
+  }
 });
