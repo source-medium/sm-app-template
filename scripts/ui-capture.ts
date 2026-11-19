@@ -190,7 +190,7 @@ function readProbes(page: Page) {
  * A screen as tall as the page, so anything sized to the viewport (the sidebar)
  * renders as a tall monitor shows it, cut at MAX_SCREENSHOT_HEIGHT.
  */
-async function screenshot(page: Page, file: string): Promise<void> {
+async function screenshot(page: Page, file: string) {
   const size = page.viewportSize();
   if (!size) throw new Error("Each capture context sets a viewport.");
   const { width, height } = size;
@@ -202,7 +202,9 @@ async function screenshot(page: Page, file: string): Promise<void> {
     await page.setViewportSize({ width, height: shown });
     await page.waitForTimeout(300);
   }
+  const contentHeight = await page.evaluate(() => document.documentElement.scrollHeight);
   await page.screenshot({ path: file, animations: "disabled", caret: "hide" });
+  return { height: shown, contentHeight, truncated: contentHeight > shown };
 }
 
 async function capture(
@@ -228,8 +230,17 @@ async function capture(
     const probes = await readProbes(page);
     const file = `${route.id}/${viewport}-${theme}.png`;
     mkdirSync(join(out, route.id), { recursive: true });
-    await screenshot(page, join(out, file));
-    return { route_id: route.id, path: route.path, priority: route.priority, viewport, theme, file, ...probes };
+    const capture = await screenshot(page, join(out, file));
+    return {
+      route_id: route.id,
+      path: route.path,
+      priority: route.priority,
+      viewport,
+      theme,
+      file,
+      capture,
+      ...probes,
+    };
   } finally {
     await context.close();
   }

@@ -4,6 +4,30 @@ import { expect, test } from "@playwright/test";
 import { CHART_MEMORY_COOKIE, serializeChartMemory } from "../../lib/chart-memory";
 import { COMPARISON_DASH } from "../../components/ui/line-swatch";
 
+test("overview: mobile contributions sort exact currency values and signed changes numerically", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const contributions = page.locator('[data-agent-target="Summary revenue contributions"]');
+  for (const [from, to, key, column] of [
+    ["2026-10-22", "2026-11-18", "current", 2],
+    ["2026-10-22", "2026-11-18", "previous", 3],
+    ["2026-10-01", "2026-10-28", "change", 1],
+  ] as const) {
+    await page.goto(`/overview?store=sample-store-a&from=${from}&to=${to}&compare=previous`);
+    const cells = contributions.locator(`tbody tr td:nth-child(${column + 1})`);
+    const amounts = async () => (await cells.allTextContents()).map((value) => Number(value.replace(/[^0-9.-]/g, "")));
+    await expect(cells.first()).toBeVisible();
+    await expect(contributions.getByRole("columnheader")).toHaveCount(4);
+    await expect(contributions.getByRole("columnheader", { name: "Net revenue", exact: true })).toHaveCount(1);
+    await expect(contributions.getByRole("columnheader").getByRole("button")).toHaveCount(0);
+    const ascending = (await amounts()).toSorted((a, b) => a - b);
+    expect(new Set(ascending).size).toBeGreaterThan(1);
+    for (const direction of ["+", "-"] as const) {
+      await contributions.getByRole("combobox").selectOption(direction + key);
+      await expect.poll(amounts).toEqual(direction === "+" ? ascending : ascending.toReversed());
+    }
+  }
+});
+
 test("overview: cumulative trends and revenue highlights preserve scope and exact accessible values", async ({
   page,
 }, testInfo) => {

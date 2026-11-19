@@ -84,6 +84,8 @@ describe("metric changes", () => {
     expect(kpiDelta("150", "100", formatMoney, "higher")).toEqual({
       display: "+50.00 (+50.00%)",
       short: "+50.00%",
+      difference: "50",
+      percent: "50.00",
       comparedTo: "100.00",
       direction: "up",
       tone: "good",
@@ -112,9 +114,17 @@ describe("metric changes", () => {
   it("puts the same tone on a table cell", () => {
     expect(changeCell(kpiDelta("90", "100", formatMoney, "higher"))).toEqual({
       display: "-10.00 (-10.00%)",
+      sort: -10_000_000_000n,
       tone: "bad",
     });
-    expect(changeCell(kpiDelta("90", "100", formatMoney, "neutral"))).toEqual({ display: "-10.00 (-10.00%)" });
+    expect(changeCell(kpiDelta("90", "100", formatMoney, "neutral"))).toEqual({
+      display: "-10.00 (-10.00%)",
+      sort: -10_000_000_000n,
+    });
+    const delta = kpiDelta("11", "20", formatMoney, "higher");
+    expect(changeCell(delta).sort).toBe(-9_000_000_000n);
+    expect(changeCell(delta, { short: true }).sort).toBe(-45_000_000_000n);
+    expect(changeCell(kpiDelta(2, 0, formatCount, "higher"), { short: true }).sort).toBeNull();
   });
 });
 

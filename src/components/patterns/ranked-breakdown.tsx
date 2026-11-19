@@ -58,6 +58,7 @@ export function RankedBreakdown({
       <DataTable
         caption={`${title} details`}
         paginate={false}
+        stackOnMobile
         truncated={hasMore}
         columns={[
           { key: "name", header: categoryLabel, sortable: false },

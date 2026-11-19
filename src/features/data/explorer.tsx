@@ -22,6 +22,16 @@ import { firstSentence, matchesSearch, UNIT_LABELS, type ExplorerMetric, type Ex
 import { USE_AGENT_METRIC, type AgentMetric } from "@/lib/report-data";
 import { cn } from "@/lib/utils";
 
+const categoryLabels: Record<string, string> = {
+  obt_orders: "Orders",
+  rpt_ad_performance_daily: "Ad performance",
+  rpt_executive_summary_daily: "Executive summary",
+};
+
+function categoryLabel(value: string) {
+  return Object.hasOwn(categoryLabels, value) ? categoryLabels[value] : value;
+}
+
 function toAgentMetric(metric: ExplorerMetric, reports: ExplorerReport[], origin: "sample" | "live"): AgentMetric {
   return {
     name: metric.metric_name,
@@ -75,6 +85,7 @@ export function MetricExplorer({
   const byName = new Map(metrics.map((metric) => [metric.metric_name, metric]));
   const reportsFor = (metric: ExplorerMetric) =>
     reports.filter((report) => report.metrics.includes(metric.metric_name));
+  const allInReports = shown.length > 0 && shown.every((metric) => reportsFor(metric).length > 0);
   const reportHref = (report: ExplorerReport) => `${report.href}?${new URLSearchParams({ store: storeId })}`;
 
   return (
@@ -115,7 +126,7 @@ export function MetricExplorer({
               className="h-auto min-h-8 max-w-full py-1.5 text-left break-all whitespace-normal"
               onClick={() => updateUrl({ category: value || null })}
             >
-              {value || "All categories"}
+              {categoryLabel(value) || "All categories"}
             </Button>
           ))}
         </div>
@@ -124,6 +135,7 @@ export function MetricExplorer({
         {shown.length === metrics.length
           ? `${metrics.length} published ${metrics.length === 1 ? "metric" : "metrics"}.`
           : `${shown.length} of ${metrics.length} metrics match.`}{" "}
+        {allInReports && "All shown metrics appear in a report."}{" "}
         {truncated && "Partial catalog: only the loaded definitions are searchable."}{" "}
         {mode === "sample" && "Bundled, reviewed definitions; your warehouse may publish more."}
       </p>
@@ -165,7 +177,7 @@ export function MetricExplorer({
                 </span>
                 <span className="flex shrink-0 flex-wrap gap-1.5 text-xs text-muted-foreground">
                   <Badge>{UNIT_LABELS[metric.value_format ?? ""] ?? "Unit not published"}</Badge>
-                  {reportsFor(metric).length > 0 && <Badge tone="accent">In a report</Badge>}
+                  {!allInReports && reportsFor(metric).length > 0 && <Badge tone="accent">In a report</Badge>}
                 </span>
               </button>
             </li>
@@ -178,7 +190,7 @@ export function MetricExplorer({
             <>
               <SheetHeader>
                 <SheetTitle>{selected.metric_label ?? selected.metric_name}</SheetTitle>
-                <SheetDescription>{selected.category}</SheetDescription>
+                <SheetDescription>{categoryLabel(selected.category)}</SheetDescription>
               </SheetHeader>
               <div className="flex min-w-0 flex-col gap-5 px-4 pb-6 text-sm">
                 <p className="max-w-prose leading-relaxed">

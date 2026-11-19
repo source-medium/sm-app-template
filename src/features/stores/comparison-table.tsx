@@ -27,6 +27,8 @@ export function StoreComparisonTable({
 }) {
   const path = storeReportPath();
   const slots = plan?.slots ?? [];
+  const mixedCurrencies = new Set(data.map((row) => row.currency)).size > 1;
+  const currencyColumn = { key: "currency", header: "Currency" };
   /** The table for one comparison slot; both are rendered and the active one shows. */
   const table = (slot: 0 | 1) => {
     const baseline = plan?.slots[slot];
@@ -81,12 +83,12 @@ export function StoreComparisonTable({
     return (
       <div className="flex flex-col gap-4">
         <DataTable
+          stackOnMobile
           caption="Store performance"
           rows={rows}
           columns={[
             { key: "store", header: "Store" },
-            ...(data.some(({ store }) => store.brand) ? [{ key: "brand", header: "Brand" }] : []),
-            { key: "currency", header: "Currency" },
+            ...(mixedCurrencies ? [currencyColumn] : []),
             { key: "revenue", header: "Net revenue", align: "right", sortable: false },
             ...(compared
               ? [
@@ -100,6 +102,8 @@ export function StoreComparisonTable({
               : []),
             { key: "orders", header: "Orders", align: "right" },
             { key: "spend", header: "Ad spend", align: "right", sortable: false },
+            ...(data.some(({ store }) => store.brand) ? [{ key: "brand", header: "Brand" }] : []),
+            ...(mixedCurrencies ? [] : [currencyColumn]),
             { key: "status", header: "Latest record", sortable: false },
           ]}
         />

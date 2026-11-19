@@ -10,11 +10,16 @@ import type { OverviewFilters, OverviewSlice } from "./queries";
 import { SectionHeader } from "@/components/patterns/section-header";
 import { Disclosure } from "@/components/ui/disclosure";
 
+function revenueCell(value: string | null, currency: string | null): DataTableCell {
+  return { display: formatMoney(value, currency), sort: value === null ? null : toUnits(value) };
+}
+
 /** A signed revenue difference, colored by `better`; a reconciliation residual passes "neutral". */
 function revenueChange(difference: string | null, currency: string | null, better: Polarity): DataTableCell {
   const units = difference === null ? null : toUnits(difference);
   return {
     display: `${units !== null && units > 0n ? "+" : ""}${formatMoney(difference, currency)}`,
+    sort: units,
     tone:
       units === null ? undefined : (changeTone(units > 0n ? "up" : units < 0n ? "down" : "flat", better) ?? undefined),
   };
@@ -46,10 +51,10 @@ export function OverviewHighlights({
       <div className="mt-3 flex min-w-0 flex-col gap-3">
         {contributions && <h3 className="mt-1 text-sm font-medium">Days with the largest revenue change</h3>}
         <DataTable
+          stackOnMobile
           caption="Largest daily revenue changes"
           paginate={false}
           columns={[
-            // The change is the answer, so it reads first on a phone, before the columns that scroll.
             { key: "date", header: "Selected date", sortable: false },
             { key: "change", header: "Revenue change", align: "right", sortable: false },
             { key: "current", header: "Net revenue", align: "right", sortable: false },
@@ -61,8 +66,8 @@ export function OverviewHighlights({
             cells: {
               date: { display: formatDate(row.date) },
               baseline: { display: formatDate(row.baselineDate) },
-              current: { display: formatMoney(row.current, currency) },
-              previous: { display: formatMoney(row.previous, currency) },
+              current: revenueCell(row.current, currency),
+              previous: revenueCell(row.previous, currency),
               change: revenueChange(row.difference, currency, "higher"),
             },
           }))}
@@ -94,7 +99,7 @@ export function OverviewHighlights({
                               ? channelName(row.channel)
                               : "Unclassified sales channel",
                         },
-                        revenue: { display: formatMoney(row.revenue, currency) },
+                        revenue: revenueCell(row.revenue, currency),
                       },
                     }))}
                   />
@@ -102,6 +107,7 @@ export function OverviewHighlights({
               </>
             ) : (
               <DataTable
+                stackOnMobile
                 caption="Summary revenue contributions"
                 columns={[
                   { key: "group", header: "Sales channel" },
@@ -113,8 +119,8 @@ export function OverviewHighlights({
                   id: row.id,
                   cells: {
                     group: { display: row.label },
-                    current: { display: formatMoney(row.current, currency) },
-                    previous: { display: formatMoney(row.previous, currency) },
+                    current: revenueCell(row.current, currency),
+                    previous: revenueCell(row.previous, currency),
                     change: revenueChange(row.difference, currency, row.id === "residual" ? "neutral" : "higher"),
                   },
                 }))}

@@ -292,7 +292,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                       ) : perSlot && plan ? (
                         // The switch sits with the ranking, the only section that draws a comparison.
                         <div className="flex flex-col gap-3">
-                          <PlanSwitch plan={plan} />
+                          <PlanSwitch plan={plan} label="Compare table with" />
                           <ActiveBaseline a={ranking(0)} b={ranking(1)} />
                         </div>
                       ) : (

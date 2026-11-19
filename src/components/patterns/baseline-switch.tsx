@@ -47,7 +47,15 @@ function useActiveBaseline() {
 }
 
 /** Two buttons naming the slots; a slot without dates is listed but disabled. */
-export function BaselineSwitch({ labels, available }: { labels: [string, string]; available: [boolean, boolean] }) {
+export function BaselineSwitch({
+  labels,
+  available,
+  label,
+}: {
+  label?: string;
+  labels: [string, string];
+  available: [boolean, boolean];
+}) {
   const context = useActiveBaseline();
   const hydrated = useHydrated();
   if (!context || available.filter(Boolean).length < 2) return null;
@@ -56,11 +64,11 @@ export function BaselineSwitch({ labels, available }: { labels: [string, string]
       {/* KPI cards show both comparisons as numbers; this picks the one every chart and table draws. */}
       {/* On a phone the label wraps beside the switch rather than taking a row of its own. */}
       <span aria-hidden className="text-sm text-muted-foreground max-sm:max-w-24">
-        Charts and tables vs
+        {label ?? "Charts and tables vs"}
       </span>
       <div
         role="group"
-        aria-label="Comparison shown in charts and tables"
+        aria-label={label ?? "Comparison shown in charts and tables"}
         className="flex w-fit flex-wrap rounded-md bg-muted p-1"
       >
         {labels.map((label, index) => {

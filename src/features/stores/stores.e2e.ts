@@ -33,7 +33,7 @@ test("compares stores separately and drills through with the same dates", async 
   await expect(table.getByRole("row").nth(1)).toContainText("USD");
   await expect(table.getByRole("row").nth(2)).toContainText("USD");
   await expect(table.getByRole("columnheader", { name: "Net revenue" }).getByRole("button")).toHaveCount(0);
-  const revenue = await table.getByRole("row").nth(2).getByRole("cell").nth(3).innerText();
+  const revenue = await table.locator('tbody tr:nth-child(2) td[data-mobile-label="Net revenue"]').innerText();
   await page.getByRole("button", { name: "Vibe code" }).click();
   await expect(page.getByRole("dialog").getByLabel("Prompt", { exact: true })).toHaveValue(
     /Store scope: all available stores/,
@@ -118,4 +118,22 @@ test("Vibe code can pick the persistent store control without opening its menu",
   await page.getByRole("button", { name: "Store: All stores" }).click();
   await expect(dialog.getByLabel("Prompt")).toHaveValue(/Component: "StoreSwitcher"/);
   await expect(page.getByRole("dialog", { name: "Switch store" })).toHaveCount(0);
+});
+
+test("phone store records show full changes and keep sorting available", async ({ page }) => {
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(`/stores?${period}&compare=previous`);
+    const table = page.getByRole("table", { name: "Store performance" });
+    const change = table.locator('td[data-mobile-label^="Change vs"]').first();
+    await change.scrollIntoViewIfNeeded();
+    await expect(change).toHaveText(/^[+-].*%$/);
+    const region = page.getByRole("region", { name: "Store performance" });
+    expect(await region.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    const sort = page.getByRole("combobox", { name: "Sort by column in Store performance", exact: true });
+    await sort.selectOption({ label: "Store (descending)" });
+    await expect(table.locator("tbody tr").first()).toContainText("Sample Store B");
+    await sort.selectOption({ label: "Store (ascending)" });
+    await expect(table.locator("tbody tr").first()).toContainText("Sample Store A");
+  }
 });
