@@ -35,6 +35,7 @@ export function revenueContributions(report: OverviewSlice, filters: OverviewFil
       prior = b ? b.revenue : "0";
     return {
       id,
+      trendChannel: a?.channel ?? null,
       label: row?.channel ? channelName(row.channel) : "Unclassified sales channel",
       current: value,
       previous: prior,
@@ -49,6 +50,7 @@ export function revenueContributions(report: OverviewSlice, filters: OverviewFil
   if (total !== null && sum !== null && toUnits(total) !== toUnits(sum)) {
     rows.push({
       id: "residual",
+      trendChannel: null,
       label: "Unreconciled difference",
       current: null,
       previous: null,

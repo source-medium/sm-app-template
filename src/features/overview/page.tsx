@@ -4,6 +4,8 @@ import { appConfig } from "@/app.config";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { OverviewReportBody } from "./report-body";
+import { ReportAnchor, type ReportHref } from "@/components/patterns/report-anchor";
 import { OverviewTrendSelector } from "./trend-selector";
 import { Disclosure } from "@/components/ui/disclosure";
 import { DataRegion } from "@/components/patterns/data-region";
@@ -33,7 +35,8 @@ import { OverviewControls } from "./controls";
 import { OverviewSummary } from "./summary";
 import { OverviewRevenue } from "./revenue";
 import { OverviewPurchases } from "./purchases";
-import { OverviewHighlights } from "./highlights";
+import { revenueContributions } from "./contributions";
+import { ChannelChanges, OverviewHighlights } from "./highlights";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { overviewTrends, SPARKLINE_DAILY_DAYS, sparklineValues, TREND_MODES } from "./trends";
 import { ReportControls } from "@/components/shell/report-controls";
@@ -105,6 +108,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
                   <OverviewView
                     report={report}
                     filters={selected}
+                    params={applied}
                     dateParams={dates}
                     plan={plan}
                     currency={currency}
@@ -158,6 +162,7 @@ function OverviewView({
   report,
   filters,
   dateParams,
+  params,
   plan,
   currency,
   trendMode,
@@ -170,6 +175,7 @@ function OverviewView({
   report: OverviewReport;
   filters: OverviewFilters;
   dateParams: ReportDates;
+  params: SearchParams;
   plan?: ComparisonPlan;
   currency: string | null;
   trendMode: (typeof TREND_MODES)[number]["value"];
@@ -183,10 +189,10 @@ function OverviewView({
   );
   // Every date in the range, so a date with no rows is a gap in the line, not a zero.
   const dates = datesInRange(filters.range);
-  const dailyTableHref =
+  const dailyTableHref: ReportHref =
     filters.grain === "day"
       ? "#summary-heading"
-      : `${withParams("/overview", {}, { store: filters.storeId, ...dateParams.live, sales_channel: filters.channel ?? "", ...planParams(plan), grain: "day" })}#summary-heading`;
+      : { query: { store: filters.storeId, grain: "day" }, fragment: "summary-heading" };
   // Each comparison's days lined up with the selected dates the way the main chart lines them up.
   const selectedDays = dates.map((date) => dayByDate.get(date));
   const comparisonDays = (plan?.slots ?? []).map((slot, index) => {
@@ -223,7 +229,7 @@ function OverviewView({
               baselineMeasures[slot]?.[key].amount ?? null,
               current.format,
               current.better,
-              label,
+              plan ? `vs ${plan.slots[slot].label}` : label,
             )
           : null,
       (slot) => {
@@ -237,44 +243,38 @@ function OverviewView({
     currency,
     timeZone,
   };
-  const cards: { key: OverviewMeasureKey; label: string; description: string }[] = [
-    {
-      key: "revenue",
+  const cards: Record<OverviewMeasureKey, { label: string; description: string }> = {
+    revenue: {
       label: "Net revenue",
       description:
         "Published net order revenue across the selected sales channels for this store and period. See Revenue and deductions for the signed components and any unreconciled difference. Amounts use the warehouse's reporting currency.",
     },
-    {
-      key: "orders",
+    orders: {
       label: "Orders",
       description:
         "Published order counts on the valid sales channels within the selected scope. Draft, exchanged and excluded rows are not sales.",
     },
-    {
-      key: "average",
+    average: {
       label: "Revenue per order",
       description:
         "Net revenue divided by Orders for the same store and period. It uses the published summary count, so it can differ from average revenue per valid order.",
     },
-    {
-      key: "spend",
+    spend: {
       label: "Ad spend",
       description:
         "Published advertising spend summed across the selected sales channels for this store and period, in the warehouse's reporting currency. It comes from the daily summary, so it can differ by cents from Paid marketing, which sums ad-level rows.",
     },
-    {
-      key: "mer",
+    mer: {
       label: "Marketing efficiency (MER)",
       description:
         "Net revenue divided by ad spend for the same store and period. This is a blended revenue-to-spend ratio, not ad-platform attributed ROAS.",
     },
-    {
-      key: "sessions",
+    sessions: {
       label: "Website sessions",
       description:
         "Published website session counts summed across the selected sales channels for this store and period. Sessions are visits, not unique people.",
     },
-  ];
+  };
 
   /**
    * Everything that reads one comparison slot: the chart overlay, the biggest
@@ -284,6 +284,7 @@ function OverviewView({
   const slotView = (slot: 0 | 1) => {
     const baseline = plan?.slots[slot];
     const slice = overviewSlice(report, slot);
+    const contributions = revenueContributions(slice, filters, baseline);
     const compared = slice.comparison?.data ?? null;
     const range = baseline?.range;
     const showDelta = changes?.[slot]?.show ?? false;
@@ -335,7 +336,23 @@ function OverviewView({
           }))}
         />
       ),
-      highlights: <OverviewHighlights report={slice} filters={filters} comparison={baseline} currency={currency} />,
+      channels: baseline && (
+        <ChannelChanges
+          contributions={contributions}
+          currency={currency}
+          baseline={baseline}
+          params={{ ...params, baseline: slot === 1 ? "b" : undefined, [SHOW_TRENDS_PARAM]: undefined }}
+        />
+      ),
+      highlights: (
+        <OverviewHighlights
+          contributions={contributions}
+          report={slice}
+          filters={filters}
+          comparison={baseline}
+          currency={currency}
+        />
+      ),
       purchases: (
         <OverviewPurchases
           current={data.purchases}
@@ -358,8 +375,36 @@ function OverviewView({
   const pick = (key: keyof (typeof views)[0]) =>
     plan ? <ActiveBaseline a={views[0][key]} b={views[1][key]} /> : views[0][key];
 
+  function metricCard(key: OverviewMeasureKey) {
+    const card = cards[key];
+    const secondary = key === "average" || key === "sessions";
+    const current = currentMeasures[key];
+    const binding = overviewBindings.find((binding) => binding.id === key);
+    const comparisons = deltas(key);
+    return (
+      <KpiCard
+        key={key}
+        label={card.label}
+        description={card.description}
+        binding={binding}
+        scope={scope}
+        value={
+          secondary
+            ? current.display
+            : compactHeadline(current.amount, current.display, binding?.format ?? "number", currency)
+        }
+        trend={secondary ? trend(key) : undefined}
+        compact={key === "orders" || key === "spend" || key === "mer"}
+        fullValue={current.display}
+        deltas={key === "revenue" ? comparisons.map((row) => ({ ...row, short: undefined })) : comparisons}
+      >
+        {key === "revenue" ? pick("channels") : undefined}
+      </KpiCard>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-6">
+    <OverviewReportBody>
       {/* The switch picks the comparison every chart and table uses, KPI sparklines included; KPI cards show both changes as numbers. */}
       {plan && (
         <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)}>
@@ -388,32 +433,15 @@ function OverviewView({
           )}
         </ComparisonCaption>
       )}
-      <section aria-label="Period totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {cards
-          .filter((card) => ["revenue", "orders", "spend", "mer"].includes(card.key))
-          .map((card) => {
-            const current = currentMeasures[card.key];
-            return (
-              <KpiCard
-                key={card.key}
-                label={card.label}
-                description={card.description}
-                binding={overviewBindings.find((binding) => binding.id === card.key)}
-                scope={scope}
-                value={compactHeadline(
-                  current.amount,
-                  current.display,
-                  overviewBindings.find((binding) => binding.id === card.key)?.format ?? "number",
-                  currency,
-                )}
-                fullValue={current.display}
-                trend={trend(card.key)}
-                deltas={deltas(card.key)}
-              />
-            );
-          })}
-      </section>
       {pick("note")}
+      <section aria-label="Period totals" className="flex flex-col gap-3">
+        {metricCard("revenue")}
+        <div className="grid gap-px overflow-clip rounded-xl border bg-border shadow-card sm:grid-cols-3">
+          {metricCard("orders")}
+          {metricCard("spend")}
+          {metricCard("mer")}
+        </div>
+      </section>
       {report.baselines.map((entry, index) =>
         entry?.error ? (
           <ErrorState
@@ -425,7 +453,8 @@ function OverviewView({
           />
         ) : null,
       )}
-      <section aria-label="Performance trends" className="flex flex-col gap-3">
+      <section id="performance-trends" aria-label="Performance trends" className="flex flex-col gap-3">
+        {filters.channel && <h2 className="font-semibold wrap-anywhere">{salesChannelLabel(filters.channel)}</h2>}
         {trendMode === "cumulative" && (
           <p className="max-w-prose text-sm text-muted-foreground">
             Each line starts at its own period&apos;s first day. A missing date or measure stops its cumulative line;
@@ -433,6 +462,12 @@ function OverviewView({
           </p>
         )}
         {pick("charts")}
+        <ReportAnchor
+          className="w-fit text-sm text-muted-foreground underline underline-offset-4"
+          href={dailyTableHref}
+        >
+          Open daily business summary
+        </ReportAnchor>
       </section>
       {pick("highlights")}
       {/* More of the report, folded: set apart from the sections above so it never reads as their notes. */}
@@ -440,20 +475,8 @@ function OverviewView({
         <Disclosure summary="More metrics">
           <div className="space-y-6">
             <section aria-label="Secondary metrics" className="grid gap-4 sm:grid-cols-2">
-              {cards
-                .filter((card) => ["average", "sessions"].includes(card.key))
-                .map((card) => (
-                  <KpiCard
-                    key={card.key}
-                    label={card.label}
-                    value={currentMeasures[card.key].display}
-                    description={card.description}
-                    binding={overviewBindings.find((binding) => binding.id === card.key)}
-                    scope={scope}
-                    trend={trend(card.key)}
-                    deltas={deltas(card.key)}
-                  />
-                ))}
+              {metricCard("average")}
+              {metricCard("sessions")}
             </section>
             {pick("purchases")}
           </div>
@@ -472,6 +495,6 @@ function OverviewView({
           </a>
         </Disclosure>
       </div>
-    </div>
+    </OverviewReportBody>
   );
 }

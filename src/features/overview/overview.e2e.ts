@@ -13,6 +13,7 @@ test("overview: mobile contributions sort exact currency values and signed chang
     ["2026-10-01", "2026-10-28", "change", 1],
   ] as const) {
     await page.goto(`/overview?store=sample-store-a&from=${from}&to=${to}&compare=previous`);
+    await openDisclosure(page, "All channel values");
     const cells = contributions.locator(`tbody tr td:nth-child(${column + 1})`);
     const amounts = async () => (await cells.allTextContents()).map((value) => Number(value.replace(/[^0-9.-]/g, "")));
     await expect(cells.first()).toBeVisible();
@@ -26,6 +27,91 @@ test("overview: mobile contributions sort exact currency values and signed chang
       await expect.poll(amounts).toEqual(direction === "+" ? ascending : ascending.toReversed());
     }
   }
+});
+
+test("overview: a phone shows the revenue movement and opens its channel trend with the same comparison", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/overview?store=sample-store-a&from=2026-10-22&to=2026-11-18&compare=previous&compare2=year");
+  const headline = page.locator('[data-agent-target="Net revenue"]');
+  await expect(headline.locator('[data-slot="kpi-delta"]').first()).toHaveText(/-\$5,644\.44.*vs previous 28 days/);
+  await expect(headline.locator('[data-slot="kpi-delta"]').nth(1)).toContainText("vs same period last year");
+  const channels = page.getByRole("region", { name: "Revenue change by channel" });
+  await expect(channels).toContainText("vs previous 28 days");
+  const first = channels.getByRole("listitem").first();
+  await expect(first).toContainText("Online DTC");
+  await expect(first).toContainText("-$4,757.49");
+  await expect(channels.getByRole("listitem").nth(1)).toContainText("-$886.95");
+  await expect(first).toBeInViewport({ ratio: 1 });
+  await channels.getByRole("link", { name: "All channel values" }).click();
+  await expect(page.getByRole("table", { name: "Summary revenue contributions" })).toBeVisible();
+  const group = page.getByRole("group", { name: "Comparison shown in charts and tables" });
+  await group.getByRole("button", { name: "Last year" }).click();
+  await expect(channels).toContainText("vs same period last year");
+  await channels.getByRole("link", { name: "Online DTC" }).click();
+  await expect(page).toHaveURL(
+    (url) =>
+      url.hash === "#performance-trends" &&
+      url.searchParams.get("sales_channel") === "online_dtc" &&
+      url.searchParams.get("from") === "2026-10-22" &&
+      url.searchParams.get("to") === "2026-11-18" &&
+      url.searchParams.get("store") === "sample-store-a" &&
+      url.searchParams.get("baseline") === "b" &&
+      url.searchParams.get("metric") === "revenue",
+  );
+  const trends = page.getByRole("region", { name: "Performance trends" });
+  const channelHeading = trends.getByRole("heading", { name: "Online DTC" });
+  await expect(channelHeading).toBeInViewport();
+  await expect
+    .poll(() =>
+      channelHeading.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        return el.contains(document.elementFromPoint(box.left + 2, box.top + box.height / 2));
+      }),
+    )
+    .toBe(true);
+  await expect(trends.getByRole("img", { name: "Net revenue by day chart" })).toBeVisible();
+  await expect(trends).toContainText("Last year");
+  await page.goto("/overview?store=sample-store-b&from=2026-09-13&to=2026-09-19&compare=previous");
+  await expect(headline.locator('[data-slot="kpi-delta"]').first()).toContainText("Changes hidden");
+  await expect(channels).toHaveCount(0);
+});
+
+test("overview: scoped channel links fit the phone and land below its header even on the same report", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const params = new URLSearchParams({
+    store: "sample-store-a",
+    from: "2026-10-22",
+    to: "2026-11-18",
+    compare: "previous",
+    metric: "revenue",
+    sales_channel: JSON.stringify(["online_dtc", "X".repeat(100)]),
+  });
+  await page.goto("/overview?" + params);
+  const channels = page.getByRole("region", { name: "Revenue change by channel" });
+  await expect(channels).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  const link = channels.getByRole("link", { name: "Online DTC" });
+  const href = await link.getAttribute("href");
+  if (!href) throw new Error("Missing channel trend link");
+  const url = new URL(href, page.url());
+  url.hash = "";
+  await page.goto(url.href);
+  await link.click();
+  const heading = page.locator("#performance-trends h2");
+  await expect(heading).toBeInViewport();
+  await expect
+    .poll(() =>
+      heading.evaluate(
+        (el) =>
+          el.getBoundingClientRect().top >=
+          (document.getElementById("report-top-bar")?.getBoundingClientRect().bottom ?? 0) - 1,
+      ),
+    )
+    .toBe(true);
 });
 
 test("overview: cumulative trends and revenue highlights preserve scope and exact accessible values", async ({
@@ -200,14 +286,27 @@ test("overview: a chart opens as an accessible table", async ({ page }) => {
   await expect(card.getByRole("columnheader", { name: "Orders" })).toBeVisible();
 });
 
-test("overview: KPI trends expose daily values and purchase measures follow filters and comparisons", async ({
+test("overview: the trend exposes daily values and purchase measures follow filters and comparisons", async ({
   page,
 }) => {
   await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07&compare=previous&grain=week");
-  const totals = page.getByRole("region", { name: "Period totals", exact: true });
-  await expect(totals.getByRole("img")).toHaveCount(4);
-  await totals.getByRole("link", { name: "View daily values for Net revenue", exact: true }).click();
-  await expect(page).toHaveURL(/grain=day#summary-heading$/);
+  const trends = page.getByRole("region", { name: "Performance trends", exact: true });
+  await choose(page, "Trend values", "cumulative");
+  await expect(trends.getByRole("img", { name: "Net revenue to date chart" })).toBeVisible();
+  await page.getByRole("button", { name: "Last year", exact: true }).click();
+  await chooseMeasure(page, "Net revenue", "Orders");
+  await page.getByRole("button", { name: "Show all trends" }).click();
+  await trends.getByRole("link", { name: "Open daily business summary", exact: true }).click();
+  await expect(page).toHaveURL(
+    (url) =>
+      url.hash === "#summary-heading" &&
+      url.searchParams.get("grain") === "day" &&
+      url.searchParams.get("baseline") === "b" &&
+      url.searchParams.get("trend") === "cumulative" &&
+      url.searchParams.get("metric") === "orders" &&
+      url.searchParams.get("show_trends") === "all",
+  );
+  await expect(page.locator("#summary-heading")).toBeInViewport();
   const daily = page.getByRole("table", { name: "Business summary", exact: true });
   await expect(daily).toBeVisible();
   await expect(daily.getByRole("row")).toHaveCount(9);
@@ -226,7 +325,7 @@ test("overview: KPI trends expose daily values and purchase measures follow filt
   await expect(first.getByRole("cell").nth(1)).not.toHaveText(revenueText);
   await choose(page, "Compare with", "off");
   await expect(purchases.getByRole("columnheader", { name: "Revenue change", exact: true })).toHaveCount(0);
-  await expect(totals.getByRole("img")).toHaveCount(4);
+  await expect(trends.getByRole("img", { name: "Net revenue to date chart" })).toBeVisible();
   await expect(page).toHaveTitle(/Overview/);
   await expectNoSeriousA11yViolations(page);
 });
@@ -426,7 +525,7 @@ test("overview: every headline shows two comparison rows, and the overlay switch
   await page.goto("/overview?store=sample-store-a&from=2026-09-01&to=2026-09-07");
   const totals = page.getByRole("region", { name: "Period totals" });
   await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs previous 7 days" })).toHaveCount(4);
-  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs last year" })).toHaveCount(4);
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs same period last year" })).toHaveCount(4);
   await expect(page.getByLabel("Second comparison")).toHaveValue("year");
   const caption = page.locator('details[aria-label="Comparison periods"]');
   await expect(caption).toContainText("Aug 25, 2026 – Aug 31, 2026 (previous 7 days, 7 days)");
@@ -462,7 +561,7 @@ test("overview: the report form stays in place when the first filter applies", a
 test("overview: a new range gets its own second comparison unless one was chosen", async ({ page }) => {
   await page.goto("/overview?store=sample-store-a");
   const totals = page.getByRole("region", { name: "Period totals" });
-  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs last year" })).toHaveCount(4);
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs same period last year" })).toHaveCount(4);
   await page.getByRole("button", { name: /^Change dates/ }).click();
   await page.getByRole("link", { name: "Yesterday", exact: true }).click();
   await expect(page).toHaveURL(/range=yesterday/);
@@ -471,7 +570,7 @@ test("overview: a new range gets its own second comparison unless one was chosen
   await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs same weekday last year" })).toHaveCount(4);
   await choose(page, "Second comparison", "year");
   await expect(page).toHaveURL(/compare2=year/);
-  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs last year" })).toHaveCount(4);
+  await expect(totals.locator('[data-slot="kpi-delta"]', { hasText: "vs same date last year" })).toHaveCount(4);
 });
 
 test("overview: baseline overlays follow chart history, copied links and applied filters", async ({

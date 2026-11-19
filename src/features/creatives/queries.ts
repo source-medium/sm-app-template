@@ -5,6 +5,7 @@
  * Every platform publishes a creative identity; text, images and post links
  * depend on what each platform reports, and cards fall back to text.
  */
+import { type AssetScope } from "./assets";
 import "server-only";
 import { parseCreativeSelection, type CreativeFormat, type CreativeIdentity, type CreativeSort } from "./filters";
 import { requireViewer } from "@/lib/auth/require-viewer";
@@ -14,8 +15,14 @@ import type { AdNameMatches, AdNameRule } from "@/lib/ad-name-filters";
 import type { BaselineRanges, PeriodCoverage } from "@/lib/comparison";
 import type { AdTotals } from "@/lib/ad-totals";
 import { queryAdNameMatches } from "@/lib/data/ad-name-matches.server";
-import { queryCreativeChannels, queryCreativeSummary, queryCreatives } from "./bigquery";
-import { sampleCreativeChannels, sampleCreatives, sampleCreativeNames, sampleCreativeSummary } from "./sample";
+import { queryCreativeAssets, queryCreativeChannels, queryCreativeSummary, queryCreatives } from "./bigquery";
+import {
+  sampleCreativeAssets,
+  sampleCreativeChannels,
+  sampleCreatives,
+  sampleCreativeNames,
+  sampleCreativeSummary,
+} from "./sample";
 
 /** One period's delivery for a creative; ratios are of the period's sums, null without a denominator. */
 export type CreativeMeasures = {
@@ -113,4 +120,9 @@ export async function getCreativeChannels(filters: ReportFilters): Promise<strin
 export async function getCreativeNames(filters: CreativesFilters): Promise<AdNameMatches> {
   const access = await requireViewer({ storeId: filters.storeId });
   return access.mode === "live" ? queryAdNameMatches(filters, true) : sampleCreativeNames(filters);
+}
+
+export async function getCreativeAssets(filters: AssetScope, today: string) {
+  const access = await requireViewer({ storeId: filters.storeId });
+  return access.mode === "live" ? queryCreativeAssets(filters) : sampleCreativeAssets(filters, today);
 }

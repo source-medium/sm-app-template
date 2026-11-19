@@ -352,3 +352,63 @@ it("applies fractional thresholds after aggregation before ranking, and fetches 
     ),
   ).rejects.toThrow("Invalid creative selection");
 });
+
+it("loads current assets independently of spend, scoped by store, platform and creative with stable pagination", async () => {
+  const { ASSET_PAGE_SIZE } = await import("./assets");
+  const row = {
+    sm_ad_creative_asset_key: "001",
+    source_system: "meta_ads",
+    ad_creative_id: "shared",
+    ad_id: null,
+    ad_campaign_id: null,
+    asset_role: "video",
+    asset_id: null,
+    asset_text: null,
+    asset_image_url: "javascript:bad",
+    asset_video_url: "https://cdn.example.com/movie.mp4",
+    asset_video_id: "video1",
+    asset_link_url: "https://user:pass@example.com",
+  };
+  const fields = Object.keys(row).map((name) => ({ name, type: "STRING" }));
+  const fake = await goLive({
+    submit: () =>
+      rowsResponse(
+        fields,
+        Array.from({ length: ASSET_PAGE_SIZE + 1 }, (_, index) => ({
+          ...row,
+          sm_ad_creative_asset_key: String(index + 101),
+        })),
+      ),
+  });
+  const { getCreativeAssets } = await import("./queries");
+  const scope = { storeId: FILTERS.storeId, channel: "meta_ads", entity: "shared", role: "video", cursor: "100" };
+  const page = await getCreativeAssets(scope, FILTERS.range.to);
+  expect(page.truncated).toBe(true);
+  expect(page.rows).toHaveLength(ASSET_PAGE_SIZE);
+  expect(page.rows[0]).toMatchObject({
+    asset_image_url: null,
+    asset_link_url: null,
+    asset_video_id: "video1",
+    asset_video_url: row.asset_video_url,
+  });
+  expectEveryQueryScopedTo(fake, FILTERS.storeId);
+  const query = fake.submitted(0);
+  expect(query.query).toContain("rpt_ad_creative_assets");
+  expect(query.query).not.toContain("rpt_ad_performance_daily");
+  for (const [name, value] of Object.entries({
+    channel: scope.channel,
+    entity: scope.entity,
+    role: scope.role,
+    cursor: scope.cursor,
+  })) {
+    expect(query.queryParameters).toContainEqual({
+      name,
+      parameterType: { type: "STRING" },
+      parameterValue: { value },
+    });
+  }
+  expect(query.query).toContain("source_system = @channel");
+  expect(query.query).toContain("ad_creative_id = @entity");
+  expect(query.query).toContain("asset_role = @role");
+  expect(query.query).toContain("sm_ad_creative_asset_key > @cursor");
+});

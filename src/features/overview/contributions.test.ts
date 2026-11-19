@@ -44,3 +44,30 @@ it("reconciles same-source groups and preserves the existing comparison coverage
   expect(limited?.rows).toEqual([]);
   expect(limited?.periods?.[0]?.groups[0]).toMatchObject({ remainder: true, revenue: "1" });
 });
+
+it("keeps a lost channel's change visible and links only channels with current rows, including recorded zero", async () => {
+  const baseline = parseComparisonPlan({ compare: "previous" }, filters.range, "2026-10-05").slots[0];
+  if (!baseline.range) throw new Error("Expected comparison");
+  const sample = await sampleOverview(filters, "2026-10-05");
+  const report = {
+    current: { ...sample, contributions: [{ channel: "amazon", revenue: "0", remainder: false }] },
+    comparison: {
+      data: {
+        ...sample,
+        contributions: [
+          { channel: "amazon", revenue: "5", remainder: false },
+          { channel: "retail", revenue: "10", remainder: false },
+        ],
+      },
+      error: null,
+    },
+    coverage: { latest_date: filters.range.to, previous_latest_date: baseline.range.to },
+  };
+  const rows = revenueContributions(report, filters, baseline)?.rows;
+  expect(rows).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ label: "Retail", difference: "-10", trendChannel: null }),
+      expect.objectContaining({ label: "Amazon", difference: "-5", trendChannel: "amazon" }),
+    ]),
+  );
+});
