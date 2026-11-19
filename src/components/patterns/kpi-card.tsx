@@ -36,7 +36,11 @@ export function KpiCard({
   trend,
   binding,
   scope,
+  children,
+  compact = false,
 }: {
+  children?: React.ReactNode;
+  compact?: boolean;
   binding?: MetricBinding;
   scope?: MetricScope;
   label: string;
@@ -59,10 +63,23 @@ export function KpiCard({
       ? [{ ...first, label: "" }]
       : deltas;
   return (
-    <Card data-agent-target={label} data-agent-component="KpiCard" className="@container/kpi gap-2 pt-3 pb-5">
-      <CardContent className="flex flex-col gap-1 px-5">
+    <Card
+      data-agent-target={label}
+      data-agent-component="KpiCard"
+      className={cn(
+        "@container/kpi gap-2 pt-3 pb-5",
+        children && "grid gap-y-1 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] sm:items-center",
+        compact && "gap-0 rounded-none border-0 py-2 shadow-none sm:py-3",
+      )}
+    >
+      <CardContent
+        className={cn(
+          "flex flex-col gap-1 px-5",
+          compact && "max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:items-center max-sm:gap-y-0",
+        )}
+      >
         {description || binding || compared.length > 0 ? (
-          <details className="text-sm text-muted-foreground">
+          <details className={cn("text-sm text-muted-foreground", compact && "open:col-span-full")}>
             <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
               {/* The dotted underline is the cue that the label opens its definition. */}
               <span
@@ -101,14 +118,25 @@ export function KpiCard({
         <span
           title={fullValue}
           data-slot="kpi-value"
-          className="text-2xl font-semibold tracking-tight tabular-nums @[13rem]/kpi:text-3xl"
+          className={cn(
+            "text-2xl font-semibold tracking-tight tabular-nums @[13rem]/kpi:text-3xl",
+            compact && "max-w-full text-xl @[13rem]/kpi:text-2xl",
+          )}
         >
           <span aria-hidden={fullValue && fullValue !== value ? true : undefined}>{value}</span>
           {fullValue && fullValue !== value && <span className="sr-only">{fullValue}</span>}
         </span>
         {period && <span className="text-xs text-muted-foreground">{period}</span>}
         {rows.length > 0 && (
-          <ul data-slot="kpi-comparison" className="mt-1 flex flex-col gap-1.5 text-xs @[13rem]/kpi:gap-0.5">
+          <ul
+            data-slot="kpi-comparison"
+            className={cn(
+              "mt-1 flex flex-col text-xs",
+              compact
+                ? "col-span-full gap-0.5 max-sm:mt-0 max-sm:flex-row max-sm:flex-wrap max-sm:justify-end max-sm:gap-x-4"
+                : "gap-1.5 @[13rem]/kpi:gap-0.5",
+            )}
+          >
             {/* The signed change and its color carry the direction, so no arrow sits beside it. */}
             {rows.map((row) => (
               <li
@@ -134,6 +162,7 @@ export function KpiCard({
         )}
         {trend && <KpiTrend label={label} {...trend} />}
       </CardContent>
+      {children}
     </Card>
   );
 }

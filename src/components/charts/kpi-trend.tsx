@@ -1,3 +1,4 @@
+import { ReportAnchor, type ReportHref } from "@/components/patterns/report-anchor";
 import { toChartNumber } from "@/lib/data/decode";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { COMPARISON_DASH, LineSwatch } from "@/components/ui/line-swatch";
@@ -9,7 +10,7 @@ export type KpiTrendData = {
   /** One point per day, or per week for a long period (`grain: "week"`). */
   values: TrendValues;
   grain?: "day" | "week";
-  tableHref: string;
+  tableHref: ReportHref;
   /** Each comparison slot's aligned values, in slot order; the one the report's switch picks is drawn dashed behind. */
   comparisons?: readonly (KpiTrendComparison | null)[];
 };
@@ -135,7 +136,7 @@ export function KpiTrend({
   };
   return (
     <div className="mt-2 min-w-0">
-      <a
+      <ReportAnchor
         href={tableHref}
         aria-label={`View daily values for ${label}`}
         title="View daily values"
@@ -152,7 +153,7 @@ export function KpiTrend({
             {plottable ? "No daily values" : "Daily values available in the table"}
           </span>
         )}
-      </a>
+      </ReportAnchor>
       {drawn && comparisons && <ActiveBaseline a={key(0)} b={key(1)} />}
     </div>
   );
