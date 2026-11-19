@@ -3,18 +3,22 @@
  * a few text-only cards, and one image that fails to load, so the text
  * fallback is visible from the first run; plus a new creative launching every
  * ten days that ramps up and then tires, so launches, formats and period
- * changes have something to show. Every value depends only on the store, the
- * creative and the date, so any period reads the same day the same way. No
- * external image host is referenced.
+ * changes have something to show. Their delivery is the shared sample ad
+ * delivery (lib/sample/ad-delivery), each ad's day split across the creatives
+ * it ran, so the creatives plus the spend no creative ran add up to Paid
+ * marketing's totals. Every value depends only on the store and the date, so
+ * any period reads the same day the same way. No external image host is
+ * referenced.
  */
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits, toUnits } from "@/lib/data/decimal";
-import { addDays, datesInRange, type DateRange, type ReportFilters } from "@/lib/filters";
+import { addDays, type DateRange, type ReportFilters } from "@/lib/filters";
 import type { BaselineRanges } from "@/lib/comparison";
 import { seededRandom } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import { sampleAdNames, sampleNameMatches } from "@/lib/sample/ad-names";
-import { matchesAdNames } from "@/lib/ad-name-filters";
+import { samplePaidSource, type PaidSourceRow } from "@/lib/sample/ad-delivery";
+import { matchesAdNames, type AdNames } from "@/lib/ad-name-filters";
 import { periodStart } from "@/lib/time-grain";
 import { PERIOD_PREFIXES, type PeriodPrefix } from "@/lib/data/period-sql";
 import type { CreativeSummary, CreativesData, CreativesFilters } from "./queries";
@@ -193,29 +197,35 @@ function flights(from: string, to: string): SampleCreative[] {
   return result;
 }
 
-function placements(creative: SampleCreative, filters: CreativesFilters) {
-  if (filters.channel && creative.source_system !== filters.channel) return [];
-  // The first asset runs in two campaigns, so name filtering must scope its metrics as well as its card.
+/** The ads a creative runs in, by campaign and names, each with its pull there. */
+function placements(creative: SampleCreative): { campaign: string; weight: number; names: AdNames }[] {
+  // The first asset runs in both prospecting ads and in retargeting, so name filtering must scope its
+  // metrics as well as its card.
   const all =
     creative.id === "crv-01"
       ? [
           { campaign: creative.campaign, weight: 0.75, variant: 0 },
+          { campaign: creative.campaign, weight: 0.75, variant: 1 },
           { campaign: "cmp-1002", weight: 0.25, variant: 1 },
         ]
       : [{ campaign: creative.campaign, weight: 1, variant: Number(creative.id.slice(-1)) % 2 }];
-  return all
-    .map((placement) => ({ ...placement, names: sampleAdNames(placement.campaign, placement.variant) }))
-    .filter(
-      (placement) =>
-        (!filters.campaign || placement.campaign === filters.campaign) &&
-        matchesAdNames(placement.names, filters.names),
-    );
+  return all.map(({ campaign, weight, variant }) => ({ campaign, weight, names: sampleAdNames(campaign, variant) }));
 }
 
-type Day = { spendCents: bigint; impressions: bigint; clicks: bigint; conversions: number };
+/** Whether a row or placement is in the page's platform, campaign and name scope. */
+function inScope(filters: CreativesFilters, row: { source_system: string; campaign: string; names: AdNames }) {
+  return (
+    (!filters.channel || row.source_system === filters.channel) &&
+    (!filters.campaign || row.campaign === filters.campaign) &&
+    matchesAdNames(row.names, filters.names)
+  );
+}
 
-/** One creative's delivery on one day, or null when it did not run. Flights ramp up for a week, then tire. */
-function day(storeId: string, scale: number, creative: SampleCreative, date: string, weight: number): Day | null {
+type Day = { spendCents: bigint; impressions: bigint; clicks: bigint; conversions: number; revenue: number };
+type Share = { delivery: number; conversion: number };
+
+/** A creative's pull on one day of an ad it runs in, or null off its flight. Flights ramp up for a week, then tire. */
+function share(storeId: string, creative: SampleCreative, date: string, weight: number): Share | null {
   let reach = creative.reach * weight;
   let conversionRate = 1;
   if (creative.flight) {
@@ -225,59 +235,132 @@ function day(storeId: string, scale: number, creative: SampleCreative, date: str
     conversionRate = age > 14 ? Math.max(0.55, 1 - (age - 14) / 40) : 1.15;
   }
   const random = seededRandom(`creative|${storeId}|${creative.id}|${date}`);
-  const impressions = Math.round(18_000 * scale * reach * (0.7 + random() * 0.6));
-  const clicks = Math.round(impressions * (0.005 + random() * 0.015));
-  return {
-    spendCents: BigInt(Math.round((impressions / 1000) * 1150 * (0.85 + random() * 0.3))),
-    impressions: BigInt(impressions),
-    clicks: BigInt(clicks),
-    conversions: Math.round(clicks * (0.02 + random() * 0.04) * conversionRate * 4) / 4,
-  };
+  const delivery = reach * (0.7 + random() * 0.6);
+  return { delivery, conversion: delivery * conversionRate * (0.8 + random() * 0.4) };
+}
+
+/** Running fractions of `weights`, the last exactly 1, so slices of a total between them sum to it. */
+function runningShares(weights: number[]): number[] {
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  let running = 0;
+  return weights.map((weight, index) => (index === weights.length - 1 ? 1 : (running += weight) / total));
+}
+
+/** One ad's day split across the creatives that ran in it; whole units go by running shares, so nothing is lost. */
+function split(row: PaidSourceRow, running: { creative: SampleCreative; share: Share }[]) {
+  const delivery = runningShares(running.map((item) => item.share.delivery));
+  const conversion = runningShares(running.map((item) => item.share.conversion));
+  const units = (total: bigint, from: number, to: number) =>
+    BigInt(Math.floor(Number(total) * to) - Math.floor(Number(total) * from));
+  return running.map(({ creative }, index) => {
+    const [from, to] = [delivery[index - 1] ?? 0, delivery[index] ?? 1];
+    const converted = (conversion[index] ?? 1) - (conversion[index - 1] ?? 0);
+    const day: Day = {
+      spendCents: units(row.spendCents, from, to),
+      impressions: units(row.impressions, from, to),
+      clicks: units(row.clicks, from, to),
+      conversions: row.conversions * converted,
+      revenue: row.platformRevenue * converted,
+    };
+    return { creative, day };
+  });
+}
+
+/** One ad's day, or one creative's part of it: a live rpt_ad_performance_daily row. */
+type CreativeDay = {
+  creative: SampleCreative | null;
+  source_system: string;
+  campaign: string;
+  names: AdNames;
+  date: string;
+  day: Day;
+};
+
+/**
+ * The sample ad delivery over `range`, each ad's day split across the creatives
+ * of `creatives` that ran in it, before any filter, so a filter only removes
+ * rows. A day no creative ran stays whole, with no creative, as live rows
+ * without an ad_creative_id do.
+ */
+function creativeDelivery(storeId: string, range: DateRange, creatives: readonly SampleCreative[]): CreativeDay[] {
+  const key = (campaign: string, names: AdNames) => `${campaign}|${JSON.stringify(names)}`;
+  const byAd = new Map<string, { creative: SampleCreative; weight: number }[]>();
+  for (const creative of creatives)
+    for (const { campaign, weight, names } of placements(creative))
+      byAd.set(key(campaign, names), [...(byAd.get(key(campaign, names)) ?? []), { creative, weight }]);
+  return samplePaidSource(storeId, range).flatMap((row): CreativeDay[] => {
+    const base = { source_system: row.source_system, campaign: row.campaign.id, names: row.names, date: row.date };
+    const running = (byAd.get(key(row.campaign.id, row.names)) ?? []).flatMap(({ creative, weight }) => {
+      const pull = share(storeId, creative, row.date, weight);
+      return pull ? [{ creative, share: pull }] : [];
+    });
+    if (!running.length) {
+      const { spendCents, impressions, clicks, conversions, platformRevenue: revenue } = row;
+      return [{ ...base, creative: null, day: { spendCents, impressions, clicks, conversions, revenue } }];
+    }
+    return split(row, running).map((part) => ({ ...base, ...part }));
+  });
 }
 
 type Sums = Day & { latest: string };
-type Grouped = { creative: SampleCreative; periods: [Sums | null, Sums | null, Sums | null]; firstDate: string | null };
+type Periods = [Sums | null, Sums | null, Sums | null];
+/** One live `grouped` row: a creative on its platform, or (creative null) a platform's delivery with no creative. */
+type Grouped<C extends SampleCreative | null = SampleCreative | null> = {
+  creative: C;
+  channel: string;
+  periods: Periods;
+  firstDate: string | null;
+};
 
-/** Each creative in scope, summed over the selected and comparison periods, as the live `grouped` CTE does. */
-function grouped(filters: CreativesFilters, baselines: BaselineRanges): Grouped[] {
-  const scale = SAMPLE_STORE_SCALE.get(filters.storeId);
-  if (!scale) return [];
+/**
+ * The live `grouped` CTE's rows in scope, summed over the selected and
+ * comparison periods: each creative, and each platform's delivery that no
+ * creative ran.
+ */
+function grouped(
+  filters: CreativesFilters,
+  baselines: BaselineRanges,
+): { creatives: Grouped<SampleCreative>[]; uncovered: Grouped<null>[] } {
+  if (!SAMPLE_STORE_SCALE.has(filters.storeId)) return { creatives: [], uncovered: [] };
   const ranges: (DateRange | null)[] = [filters.range, baselines[0], baselines[1]];
   const dates = ranges.flatMap((range) => (range ? [range.from, range.to] : [])).sort();
   const lookback = lookbackStart(filters.range.from);
   const all = [...EVERGREEN, ...flights(dates[0] ?? filters.range.from, dates.at(-1) ?? filters.range.to)];
-  return all.flatMap((creative) => {
-    if (filters.format && creative.format !== filters.format) return [];
-    const selected = placements(creative, filters);
-    if (!selected.length) return [];
-    const periods = ranges.map((range) => {
-      if (!range) return null;
-      let sums: Sums | null = null;
-      for (const date of datesInRange(range))
-        for (const placement of selected) {
-          const delivery = day(filters.storeId, scale, creative, date, placement.weight);
-          if (!delivery) continue;
-          sums ??= { spendCents: 0n, impressions: 0n, clicks: 0n, conversions: 0, latest: date };
-          sums.spendCents += delivery.spendCents;
-          sums.impressions += delivery.impressions;
-          sums.clicks += delivery.clicks;
-          sums.conversions += delivery.conversions;
-          sums.latest = date;
-        }
-      return sums;
-    }) as Grouped["periods"];
-    if (periods.every((sums) => sums === null)) return [];
+  const sums = new Map<SampleCreative | string, Periods>();
+  ranges.forEach((range, slot) => {
+    if (!range) return;
+    for (const row of creativeDelivery(filters.storeId, range, all)) {
+      // No creative means no format, so a format scope leaves that delivery out, as live.
+      if (!inScope(filters, row) || (filters.format && row.creative?.format !== filters.format)) continue;
+      const group = row.creative ?? row.source_system;
+      const periods = sums.get(group) ?? [null, null, null];
+      const before = periods[slot];
+      periods[slot] = {
+        spendCents: (before?.spendCents ?? 0n) + row.day.spendCents,
+        impressions: (before?.impressions ?? 0n) + row.day.impressions,
+        clicks: (before?.clicks ?? 0n) + row.day.clicks,
+        conversions: (before?.conversions ?? 0) + row.day.conversions,
+        revenue: (before?.revenue ?? 0) + row.day.revenue,
+        latest: before && before.latest > row.date ? before.latest : row.date,
+      };
+      sums.set(group, periods);
+    }
+  });
+  const creatives = all.flatMap((creative) => {
+    const periods = sums.get(creative);
+    if (!periods) return [];
     // Launches ignore campaign and name filters: a creative launches once, wherever it runs.
     const start = creative.flight ? creative.flight.from : lookback;
     const firstDate = start > filters.range.to ? null : start < lookback ? lookback : start;
-    return [{ creative, periods, firstDate }];
+    return [{ creative, channel: creative.source_system, periods, firstDate }];
   });
+  const uncovered = [...sums].flatMap(([group, periods]) =>
+    typeof group === "string" ? [{ creative: null, channel: group, periods, firstDate: null }] : [],
+  );
+  return { creatives, uncovered };
 }
 
 const ratio = (numerator: number, denominator: number) => (denominator === 0 ? null : String(numerator / denominator));
-
-/** The sample's platform revenue per conversion. */
-const ORDER_VALUE = 71;
 
 /** One period's sums in BigQuery's wire format, under the column names `prefix` gives them. */
 function wireSums(sums: Sums | null, prefix: PeriodPrefix) {
@@ -286,7 +369,7 @@ function wireSums(sums: Sums | null, prefix: PeriodPrefix) {
     [`${prefix}impressions`]: sums ? String(sums.impressions) : null,
     [`${prefix}clicks`]: sums ? String(sums.clicks) : null,
     [`${prefix}conversions`]: sums ? String(sums.conversions) : null,
-    [`${prefix}revenue`]: sums ? String(sums.conversions * ORDER_VALUE) : null,
+    [`${prefix}revenue`]: sums ? String(sums.revenue) : null,
   };
 }
 
@@ -294,7 +377,7 @@ function wireSums(sums: Sums | null, prefix: PeriodPrefix) {
 function wireRatios(sums: Sums | null, prefix: PeriodPrefix) {
   const spend = sums ? Number(sums.spendCents) / 100 : 0;
   return {
-    [`${prefix}roas`]: sums ? ratio(sums.conversions * ORDER_VALUE, spend) : null,
+    [`${prefix}roas`]: sums ? ratio(sums.revenue, spend) : null,
     [`${prefix}cpo`]: sums ? ratio(spend, sums.conversions) : null,
     [`${prefix}ctr`]: sums ? ratio(Number(sums.clicks), Number(sums.impressions)) : null,
   };
@@ -317,7 +400,7 @@ function sortValue(row: Record<string, string | null>, sort: CreativeSort): numb
 
 export async function sampleCreatives(filters: CreativesFilters, baselines: BaselineRanges): Promise<CreativesData> {
   // As live: coverage spans every creative in scope, before the selection or minimums keep some.
-  const groups = grouped(filters, baselines);
+  const groups = grouped(filters, baselines).creatives;
   const covered = coverage(groups);
   const { selection } = filters;
   const rows = groups
@@ -369,20 +452,26 @@ export async function sampleCreatives(filters: CreativesFilters, baselines: Base
   };
 }
 
-/** The live summary's groupings over the same creatives: totals, each format and each launch week. */
+/**
+ * The live summary's groupings over the same rows: with and without a creative,
+ * the totals, each format and each launch week.
+ */
 export async function sampleCreativeSummary(
   filters: CreativesFilters,
   baselines: BaselineRanges,
 ): Promise<CreativeSummary> {
-  const groups = grouped(filters, baselines);
-  if (!groups.length) return toCreativeSummary([]);
-  const covered = coverage(groups);
+  const { creatives, uncovered } = grouped(filters, baselines);
   const launchWeek = (group: Grouped) => {
     const first = firstSpend(group.firstDate, filters.range.from);
     return first?.when === "launched" ? periodStart(first.date, "week") : null;
   };
 
-  const total = (members: Grouped[], key: { kind: string; format: string | null; launch_week: string | null }) => {
+  const total = (
+    members: Grouped[],
+    key: { kind: string; format: string | null; launch_week: string | null },
+    hasCreative: boolean,
+  ) => {
+    const covered = coverage(members);
     const sum = (slot: 0 | 1 | 2) => {
       const present = members.map((group) => group.periods[slot]).filter((sums) => sums !== null);
       return present.length
@@ -392,9 +481,10 @@ export async function sampleCreativeSummary(
               impressions: acc.impressions + sums.impressions,
               clicks: acc.clicks + sums.clicks,
               conversions: acc.conversions + sums.conversions,
+              revenue: acc.revenue + sums.revenue,
               latest: sums.latest > acc.latest ? sums.latest : acc.latest,
             }),
-            { spendCents: 0n, impressions: 0n, clicks: 0n, conversions: 0, latest: "" },
+            { spendCents: 0n, impressions: 0n, clicks: 0n, conversions: 0, revenue: 0, latest: "" },
           )
         : null;
     };
@@ -402,7 +492,7 @@ export async function sampleCreativeSummary(
       String(members.filter((group) => (group.periods[slot]?.spendCents ?? 0n) > 0n).length);
     return {
       ...key,
-      has_creative: "true",
+      has_creative: String(hasCreative),
       ...Object.assign({}, ...PERIOD_PREFIXES.map((prefix, slot) => wireSums(sum(slot as 0 | 1 | 2), prefix))),
       creatives: count(0),
       previous_creatives: count(1),
@@ -410,25 +500,35 @@ export async function sampleCreativeSummary(
       new_creatives: String(
         members.filter((group) => launchWeek(group) !== null && (group.periods[0]?.spendCents ?? 0n) > 0n).length,
       ),
-      latest_date: covered.latest_date,
-      previous_latest_date: covered.previous_latest_date,
-      second_latest_date: covered.second_latest_date,
+      ...covered,
     };
   };
-  const by = <K extends string | null>(key: (group: Grouped) => K) => {
+  const by = <K extends string | null>(members: Grouped[], key: (group: Grouped) => K) => {
     const map = new Map<K, Grouped[]>();
-    for (const group of groups) map.set(key(group), [...(map.get(key(group)) ?? []), group]);
+    for (const group of members) map.set(key(group), [...(map.get(key(group)) ?? []), group]);
     return [...map.entries()];
   };
   const rows = [
-    total(groups, { kind: "total", format: null, launch_week: null }),
-    ...by((group) => group.creative.format).map(([format, members]) =>
-      total(members, { kind: "format", format, launch_week: null }),
-    ),
-    ...by(launchWeek).map(([week, members]) => total(members, { kind: "launch", format: null, launch_week: week })),
-  ].sort(
+    { members: creatives, hasCreative: true },
+    { members: uncovered, hasCreative: false },
+  ].flatMap(({ members, hasCreative }) =>
+    members.length
+      ? [
+          total(members, { kind: "total", format: null, launch_week: null }, hasCreative),
+          ...by(members, (group) => group.creative?.format ?? null).map(([format, group]) =>
+            total(group, { kind: "format", format, launch_week: null }, hasCreative),
+          ),
+          ...by(members, launchWeek).map(([week, group]) =>
+            total(group, { kind: "launch", format: null, launch_week: week }, hasCreative),
+          ),
+        ]
+      : [],
+  );
+  // As live: ORDER BY kind, has_creative DESC, spend DESC NULLS LAST.
+  rows.sort(
     (a, b) =>
       a.kind.localeCompare(b.kind) ||
+      b.has_creative.localeCompare(a.has_creative) ||
       (b.spend === null ? -1 : a.spend === null ? 1 : Number(toUnits(b.spend) - toUnits(a.spend))),
   );
   return toCreativeSummary(decodeRows(CreativeSummaryRow, rows, CREATIVE_RELATION));
@@ -444,7 +544,9 @@ export function sampleCreativeNames(filters: CreativesFilters) {
   if (!SAMPLE_STORE_SCALE.has(filters.storeId)) return { rows: [], truncated: false };
   return sampleNameMatches(
     [...EVERGREEN, ...flights(filters.range.from, filters.range.to)].flatMap((creative) =>
-      placements(creative, filters).map((placement) => placement.names),
+      placements(creative)
+        .filter((placement) => inScope(filters, { ...placement, source_system: creative.source_system }))
+        .map((placement) => placement.names),
     ),
   );
 }

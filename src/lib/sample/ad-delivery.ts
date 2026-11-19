@@ -1,8 +1,9 @@
 /**
  * Sample ad delivery: synthetic campaign-by-ad-by-day rows, the one source
  * every sample view that reads rpt_ad_performance_daily or its ad spend sums,
- * so Paid marketing and Overview agree. Spend is whole cents so sums stay
- * exact; source_system is the ad platform and sm_channel the sales channel.
+ * so Paid marketing, Creatives and Overview agree. Spend is whole cents so
+ * sums stay exact; source_system is the ad platform and sm_channel the sales
+ * channel.
  */
 import { datesInRange, type DateRange } from "@/lib/filters";
 import { randomInt, seededRandom } from "@/lib/sample/random";

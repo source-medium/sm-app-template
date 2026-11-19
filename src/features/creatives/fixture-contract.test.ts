@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CreativeRow, firstSpend, lookbackStart, toCreative, safeAdUrl } from "./rows";
 import { sampleCreatives as sample, sampleCreativeSummary } from "./sample";
+import { samplePaidSummary } from "@/features/paid-marketing/sample";
 import { sumDecimals } from "@/lib/data/decimal";
 import type { CreativesFilters } from "./queries";
 import type { BaselineRanges } from "@/lib/comparison";
@@ -162,6 +163,32 @@ describe("creative comparisons, launches and summary", () => {
     );
     // Minimums shape the list only.
     expect(await sampleCreativeSummary({ ...scope, minimumSpend: "999999" }, [PREVIOUS, null])).toEqual(summary);
+  });
+
+  it("adds up, with the spend no creative ran, to Paid marketing's totals over the same scope", async () => {
+    const names = [{ field: "campaign" as const, operator: "contains" as const, values: ["[retargeting]"] }];
+    for (const filters of [scope, { ...scope, channel: "meta_ads" }, { ...scope, names }]) {
+      const { totals, uncoveredSpend } = await sampleCreativeSummary(filters, [PREVIOUS, null]);
+      const paid = await samplePaidSummary({ channel: null, ...filters }, [PREVIOUS, null]);
+      expect(sumDecimals([totals?.current.spend ?? null, uncoveredSpend])).toBe(paid.totals?.current.spend);
+    }
+    // Every Meta ad runs a creative, so there the whole delivery is the creatives'.
+    const meta = { ...scope, channel: "meta_ads" };
+    const { totals, uncoveredSpend } = await sampleCreativeSummary(meta, [PREVIOUS, null]);
+    const paid = await samplePaidSummary(meta, [PREVIOUS, null]);
+    expect(uncoveredSpend).toBeNull();
+    for (const [creatives, all] of [
+      [totals?.current, paid.totals?.current],
+      [totals?.baselines[0], paid.totals?.baselines[0]],
+    ] as const) {
+      expect(creatives?.spend).toBe(all?.spend);
+      expect(creatives?.impressions).toBe(all?.impressions);
+      expect(creatives?.clicks).toBe(all?.clicks);
+      expect(creatives?.conversions).toBeCloseTo(all?.conversions ?? Number.NaN, 6);
+      expect(creatives?.revenue).toBeCloseTo(all?.revenue ?? Number.NaN, 6);
+    }
+    // Performance Max and Pinterest Shopping run no creative in the sample, so some spend is uncovered.
+    expect(Number((await sampleCreativeSummary(scope, [null, null])).uncoveredSpend)).toBeGreaterThan(0);
   });
 
   it("scopes the whole report to one format", async () => {
