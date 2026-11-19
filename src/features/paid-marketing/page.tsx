@@ -248,7 +248,7 @@ function PaidTotals({
   return (
     <div className="flex flex-col gap-4">
       {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} switchable={false} />}
-      <section aria-label="Paid marketing totals" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <section aria-label="Paid marketing totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AdKpis totals={summary.totals} plan={plan} changes={changes} money={formatMoneyIn(currency)} />
       </section>
     </div>
