@@ -174,6 +174,48 @@ describe("creatives, live", () => {
     expect(data.truncated).toBe(true);
   });
 
+  it("looks up current assets for the ranked platform and creative together without filtering out delivery", async () => {
+    const rankings = [
+      { ...ROW, channel: "meta_ads", creative_id: "shared" },
+      { ...ROW, channel: "google_ads", creative_id: "shared" },
+      { ...ROW, channel: "impact", creative_id: "historical" },
+    ];
+    const fields = ["channel", "creative_id"].map((name) => ({ name, type: "STRING" }));
+    const fake = await goLive({
+      submit: (call) => {
+        if (String((call.body as { query: string }).query).includes("rpt_ad_creative_assets")) {
+          return rowsResponse(fields, [
+            { channel: "meta_ads", creative_id: "shared" },
+            { channel: "google_ads", creative_id: null },
+          ]);
+        }
+        return rowsResponse(FIELDS, rankings);
+      },
+    });
+    const { getCreatives } = await import("./queries");
+    const result = await getCreatives({ ...FILTERS, sort: "spend" }, NONE);
+    expect(result.creatives.map((c) => c.assets)).toEqual(["available", "no_match", "no_platform_inventory"]);
+    expectEveryQueryScopedTo(fake, FILTERS.storeId);
+    expect(fake.submitted()).toHaveLength(2);
+    expect(fake.submitted(1).queryParameters).toContainEqual({
+      name: "identities",
+      parameterType: { type: "STRING" },
+      parameterValue: { value: JSON.stringify(rankings.map((r) => [r.channel, r.creative_id])) },
+    });
+  });
+
+  it("keeps the ranking when the separate inventory read fails", async () => {
+    await goLive({
+      submit: (call) =>
+        String((call.body as { query: string }).query).includes("rpt_ad_creative_assets")
+          ? Response.json({ error: { code: 404, message: "Missing table" } }, { status: 404 })
+          : rowsResponse(FIELDS, [ROW]),
+    });
+    const { getCreatives } = await import("./queries");
+    const data = await getCreatives({ ...FILTERS, sort: "spend" }, NONE);
+    expect(data.creatives[0]).toMatchObject({ creativeId: "cr1", assets: "unknown" });
+  });
+
   it("totals the scope, each format and each launch week in one grouped pass", async () => {
     const SUMMARY_FIELDS = [
       { name: "kind", type: "STRING" },
@@ -362,6 +404,9 @@ it("loads current assets independently of spend, scoped by store, platform and c
     ad_id: null,
     ad_campaign_id: null,
     asset_role: "video",
+    asset_pinned_position: "known",
+    asset_performance_label: "known",
+    asset_status: "known",
     asset_id: null,
     asset_text: null,
     asset_image_url: "javascript:bad",

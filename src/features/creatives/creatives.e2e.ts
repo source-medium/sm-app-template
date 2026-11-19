@@ -212,6 +212,7 @@ test("creatives: current assets open from performance, play a supplied video and
   await expect(page.getByRole("heading", { name: "Creative assets", exact: true })).toBeVisible();
   const assets = page.getByRole("list", { name: "Creative assets" });
   await expect(assets.getByRole("heading", { name: "Primary text" })).toBeVisible();
+  await expect(assets.getByText("Pinned position: HEADLINE_1")).toBeVisible();
   const video = assets.locator("video");
   await video.evaluate(async (element: HTMLVideoElement) => {
     element.muted = true;

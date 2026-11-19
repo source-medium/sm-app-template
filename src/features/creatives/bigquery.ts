@@ -14,7 +14,10 @@ import type { BaselineRanges } from "@/lib/comparison";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { adNamePredicate } from "@/lib/data/ad-name-sql";
 import { AD_PLATFORM_SQL } from "@/lib/data/channel-sql";
-import { decodeRows } from "@/lib/data/decode";
+import type { Warehouse } from "@/lib/data/warehouse.server";
+import { WarehouseError } from "@/lib/data/warehouse-error";
+import { z } from "zod";
+import { bq, decodeRows } from "@/lib/data/decode";
 import { PERIOD_COVERAGE, PERIOD_PREFIXES, periodParams, periodSql } from "@/lib/data/period-sql";
 import { AD_PERIOD_SUMS } from "@/lib/ad-totals";
 import { GRAIN_SQL } from "@/lib/time-grain";
@@ -91,6 +94,42 @@ function scopeParams(filters: CreativesFilters, baselines: BaselineRanges) {
   ] as const;
 }
 
+// Only enrich the returned ranking. A warehouse without the inventory table can still serve performance.
+async function assetCoverage(warehouse: Warehouse, storeId: string, rows: { channel: string; creative_id: string }[]) {
+  if (!rows.length) return null;
+  try {
+    const result = await warehouse.query({
+      name: "creative_asset_coverage",
+      cache: CACHE_POLICY.aggregate,
+      maxRows: rows.length * 2,
+      sql: `WITH requested AS (
+          SELECT JSON_VALUE(pair, '$[0]') AS channel, JSON_VALUE(pair, '$[1]') AS creative_id
+          FROM UNNEST(JSON_QUERY_ARRAY(@identities)) pair
+        )
+        SELECT DISTINCT source_system AS channel, requested.creative_id
+        FROM ${warehouse.table(ASSET_RELATION)}
+        LEFT JOIN requested ON requested.channel = source_system AND requested.creative_id = ad_creative_id
+        WHERE sm_store_id = @store_id AND source_system IN (SELECT channel FROM requested)`,
+      params: [
+        { name: "store_id", type: "STRING", value: storeId },
+        { name: "identities", type: "STRING", value: JSON.stringify(rows.map((r) => [r.channel, r.creative_id])) },
+      ],
+    });
+    const hits = decodeRows(
+      z.object({ channel: bq.string(), creative_id: bq.string().nullable() }),
+      result.rows,
+      ASSET_RELATION,
+    );
+    return {
+      platforms: new Set(hits.map((r) => r.channel)),
+      creatives: new Set(hits.map((r) => JSON.stringify([r.channel, r.creative_id]))),
+    };
+  } catch (error) {
+    if (!(error instanceof WarehouseError)) throw error;
+    return null;
+  }
+}
+
 export async function queryCreatives(filters: CreativesFilters, baselines: BaselineRanges): Promise<CreativesData> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const table = warehouse.table(CREATIVE_RELATION);
@@ -147,9 +186,22 @@ export async function queryCreatives(filters: CreativesFilters, baselines: Basel
     ],
   });
   const rows = decodeRows(CreativeRow, result.rows, CREATIVE_RELATION);
+  const assets = await assetCoverage(warehouse, filters.storeId, rows);
   const first = rows[0];
   return {
-    creatives: rows.map((row) => toCreative(row, filters.range)),
+    creatives: rows.map((row) =>
+      toCreative(
+        row,
+        filters.range,
+        !assets
+          ? "unknown"
+          : assets.creatives.has(JSON.stringify([row.channel, row.creative_id]))
+            ? "available"
+            : assets.platforms.has(row.channel)
+              ? "no_match"
+              : "no_platform_inventory",
+      ),
+    ),
     truncated: result.truncated,
     coverage: first
       ? {
@@ -248,7 +300,7 @@ export async function queryCreativeAssets(filters: AssetScope) {
     maxRows: ASSET_PAGE_SIZE,
     partial: true,
     sql: `SELECT sm_ad_creative_asset_key, source_system, ad_creative_id, ad_id, ad_campaign_id, asset_role,
-        asset_id, asset_text, asset_image_url, asset_video_url, asset_video_id, asset_link_url
+        asset_pinned_position, asset_performance_label, asset_status, asset_id, asset_text, asset_image_url, asset_video_url, asset_video_id, asset_link_url
       FROM ${warehouse.table(ASSET_RELATION)}
       WHERE sm_store_id = @store_id AND (@channel = '' OR source_system = @channel)
         AND (@entity = '' OR ad_creative_id = @entity) AND (@role = '' OR asset_role = @role)

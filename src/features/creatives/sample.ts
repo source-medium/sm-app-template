@@ -446,7 +446,7 @@ export async function sampleCreatives(filters: CreativesFilters, baselines: Base
   const limit = filters.selection ? 4 : MAX_CREATIVES;
   return {
     creatives: decodeRows(CreativeRow, rows.slice(0, limit), CREATIVE_RELATION).map((row) =>
-      toCreative(row, filters.range),
+      toCreative(row, filters.range, "available"),
     ),
     truncated: rows.length > limit,
     coverage: rows.length ? covered : null,
@@ -569,6 +569,9 @@ export function sampleCreativeAssets(filters: AssetScope, today: string) {
           ad_id: null,
           ad_campaign_id: c.campaign,
           asset_role: role,
+          asset_pinned_position: null,
+          asset_performance_label: null,
+          asset_status: null,
           asset_id: null,
           asset_text: null,
           asset_video_id: null,
@@ -578,7 +581,7 @@ export function sampleCreativeAssets(filters: AssetScope, today: string) {
           ...values,
         });
       };
-      add("title", { asset_text: c.title });
+      add("title", { asset_text: c.title, asset_pinned_position: c.id === "crv-03" ? "HEADLINE_1" : null });
       add("body", { asset_text: c.body });
       if (c.cta) add("call_to_action", { asset_text: c.cta });
       if (c.format === "video")

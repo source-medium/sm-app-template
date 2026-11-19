@@ -38,6 +38,9 @@ function AssetCard({ asset }: { asset: CreativeAsset }) {
           {adPlatformLabel(asset.source_system)}
           {asset.ad_creative_id && ` · Creative ${asset.ad_creative_id}`}
         </p>
+        {asset.asset_pinned_position && <p className="text-sm">Pinned position: {asset.asset_pinned_position}</p>}
+        {asset.asset_performance_label && <p className="text-sm">Platform rating: {asset.asset_performance_label}</p>}
+        {asset.asset_status && <p className="text-sm">Platform status: {asset.asset_status}</p>}
         {asset.ad_id && <p className="text-xs text-muted-foreground">Ad {asset.ad_id}</p>}
         {asset.ad_campaign_id && !asset.ad_id && (
           <p className="text-xs text-muted-foreground">Campaign {asset.ad_campaign_id}</p>

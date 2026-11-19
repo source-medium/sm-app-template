@@ -456,6 +456,19 @@ function firstSpendLabel(first: FirstSpend | null): string | null {
   return `${first.when === "launched" ? "Launched" : "Running since"} ${formatDate(first.date)}`;
 }
 
+function assetAction(store: string, creative: Creative) {
+  switch (creative.assets) {
+    case "available":
+      return { display: "View assets", href: assetHref(store, creative.channel, creative.creativeId) };
+    case "no_match":
+      return { display: "No current assets" };
+    case "no_platform_inventory":
+      return { display: "No inventory for this platform" };
+    case "unknown":
+      return { display: "Asset availability unknown" };
+  }
+}
+
 function CreativesView({
   data,
   plan,
@@ -491,6 +504,7 @@ function CreativesView({
           truncated={data.truncated}
           columns={[
             { key: "name", header: "Creative" },
+            { key: "assets", header: "Current assets" },
             { key: "channel", header: "Ad platform" },
             { key: "format", header: "Format" },
             { key: "first", header: "Started", nowrap: true },
@@ -505,6 +519,7 @@ function CreativesView({
             { key: "ctr", header: "CTR", align: "right" },
           ]}
           rows={data.creatives.map((c) => {
+            const action = assetAction(scopeFilters.store, c);
             const change = <M extends Measure>(measure: M, format: (value: Creative[M]) => string) => {
               const delta = creativeChange(c, shown, measure, format);
               return delta ? changeCell(delta) : { display: "" };
@@ -514,8 +529,9 @@ function CreativesView({
               cells: {
                 name: {
                   display: c.title ?? c.name ?? c.creativeId,
-                  href: assetHref(scopeFilters.store, c.channel, c.creativeId),
+                  href: action.href,
                 },
+                assets: { display: action.href ? "Available" : action.display },
                 channel: { display: adPlatformLabel(c.channel), leading: <PlatformMark platform={c.channel} /> },
                 format: { display: creativeFormatLabel(c.format) },
                 // An older creative sorts before every dated one.
@@ -541,6 +557,7 @@ function CreativesView({
       <CardGrid
         label={comparison ? "Selected creatives" : "Ad creatives"}
         cards={data.creatives.map((creative) => {
+          const action = assetAction(scopeFilters.store, creative);
           const metric = <M extends Measure>(
             label: string,
             measure: M,
@@ -566,13 +583,17 @@ function CreativesView({
             imageUrl: creative.imageUrl,
             footer: (
               <>
-                <Link
-                  prefetch={false}
-                  className="text-sm font-medium underline underline-offset-4"
-                  href={assetHref(scopeFilters.store, creative.channel, creative.creativeId)}
-                >
-                  View assets
-                </Link>
+                {action.href ? (
+                  <Link
+                    prefetch={false}
+                    className="text-sm font-medium underline underline-offset-4"
+                    href={action.href}
+                  >
+                    {action.display}
+                  </Link>
+                ) : (
+                  <span className="text-sm text-muted-foreground">{action.display}</span>
+                )}
                 {(() => {
                   const identity: CreativeIdentity = [creative.channel, creative.creativeId];
                   const selected = selection.some(([platform, id]) => platform === identity[0] && id === identity[1]);
