@@ -54,7 +54,8 @@ export function BaselineSwitch({ labels, available }: { labels: [string, string]
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* KPI cards show both comparisons as numbers; this picks the one every chart and table draws. */}
-      <span aria-hidden className="text-sm text-muted-foreground">
+      {/* On a phone the label wraps beside the switch rather than taking a row of its own. */}
+      <span aria-hidden className="text-sm text-muted-foreground max-sm:max-w-24">
         Charts and tables vs
       </span>
       <div

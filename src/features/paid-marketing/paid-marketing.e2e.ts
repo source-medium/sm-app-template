@@ -66,7 +66,7 @@ test("paid marketing: ranked spend shares, dimension changes, and comparisons ho
   expect(params.get("compare")).toBe("year");
   const campaignTable = region.getByRole("table", { name: "Spend by campaign details", exact: true });
   await expect(campaignTable.locator("tbody tr")).toHaveCount(3);
-  await choose(page, "Compare spend breakdown with", "off");
+  await choose(page, "Compare paid marketing with", "off");
   await expect(page).toHaveURL(/compare=off/);
   await expect(campaignTable.getByRole("columnheader", { name: /^Change vs/ })).toHaveCount(0);
   expect(new URL(page.url()).searchParams.get("breakdown")).toBe("campaign");
@@ -218,7 +218,7 @@ test("paid marketing: name scope carries through comparisons, CSV, and creative 
   const campaigns = page.getByRole("table", { name: "Campaigns by spend" });
   await expect(campaigns.locator("tbody tr")).toHaveCount(1);
   await expect(campaigns).toContainText("[retargeting] Site Visitors");
-  await choose(page, "Compare spend breakdown with", "year");
+  await choose(page, "Compare paid marketing with", "year");
   await expect(page).toHaveURL(/compare=year/);
   await choose(page, "Break down by", "campaign");
   await expect(page.getByRole("table", { name: "Spend by campaign details" }).locator("tbody tr")).toHaveCount(1);

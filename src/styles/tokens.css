@@ -70,6 +70,9 @@
   --scroll-cue: rgba(26, 31, 54, 0.16);
   /* The selected option of a segmented switch, raised above its muted track. */
   --segment: #ffffff;
+  /* Primary's share in the lightest and darkest shaded cohort cells; the lightest stands apart from an empty cell. */
+  --cohort-lightest: 12%;
+  --cohort-darkest: 52%;
 }
 
 :root {
@@ -123,5 +126,7 @@
     --shadow-card: none;
     --scroll-cue: rgba(0, 0, 0, 0.5);
     --segment: #2c3b5c;
+    /* Primary is dark on a dark card, so the lowest values need more of it to read as shaded. */
+    --cohort-lightest: 24%;
   }
 }

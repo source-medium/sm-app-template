@@ -12,6 +12,7 @@ import type { FirstSpend } from "./rows";
 import type { ReportFilters } from "@/lib/filters";
 import type { AdNameMatches, AdNameRule } from "@/lib/ad-name-filters";
 import type { BaselineRanges, PeriodCoverage } from "@/lib/comparison";
+import type { AdTotals } from "@/lib/ad-totals";
 import { queryAdNameMatches } from "@/lib/data/ad-name-matches.server";
 import { queryCreativeChannels, queryCreativeSummary, queryCreatives } from "./bigquery";
 import { sampleCreativeChannels, sampleCreatives, sampleCreativeNames, sampleCreativeSummary } from "./sample";
@@ -67,14 +68,7 @@ export type CreativesData = {
 };
 
 /** One group's sums in one period; `creatives` counts creatives with spend. */
-export type CreativeSummaryGroup = {
-  spend: string | null;
-  impressions: bigint | null;
-  clicks: bigint | null;
-  conversions: number | null;
-  revenue: number | null;
-  creatives: bigint | null;
-};
+export type CreativeSummaryGroup = AdTotals & { creatives: bigint | null };
 type Periods = { current: CreativeSummaryGroup; baselines: readonly [CreativeSummaryGroup, CreativeSummaryGroup] };
 
 export type CreativeSummary = {

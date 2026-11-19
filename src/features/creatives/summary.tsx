@@ -6,14 +6,16 @@
  */
 import "server-only";
 import Link from "next/link";
-import { KpiCard, type KpiDelta } from "@/components/patterns/kpi-card";
+import { KpiCard } from "@/components/patterns/kpi-card";
+import { AdKpis } from "@/components/patterns/ad-kpis";
+import { adRatios } from "@/lib/ad-totals";
 import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { DataTable } from "@/components/patterns/data-table";
 import { SectionHeader } from "@/components/patterns/section-header";
 import { changeCell, kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
-import { slotChanges, type ComparisonPlan, type Polarity } from "@/lib/comparison";
-import { decimalToNumber, minDecimal, nonnegativeShare, ratio, sumDecimals } from "@/lib/data/decimal";
+import { slotChanges, type ComparisonPlan } from "@/lib/comparison";
+import { decimalToNumber, minDecimal, nonnegativeShare, sumDecimals } from "@/lib/data/decimal";
 import { toChartNumber } from "@/lib/data/decode";
 import { withParams, type DateRange, type SearchParams } from "@/lib/filters";
 import {
@@ -29,20 +31,7 @@ import {
 import { periodRange } from "@/lib/time-grain";
 import { creativeFormatLabel, isCreativeFormat, type CreativeFormat } from "./filters";
 import { CREATIVE_POLARITY } from "./metrics";
-import type { CreativeLaunch, CreativeSummary, CreativeSummaryGroup } from "./queries";
-
-/** A group's ratios, always of its sums. */
-export function groupRatios(group: CreativeSummaryGroup) {
-  const spend = decimalToNumber(group.spend);
-  return {
-    roas: ratio(group.revenue, spend),
-    cpo: ratio(spend, group.conversions),
-    ctr: ratio(
-      group.clicks === null ? null : toChartNumber(group.clicks),
-      group.impressions === null ? null : toChartNumber(group.impressions),
-    ),
-  };
-}
+import type { CreativeLaunch, CreativeSummary } from "./queries";
 
 /** A launch week, with its year once when both ends share it: "Oct 26 – Nov 1, 2026". */
 function weekLabel(week: DateRange): string {
@@ -89,63 +78,24 @@ export function CreativeSummaryView({
   if (!totals) return null;
   const money = formatMoneyIn(currency);
   const changes = plan ? slotChanges(plan, summary.coverage) : null;
-  const current = groupRatios(totals.current);
-  const baselineRatios = totals.baselines.map(groupRatios);
-  const deltas = <T extends string | number | bigint>(
-    value: (slot: 0 | 1 | null) => T | null,
-    formatValue: (value: T | null) => string,
-    better: Polarity,
-  ): KpiDelta[] =>
-    slotDeltas(plan, changes, (label, slot) => kpiDelta(value(null), value(slot), formatValue, better, label));
   const newShare = newCreativeShare(summary);
   return (
     <div className="flex flex-col gap-6">
       {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
       {/* Six cards go two across on a phone, so the totals fit about one screen. */}
       <section aria-label="Creative totals" className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <KpiCard
-          label="Spend"
-          value={money(totals.current.spend)}
-          deltas={deltas(
-            (slot) => (slot === null ? totals.current : totals.baselines[slot]).spend,
-            money,
-            CREATIVE_POLARITY.spend,
-          )}
-        />
-        <KpiCard
-          label="Platform ROAS"
-          value={formatMultiple(current.roas)}
-          deltas={deltas(
-            (slot) => (slot === null ? current : baselineRatios[slot])?.roas ?? null,
-            formatMultiple,
-            CREATIVE_POLARITY.roas,
-          )}
-        />
-        <KpiCard
-          label="Cost / conversion"
-          value={money(current.cpo)}
-          deltas={deltas(
-            (slot) => (slot === null ? current : baselineRatios[slot])?.cpo ?? null,
-            money,
-            CREATIVE_POLARITY.cpo,
-          )}
-        />
-        <KpiCard
-          label="CTR"
-          value={formatPercent(current.ctr)}
-          deltas={deltas(
-            (slot) => (slot === null ? current : baselineRatios[slot])?.ctr ?? null,
-            formatPercent,
-            CREATIVE_POLARITY.ctr,
-          )}
-        />
+        <AdKpis totals={totals} plan={plan} changes={changes} money={money} />
         <KpiCard
           label="Creatives with spend"
           value={formatCount(totals.current.creatives)}
-          deltas={deltas(
-            (slot) => (slot === null ? totals.current : totals.baselines[slot]).creatives,
-            formatCount,
-            CREATIVE_POLARITY.creatives,
+          deltas={slotDeltas(plan, changes, (label, slot) =>
+            kpiDelta(
+              totals.current.creatives,
+              totals.baselines[slot].creatives,
+              formatCount,
+              CREATIVE_POLARITY.creatives,
+              label,
+            ),
           )}
         />
         <KpiCard
@@ -219,8 +169,8 @@ function FormatMix({
           { key: "creatives", header: "Creatives", align: "right" },
         ]}
         rows={rows.map((row) => {
-          const now = groupRatios(row.current);
-          const then = groupRatios(row.baselines[slot]);
+          const now = adRatios(row.current);
+          const then = adRatios(row.baselines[slot]);
           const portion = nonnegativeShare(row.current.spend, totals.current.spend, minimum);
           return {
             id: row.format ?? "(none)",
@@ -307,7 +257,7 @@ function Launches({
           { key: "ctr", header: "CTR", align: "right" },
         ]}
         rows={rows.map((row) => {
-          const ratios = groupRatios(row);
+          const ratios = adRatios(row);
           const portion = nonnegativeShare(row.spend, total, minimum);
           return {
             id: row.week ?? "running",

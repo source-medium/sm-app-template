@@ -189,10 +189,13 @@ export function FilterBar({
             <CalendarDays aria-hidden className="text-muted-foreground" />
             <span className="flex min-w-0 flex-wrap gap-x-2">
               <span>{rangeLabel}</span>
+              {/* On a phone the comparison switch below says this, so the trigger keeps to one line of dates. */}
               {comparisonSummary && (
                 <>
                   {" "}
-                  <span className="font-normal text-balance text-muted-foreground">{comparisonSummary}</span>
+                  <span className="font-normal text-balance text-muted-foreground max-sm:hidden">
+                    {comparisonSummary}
+                  </span>
                 </>
               )}
             </span>

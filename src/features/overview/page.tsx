@@ -248,7 +248,7 @@ function OverviewView({
       key: "orders",
       label: "Orders",
       description:
-        "Published order counts on the valid sales channels within the selected scope. Draft, exchanged and excluded rows are not sales, and this published measure can include fractional attribution and differ from the number of valid orders.",
+        "Published order counts on the valid sales channels within the selected scope. Draft, exchanged and excluded rows are not sales.",
     },
     {
       key: "average",

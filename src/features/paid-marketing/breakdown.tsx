@@ -1,5 +1,5 @@
+import { PlanSwitch } from "@/components/patterns/comparison-caption";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
-import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { slotChanges, type ComparisonPlan } from "@/lib/comparison";
 import { changeCell, kpiDelta } from "@/components/patterns/kpi-delta";
@@ -67,7 +67,7 @@ export function SpendBreakdownView({
   };
   return (
     <div className="flex flex-col gap-3">
-      {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
+      {plan && <PlanSwitch plan={plan} />}
       {(dimension === "type" || dimension === "tactic") && (
         <p className="text-sm text-muted-foreground">
           Published campaign classifications. Unclassified rows appear as (none); types and tactics are not inferred

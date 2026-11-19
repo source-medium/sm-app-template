@@ -2,7 +2,8 @@ import { z } from "zod";
 import { appConfig } from "@/app.config";
 import { bq } from "@/lib/data/decode";
 import { periodCoverageFields, periodFields } from "@/lib/data/period-sql";
-import type { CampaignRow, ChannelDay } from "./queries";
+import { adTotals, adTotalsFields } from "@/lib/ad-totals";
+import type { CampaignRow, ChannelDay, PaidSummary } from "./queries";
 
 export const AD_RELATION = "rpt_ad_performance_daily";
 /** The campaign table shows the top campaigns by spend; more is reported as truncation. */
@@ -10,6 +11,22 @@ export const MAX_CAMPAIGNS = 200;
 export const MAX_BREAKDOWN = 10;
 /** Platform-by-day series rows: the longest allowed range times up to 25 ad platforms. Past this bound is an error. */
 export const MAX_SERIES_ROWS = appConfig.dateRange.maxDays * 25;
+/** The scope's sums in each period: one row, with every period's latest date. */
+export const PaidSummaryRow = z.object({ ...adTotalsFields, ...periodCoverageFields });
+
+/** No selected-period delivery leaves the totals empty, so the page shows no KPI row. */
+export function toPaidSummary(row: z.output<typeof PaidSummaryRow> | undefined): PaidSummary {
+  if (!row || row.latest_date === null) return { totals: null, coverage: null };
+  return {
+    totals: { current: adTotals(row, ""), baselines: [adTotals(row, "previous_"), adTotals(row, "second_")] },
+    coverage: {
+      latest_date: row.latest_date,
+      previous_latest_date: row.previous_latest_date,
+      second_latest_date: row.second_latest_date,
+    },
+  };
+}
+
 export const SpendBreakdownRow = z.object({
   dimension_key: bq.string(),
   label: bq.string(),

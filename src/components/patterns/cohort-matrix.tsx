@@ -7,9 +7,6 @@ export type CohortCell = {
   intensity: number | null;
   state: "value" | "missing" | "immature";
 };
-/** Primary's share of a shaded cell, lowest to highest value; the lightest still stands apart from an empty cell. */
-const SHADE = { lightest: 12, darkest: 52 } as const;
-
 /**
  * Accessible presentation only. The feature supplies age eligibility, values,
  * labels and each cell's intensity, or null for a cell it leaves unshaded.
@@ -30,11 +27,10 @@ export function CohortMatrix({
   );
   const lowest = Math.min(...intensities);
   const highest = Math.max(...intensities);
-  /** Primary's percentage in the cell's background, or none for a cell without an intensity. */
+  /** The cell's place from the lowest (0) to the highest (1) intensity, or none for a cell without one. */
   const shade = (cell: CohortCell) => {
     if (cell.state !== "value" || cell.intensity === null) return undefined;
-    const position = highest > lowest ? (cell.intensity - lowest) / (highest - lowest) : 1;
-    return Math.round(SHADE.lightest + position * (SHADE.darkest - SHADE.lightest));
+    return highest > lowest ? Math.round(((cell.intensity - lowest) / (highest - lowest)) * 100) / 100 : 1;
   };
   return (
     <Table
@@ -63,18 +59,21 @@ export function CohortMatrix({
             </TableHead>
             <TableCell className="text-right tabular-nums">{row.size}</TableCell>
             {row.cells.map((cell, index) => {
-              const percent = shade(cell);
+              const position = shade(cell);
               return (
                 <TableCell
                   key={columns[index]}
                   title={cell.description}
                   aria-label={`${row.label}, ${columns[index]}: ${cell.description}`}
                   data-state={cell.state}
-                  data-shade={percent}
+                  data-shade={position}
                   style={
-                    percent === undefined
+                    position === undefined
                       ? undefined
-                      : { backgroundColor: `color-mix(in oklab, var(--color-primary) ${percent}%, transparent)` }
+                      : {
+                          // The theme sets the lightest and darkest shares (tokens.css); each cell sits between them by value.
+                          backgroundColor: `color-mix(in oklab, var(--color-primary) calc(var(--cohort-lightest) + ${position} * (var(--cohort-darkest) - var(--cohort-lightest))), transparent)`,
+                        }
                   }
                   className={cn(
                     "min-w-16 px-2 text-right tabular-nums",

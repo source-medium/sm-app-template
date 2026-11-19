@@ -11,8 +11,9 @@ import { decodeRows } from "@/lib/data/decode";
 import type { SpendBreakdown } from "./queries";
 import type { BreakdownDimension } from "./filters";
 import { PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
-import { SpendBreakdownRow, MAX_BREAKDOWN } from "./rows";
-import type { CampaignData, PaidMarketingData, PaidMarketingFilters } from "./queries";
+import { SpendBreakdownRow, MAX_BREAKDOWN, PaidSummaryRow, toPaidSummary } from "./rows";
+import type { CampaignData, PaidMarketingData, PaidMarketingFilters, PaidSummary } from "./queries";
+import { AD_PERIOD_SUMS } from "@/lib/ad-totals";
 import { CACHE_POLICY } from "@/lib/data/query-cache";
 import {
   AD_RELATION,
@@ -48,6 +49,36 @@ const BREAKDOWN_SQL = {
     label: "COALESCE(ad_campaign_name, ad_campaign_id, '(none)')",
   },
 } as const;
+
+/** One row: the scope's sums in each period, with the same store, ad platform and name filters as the breakdown. */
+export async function queryPaidSummary(filters: PaidMarketingFilters, baselines: BaselineRanges): Promise<PaidSummary> {
+  const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
+  const period = periodSql("date");
+  const names = adNamePredicate(filters.names);
+  const result = await warehouse.query({
+    name: "paid_summary",
+    cache: CACHE_POLICY.aggregate,
+    maxRows: 1,
+    sql: `WITH grouped AS (
+      SELECT
+        ${AD_PERIOD_SUMS},
+        ${period.latest}
+      FROM ${warehouse.table(AD_RELATION)}
+      WHERE sm_store_id = @store_id
+        AND ${period.rows}
+        AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
+        AND ${names.sql}
+    )
+    SELECT ${PERIOD_COVERAGE} FROM grouped`,
+    params: [
+      { name: "store_id", type: "STRING", value: filters.storeId },
+      { name: "channel", type: "STRING", value: filters.channel ?? "" },
+      ...periodParams(filters.range, baselines[0], baselines[1]),
+      ...names.params,
+    ],
+  });
+  return toPaidSummary(decodeRows(PaidSummaryRow, result.rows, AD_RELATION)[0]);
+}
 
 /** Full-period totals are calculated before the top-N limit; both periods have identical store/ad platform scope. */
 export async function querySpendBreakdown(

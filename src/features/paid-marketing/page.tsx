@@ -20,14 +20,16 @@ import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
 import { decimalToNumber } from "@/lib/data/decimal";
 import { periodStart, periodRange, TIME_GRAINS, type TimeGrain } from "@/lib/time-grain";
-import { planRanges } from "@/lib/comparison";
+import { planRanges, slotChanges, type ComparisonPlan } from "@/lib/comparison";
+import { AdKpis } from "@/components/patterns/ad-kpis";
+import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { datesInRange, withParams, type ReportDates, type SearchParams } from "@/lib/filters";
 import {
   EMPTY_VALUE,
   formatCount,
   formatDay,
   formatDateRange,
-  formatMeasure,
+  formatAttributedConversions,
   formatMoney,
   formatMoneyIn,
   moneyAxis,
@@ -40,10 +42,12 @@ import {
   getSpendBreakdown,
   getPaidMarketing,
   getPaidNames,
+  getPaidSummary,
   campaignRatios,
   type PaidMarketingData,
   type PaidMarketingFilters,
   type PaidMetric,
+  type PaidSummary,
 } from "./queries";
 import { SpendBreakdownView } from "./breakdown";
 import { BREAKDOWN_DIMENSIONS, paidMarketingOptions } from "./filters";
@@ -92,12 +96,17 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
       }}
       comparisons
       agentOmissions={names.error ? ["Invalid name filters prevented this report from loading."] : []}
-      comparisonLabel="Compare spend breakdown with"
+      comparisonLabel="Compare paid marketing with"
     >
       {({ filters, plan, params: applied, dates, timeZone, currency, dataStatus }) => {
         const paidFilters: PaidMarketingFilters = { ...filters, channel, names: names.rules };
         const paidData = names.error ? null : getPaidMarketing(paidFilters);
         paidData?.catch(() => undefined); // Both regions handle the same query's failure.
+        // Started together; the breakdown, last on the page, waits for all three and stamps the one load time.
+        const totals = names.error ? null : getPaidSummary(paidFilters, planRanges(plan));
+        totals?.catch(() => undefined);
+        const spend = names.error ? null : getSpendBreakdown(paidFilters, breakdown, planRanges(plan));
+        spend?.catch(() => undefined);
         return (
           <>
             <ReportControls
@@ -127,7 +136,7 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                 )}
               </div>
             </ReportControls>
-            {paidData && (
+            {paidData && totals && spend && (
               <>
                 {dataStatus}
                 {names.rules.length > 0 && (
@@ -140,11 +149,24 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                   </Disclosure>
                 )}
                 <Suspense
+                  key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${plan?.slots[0].mode}|${plan?.slots[1].mode}|${nameKey}`}
+                  fallback={<LoadingState variant="kpis" label="Loading paid marketing totals" />}
+                >
+                  <DataRegion
+                    timestamp={false}
+                    load={() => totals}
+                    isEmpty={() => false}
+                    emptyMessage="This store has no ad delivery in the selected dates."
+                  >
+                    {(summary) => <PaidTotals summary={summary} plan={plan} currency={currency} />}
+                  </DataRegion>
+                </Suspense>
+                <Suspense
                   key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${nameKey}`}
                   fallback={<LoadingState variant="chart" label="Loading paid marketing" />}
                 >
                   <DataRegion
-                    timestamp={timeZone}
+                    timestamp={false}
                     load={() => paidData}
                     isEmpty={() => false}
                     emptyMessage="This store has no ad delivery in the selected dates."
@@ -182,7 +204,10 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
                   >
                     <DataRegion
                       timestamp={timeZone}
-                      load={() => getSpendBreakdown(paidFilters, breakdown, planRanges(plan))}
+                      load={async () => {
+                        await Promise.allSettled([paidData, totals]);
+                        return spend;
+                      }}
                       isEmpty={(data) => data.rows.length === 0}
                       emptyMessage="No spend rows match these filters."
                     >
@@ -208,12 +233,34 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
   );
 }
 
+/** The scope's KPIs against each comparison, both shown as numbers; the breakdown's switch picks the one its chart draws. */
+function PaidTotals({
+  summary,
+  plan,
+  currency,
+}: {
+  summary: PaidSummary;
+  plan?: ComparisonPlan;
+  currency: string | null;
+}) {
+  if (!summary.totals) return null;
+  const changes = plan ? slotChanges(plan, summary.coverage) : null;
+  return (
+    <div className="flex flex-col gap-4">
+      {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} switchable={false} />}
+      <section aria-label="Paid marketing totals" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <AdKpis totals={summary.totals} plan={plan} changes={changes} money={formatMoneyIn(currency)} />
+      </section>
+    </div>
+  );
+}
+
 /** Each measure's unit: how its values read, and whether its chart axis carries the currency symbol. */
-const METRIC_UNITS: Record<PaidMetric, "money" | "multiple" | "measure" | "count"> = {
+const METRIC_UNITS: Record<PaidMetric, "money" | "multiple" | "conversions" | "count"> = {
   spend: "money",
   impressions: "count",
   clicks: "count",
-  conversions: "measure",
+  conversions: "conversions",
   revenue: "money",
   roas: "multiple",
   cpo: "money",
@@ -229,8 +276,8 @@ function point(value: MetricValue, currency: string | null, metric: PaidMetric):
         : { value: number, display: formatMoney(number, currency) };
     case "multiple":
       return { value: number, display: formatMultiple(number) };
-    case "measure":
-      return { value: number, display: formatMeasure(number) };
+    case "conversions":
+      return { value: number, display: formatAttributedConversions(number) };
     case "count": {
       const count = typeof value === "bigint" ? value : number;
       return { value: count, display: count === null ? EMPTY_VALUE : formatCount(count) };
@@ -385,7 +432,10 @@ function PaidMarketingView({
                     clicks: { display: formatCount(campaign.clicks), sort: clicks },
                     ctr: { display: formatPercent(ctr), sort: ctr },
                     cpc: { display: money(cpc), sort: cpc },
-                    conversions: { display: formatMeasure(campaign.conversions), sort: campaign.conversions },
+                    conversions: {
+                      display: formatAttributedConversions(campaign.conversions),
+                      sort: campaign.conversions,
+                    },
                     roas: { display: formatMultiple(roas), sort: roas },
                   },
                 };
@@ -405,7 +455,7 @@ function PaidMarketingView({
                 <p>
                   CSV includes all loaded campaigns, up to {MAX_CAMPAIGNS}, with raw values and a partial-results flag.
                   {hasCreatives &&
-                    " Select an ad platform, then a campaign to inspect its creatives. Campaign links preserve the selected period and name filters; the separate spend-breakdown comparison does not apply to creative cards."}{" "}
+                    " Select an ad platform, then a campaign to inspect its creatives. Campaign links preserve the selected period and name filters."}{" "}
                   Spend without a campaign ID appears as (none) in the spend breakdown by campaign.
                 </p>
               </div>

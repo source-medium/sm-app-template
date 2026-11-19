@@ -15,6 +15,7 @@ import { adNamePredicate } from "@/lib/data/ad-name-sql";
 import { AD_PLATFORM_SQL } from "@/lib/data/channel-sql";
 import { decodeRows } from "@/lib/data/decode";
 import { PERIOD_COVERAGE, PERIOD_PREFIXES, periodParams, periodSql } from "@/lib/data/period-sql";
+import { AD_PERIOD_SUMS } from "@/lib/ad-totals";
 import { GRAIN_SQL } from "@/lib/time-grain";
 import type { CreativeSummary, CreativesData, CreativesFilters } from "./queries";
 import { CREATIVE_FORMATS, type CreativeSort } from "./filters";
@@ -42,15 +43,6 @@ const ORDER_BY: Record<CreativeSort, string> = {
 };
 
 const period = periodSql("date");
-
-/** Each period's sums: spend, delivery and platform-reported results. */
-const PERIOD_SUMS = [
-  period.sum("ad_spend", "spend"),
-  period.sum("ad_impressions", "impressions"),
-  period.sum("ad_clicks", "clicks"),
-  period.sum("ad_platform_reported_conversions", "conversions"),
-  period.sum("ad_platform_reported_revenue", "revenue"),
-].join(",\n        ");
 
 /** Ratios of each period's sums, never an average of daily ratios. */
 const PERIOD_RATIOS = PERIOD_PREFIXES.map(
@@ -121,7 +113,7 @@ export async function queryCreatives(filters: CreativesFilters, baselines: Basel
           ${latest("NULLIF(ad_creative_post_url, '')")} AS post_url,
           ${latest("COALESCE(NULLIF(ad_creative_facebook_url, ''), NULLIF(ad_creative_instagram_url, ''))")} AS ad_url,
           MAX(ad_creative_call_to_action_type) AS call_to_action,
-        ${PERIOD_SUMS},
+        ${AD_PERIOD_SUMS},
         ${period.latest}
         FROM ${table}
         WHERE sm_store_id = @store_id
@@ -194,7 +186,7 @@ export async function queryCreativeSummary(
           ad_creative_id AS creative_id,
           ${AD_PLATFORM_SQL} AS channel,
           ${latest("ad_creative_format")} AS format,
-        ${PERIOD_SUMS},
+        ${AD_PERIOD_SUMS},
         ${period.latest}
         FROM ${table}
         WHERE sm_store_id = @store_id

@@ -17,7 +17,7 @@ import { sampleSummaryChannels } from "@/lib/sample/executive-summary";
 export type OverviewMeasures = {
   /** NUMERIC, exact decimal text, in the reporting currency: SUM(order_net_revenue). */
   netRevenue: string | null;
-  /** FLOAT64 in the warehouse: the model's order measure, which can be fractional. */
+  /** INT64 in the warehouse (order_count), read as a number for its ratios. */
   orders: number | null;
   /** INT64, exact. */
   sessions: bigint | null;

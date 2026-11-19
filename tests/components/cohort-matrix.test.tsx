@@ -31,11 +31,11 @@ describe("CohortMatrix", () => {
     const shade = (name: string) => cell(name)?.getAttribute("data-shade");
     expect(shade("Month 0")).toBeNull();
     // The feature left Month 0 without an intensity; the highest of the rest takes the darkest shade.
-    expect(shade("Month 1")).toBe("52");
+    expect(shade("Month 1")).toBe("1");
     // The lowest populated age still gets a shade, so it stands apart from an empty cell.
-    expect(shade("Month 2")).toBe("12");
+    expect(shade("Month 2")).toBe("0");
     // Shades follow values: 30% sits between 9% and 32%, close to the top.
-    expect(screen.getByRole("cell", { name: /^Feb 2026, Month 1:/ }).getAttribute("data-shade")).toBe("49");
+    expect(screen.getByRole("cell", { name: /^Feb 2026, Month 1:/ }).getAttribute("data-shade")).toBe("0.91");
     expect(screen.getByRole("cell", { name: /^Feb 2026, Month 2:/ }).getAttribute("data-shade")).toBeNull();
   });
 });

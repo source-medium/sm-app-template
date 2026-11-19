@@ -2,7 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { parseComparisonPlan } from "@/lib/comparison";
 import type { CreativeSummary, CreativeSummaryGroup } from "./queries";
-import { CreativeSummaryView, groupRatios, launchOrder, newCreativeShare } from "./summary";
+import { adRatios } from "@/lib/ad-totals";
+import { CreativeSummaryView, launchOrder, newCreativeShare } from "./summary";
 
 const range = { from: "2026-09-01", to: "2026-09-28" };
 const group = (spend: string | null, revenue: number | null, extra: Partial<CreativeSummaryGroup> = {}) => ({
@@ -30,12 +31,12 @@ function summary(overrides: Partial<CreativeSummary> = {}): CreativeSummary {
 
 describe("creative summary", () => {
   it("takes every ratio from a group's sums", () => {
-    expect(groupRatios(group("100", 250, { conversions: 4, clicks: 30n, impressions: 1200n }))).toEqual({
+    expect(adRatios(group("100", 250, { conversions: 4, clicks: 30n, impressions: 1200n }))).toEqual({
       roas: 2.5,
       cpo: 25,
       ctr: 0.025,
     });
-    expect(groupRatios(group(null, null, { conversions: null, clicks: null }))).toEqual({
+    expect(adRatios(group(null, null, { conversions: null, clicks: null }))).toEqual({
       roas: null,
       cpo: null,
       ctr: null,

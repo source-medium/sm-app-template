@@ -3,6 +3,7 @@ import { safeImageUrl } from "@/lib/image-url";
 import { bq } from "@/lib/data/decode";
 import { addDays } from "@/lib/filters";
 import { periodCoverageFields, periodFields, type PeriodPrefix } from "@/lib/data/period-sql";
+import { adTotals, adTotalsFields } from "@/lib/ad-totals";
 import type { Creative, CreativeMeasures, CreativeSummary, CreativeSummaryGroup } from "./queries";
 
 export const CREATIVE_RELATION = "rpt_ad_performance_daily";
@@ -36,12 +37,6 @@ export function firstSpend(firstDate: string | null, from: string): FirstSpend |
 /** Ratios of each period's sums, computed in SQL after aggregation. */
 const RATIO_MEASURES = ["roas", "cpo", "ctr"] as const;
 
-const measureFields = {
-  ...periodFields(["spend"], bq.numeric().nullable()),
-  ...periodFields(["impressions", "clicks"], bq.int64().nullable()),
-  ...periodFields(["conversions", "revenue"], bq.float64().nullable()),
-};
-
 export const CreativeChannelRow = z.object({ channel: bq.string() });
 export const CreativeRow = z.object({
   creative_id: bq.string(),
@@ -57,7 +52,7 @@ export const CreativeRow = z.object({
   ad_url: bq.string().nullable(),
   /** The creative's first day with spend since the lookback began; null when it never spent. */
   first_date: bq.date().nullable(),
-  ...measureFields,
+  ...adTotalsFields,
   ...periodFields(RATIO_MEASURES, bq.float64().nullable()),
   ...periodCoverageFields,
 });
@@ -73,7 +68,7 @@ export const CreativeSummaryRow = z.object({
   has_creative: bq.bool(),
   format: bq.string().nullable(),
   launch_week: bq.date().nullable(),
-  ...measureFields,
+  ...adTotalsFields,
   ...periodFields(["creatives"], bq.int64().nullable()),
   new_creatives: bq.int64().nullable(),
   ...periodCoverageFields,
@@ -144,14 +139,7 @@ export function toCreative(row: Row, range: { from: string }): Creative {
 }
 
 function group(row: SummaryRow, prefix: PeriodPrefix): CreativeSummaryGroup {
-  return {
-    spend: row[`${prefix}spend`],
-    impressions: row[`${prefix}impressions`],
-    clicks: row[`${prefix}clicks`],
-    conversions: row[`${prefix}conversions`],
-    revenue: row[`${prefix}revenue`],
-    creatives: row[`${prefix}creatives`],
-  };
+  return { ...adTotals(row, prefix), creatives: row[`${prefix}creatives`] };
 }
 
 /** The summary rows, sorted into the scope's totals, its formats and its launch weeks. */
