@@ -57,8 +57,9 @@ function sampleRetentionWire(filters: RetentionFilters) {
       }).filter(
         (row) =>
           monthIsElapsed(cohort, Number(row.month_age), filters.asOf) &&
-          // A missing published observation, distinct from a month that has not elapsed.
-          !(channel === "online_dtc" && cohort.endsWith("-01-01") && row.month_age === "2"),
+          // A missing published observation, distinct from a month that has not elapsed. It sits on Amazon,
+          // not the default channel, so the first view of the sample reads complete.
+          !(channel === "amazon" && cohort.endsWith("-01-01") && row.month_age === "2"),
       );
     }),
   );

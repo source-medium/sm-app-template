@@ -70,6 +70,8 @@
   --scroll-cue: rgba(26, 31, 54, 0.16);
   /* The selected option of a segmented switch, raised above its muted track. */
   --segment: #ffffff;
+  /* The tile behind an ad platform's mark. Light in both themes: the marks are drawn for a light ground. */
+  --mark-ground: #ffffff;
   /* Primary's share in the lightest and darkest shaded cohort cells; the lightest stands apart from an empty cell. */
   --cohort-lightest: 12%;
   --cohort-darkest: 52%;

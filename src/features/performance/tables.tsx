@@ -11,6 +11,7 @@ import type { PerformanceFilters } from "./queries";
 import { scopePlatformRecords, type BusinessRecord, type PlatformRecord } from "./rows";
 import { businessRatios, platformRatios } from "./measures";
 import { adPlatformLabel } from "@/lib/ad-platforms";
+import { PlatformMark } from "@/components/patterns/platform-mark";
 
 export const METRIC_GROUPS = [
   { value: "revenue", label: "Revenue and orders" },
@@ -200,6 +201,7 @@ export function PlatformTables({
     cells: {
       platform: {
         display: row.combined ? "Combined platforms" : adPlatformLabel(row.platform ?? "(unknown platform)"),
+        leading: row.combined || !row.platform ? undefined : <PlatformMark platform={row.platform} />,
       },
       spend: cell(row.spend, "money", currency),
       revenue: cell(row.revenue, "money", currency),

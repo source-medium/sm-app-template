@@ -114,6 +114,11 @@ different behavior, not a different look.
   format, then spend and its change, then results. "New" marks a creative whose
   first spend falls in the selected dates.
 - Icons only where they say something the words do not.
+- An ad platform's mark sits before its name on creative cards and in tables
+  and rankings, so a row is recognized at a glance: always with the name, never
+  alone, never in menus or chart legends. Marks are SourceMedium's connector
+  marks (`contracts/connector-assets-v1`), copied byte for byte, on a white tile
+  (`--mark-ground`) in both themes.
 
 ## Motion
 

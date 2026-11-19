@@ -24,6 +24,7 @@ import { AdNameFilter } from "@/components/patterns/ad-name-filter";
 import { AdNameMatchesRegion } from "@/components/patterns/ad-name-matches";
 import { serializeAdNameFilters } from "@/lib/ad-name-filters";
 import { adPlatformLabel } from "@/lib/ad-platforms";
+import { PlatformMark } from "@/components/patterns/platform-mark";
 import { ReportControls } from "@/components/shell/report-controls";
 import { ReportPage } from "@/components/shell/report-page";
 import { single, withParams, REPORT_FILTER_FORM_ID, type ReportFilters, type SearchParams } from "@/lib/filters";
@@ -502,7 +503,7 @@ function CreativesView({
               id: JSON.stringify([c.channel, c.creativeId]),
               cells: {
                 name: { display: c.title ?? c.name ?? c.creativeId },
-                channel: { display: adPlatformLabel(c.channel) },
+                channel: { display: adPlatformLabel(c.channel), leading: <PlatformMark platform={c.channel} /> },
                 format: { display: creativeFormatLabel(c.format) },
                 // An older creative sorts before every dated one.
                 first: {
@@ -543,6 +544,7 @@ function CreativesView({
             body: creative.body,
             callToAction: creative.callToAction ? humanize(creative.callToAction) : undefined,
             badge: adPlatformLabel(creative.channel),
+            badgeMark: <PlatformMark platform={creative.channel} className="size-4" />,
             tags: [
               ...(creative.format ? [{ label: creativeFormatLabel(creative.format) }] : []),
               ...(creative.firstSpend?.when === "launched" ? [{ label: "New", highlight: true }] : []),

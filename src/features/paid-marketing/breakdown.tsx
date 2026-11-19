@@ -8,6 +8,7 @@ import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
 import { formatMoneyIn, moneyAxis } from "@/lib/format";
 import { withParams, type SearchParams } from "@/lib/filters";
 import { adPlatformLabel } from "@/lib/ad-platforms";
+import { PlatformMark } from "@/components/patterns/platform-mark";
 import { BREAKDOWN_DIMENSIONS, type BreakdownDimension } from "./filters";
 import { type PaidMarketingFilters, type SpendBreakdown } from "./queries";
 
@@ -52,6 +53,7 @@ export function SpendBreakdownView({
               : dimension === "channel"
                 ? adPlatformLabel(row.label)
                 : row.label,
+          leading: dimension === "channel" ? <PlatformMark platform={row.label} /> : undefined,
           value: { value: decimalToNumber(row.spend), display: money(row.spend) },
           share: nonnegativeShare(row.spend, total, first?.minimum_spend ?? null),
           // Spend is neither good nor bad on its own, so its change stays uncolored.
