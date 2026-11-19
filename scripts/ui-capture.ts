@@ -240,10 +240,6 @@ async function main() {
   if (existsSync(out)) throw new Error(`${out} already exists; choose a new directory for each capture.`);
   if (await portTaken())
     throw new Error(`Something already answers on ${ORIGIN}; stop it so the capture reads this build.`);
-  const staging = join(dirname(out), `.${basename(out)}.partial-${process.pid}`);
-  rmSync(staging, { recursive: true, force: true });
-  mkdirSync(join(staging, "rubric"), { recursive: true });
-  for (const file of RUBRIC) copyFileSync(join(ROOT, file), join(staging, "rubric", file));
   const manifest = {
     v: 1,
     repo: JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).name as string,
@@ -252,7 +248,10 @@ async function main() {
     register: register(),
     items: [] as Awaited<ReturnType<typeof capture>>[],
   };
+  const staging = join(dirname(out), `.${basename(out)}.partial-${process.pid}`);
+  rmSync(staging, { recursive: true, force: true });
 
+  // Everything that writes to staging runs in the try, so any failure removes it.
   // The server runs in its own process group, so an interrupt reaches it only through this process.
   let server: ChildProcess | undefined;
   let browser: Browser | undefined;
@@ -264,6 +263,8 @@ async function main() {
   process.once("SIGINT", interrupted(130));
   process.once("SIGTERM", interrupted(143));
   try {
+    mkdirSync(join(staging, "rubric"), { recursive: true });
+    for (const file of RUBRIC) copyFileSync(join(ROOT, file), join(staging, "rubric", file));
     build();
     server = await serve();
     browser = await chromium.launch();
@@ -274,6 +275,9 @@ async function main() {
           manifest.items.push(item);
           console.log(`${item.file}${item.overflow.page ? "  (page overflows)" : ""}`);
         }
+    writeFileSync(join(staging, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+    mkdirSync(dirname(out), { recursive: true });
+    renameSync(staging, out);
   } catch (error) {
     rmSync(staging, { recursive: true, force: true });
     throw error;
@@ -281,9 +285,6 @@ async function main() {
     await browser?.close();
     if (server) stop(server);
   }
-  writeFileSync(join(staging, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  mkdirSync(dirname(out), { recursive: true });
-  renameSync(staging, out);
   console.log(`Wrote ${manifest.items.length} screenshots to ${out}`);
 }
 
