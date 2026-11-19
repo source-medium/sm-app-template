@@ -103,8 +103,9 @@ different behavior, not a different look.
   numbers.
 - Every compared number names its baseline once per section
   (`ComparisonCaption`) and shows the active comparison's change. KPI cards show
-  every comparison as numbers; the switch above them ("Charts and tables vs")
-  picks the one every chart and table draws, KPI sparklines included.
+  every comparison as numbers; the switch ("Charts and tables vs") sits above
+  the first section that draws one, and picks the one every chart and table
+  draws, KPI sparklines included.
 - Explanations go in `Disclosure variant="note"` at the end of the section they
   explain. Keep on screen only what changes how a number reads.
 - Values the app does not know show as stored; a missing value is a dash

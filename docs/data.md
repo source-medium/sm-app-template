@@ -62,7 +62,8 @@ dates and store.
 Overview's ad spend reads `rpt_executive_summary_daily`; Paid marketing and
 Creatives read `rpt_ad_performance_daily`. The two published relations can
 differ by cents for the same store and dates, so do not expect them to match
-exactly or reconcile one against the other in code.
+exactly or reconcile one against the other in code. Sample mode draws both from
+one sample ad delivery (`src/lib/sample/ad-delivery.ts`), so there they agree.
 
 Overview's **New vs repeat purchases** reads the same summary relation and
 filters. It sums `new_customer_order_net_revenue`, `new_customer_order_count`,
@@ -497,9 +498,15 @@ Off excludes baseline rows. Only groups with spend in the selected period are
 ranked; one active only in a comparison period is left out rather than listed
 with no spend. Shares use full-query spend before the top-10 limit;
 the caption identifies top-10 results. Zero totals and negative spend suppress
-shares; absent baseline values stay absent, not zero. The comparison control
-applies to this breakdown; the existing delivery chart and campaign table show
-the selected period.
+shares; absent baseline values stay absent, not zero. The switch in this section
+picks the comparison its chart and table draw; the delivery chart and campaign
+table show the selected period.
+
+Paid marketing opens with **Spend, Platform ROAS, Cost / conversion and CTR**,
+each against both comparisons. One more bounded query sums the store, ad
+platform and name scope in each period as a single row, and every ratio is of
+those sums. Creatives renders the same cards (`patterns/ad-kpis.tsx`) from the
+same sums (`src/lib/ad-totals.ts`) for its own scope.
 
 Paid marketing's trend also offers platform revenue, platform ROAS and cost per
 conversion, with `?grain=day|week|month`. The bounded SQL daily aggregates are
