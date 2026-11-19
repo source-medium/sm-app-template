@@ -39,6 +39,7 @@ export type CreativeMeasures = {
 
 export type Creative = CreativeMeasures & {
   creativeId: string;
+  assets: "available" | "no_match" | "no_platform_inventory" | "unknown";
   title: string | null;
   body: string | null;
   /** The platform's name for the creative, where it has one. */

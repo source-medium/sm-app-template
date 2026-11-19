@@ -121,9 +121,10 @@ function measures(row: Row, prefix: PeriodPrefix): CreativeMeasures {
   };
 }
 
-export function toCreative(row: Row, range: { from: string }): Creative {
+export function toCreative(row: Row, range: { from: string }, assets: Creative["assets"] = "unknown"): Creative {
   return {
     creativeId: row.creative_id,
+    assets,
     title: row.title,
     body: row.body,
     name: row.name,
