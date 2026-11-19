@@ -66,6 +66,13 @@
   --chart-axis: #64748b;
 
   --shadow-card: 0 1px 2px rgba(26, 31, 54, 0.04);
+  /* The shade at the edge of a table that scrolls inside its frame, where more rows or columns are. */
+  --scroll-cue: rgba(26, 31, 54, 0.16);
+  /* The selected option of a segmented switch, raised above its muted track. */
+  --segment: #ffffff;
+  /* Primary's share in the lightest and darkest shaded cohort cells; the lightest stands apart from an empty cell. */
+  --cohort-lightest: 12%;
+  --cohort-darkest: 52%;
 }
 
 :root {
@@ -117,5 +124,10 @@
     --chart-axis: #94a3b8;
 
     --shadow-card: none;
+    /* The text color at the light theme's strength; a black shade disappears on a dark card. */
+    --scroll-cue: rgba(226, 232, 240, 0.16);
+    --segment: #2c3b5c;
+    /* Primary is dark on a dark card, so the lowest values need more of it to read as shaded. */
+    --cohort-lightest: 24%;
   }
 }

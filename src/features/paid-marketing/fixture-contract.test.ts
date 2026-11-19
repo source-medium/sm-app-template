@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { sumDecimals, toUnits } from "@/lib/data/decimal";
-import { samplePaidMarketing, samplePaidSource } from "./sample";
+import { samplePaidSource } from "@/lib/sample/ad-delivery";
+import { samplePaidMarketing, samplePaidSummary } from "./sample";
 import { samplePaidNames, sampleSpendBreakdown } from "./sample";
 import type { AdNameRule } from "@/lib/ad-name-filters";
 
@@ -33,6 +34,38 @@ describe("paid marketing fixture contract", () => {
     expect(samplePaidNames(filters).rows).toEqual([
       { campaign: "[retargeting] Site Visitors", ad_group: "Core audience | 30d", ad: "UGC | evergreen" },
     ]);
+  });
+  it("sums the KPIs over the same rows as the breakdown and campaigns, in each period", async () => {
+    const baseline = { from: "2026-08-01", to: "2026-08-14" };
+    for (const channel of [null, "meta_ads"]) {
+      const filters = { ...FILTERS, channel };
+      const summary = await samplePaidSummary(filters, [baseline, null]);
+      const breakdown = await sampleSpendBreakdown(filters, "channel", [baseline, null]);
+      const data = await samplePaidMarketing(filters);
+      expect(summary.totals?.current.spend).toBe(breakdown.rows[0]?.total_spend);
+      expect(toUnits(summary.totals?.baselines[0].spend ?? "0")).toBe(
+        toUnits(sumDecimals(breakdown.rows.map((row) => row.previous_spend)) ?? "0"),
+      );
+      expect(summary.totals?.current.impressions).toBe(
+        data.campaigns.reduce((sum, row) => sum + (row.impressions ?? 0n), 0n),
+      );
+      expect(summary.totals?.baselines[1]).toEqual({
+        spend: null,
+        impressions: null,
+        clicks: null,
+        conversions: null,
+        revenue: null,
+      });
+      expect(summary.coverage).toEqual({
+        latest_date: "2026-09-14",
+        previous_latest_date: "2026-08-14",
+        second_latest_date: null,
+      });
+    }
+    expect(await samplePaidSummary({ ...FILTERS, storeId: "missing-store" }, [baseline, null])).toEqual({
+      totals: null,
+      coverage: null,
+    });
   });
   it.each(["missing-store", "constructor", "__proto__"])(
     "does not invent clicks or campaigns for %s",

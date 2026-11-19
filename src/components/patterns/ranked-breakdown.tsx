@@ -1,6 +1,7 @@
 import { ChartCard } from "@/components/charts/chart-card";
+import type { AxisFormat } from "@/components/charts/compact-number";
 import { buildChartData, type PointValue } from "@/components/charts/chart-data";
-import { formatPercent } from "@/lib/format";
+import { formatShare } from "@/lib/format";
 import { DataTable, type DataTableCell } from "./data-table";
 
 /**
@@ -12,13 +13,17 @@ import { DataTable, type DataTableCell } from "./data-table";
 export function RankedBreakdown({
   title,
   description,
+  categoryLabel,
   valueLabel,
   rows,
   hasMore = false,
   comparisonLabel,
+  valueFormat,
 }: {
   title: string;
   description: string;
+  /** What the rows are, such as "Ad platform" or "Product"; it heads the first column. */
+  categoryLabel: string;
   valueLabel: string;
   rows: {
     id: string;
@@ -33,6 +38,8 @@ export function RankedBreakdown({
   }[];
   hasMore?: boolean;
   comparisonLabel?: string;
+  /** The chart axis's format; money passes `moneyAxis(currency)` so its ticks carry the currency. */
+  valueFormat?: AxisFormat;
 }) {
   const chart = buildChartData(rows.map((row) => ({ label: row.label, values: { value: row.value } })));
   return (
@@ -42,23 +49,24 @@ export function RankedBreakdown({
         description={description}
         kind="bar"
         horizontal
-        categoryHeader="Name"
+        categoryHeader={categoryLabel}
         series={[{ key: "value", label: valueLabel, color: "var(--chart-1)" }]}
         data={chart.data.map((point, index) => ({ ...point, axisLabel: rows[index]?.chartLabel ?? point.label }))}
         plottable={chart.plottable}
+        valueFormat={valueFormat}
       />
       <DataTable
         caption={`${title} details`}
         paginate={false}
         truncated={hasMore}
         columns={[
-          { key: "name", header: "Name", sortable: false },
+          { key: "name", header: categoryLabel, sortable: false },
           { key: "value", header: valueLabel, align: "right", sortable: false },
-          ...(rows.some((row) => row.share !== null)
-            ? [{ key: "share", header: "Share of total", align: "right" as const, sortable: false }]
-            : []),
           ...(comparisonLabel
             ? [{ key: "change", header: comparisonLabel, align: "right" as const, sortable: false }]
+            : []),
+          ...(rows.some((row) => row.share !== null)
+            ? [{ key: "share", header: "Share of total", align: "right" as const, sortable: false }]
             : []),
         ]}
         rows={rows.map((row) => ({
@@ -66,7 +74,7 @@ export function RankedBreakdown({
           cells: {
             name: { display: row.label, href: row.href, leading: row.leading },
             value: { display: row.value.display },
-            share: { display: formatPercent(row.share) },
+            share: { display: formatShare(row.share) },
             change: row.change ?? { display: "—" },
           },
         }))}

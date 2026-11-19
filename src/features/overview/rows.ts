@@ -14,7 +14,6 @@ const Contributions = z
   .array(
     z.object({
       channel: z.string().nullable(),
-      sub_channel: z.string().nullable(),
       revenue: bq.numeric().nullable(),
       remainder: z.boolean(),
     }),

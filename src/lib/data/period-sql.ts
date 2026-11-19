@@ -66,6 +66,10 @@ export function periodSql(day: string) {
   };
 }
 
+/** Each period's column prefix, in period order: the selection, the first comparison, the second. */
+export const PERIOD_PREFIXES = ["", "previous_", "second_"] as const;
+export type PeriodPrefix = (typeof PERIOD_PREFIXES)[number];
+
 /** The column `sum()` writes for `name` in a comparison slot: `previous_name` (first) or `second_name` (second). */
 export function slotColumn<N extends string>(slot: 0 | 1, name: N): `previous_${N}` | `second_${N}` {
   return slot === 0 ? `previous_${name}` : `second_${name}`;

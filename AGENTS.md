@@ -98,9 +98,9 @@ to delete any of them.
 
 ## Keep reports simple
 
-A viewer should see the answer before anything else. When you add or change a report:
+A viewer should see the numbers before anything else. When you add or change a report:
 
-- Lead with the answer: one plain sentence, then the numbers, then the detail.
+- Lead with the KPIs, then the detail. Do not add summary sentences that restate the numbers.
 - Every control sits with what it changes. Filters for the whole report go in `ReportControls`, first in the report, with one `summary` entry per filter; keep the entries in step with the filters, or the button describes a filter that no longer applies. A control for one section (a breakdown, a download, a search) goes in that section's `SectionHeader` `actions`, never loose between sections.
 - Say each thing once. The shell owns the dates, sample status, currency and load time; do not repeat them on cards or sections.
 - Put explanations in a `Disclosure variant="note"` ("About these numbers") at the end of the section it explains. Keep on screen only what changes how a number reads, such as hidden changes or an unknown currency.
@@ -199,6 +199,7 @@ acts for a person needs a real per-person authorization design first.
 - `docs/data.md`: schemas/SQL/money; `docs/operations.md`: quotas/errors/secrets.
 - `docs/removing-the-example.md`: deleting views; `docs/prompts.md`: composer context and starter prompts.
 - `docs/maintainers/`: template release evidence and rehearsal steps; not customer setup.
+- `PRODUCT.md`, `DESIGN.md`: who the app serves and how it looks; follow them when you add or restyle a view. `pnpm ui-capture --out <dir>` screenshots the views on sample data for a design review.
 
 Publishing live data, production deploys, and destructive actions need the person's explicit go-ahead. Never ask for a SourceMedium admin credential.
 

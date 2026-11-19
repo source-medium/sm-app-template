@@ -58,7 +58,7 @@ const queryName = (call: FakeCall) => (call.body as SubmittedQuery).labels.sm_qu
 describe("paid marketing, live", () => {
   it("keeps name scope in the series, campaigns, both comparison periods, inspection, and CSV", async () => {
     const fake = await goLive({ submit: withStores(() => rowsResponse([], [])) });
-    const { getPaidMarketing, getSpendBreakdown, getPaidNames } = await import("./queries");
+    const { getPaidMarketing, getSpendBreakdown, getPaidNames, getPaidSummary } = await import("./queries");
     const { GET } = await import("./download");
     const names = [
       { field: "ad_group" as const, operator: "starts_with" as const, values: ["US_%"] },
@@ -68,11 +68,12 @@ describe("paid marketing, live", () => {
     await getPaidMarketing(filters);
     await getSpendBreakdown(filters, "campaign", [{ from: "2026-08-01", to: "2026-08-02" }, null]);
     await getPaidNames(filters);
+    await getPaidSummary(filters, [{ from: "2026-08-01", to: "2026-08-02" }, null]);
     const url = new URL("https://example.test/paid-marketing/export?store=store-1&from=2026-09-01&to=2026-09-02");
     url.searchParams.set("names", JSON.stringify(names));
     expect((await GET(new Request(url))).status).toBe(200);
     const calls = fake.calls.filter((call) => call.kind === "submit" && !isStoreList(call));
-    expect(calls).toHaveLength(5);
+    expect(calls).toHaveLength(6);
     for (const call of calls) {
       const query = call.body as SubmittedQuery;
       expect(query.query).toContain("STARTS_WITH(LOWER(ad_group_name), LOWER(@name_0_0))");
@@ -194,6 +195,58 @@ describe("paid marketing, live", () => {
     expect(series.query).not.toContain("sm_channel");
   });
 
+  it("sums the scope in each period in one row, and reads no delivery as no totals", async () => {
+    const fields = [
+      ...periodColumns(["spend"]).map((name) => ({ name, type: "NUMERIC" })),
+      ...periodColumns(["impressions", "clicks"]).map((name) => ({ name, type: "INTEGER" })),
+      ...periodColumns(["conversions", "revenue"]).map((name) => ({ name, type: "FLOAT" })),
+      ...["latest_date", "previous_latest_date", "second_latest_date"].map((name) => ({ name, type: "DATE" })),
+    ];
+    const row = {
+      spend: "123456789012345678.123456789",
+      previous_spend: "0.1",
+      impressions: "9007199254740993",
+      previous_impressions: "10",
+      clicks: "3",
+      previous_clicks: "1",
+      conversions: "1.5",
+      previous_conversions: "0.5",
+      revenue: "2.5",
+      previous_revenue: "1",
+      latest_date: "2026-09-02",
+      previous_latest_date: "2026-08-02",
+    };
+    let response = rowsResponse(fields, [row]);
+    const fake = await goLive({ submit: withStores(() => response) });
+    const { getPaidSummary } = await import("./queries");
+    const summary = await getPaidSummary(FILTERS, [{ from: "2026-08-01", to: "2026-08-02" }, null]);
+    expect(summary.totals?.current).toEqual({
+      spend: "123456789012345678.123456789",
+      impressions: 9_007_199_254_740_993n,
+      clicks: 3n,
+      conversions: 1.5,
+      revenue: 2.5,
+    });
+    expect(summary.totals?.baselines[0].spend).toBe("0.1");
+    expect(summary.coverage).toEqual({
+      latest_date: "2026-09-02",
+      previous_latest_date: "2026-08-02",
+      second_latest_date: null,
+    });
+    const query = fake.calls.find((call) => call.kind === "submit" && queryName(call) === "paid_summary")
+      ?.body as SubmittedQuery;
+    expect(query.query).toContain("WHERE sm_store_id = @store_id");
+    expect(query.query).toContain(`AND (@channel = '' OR ${PLATFORM} = @channel)`);
+    expect(query.query).not.toContain("GROUP BY");
+    expect(query.queryParameters).toContainEqual({
+      name: "baseline_from",
+      parameterType: { type: "DATE" },
+      parameterValue: { value: "2026-08-01" },
+    });
+    response = rowsResponse(fields, [{ latest_date: null }]);
+    expect(await getPaidSummary(FILTERS, [null, null])).toEqual({ totals: null, coverage: null });
+  });
+
   it("keeps one campaign ID on two ad platforms as two campaigns", async () => {
     const fake = await goLive({
       submit: () =>
@@ -275,10 +328,12 @@ describe("paid marketing, live", () => {
 it("refuses another store in dispatch and live loaders before any warehouse call", async () => {
   const fake = await goLive({ submit: () => rowsResponse([], []) });
   vi.stubEnv("APP_STORE_ID", "allowed-store");
-  const { getPaidMarketing } = await import("./queries");
-  const { queryPaidMarketing } = await import("./bigquery");
+  const { getPaidMarketing, getPaidSummary } = await import("./queries");
+  const { queryPaidMarketing, queryPaidSummary } = await import("./bigquery");
   await expect(getPaidMarketing(FILTERS)).rejects.toThrow("This store is not available");
   await expect(queryPaidMarketing(FILTERS)).rejects.toThrow("This store is not available");
+  await expect(getPaidSummary(FILTERS, [null, null])).rejects.toThrow("This store is not available");
+  await expect(queryPaidSummary(FILTERS, [null, null])).rejects.toThrow("This store is not available");
   expect(fake.calls).toHaveLength(0);
 });
 

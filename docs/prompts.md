@@ -15,6 +15,14 @@ or keep **This page**. Review **Preview prompt** if useful, and copy into your
 coding agent. Copy becomes available after you describe your request. The panel
 prepares text locally and makes no agent API call.
 
+When a hosted app's live version runs SourceMedium's standard template, the
+panel starts with **This version runs the standard template**: if no GitHub
+copy is connected yet, a workspace admin or editor chooses **Customize the
+code** on the app in **Dashboards & Apps**, creates the repository and connects
+GitHub, then opens the copy in Claude Code or Codex. The variable says only
+where the live version came from, so the steps never claim a copy is missing. The prompt carries the same steps, so an agent that is
+not in a clone of the app's copy stops and asks for one.
+
 The prompt includes the page, selected component, resolved store/dates and
 view filters, configured reporting currency, data mode, and build. It follows
 the report's applied values, including defaults, rather than unsaved filter

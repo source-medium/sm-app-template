@@ -3,6 +3,7 @@
  * contract. These cases check shape (the schema) and arithmetic (totals
  * computed independently of the code under test).
  */
+import { samplePaidSource } from "@/lib/sample/ad-delivery";
 import { describe, expect, it } from "vitest";
 import { decodeRows, toChartNumber } from "@/lib/data/decode";
 import { WarehouseError } from "@/lib/data/warehouse-error";
@@ -103,10 +104,21 @@ describe("overview fixture contract", () => {
     }
   });
 
-  it("sums sub-channels by date and totals the period exactly, with fractional orders and exact money", () => {
+  it("takes each day's ad spend from the sample ad delivery, so Overview and Paid marketing agree", () => {
+    const range = { from: "2026-09-01", to: "2026-09-28" };
+    const overview = sampleSummarySource("sample-store-a", range, "2026-10-05").reduce(
+      (sum, row) => sum + row.ad_spend_cents,
+      0n,
+    );
+    const paid = samplePaidSource("sample-store-a", range).reduce((sum, row) => sum + row.spendCents, 0n);
+    expect(overview).toBeGreaterThan(0n);
+    expect(overview).toBe(paid);
+  });
+
+  it("sums sub-channels by date and totals the period exactly, with exact money", () => {
     const rows = [
-      source("2026-09-01", 1.5, 10n, 3n, "s1", "Paid", 10_01n, 3_33n),
-      source("2026-09-01", 2.5, 5n, 0n, "s1", "Email", 20_02n, 0n),
+      source("2026-09-01", 1, 10n, 3n, "s1", "Paid", 10_01n, 3_33n),
+      source("2026-09-01", 3, 5n, 0n, "s1", "Email", 20_02n, 0n),
       source("2026-09-02", 4, 7n, 1n, "s1", "Paid", 30_03n, 1_10n),
     ];
     const data = toOverviewData(decodeRows(OverviewRow, aggregateOverviewWire(rows, "s1", RANGE), OVERVIEW_RELATION));

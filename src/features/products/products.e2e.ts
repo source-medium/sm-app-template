@@ -3,13 +3,14 @@ import { choose, expectNoSeriousA11yViolations, openDates } from "../../../e2e/h
 import { SAVED_REPORTS_KEY } from "@/lib/saved-reports";
 
 for (const ranking of ["gainers", "decliners"]) {
-  test(`products: ${ranking} takeaway uses the ranking's first comparison even with a retained second baseline`, async ({
+  test(`products: ${ranking} changes use the ranking's first comparison even with a retained second baseline`, async ({
     page,
   }) => {
     await page.goto(`/products?store=sample-store-a&from=2026-09-01&to=2026-09-07&ranking=${ranking}&baseline=b`);
-    await expect(page.getByLabel("Report takeaway", { exact: true })).toContainText("against the previous 7 days");
     await expect(
-      page.getByRole("table", { name: "Net revenue by product details", exact: true }).getByRole("columnheader").last(),
+      page
+        .getByRole("table", { name: "Net revenue by product details", exact: true })
+        .getByRole("columnheader", { name: /^Change vs / }),
     ).toContainText("Change vs previous 7 days");
     await expect(page.getByRole("group", { name: "Comparison shown in charts and tables" })).toHaveCount(0);
   });
@@ -21,12 +22,12 @@ test("products: photo links preserve report scope and table identities stay pinn
     "/products?store=sample-store-a&range=last-7-days&sales_channel=online_dtc&dimension=variant&metric=units",
   );
   await expect(page.getByRole("button", { name: /^Filters:/ })).toHaveAttribute("aria-expanded", "false");
-  const takeaway = page.getByLabel("Report takeaway", { exact: true });
-  await expect(takeaway).toContainText("Net units");
-  const before = await takeaway.innerText();
-  await page.getByRole("group", { name: "Comparison shown in charts and tables" }).getByRole("button").nth(1).click();
-  await expect(takeaway).not.toHaveText(before);
   const table = page.getByRole("table", { name: "Net units by variant details", exact: true });
+  await expect(table.getByRole("columnheader", { name: "Variant", exact: true })).toBeVisible();
+  const change = table.getByRole("columnheader", { name: /^Change vs / });
+  const before = await change.innerText();
+  await page.getByRole("group", { name: "Comparison shown in charts and tables" }).getByRole("button").nth(1).click();
+  await expect(change).not.toHaveText(before);
   const link = table.getByRole("link").first();
   const scroller = page.getByRole("region", { name: "Net units by variant details", exact: true });
   const identity = table.locator("tbody tr").first().locator("td").first();
@@ -73,7 +74,7 @@ test("products: browser-saved views restore rolling filters, survive reload and 
   await expect(page).toHaveURL(
     (url) => url.searchParams.get("metric") === "units" && url.searchParams.get("range") === "last-7-days",
   );
-  await expect(page.getByLabel("Report takeaway")).toContainText("Net units");
+  await expect(page.getByRole("table", { name: "Net units by product details", exact: true })).toBeVisible();
   await page.setViewportSize({ width: 320, height: 740 });
   await page.getByRole("button", { name: "Toggle navigation" }).click();
   await expect(savedViews.getByRole("link", { name: /^Weekly units/ })).toBeVisible();

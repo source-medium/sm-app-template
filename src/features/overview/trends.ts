@@ -4,7 +4,7 @@ import { comparisonDates, type Comparison } from "@/lib/comparison";
 import { decimalToNumber, sumDecimals } from "@/lib/data/decimal";
 import { toChartNumber } from "@/lib/data/decode";
 import { datesInRange, type DateRange } from "@/lib/filters";
-import { formatDate, formatDay } from "@/lib/format";
+import { formatDate, formatDay, moneyAxis } from "@/lib/format";
 import { OVERVIEW_MEASURE_KEYS, presentOverviewMeasures, type OverviewMeasureKey } from "./measures";
 import { overviewBindings } from "./metrics";
 import type { OverviewDay, OverviewMeasures } from "./queries";
@@ -83,6 +83,7 @@ export function overviewTrends(
     };
   });
   return OVERVIEW_MEASURE_KEYS.map((key) => {
+    const binding = overviewBindings.find((item) => item.id === key);
     const point = (row: OverviewDay | undefined, presented: ReturnType<typeof presentOverviewMeasures> | null) => {
       const amount = presented?.[key].amount ?? null;
       const missing = !row || !presented || TREND_INPUTS[key].some((field) => row[field] === null);
@@ -97,7 +98,8 @@ export function overviewTrends(
     };
     return {
       key,
-      label: overviewBindings.find((binding) => binding.id === key)?.label ?? key,
+      label: binding?.label ?? key,
+      valueFormat: binding?.format === "currency" ? moneyAxis(currency) : ("number" as const),
       ...buildChartData(
         rows.map(({ day, presented, priorDate, previous, previousPresented }) => {
           const previousPoint = point(previous, previousPresented);

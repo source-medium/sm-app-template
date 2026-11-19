@@ -366,7 +366,7 @@ function OrderDetailList({
   );
 }
 
-/** The order's channel in words, with its sub-channel when one is published. */
-function orderChannel(order: { channel: string | null; subChannel: string | null }): string {
-  return [order.channel && channelName(order.channel), order.subChannel].filter(Boolean).join(" · ") || EMPTY_VALUE;
+/** The order's sales channel in words. */
+function orderChannel(order: { channel: string | null }): string {
+  return order.channel ? channelName(order.channel) : EMPTY_VALUE;
 }

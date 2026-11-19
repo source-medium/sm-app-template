@@ -24,7 +24,7 @@ export function revenueContributions(report: OverviewSlice, filters: OverviewFil
         { label: "Comparison period", groups: previous },
       ],
     };
-  const key = (row: RevenueContribution) => JSON.stringify([row.channel, row.sub_channel]);
+  const key = (row: RevenueContribution) => JSON.stringify([row.channel]);
   const before = new Map(previous.map((row) => [key(row), row]));
   const now = new Map(current.map((row) => [key(row), row]));
   const rows = [...new Set([...now.keys(), ...before.keys()])].map((id) => {
@@ -35,7 +35,7 @@ export function revenueContributions(report: OverviewSlice, filters: OverviewFil
       prior = b ? b.revenue : "0";
     return {
       id,
-      label: `${row?.channel ? channelName(row.channel) : "Unclassified sales channel"} / ${row?.sub_channel ?? "Unclassified sub-channel"}`,
+      label: row?.channel ? channelName(row.channel) : "Unclassified sales channel",
       current: value,
       previous: prior,
       difference: compareValues(value, prior).difference,

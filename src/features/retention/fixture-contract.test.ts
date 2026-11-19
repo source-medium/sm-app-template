@@ -23,9 +23,10 @@ it("keeps cumulative second purchase separate from monthly retention and hides i
   const january = retentionMatrix(rows, "online_dtc", "second", "2026-03", null).find(
     (cohort) => cohort.id === row.cohort_month,
   );
+  // Month 0 of a second purchase is a real rate, so it shades like any other age.
   expect(january?.cells.slice(0, 4)).toMatchObject([
-    { display: "12%", state: "value" },
-    { display: "35%", state: "value" },
+    { display: "12.00%", state: "value", intensity: 0.12 },
+    { display: "35.00%", state: "value", intensity: 0.35 },
     { display: "No data", state: "missing" },
     { state: "immature" },
   ]);
@@ -65,9 +66,10 @@ it("distinguishes zero, missing data and immature periods without filling gaps",
   const rows = decodeRetention([row, { ...row, month_age: "1", customers: "0" }]);
   const matrix = retentionMatrix(rows, "online_dtc", "retention", "2026-03", null);
   const january = matrix.find((item) => item.id === row.cohort_month);
+  // Monthly retention's Month 0 is every customer, so it anchors the row unshaded.
   expect(january?.cells.slice(0, 4)).toMatchObject([
-    { display: "100%", state: "value" },
-    { display: "0%", state: "value" },
+    { display: "100.00%", state: "value", intensity: null },
+    { display: "0.00%", state: "value", intensity: 0 },
     { display: "No data", state: "missing" },
     { display: "—", state: "immature" },
   ]);
@@ -148,15 +150,19 @@ it("plots the same values as the matrix, preserving missing and unelapsed ages a
   );
   expect(profit.data[1]?.[`${january.key}__display`]).toBe(matrix?.cells[1]?.display);
   expect(retentionChart(rows, "amazon", "profit", "2026-09", "earliest", null).data[0]?.[january.key]).toBe(10);
+  // Sep 2026 has only Month 0 by the end of September, one point and no curve, so the latest six end in August.
   const recent = retentionChart(rows, "online_dtc", "profit", "2026-09", "recent", null);
   expect(recent.series.map((series) => series.label)).toEqual([
+    "Mar 2026",
     "Apr 2026",
     "May 2026",
     "Jun 2026",
     "Jul 2026",
     "Aug 2026",
-    "Sep 2026",
   ]);
-  expect(recent.data).toHaveLength(6);
+  expect(recent.data).toHaveLength(7);
+  expect(retentionMatrix(rows, "online_dtc", "profit", "2026-09", null).map((cohort) => cohort.label)).toContain(
+    "Sep 2026",
+  );
   expect(retentionOptions({ cohorts: "invalid" }, "2026-10-07").curveWindow).toBe("recent");
 });

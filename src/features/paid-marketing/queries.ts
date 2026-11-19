@@ -14,12 +14,21 @@ import type { z } from "zod";
 import type { SpendBreakdownRow } from "./rows";
 import { decimalToNumber, ratio } from "@/lib/data/decimal";
 import { toChartNumber } from "@/lib/data/decode";
-import { queryPaidCampaigns, queryPaidMarketing, querySpendBreakdown } from "./bigquery";
-import { samplePaidMarketing, sampleSpendBreakdown, samplePaidNames } from "./sample";
-import type { BaselineRanges } from "@/lib/comparison";
+import { queryPaidCampaigns, queryPaidMarketing, queryPaidSummary, querySpendBreakdown } from "./bigquery";
+import { samplePaidMarketing, samplePaidSummary, sampleSpendBreakdown, samplePaidNames } from "./sample";
+import type { BaselineRanges, PeriodCoverage } from "@/lib/comparison";
+import type { AdPeriods } from "@/lib/ad-totals";
 import type { BreakdownDimension } from "./filters";
 
 export type SpendBreakdown = { rows: z.output<typeof SpendBreakdownRow>[]; hasMore: boolean };
+
+/** The page's KPIs: the store, ad platform and name scope summed in each period; null without delivery. */
+export type PaidSummary = { totals: AdPeriods | null; coverage: PeriodCoverage | null };
+
+export async function getPaidSummary(filters: PaidMarketingFilters, baselines: BaselineRanges): Promise<PaidSummary> {
+  const access = await requireViewer({ storeId: filters.storeId });
+  return access.mode === "live" ? queryPaidSummary(filters, baselines) : samplePaidSummary(filters, baselines);
+}
 
 export async function getSpendBreakdown(
   filters: PaidMarketingFilters,

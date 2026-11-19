@@ -1,6 +1,11 @@
 import { REVIEWED_METRICS, reviewedMetric } from "@/lib/reviewed-metrics";
 import type { MetricBinding, ValueFormat } from "@/lib/metric-binding";
+import { AD_POLARITY } from "@/lib/ad-totals";
 import { CREATIVE_RELATION } from "./rows";
+
+/** Which way each compared measure should move: the ad measures', and a creative count is context. */
+export const CREATIVE_POLARITY = { ...AD_POLARITY, creatives: "neutral" } as const;
+
 const measures: [string, string, string, string, string[], ValueFormat][] = [
   ["spend", "Spend", "total_ad_spend", "SUM(ad_spend)", ["ad_spend"], "currency"],
   [
@@ -57,7 +62,7 @@ export const creativeBindings: readonly MetricBinding[] = measures.map(
       format,
       source: CREATIVE_RELATION,
       population:
-        "Published ad delivery with a creative identity, scoped to the selected store, dates, ad platform, campaign and name filters; minimums apply to each creative after period aggregation.",
+        "Published ad delivery with a creative identity, scoped to the selected store, dates, ad platform, campaign, creative format and name filters; minimums apply to each creative after period aggregation.",
       grain: "Ad platform and creative identity over the selected period",
       dateBasis: "Published ad delivery date in the store's reporting timezone",
       attribution:

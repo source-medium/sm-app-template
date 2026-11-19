@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { KpiCard } from "@/components/patterns/kpi-card";
+import { COMPARISON_DASH } from "@/components/ui/line-swatch";
 
 it("exposes the full value as text when the visual headline is compact", () => {
   render(<KpiCard label="Revenue" value="$1.23M" fullValue="$1,234,567.89" period="Selected dates" />);
@@ -76,7 +77,7 @@ it("draws the shown comparison dashed behind the selected period, on one scale",
   );
   const graph = screen.getByRole("img", { name: /with the previous 2 days dashed behind it/ });
   const [prior, current] = graph.querySelectorAll("path");
-  expect(prior).toHaveAttribute("stroke-dasharray", "3 3");
+  expect(prior).toHaveAttribute("stroke-dasharray", "5 3");
   // The comparison's 4 is the top of the shared scale; the selected 1 sits at the bottom.
   expect(prior?.getAttribute("d")).toMatch(/^M2,2\b/);
   expect(current?.getAttribute("d")).toMatch(/^M2,42 L198,28\.6/);
@@ -98,4 +99,38 @@ it("draws no comparison for a slot without one, or one that cannot be plotted ex
     name: "Revenue: daily trend for the selected period. Missing days are gaps.",
   });
   expect(graph.querySelectorAll("path")).toHaveLength(1);
+});
+
+it("names the dashed comparison line beneath the sparkline, and leaves out one it cannot plot", () => {
+  const { container, unmount } = render(
+    <KpiCard
+      label="Revenue"
+      value="1.00"
+      trend={{
+        values: [1, 2, 3],
+        tableHref: "#daily",
+        comparisons: [{ label: "previous 28 days", values: [2, 1, 2] }, null],
+      }}
+    />,
+  );
+  expect(screen.getByText("previous 28 days")).toBeVisible();
+  // The key sits outside the link, whose name is the link's purpose.
+  expect(screen.getByRole("link", { name: "View daily values for Revenue" })).not.toHaveTextContent("previous 28 days");
+  const dashes = [...container.querySelectorAll("[stroke-dasharray]")].map((line) =>
+    line.getAttribute("stroke-dasharray"),
+  );
+  expect(dashes).toEqual([COMPARISON_DASH, COMPARISON_DASH]);
+  unmount();
+  render(
+    <KpiCard
+      label="Orders"
+      value="3"
+      trend={{
+        values: [1, 2, 3],
+        tableHref: "#daily",
+        comparisons: [{ label: "last year", values: [9007199254740993n, 1n, 2n] }, null],
+      }}
+    />,
+  );
+  expect(screen.queryByText("last year")).not.toBeInTheDocument();
 });

@@ -17,7 +17,7 @@ import { sampleSummaryChannels } from "@/lib/sample/executive-summary";
 export type OverviewMeasures = {
   /** NUMERIC, exact decimal text, in the reporting currency: SUM(order_net_revenue). */
   netRevenue: string | null;
-  /** FLOAT64 in the warehouse: the model's order measure, which can be fractional. */
+  /** INT64 in the warehouse (order_count), read as a number for its ratios. */
   orders: number | null;
   /** INT64, exact. */
   sessions: bigint | null;
@@ -41,7 +41,6 @@ export type RevenueDeductions = {
 
 export type RevenueContribution = {
   channel: string | null;
-  sub_channel: string | null;
   revenue: string | null;
   remainder: boolean;
 };
@@ -85,8 +84,8 @@ export type OverviewReport = {
 };
 
 /**
- * One slot's view of the report, in the shape the headline, highlights and
- * chart overlay read: the current period against that one baseline. `coverage`
+ * One slot's view of the report, in the shape the highlights and chart
+ * overlay read: the current period against that one baseline. `coverage`
  * is null when the slot has no data, so periodChanges() hides its changes.
  */
 export type OverviewSlice = {

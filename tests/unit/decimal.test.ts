@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { decimalToNumber, fromUnits, nonnegativeShare, ratio, sumDecimals, toUnits } from "@/lib/data/decimal";
+import {
+  decimalToNumber,
+  fromUnits,
+  minDecimal,
+  nonnegativeShare,
+  ratio,
+  sumDecimals,
+  toUnits,
+} from "@/lib/data/decimal";
 import { formatMoney, formatMultiple } from "@/lib/format";
 
 describe("NUMERIC money", () => {
@@ -16,6 +24,12 @@ describe("NUMERIC money", () => {
       expect(nonnegativeShare("1", total, minimum)).toBeNull();
     }
   });
+  it("finds the exact minimum, ignoring nulls", () => {
+    expect(minDecimal(["10.5", null, "-0.000000001", "3"])).toBe("-0.000000001");
+    expect(minDecimal(["9007199254740993.1", "9007199254740993.01"])).toBe("9007199254740993.01");
+    expect(minDecimal([null, null])).toBeNull();
+  });
+
   it("adds exactly where floats drift", () => {
     expect(sumDecimals(["0.1", "0.2"])).toBe("0.3");
     expect(sumDecimals(["99999999999999999999.999999999", "0.000000001"])).toBe("100000000000000000000");

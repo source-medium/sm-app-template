@@ -29,7 +29,6 @@ export type OrderSummary = {
   processedLocal: string | null;
   scopeLocal: string;
   channel: string | null;
-  subChannel: string | null;
   orderType: string | null;
   paymentStatus: string | null;
   /** NUMERIC, exact decimal text. */

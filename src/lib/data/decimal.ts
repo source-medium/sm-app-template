@@ -32,6 +32,13 @@ export function sumDecimals(values: readonly (string | null)[]): string | null {
   return total === null ? null : fromUnits(total);
 }
 
+/** Exact minimum, for nonnegativeShare(); null only when every input is null. */
+export function minDecimal(values: readonly (string | null)[]): string | null {
+  let low: bigint | null = null;
+  for (const value of values) if (value !== null && (low === null || toUnits(value) < low)) low = toUnits(value);
+  return low === null ? null : fromUnits(low);
+}
+
 /** An approximate number for ratios and charts. */
 export function decimalToNumber(value: string | null): number | null {
   if (value === null) return null;

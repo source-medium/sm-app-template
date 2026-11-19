@@ -12,6 +12,30 @@ export const CREATIVE_SORTS = [
   "cpo",
 ] as const;
 export type CreativeSort = (typeof CREATIVE_SORTS)[number];
+/**
+ * rpt_ad_performance_daily.ad_creative_format's published vocabulary, in the
+ * order the report lists it. A creative with no format reads as unknown.
+ */
+export const CREATIVE_FORMATS = [
+  { value: "video", label: "Video" },
+  { value: "image", label: "Image" },
+  { value: "carousel", label: "Carousel" },
+  { value: "collection", label: "Collection" },
+  { value: "flexible", label: "Flexible" },
+  { value: "product", label: "Product feed" },
+  { value: "text", label: "Text" },
+  { value: "other", label: "Other" },
+] as const;
+export type CreativeFormat = (typeof CREATIVE_FORMATS)[number]["value"];
+/** Whether a stored format is one the report's format filter can choose. */
+export function isCreativeFormat(value: string | null): value is CreativeFormat {
+  return CREATIVE_FORMATS.some((format) => format.value === value);
+}
+/** How the report names a stored format: a known one in words, anything else as stored. */
+export function creativeFormatLabel(value: string | null): string {
+  if (value === null) return "Unknown format";
+  return CREATIVE_FORMATS.find((format) => format.value === value)?.label ?? value;
+}
 export type CreativeIdentity = readonly [platform: string, creativeId: string];
 export function parseCreativeThreshold(value: string | undefined): string | null {
   if (!value) return null;
@@ -49,6 +73,7 @@ export function creativesOptions(params: SearchParams) {
     channel: single(params, "channel")?.slice(0, 100) || null,
     campaign: single(params, "campaign")?.slice(0, 200) || null,
     view: parseChoice(params, "view", ["delivery", "returns", "table"] as const, "returns"),
+    format: parseChoice(params, "format", ["", ...CREATIVE_FORMATS.map((format) => format.value)] as const, "") || null,
     sort: parseChoice(params, "sort", CREATIVE_SORTS, "spend"),
     minimumSpend,
     minimumConversions,

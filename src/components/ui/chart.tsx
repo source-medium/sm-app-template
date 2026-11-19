@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { LineSwatch } from "./line-swatch";
 import { cn } from "@/lib/utils";
 import * as RechartsPrimitive from "recharts";
 import type { TooltipValueType } from "recharts";
@@ -16,6 +17,8 @@ export type ChartConfig = Record<
     icon?: React.ComponentType;
     /** Use a token such as var(--chart-1); the app's theme controls its value. */
     color?: string;
+    /** Drawn dashed, such as a comparison period; a line legend repeats the dash. */
+    dashed?: boolean;
   }
 >;
 
@@ -220,9 +223,12 @@ function ChartLegendContent({
   payload,
   verticalAlign = "bottom",
   nameKey,
+  swatch = "square",
 }: React.ComponentProps<"div"> & {
   hideIcon?: boolean;
   nameKey?: string;
+  /** "line" draws each series as a short stroke, dashed where the series is, so a legend matches a line chart. */
+  swatch?: "square" | "line";
 } & RechartsPrimitive.DefaultLegendContentProps) {
   const { config } = useChart();
 
@@ -233,7 +239,7 @@ function ChartLegendContent({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center justify-center gap-x-4 gap-y-2",
+        "flex flex-wrap items-center justify-start gap-x-4 gap-y-2",
         verticalAlign === "top" ? "pb-3" : "pt-3",
         className,
       )}
@@ -253,6 +259,8 @@ function ChartLegendContent({
             >
               {itemConfig?.icon && !hideIcon ? (
                 <itemConfig.icon />
+              ) : swatch === "line" ? (
+                <LineSwatch color={item.color} dashed={itemConfig?.dashed} />
               ) : (
                 <div
                   className="h-2 w-2 shrink-0 rounded-[2px]"

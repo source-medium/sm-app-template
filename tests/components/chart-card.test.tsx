@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChartCard } from "@/components/charts/chart-card";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { COMPARISON_DASH } from "@/components/ui/line-swatch";
 
 const DATA = [
   { label: "Oct 1", orders: 10, orders__display: "10" },
@@ -55,6 +56,26 @@ describe("ChartCard", () => {
     expect(chart).toHaveAttribute("aria-pressed", "true");
     expect(toggle).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("img", { name: "Orders by day chart" })).toBeInTheDocument();
+  });
+
+  it("draws line legends with each series' dash and money ticks with the currency symbol", () => {
+    const { container } = render(
+      <ChartCard
+        title="Net revenue by day"
+        kind="line"
+        categoryHeader="Date"
+        valueFormat={{ prefix: "$", suffix: "" }}
+        series={[
+          { key: "orders", label: "Net revenue", color: "red" },
+          { key: "previous", label: "Previous 28 days", color: "blue", dashed: true },
+        ]}
+        data={DATA.map((datum) => ({ ...datum, previous: 12, previous__display: "$12.00" }))}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    const swatches = [...container.querySelectorAll(".recharts-legend-wrapper line")];
+    expect(swatches.map((line) => line.getAttribute("stroke-dasharray"))).toEqual([null, COMPARISON_DASH]);
+    expect(screen.getAllByText(/^\$\d+$/).length).toBeGreaterThan(0);
   });
 
   it("accepts no view choice until hydrated, so an early click is never silently lost", () => {

@@ -10,7 +10,7 @@
  * are two or more series.
  */
 import { useId, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis, usePlotArea } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Table, TableRow } from "@/components/ui/table";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,10 +25,31 @@ import {
 import { cn } from "@/lib/utils";
 import { Disclosure } from "@/components/ui/disclosure";
 import { useHydrated } from "@/hooks/use-hydrated";
-import { compactNumber } from "./compact-number";
+import { axisTick, tickTarget, valueTicks, type AxisFormat } from "./compact-number";
+import { COMPARISON_DASH } from "@/components/ui/line-swatch";
 
 /** Room for a two-line label beside each horizontal bar. */
 const HORIZONTAL_ROW_PX = 40;
+
+/**
+ * A ranking's value axis: as many nice steps as fit the plot's width, every
+ * one labelled, ending at the first step past the longest bar. Before the
+ * plot is measured it draws the full five steps.
+ */
+function RankingValueAxis({ values, format }: { values: number[]; format: (value: number) => string }) {
+  const ticks = valueTicks(values, tickTarget(usePlotArea()?.width));
+  return (
+    <XAxis
+      type="number"
+      ticks={ticks}
+      interval={0}
+      domain={[ticks[0] ?? 0, ticks.at(-1) ?? 0]}
+      tickLine={false}
+      axisLine={false}
+      tickFormatter={format}
+    />
+  );
+}
 
 export type ChartSeries = { key: string; label: string; color: string; dashed?: boolean };
 export type ChartDatum = { label: string } & Record<string, string | number | null>;
@@ -51,10 +72,12 @@ export type ChartCardProps = {
   plottable?: boolean;
   /** Header for the first table column, such as "Date". */
   categoryHeader: string;
-  /** Ratio values use percentage ticks; labels and tooltips still arrive formatted by the server. */
-  valueFormat?: "number" | "percent";
+  /** Axis ticks: ratios as percentages, money with the currency from `moneyAxis` (lib/format). */
+  valueFormat?: AxisFormat;
   /** Keep single-observation cohort curves visible. */
   showPoints?: boolean;
+  /** For the card's place in a layout, such as sharing header rows with a neighbor through a subgrid. */
+  className?: string;
 };
 
 export function ChartCard({
@@ -71,6 +94,7 @@ export function ChartCard({
   categoryHeader,
   valueFormat = "number",
   showPoints = false,
+  className,
 }: ChartCardProps) {
   const [tableChosen, setTableChosen] = useState(false);
   // Derived, so switching to a measure that cannot be plotted always lands on the table.
@@ -78,17 +102,22 @@ export function ChartCard({
   const hydrated = useHydrated();
   const regionId = useId();
   const Plot = kind === "line" ? LineChart : BarChart;
-  const tickValue = (value: number) =>
-    valueFormat === "percent" ? `${compactNumber(value * 100)}%` : compactNumber(value);
+  const tickValue = (value: number) => axisTick(value, valueFormat);
+  // A currency symbol widens every tick label by its length.
+  const affix = typeof valueFormat === "object" ? valueFormat.prefix.length + valueFormat.suffix.length : 0;
+  const values = data.flatMap((point) =>
+    series.map((item) => point[item.key]).filter((value) => typeof value === "number"),
+  );
   const config: ChartConfig = Object.fromEntries(
-    series.map((item) => [item.key, { label: item.label, color: item.color }]),
+    series.map((item) => [item.key, { label: item.label, color: item.color, dashed: item.dashed }]),
   );
 
   return (
-    <Card data-agent-target={title} data-agent-component="ChartCard">
-      <CardHeader>
-        <CardTitle>{heading ?? title}</CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
+    <Card data-agent-target={title} data-agent-component="ChartCard" className={className}>
+      {/* The title keeps its width; the view toggle wraps under it when both do not fit. Lines pack to
+          the top, so a header stretched to a neighbor's height (a shared subgrid row) still starts level. */}
+      <CardHeader className="flex flex-wrap content-start items-center justify-between gap-x-4">
+        <CardTitle className="grow">{heading ?? title}</CardTitle>
         <CardAction>
           {plottable && (
             // A click before hydration would be lost, so the toggle accepts none until it can apply one.
@@ -111,7 +140,7 @@ export function ChartCard({
                   aria-pressed={showTable === table}
                   aria-controls={regionId}
                   onClick={() => setTableChosen(table)}
-                  className="px-2.5 aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-card"
+                  className="px-2.5 text-muted-foreground aria-pressed:bg-segment aria-pressed:text-foreground aria-pressed:shadow-card aria-pressed:ring-1 aria-pressed:ring-border"
                 >
                   {label}
                 </Button>
@@ -119,6 +148,7 @@ export function ChartCard({
             </div>
           )}
         </CardAction>
+        {description && <CardDescription className="basis-full">{description}</CardDescription>}
       </CardHeader>
       <CardContent id={regionId}>
         {!plottable && (
@@ -137,11 +167,12 @@ export function ChartCard({
             role="img"
             aria-label={`${title} chart`}
           >
-            <Plot data={data} layout={horizontal ? "vertical" : "horizontal"} margin={{ left: 4, right: 12, top: 8 }}>
+            {/* Both axes end on a labelled tick, so the plot keeps room at the right for it. */}
+            <Plot data={data} layout={horizontal ? "vertical" : "horizontal"} margin={{ left: 4, right: 24, top: 8 }}>
               <CartesianGrid vertical={horizontal} horizontal={!horizontal} stroke="var(--chart-grid)" />
               {horizontal ? (
                 <>
-                  <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={tickValue} />
+                  <RankingValueAxis values={values} format={tickValue} />
                   <YAxis
                     type="category"
                     dataKey="label"
@@ -159,12 +190,25 @@ export function ChartCard({
                 </>
               ) : (
                 <>
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
-                  <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={tickValue} />
+                  {/* Thinning keeps the first label and labels every point that fits, so the axis names where the period starts. */}
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    minTickGap={8}
+                    interval="preserveStart"
+                  />
+                  <YAxis tickLine={false} axisLine={false} width={44 + affix * 7} tickFormatter={tickValue} />
                 </>
               )}
               <ChartTooltip cursor content={<ChartTooltipContent indicator={kind === "line" ? "line" : "dot"} />} />
-              {series.length > 1 && <ChartLegend itemSorter={null} content={<ChartLegendContent />} />}
+              {series.length > 1 && (
+                <ChartLegend
+                  itemSorter={null}
+                  content={<ChartLegendContent swatch={kind === "line" ? "line" : "square"} />}
+                />
+              )}
               {series.map((item) =>
                 kind === "line" ? (
                   <Line
@@ -173,7 +217,7 @@ export function ChartCard({
                     type="linear"
                     stroke={`var(--color-${item.key})`}
                     strokeWidth={2}
-                    strokeDasharray={item.dashed ? "6 4" : undefined}
+                    strokeDasharray={item.dashed ? COMPARISON_DASH : undefined}
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     dot={showPoints ? { r: 3, strokeWidth: 0, fill: `var(--color-${item.key})` } : false}
@@ -204,7 +248,8 @@ export function ChartCard({
             ) : (
               <span />
             )}
-            {footer}
+            {/* As tall as the definition's summary row, so a footer control lines up with it. */}
+            {footer && <div className="flex min-h-9 items-center pointer-coarse:min-h-11">{footer}</div>}
           </div>
         )}
       </CardContent>

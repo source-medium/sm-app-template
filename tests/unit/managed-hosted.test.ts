@@ -34,9 +34,26 @@ describe("hosted configuration", () => {
       mode: "managed",
       guard: null,
       managed: { dataApiUrl: "https://urchin.test/api/app-data/v1", developerToken: null },
-      hosted: { appId: HOSTED.SM_APP_ID, deploymentId: HOSTED.SM_DEPLOYMENT_ID, authMethod: "workspace" },
+      hosted: {
+        appId: HOSTED.SM_APP_ID,
+        deploymentId: HOSTED.SM_DEPLOYMENT_ID,
+        authMethod: "workspace",
+        codeSource: null,
+      },
       storeId: null,
     });
+  });
+
+  it("reads where the deployment's code came from, and treats any other value as unknown", () => {
+    const source = (value?: string) => {
+      const config = parseConfig(value === undefined ? HOSTED : { ...HOSTED, SM_APP_SOURCE: value });
+      return config.status === "ok" && config.mode === "managed" ? config.hosted.codeSource : "error";
+    };
+    expect(source("template")).toBe("template");
+    expect(source("repository")).toBe("repository");
+    expect(source()).toBeNull();
+    // A value a later deploy adds never stops an older app.
+    expect(source("fork")).toBeNull();
   });
 
   it("labels probe access and staging without changing viewer authorization", async () => {

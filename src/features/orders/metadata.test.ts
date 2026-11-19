@@ -12,7 +12,6 @@ it("metadata denial cannot discard valid business results", async () => {
     order_name: "Sample order",
     order_processed_at_local_datetime: "2026-09-01T12:00:00",
     sm_channel: "Online DTC",
-    sm_sub_channel: null,
     sm_order_type: "first",
     order_payment_status: "paid",
     order_cart_quantity: "1",

@@ -18,5 +18,7 @@ it("compacts headline display only and preserves small, missing and ratio values
 it("does not round fractional platform credit into a false zero", () => {
   expect(formatAttributedConversions(0.00125)).toBe("0.00125");
   expect(formatAttributedConversions(0.0000001)).toBe("<0.000001");
-  expect(formatAttributedConversions(0)).toBe("0");
+  expect(formatAttributedConversions(0)).toBe("0.00");
+  expect(formatAttributedConversions(201)).toBe("201.00");
+  expect(formatAttributedConversions(143.25)).toBe("143.25");
 });

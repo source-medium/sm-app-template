@@ -1,8 +1,15 @@
 import { creativeBindings, creativeBinding } from "./metrics";
 import { MetricDefinition } from "@/components/patterns/metric-definition";
 import { Input } from "@/components/ui/input";
-import { CREATIVE_SORTS, creativesOptions, type CreativeIdentity, type CreativeSort } from "./filters";
-import { CREATIVE_RELATION } from "./rows";
+import {
+  CREATIVE_FORMATS,
+  CREATIVE_SORTS,
+  creativeFormatLabel,
+  creativesOptions,
+  type CreativeIdentity,
+  type CreativeSort,
+} from "./filters";
+import { CREATIVE_RELATION, LAUNCH_LOOKBACK_DAYS, type FirstSpend } from "./rows";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -20,9 +27,33 @@ import { adPlatformLabel } from "@/lib/ad-platforms";
 import { ReportControls } from "@/components/shell/report-controls";
 import { ReportPage } from "@/components/shell/report-page";
 import { single, withParams, REPORT_FILTER_FORM_ID, type ReportFilters, type SearchParams } from "@/lib/filters";
-import { formatCount, formatAttributedConversions, formatMoney, formatPercent, formatMultiple } from "@/lib/format";
+import {
+  formatCount,
+  formatAttributedConversions,
+  formatDate,
+  EMPTY_VALUE,
+  formatMoney,
+  formatPercent,
+  formatMultiple,
+} from "@/lib/format";
 import { Disclosure } from "@/components/ui/disclosure";
-import { getCreativeChannels, getCreatives, getCreativeNames, type CreativesData } from "./queries";
+import { SectionHeader } from "@/components/patterns/section-header";
+import { ActiveBaseline } from "@/components/patterns/baseline-switch";
+import { changeCell, kpiDelta } from "@/components/patterns/kpi-delta";
+import type { KpiDelta } from "@/components/patterns/kpi-card";
+import { planRanges, slotChanges, type ComparisonPlan, type Polarity } from "@/lib/comparison";
+import { CREATIVE_POLARITY } from "./metrics";
+import { CreativeSummaryView } from "./summary";
+import {
+  getCreativeChannels,
+  getCreativeSummary,
+  getCreatives,
+  getCreativeNames,
+  type Creative,
+  type CreativeMeasures,
+  type CreativesData,
+  type CreativesFilters,
+} from "./queries";
 
 export const metadata: Metadata = { title: "Creatives" };
 
@@ -46,7 +77,7 @@ const VIEW_LABELS: Record<"delivery" | "returns" | "table", string> = {
 
 export default async function CreativesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
-  const { channel, campaign, view, sort, minimumSpend, minimumConversions, thresholdError, selection, names } =
+  const { channel, campaign, format, view, sort, minimumSpend, minimumConversions, thresholdError, selection, names } =
     creativesOptions(params);
   // The parsed filters, so a metric definition never echoes a rejected or overlong URL value.
   const definitionFilters = (filters: ReportFilters) => ({
@@ -54,6 +85,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
     ...filters.range,
     ad_platform: channel,
     campaign,
+    format,
     min_spend: minimumSpend,
     min_conversions: minimumConversions,
   });
@@ -66,17 +98,20 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
         {
           relation: CREATIVE_RELATION,
           scope:
-            "Daily ad delivery grouped by creative and ad platform (source_system) over the selected dates. CTR is clicks divided by impressions.",
+            "Daily ad delivery grouped by creative and ad platform (source_system) over the selected and comparison dates, with each creative's format (ad_creative_format) and first day of spend. CTR is clicks divided by impressions.",
         },
       ]}
       title="Creatives"
-      description="Spend and results for each ad creative."
+      description="Which creatives earn their spend, what is new, and what changed."
       pathname={PATHNAME}
       params={params}
+      comparisons
+      comparisonLabel="Compare creatives with"
       agentFilters={{
         channel,
         sort,
         campaign,
+        format,
         view,
         names: nameKey,
         min_spend: minimumSpend,
@@ -87,251 +122,332 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
         ...(single(params, "selection") ? ["Selected creative identities"] : []),
       ]}
     >
-      {({ filters, timeZone, currency, params: applied, dataStatus }) => (
-        <div className="flex flex-col gap-4">
-          <ReportControls
-            keepOpen={Boolean(names.error) || Boolean(thresholdError)}
-            summary={[
-              VIEW_LABELS[view],
-              channel ? adPlatformLabel(channel) : "All ad platforms",
-              SORT_LABELS[sort],
-              ...(minimumSpend ? [`Minimum spend ${minimumSpend}`] : []),
-              ...(minimumConversions ? [`Minimum conversions ${minimumConversions}`] : []),
-              ...(names.rules.length
-                ? [`${names.rules.length} name ${names.rules.length === 1 ? "filter" : "filters"}`]
-                : []),
-            ]}
-          >
-            <div className="flex w-full flex-col gap-3">
-              <AdNameFilter pathname={PATHNAME} params={applied} rules={names.rules} error={names.error} />
-              <div className="flex flex-wrap items-end gap-4">
-                <div className="flex min-w-0 flex-col gap-1.5">
-                  <label htmlFor="creative-min-spend" className="text-xs font-medium text-muted-foreground">
-                    Minimum spend
-                  </label>
-                  <Input
-                    id="creative-min-spend"
-                    name="min_spend"
-                    inputMode="decimal"
-                    defaultValue={minimumSpend ?? ""}
-                    form={REPORT_FILTER_FORM_ID}
-                    placeholder="No minimum"
-                    className="sm:w-40"
-                  />
+      {({ filters, plan, timeZone, currency, params: applied, dataStatus }) => {
+        const scope: CreativesFilters = {
+          ...filters,
+          sort,
+          channel,
+          campaign,
+          format,
+          names: names.rules,
+          minimumSpend,
+          minimumConversions,
+        };
+        const baselines = planRanges(plan);
+        const comparisonKey = `${plan?.slots[0].mode}|${plan?.slots[1].mode}`;
+        const scopeKey = `${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${campaign}|${format}|${nameKey}|${comparisonKey}`;
+        // The view states one load time, under its last region: the creative list waits for the
+        // summary and the selection to settle, so its stamp covers every query the view made.
+        let summaryLoad: ReturnType<typeof getCreativeSummary> | undefined;
+        const loadSummary = () => (summaryLoad ??= getCreativeSummary(scope, baselines));
+        let selectedLoad: ReturnType<typeof getCreatives> | undefined;
+        const loadSelected = () => (selectedLoad ??= getCreatives({ ...scope, selection: selection.items }, baselines));
+        const loadList = async () => {
+          const data = await getCreatives(scope, baselines);
+          const others = [loadSummary(), ...(selection.items.length >= 2 ? [loadSelected()] : [])];
+          await Promise.allSettled(others);
+          return data;
+        };
+        return (
+          <div className="flex flex-col gap-6">
+            <ReportControls
+              keepOpen={Boolean(names.error) || Boolean(thresholdError)}
+              summary={[
+                VIEW_LABELS[view],
+                channel ? adPlatformLabel(channel) : "All ad platforms",
+                format ? creativeFormatLabel(format) : "All formats",
+                SORT_LABELS[sort],
+                ...(minimumSpend ? [`Minimum spend ${minimumSpend}`] : []),
+                ...(minimumConversions ? [`Minimum conversions ${minimumConversions}`] : []),
+                ...(names.rules.length
+                  ? [`${names.rules.length} name ${names.rules.length === 1 ? "filter" : "filters"}`]
+                  : []),
+              ]}
+            >
+              <div className="flex w-full flex-col gap-3">
+                <AdNameFilter pathname={PATHNAME} params={applied} rules={names.rules} error={names.error} />
+                <div className="flex flex-wrap items-end gap-4">
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <label htmlFor="creative-min-spend" className="text-xs font-medium text-muted-foreground">
+                      Minimum spend
+                    </label>
+                    <Input
+                      id="creative-min-spend"
+                      name="min_spend"
+                      inputMode="decimal"
+                      defaultValue={minimumSpend ?? ""}
+                      form={REPORT_FILTER_FORM_ID}
+                      placeholder="No minimum"
+                      className="sm:w-40"
+                    />
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <label htmlFor="creative-min-conversions" className="text-xs font-medium text-muted-foreground">
+                      Minimum conversions
+                    </label>
+                    <Input
+                      id="creative-min-conversions"
+                      name="min_conversions"
+                      inputMode="decimal"
+                      defaultValue={minimumConversions ?? ""}
+                      form={REPORT_FILTER_FORM_ID}
+                      placeholder="No minimum"
+                      className="sm:w-40"
+                    />
+                  </div>
+                  {!names.error && !thresholdError && (
+                    <>
+                      <SelectFilter
+                        name="view"
+                        label="View"
+                        value={view}
+                        options={Object.entries(VIEW_LABELS).map(([value, label]) => ({ value, label }))}
+                      />
+                      <ChannelRosterFilter
+                        key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
+                        load={() => getCreativeChannels(filters)}
+                        value={channel}
+                        name="channel"
+                        label="Ad platform"
+                        allLabel="All ad platforms"
+                        loadingLabel="Loading ad platforms"
+                        optionLabel={adPlatformLabel}
+                      />
+                      <SelectFilter
+                        name="format"
+                        label="Format"
+                        value={format ?? ""}
+                        options={[
+                          { value: "", label: "All formats" },
+                          ...CREATIVE_FORMATS.map(({ value, label }) => ({ value, label })),
+                        ]}
+                      />
+                      <SelectFilter
+                        name="sort"
+                        label="Sort by"
+                        value={sort}
+                        options={CREATIVE_SORTS.map((value) => ({ value, label: SORT_LABELS[value] }))}
+                      />
+                    </>
+                  )}
                 </div>
-                <div className="flex min-w-0 flex-col gap-1.5">
-                  <label htmlFor="creative-min-conversions" className="text-xs font-medium text-muted-foreground">
-                    Minimum conversions
-                  </label>
-                  <Input
-                    id="creative-min-conversions"
-                    name="min_conversions"
-                    inputMode="decimal"
-                    defaultValue={minimumConversions ?? ""}
-                    form={REPORT_FILTER_FORM_ID}
-                    placeholder="No minimum"
-                    className="sm:w-40"
-                  />
-                </div>
-                {!names.error && !thresholdError && (
-                  <>
-                    <SelectFilter
-                      name="view"
-                      label="View"
-                      value={view}
-                      options={Object.entries(VIEW_LABELS).map(([value, label]) => ({ value, label }))}
-                    />
-                    <ChannelRosterFilter
-                      key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}`}
-                      load={() => getCreativeChannels(filters)}
-                      value={channel}
-                      name="channel"
-                      label="Ad platform"
-                      allLabel="All ad platforms"
-                      loadingLabel="Loading ad platforms"
-                      optionLabel={adPlatformLabel}
-                    />
-                    <SelectFilter
-                      name="sort"
-                      label="Sort by"
-                      value={sort}
-                      options={CREATIVE_SORTS.map((value) => ({ value, label: SORT_LABELS[value] }))}
-                    />
-                  </>
-                )}
               </div>
-            </div>
-          </ReportControls>
-          {campaign && <input type="hidden" name="campaign" value={campaign} form={REPORT_FILTER_FORM_ID} />}
-          {campaign && (
-            <p className="text-sm">
-              Campaign: {campaign}.{" "}
-              <Link
-                prefetch={false}
-                className="underline underline-offset-4"
-                href={withParams(PATHNAME, params, { campaign: null })}
-              >
-                Show all campaigns
-              </Link>
-            </p>
-          )}
-          {selection.error && (
-            <p role="status">
-              {selection.error}{" "}
-              <Link prefetch={false} className="underline" href={withParams(PATHNAME, applied, { selection: null })}>
-                Clear selection
-              </Link>
-            </p>
-          )}
-          {thresholdError && (
-            <p role="status">
-              Minimums must be non-negative decimal amounts with at most nine decimal places. Correct or clear the
-              minimum to load this report.
-            </p>
-          )}
-          {!names.error && !thresholdError && (
-            <>
-              {names.rules.length > 0 && (
-                <Disclosure summary="Matching names">
-                  <AdNameMatchesRegion
-                    key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${campaign}|${nameKey}`}
-                    load={() => getCreativeNames({ ...filters, sort, channel, campaign, names: names.rules })}
-                    rules={names.rules}
-                  />
-                </Disclosure>
-              )}
-              {dataStatus}
-              {selection.items.length > 0 && (
-                <input
-                  type="hidden"
-                  name="selection"
-                  value={JSON.stringify(selection.items)}
-                  form={REPORT_FILTER_FORM_ID}
-                />
-              )}
-              {selection.items.length > 0 && (
-                <section aria-labelledby="creative-comparison-heading" className="space-y-3">
-                  <h2 id="creative-comparison-heading" className="text-lg font-semibold">
-                    Creative comparison ({selection.items.length}/4)
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Choose two to four creatives. Platforms attribute differently, so compare across platforms with
-                    care.
-                  </p>
-                  <Link
-                    prefetch={false}
-                    className="text-sm underline"
-                    href={withParams(PATHNAME, applied, { selection: null })}
-                  >
-                    Clear selection
-                  </Link>
-                  {selection.items.length >= 2 && (
-                    <Suspense
-                      key={JSON.stringify([
-                        filters,
-                        channel,
-                        campaign,
-                        nameKey,
-                        minimumSpend,
-                        minimumConversions,
-                        selection.items,
-                      ])}
-                      fallback={<LoadingState variant="table" label="Loading selected creatives" />}
-                    >
-                      <DataRegion
-                        timestamp={timeZone}
-                        load={() =>
-                          getCreatives({
-                            ...filters,
-                            sort,
-                            channel,
-                            campaign,
-                            names: names.rules,
-                            minimumSpend,
-                            minimumConversions,
-                            selection: selection.items,
-                          })
-                        }
-                        isEmpty={(data) => data.creatives.length === 0}
-                        emptyMessage="None of the selected creatives match the applied scope and thresholds."
-                      >
-                        {(data) => (
-                          <>
-                            <p className="text-sm">
-                              {data.creatives.length} of {selection.items.length} selected creatives match. Missing
-                              selections are not zero.
-                            </p>
-                            <CreativesView
-                              data={data}
-                              currency={currency}
-                              timeZone={timeZone}
-                              view="returns"
-                              selection={selection.items}
-                              scopeFilters={definitionFilters(filters)}
-                              params={applied}
-                              comparison
-                            />
-                          </>
-                        )}
-                      </DataRegion>
-                    </Suspense>
-                  )}
-                </section>
-              )}
-              <Suspense
-                key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${sort}|${channel}|${campaign}|${view}|${nameKey}|${minimumSpend}|${minimumConversions}`}
-                fallback={<LoadingState variant="grid" label="Loading creatives" />}
-              >
-                <DataRegion
-                  timestamp={timeZone}
-                  load={() =>
-                    getCreatives({
-                      ...filters,
-                      sort,
-                      channel,
-                      campaign,
-                      names: names.rules,
-                      minimumSpend,
-                      minimumConversions,
-                    })
-                  }
-                  isEmpty={(data) => data.creatives.length === 0}
-                  emptyMessage={
-                    names.rules.length
-                      ? "No ad creatives match these filters. Try editing or clearing a filter."
-                      : "No ad creatives match this store, ad platform, and date range."
-                  }
-                  emptyAction={
-                    names.rules.length
-                      ? { href: withParams(PATHNAME, params, { names: null }), label: "Clear name filters" }
-                      : channel
-                        ? { href: withParams(PATHNAME, params, { channel: null }), label: "Show all ad platforms" }
-                        : undefined
-                  }
+            </ReportControls>
+            {campaign && <input type="hidden" name="campaign" value={campaign} form={REPORT_FILTER_FORM_ID} />}
+            {campaign && (
+              <p className="text-sm">
+                Campaign: {campaign}.{" "}
+                <Link
+                  prefetch={false}
+                  className="underline underline-offset-4"
+                  href={withParams(PATHNAME, params, { campaign: null })}
                 >
-                  {(data) => (
-                    <CreativesView
-                      data={data}
-                      currency={currency}
-                      timeZone={timeZone}
-                      view={view}
-                      selection={selection.items}
-                      scopeFilters={definitionFilters(filters)}
-                      params={applied}
+                  Show all campaigns
+                </Link>
+              </p>
+            )}
+            {selection.error && (
+              <p role="status">
+                {selection.error}{" "}
+                <Link prefetch={false} className="underline" href={withParams(PATHNAME, applied, { selection: null })}>
+                  Clear selection
+                </Link>
+              </p>
+            )}
+            {thresholdError && (
+              <p role="status">
+                Minimums must be non-negative decimal amounts with at most nine decimal places. Correct or clear the
+                minimum to load this report.
+              </p>
+            )}
+            {!names.error && !thresholdError && (
+              <>
+                {names.rules.length > 0 && (
+                  <Disclosure summary="Matching names">
+                    <AdNameMatchesRegion
+                      key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${campaign}|${nameKey}`}
+                      load={() => getCreativeNames({ ...filters, sort, channel, campaign, names: names.rules })}
+                      rules={names.rules}
                     />
-                  )}
-                </DataRegion>
-              </Suspense>
-            </>
-          )}
-        </div>
-      )}
+                  </Disclosure>
+                )}
+                {dataStatus}
+                <Suspense
+                  key={`summary|${scopeKey}`}
+                  fallback={<LoadingState variant="kpis" label="Loading creative totals" />}
+                >
+                  <DataRegion
+                    timestamp={false}
+                    load={loadSummary}
+                    isEmpty={() => false}
+                    emptyMessage="No ad creatives match this store, ad platform, and date range."
+                  >
+                    {(summary) => (
+                      <CreativeSummaryView
+                        summary={summary}
+                        plan={plan}
+                        range={filters.range}
+                        format={format}
+                        params={applied}
+                        pathname={PATHNAME}
+                        currency={currency}
+                      />
+                    )}
+                  </DataRegion>
+                </Suspense>
+                {selection.items.length > 0 && (
+                  <input
+                    type="hidden"
+                    name="selection"
+                    value={JSON.stringify(selection.items)}
+                    form={REPORT_FILTER_FORM_ID}
+                  />
+                )}
+                {selection.items.length > 0 && (
+                  <section aria-labelledby="creative-comparison-heading" className="space-y-3">
+                    <h2 id="creative-comparison-heading" className="text-lg font-semibold">
+                      Creative comparison ({selection.items.length}/4)
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Choose two to four creatives. Platforms attribute differently, so compare across platforms with
+                      care.
+                    </p>
+                    <Link
+                      prefetch={false}
+                      className="text-sm underline"
+                      href={withParams(PATHNAME, applied, { selection: null })}
+                    >
+                      Clear selection
+                    </Link>
+                    {selection.items.length >= 2 && (
+                      <Suspense
+                        key={JSON.stringify([scopeKey, minimumSpend, minimumConversions, selection.items])}
+                        fallback={<LoadingState variant="table" label="Loading selected creatives" />}
+                      >
+                        <DataRegion
+                          timestamp={false}
+                          load={loadSelected}
+                          isEmpty={(data) => data.creatives.length === 0}
+                          emptyMessage="None of the selected creatives match the applied scope and thresholds."
+                        >
+                          {(data) => (
+                            <>
+                              <p className="text-sm">
+                                {data.creatives.length} of {selection.items.length} selected creatives match. Missing
+                                selections are not zero.
+                              </p>
+                              <CreativesView
+                                data={data}
+                                plan={plan}
+                                currency={currency}
+                                timeZone={timeZone}
+                                view="returns"
+                                selection={selection.items}
+                                scopeFilters={definitionFilters(filters)}
+                                params={applied}
+                                comparison
+                              />
+                            </>
+                          )}
+                        </DataRegion>
+                      </Suspense>
+                    )}
+                  </section>
+                )}
+                <section aria-labelledby="creative-list-heading" className="flex flex-col gap-3">
+                  <SectionHeader
+                    id="creative-list-heading"
+                    title="All creatives"
+                    description={`${SORT_LABELS[sort]} first.`}
+                  />
+                  <Suspense
+                    key={`list|${scopeKey}|${sort}|${view}|${minimumSpend}|${minimumConversions}`}
+                    fallback={<LoadingState variant="grid" label="Loading creatives" />}
+                  >
+                    <DataRegion
+                      timestamp={timeZone}
+                      load={loadList}
+                      isEmpty={(data) => data.creatives.length === 0}
+                      emptyMessage={
+                        names.rules.length
+                          ? "No ad creatives match these filters. Try editing or clearing a filter."
+                          : "No ad creatives match this store, ad platform, and date range."
+                      }
+                      emptyAction={
+                        names.rules.length
+                          ? { href: withParams(PATHNAME, params, { names: null }), label: "Clear name filters" }
+                          : format
+                            ? { href: withParams(PATHNAME, params, { format: null }), label: "Show all formats" }
+                            : channel
+                              ? {
+                                  href: withParams(PATHNAME, params, { channel: null }),
+                                  label: "Show all ad platforms",
+                                }
+                              : undefined
+                      }
+                    >
+                      {(data) => (
+                        <CreativesView
+                          data={data}
+                          plan={plan}
+                          currency={currency}
+                          timeZone={timeZone}
+                          view={view}
+                          selection={selection.items}
+                          scopeFilters={definitionFilters(filters)}
+                          params={applied}
+                        />
+                      )}
+                    </DataRegion>
+                  </Suspense>
+                </section>
+              </>
+            )}
+          </div>
+        );
+      }}
     </ReportPage>
   );
 }
 
+type Measure = keyof Omit<CreativeMeasures, "impressions" | "clicks">;
+
+/** One creative's change on one measure against the slot's period, or nothing when the slot shows no changes. */
+function creativeChange<M extends Measure>(
+  creative: Creative,
+  slot: 0 | 1 | null,
+  measure: M,
+  format: (value: Creative[M]) => string,
+): KpiDelta | undefined {
+  if (slot === null) return undefined;
+  const better: Polarity = CREATIVE_POLARITY[measure];
+  type Value = NonNullable<Creative[M]>;
+  // Each measure is one type in every period; TypeScript cannot narrow an indexed access to it.
+  return kpiDelta<Value>(
+    creative[measure] as Value | null,
+    creative.baselines[slot][measure] as Value | null,
+    format,
+    better,
+  );
+}
+
+/** A card's change line; a compared creative with no comparison value (a new one) shows a dash, keeping rows aligned. */
+function cardChange(delta: KpiDelta | undefined) {
+  if (!delta) return undefined;
+  if (delta.short) return { display: delta.short, tone: delta.tone };
+  return { display: delta.direction === "flat" ? "No change" : EMPTY_VALUE, tone: null };
+}
+
+/** A creative's first spend in words, the same on its card and in the table; null with no spend. */
+function firstSpendLabel(first: FirstSpend | null): string | null {
+  if (!first) return null;
+  if (first.when === "older") return "Running for over a year";
+  return `${first.when === "launched" ? "Launched" : "Running since"} ${formatDate(first.date)}`;
+}
+
 function CreativesView({
   data,
+  plan,
   currency,
   timeZone,
   view,
@@ -345,49 +461,93 @@ function CreativesView({
   scopeFilters: Record<string, string | null>;
   comparison?: boolean;
   data: CreativesData;
+  plan?: ComparisonPlan;
   currency: string | null;
   timeZone: string;
   view: "delivery" | "returns" | "table";
 }) {
-  return (
-    <div className="flex flex-col gap-3">
-      {view === "table" ? (
+  const money = (value: string | number | null) => formatMoney(value, currency);
+  const changes = plan ? slotChanges(plan, data.coverage) : null;
+  /** The list for one comparison slot (null: no comparison); both slots render and the active one shows. */
+  const list = (slot: 0 | 1 | null) => {
+    const baseline = slot === null ? undefined : plan?.slots[slot];
+    const shown = slot !== null && Boolean(changes?.[slot].show && baseline?.range) ? slot : null;
+    const versus = shown !== null && baseline ? `vs ${baseline.short}` : null;
+    if (view === "table")
+      return (
         <DataTable
           caption="Creative performance"
           truncated={data.truncated}
           columns={[
             { key: "name", header: "Creative" },
             { key: "channel", header: "Ad platform" },
+            { key: "format", header: "Format" },
+            { key: "first", header: "Started", nowrap: true },
             { key: "spend", header: "Spend", align: "right" },
+            ...(versus ? [{ key: "spendChange", header: `Spend ${versus}`, align: "right" as const }] : []),
             { key: "revenue", header: "Platform revenue", align: "right" },
             { key: "conversions", header: "Conversions", align: "right" },
             { key: "roas", header: "Platform ROAS", align: "right" },
+            ...(versus ? [{ key: "roasChange", header: `ROAS ${versus}`, align: "right" as const }] : []),
             { key: "cpo", header: "Cost / conversion", align: "right" },
+            ...(versus ? [{ key: "cpoChange", header: `Cost / conversion ${versus}`, align: "right" as const }] : []),
+            { key: "ctr", header: "CTR", align: "right" },
           ]}
-          rows={data.creatives.map((c) => ({
-            id: JSON.stringify([c.channel, c.creativeId]),
-            cells: {
-              name: { display: c.title ?? c.creativeId },
-              channel: { display: adPlatformLabel(c.channel) },
-              spend: { display: formatMoney(c.spend, currency), sort: decimalToNumber(c.spend) },
-              revenue: { display: formatMoney(c.revenue, currency), sort: c.revenue },
-              conversions: { display: formatAttributedConversions(c.conversions), sort: c.conversions },
-              roas: { display: formatMultiple(c.roas), sort: c.roas },
-              cpo: { display: formatMoney(c.cpo, currency), sort: c.cpo },
-            },
-          }))}
+          rows={data.creatives.map((c) => {
+            const change = <M extends Measure>(measure: M, format: (value: Creative[M]) => string) => {
+              const delta = creativeChange(c, shown, measure, format);
+              return delta ? changeCell(delta) : { display: "" };
+            };
+            return {
+              id: JSON.stringify([c.channel, c.creativeId]),
+              cells: {
+                name: { display: c.title ?? c.name ?? c.creativeId },
+                channel: { display: adPlatformLabel(c.channel) },
+                format: { display: creativeFormatLabel(c.format) },
+                // An older creative sorts before every dated one.
+                first: {
+                  display: firstSpendLabel(c.firstSpend) ?? EMPTY_VALUE,
+                  sort: c.firstSpend === null ? null : c.firstSpend.when === "older" ? "" : c.firstSpend.date,
+                },
+                spend: { display: money(c.spend), sort: decimalToNumber(c.spend) },
+                spendChange: change("spend", money),
+                revenue: { display: money(c.revenue), sort: c.revenue },
+                conversions: { display: formatAttributedConversions(c.conversions), sort: c.conversions },
+                roas: { display: formatMultiple(c.roas), sort: c.roas },
+                roasChange: change("roas", formatMultiple),
+                cpo: { display: money(c.cpo), sort: c.cpo },
+                cpoChange: change("cpo", money),
+                ctr: { display: formatPercent(c.ctr), sort: c.ctr },
+              },
+            };
+          })}
         />
-      ) : (
-        <CardGrid
-          label={comparison ? "Selected creatives" : "Ad creatives"}
-          cards={data.creatives.map((creative) => ({
+      );
+    const grid = (
+      <CardGrid
+        label={comparison ? "Selected creatives" : "Ad creatives"}
+        cards={data.creatives.map((creative) => {
+          const metric = <M extends Measure>(
+            label: string,
+            measure: M,
+            display: string,
+            format: (value: Creative[M]) => string,
+          ) => ({
+            label,
+            display,
+            change: cardChange(creativeChange(creative, shown, measure, format)),
+          });
+          return {
             id: JSON.stringify([creative.channel, creative.creativeId]),
-            title: creative.title ?? creative.body ?? `Creative ${creative.creativeId}`,
-            body:
-              [creative.body, creative.callToAction ? `Call to action: ${humanize(creative.callToAction)}` : null]
-                .filter(Boolean)
-                .join(" · ") || null,
+            title: creative.title ?? creative.name ?? creative.body ?? `Creative ${creative.creativeId}`,
+            body: creative.body,
+            callToAction: creative.callToAction ? humanize(creative.callToAction) : undefined,
             badge: adPlatformLabel(creative.channel),
+            tags: [
+              ...(creative.format ? [{ label: creativeFormatLabel(creative.format) }] : []),
+              ...(creative.firstSpend?.when === "launched" ? [{ label: "New", highlight: true }] : []),
+            ],
+            caption: firstSpendLabel(creative.firstSpend) ?? undefined,
             imageUrl: creative.imageUrl,
             footer: (() => {
               const identity: CreativeIdentity = [creative.channel, creative.creativeId];
@@ -411,34 +571,50 @@ function CreativesView({
             metrics:
               view === "returns"
                 ? [
-                    {
-                      label: "Spend",
-                      display: formatMoney(creative.spend, currency),
-                    },
-                    { label: "Platform ROAS", display: formatMultiple(creative.roas) },
-                    { label: "Cost / conversion", display: formatMoney(creative.cpo, currency) },
-                    { label: "Conversions", display: formatAttributedConversions(creative.conversions) },
+                    metric("Spend", "spend", money(creative.spend), money),
+                    metric("Platform ROAS", "roas", formatMultiple(creative.roas), formatMultiple),
+                    metric("Cost / conversion", "cpo", money(creative.cpo), money),
+                    metric(
+                      "Conversions",
+                      "conversions",
+                      formatAttributedConversions(creative.conversions),
+                      formatAttributedConversions,
+                    ),
                     // A side-by-side comparison keeps every measure; a browsing card keeps the four that decide.
                     ...(comparison
                       ? [
-                          { label: "Platform revenue", display: formatMoney(creative.revenue, currency) },
+                          metric("Platform revenue", "revenue", money(creative.revenue), money),
                           { label: "Impressions", display: formatCount(creative.impressions) },
-                          { label: "CTR", display: formatPercent(creative.ctr) },
+                          metric("CTR", "ctr", formatPercent(creative.ctr), formatPercent),
                         ]
                       : []),
                   ]
                 : [
-                    {
-                      label: "Spend",
-                      display: formatMoney(creative.spend, currency),
-                    },
+                    metric("Spend", "spend", money(creative.spend), money),
                     { label: "Impressions", display: formatCount(creative.impressions) },
-                    { label: "CTR", display: formatPercent(creative.ctr) },
-                    { label: "Conversions", display: formatAttributedConversions(creative.conversions) },
+                    metric("CTR", "ctr", formatPercent(creative.ctr), formatPercent),
+                    metric(
+                      "Conversions",
+                      "conversions",
+                      formatAttributedConversions(creative.conversions),
+                      formatAttributedConversions,
+                    ),
                   ],
-          }))}
-        />
-      )}
+          };
+        })}
+      />
+    );
+    if (!versus) return grid;
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-muted-foreground">Changes compare each creative with itself, {versus}.</p>
+        {grid}
+      </div>
+    );
+  };
+  return (
+    <div className="flex flex-col gap-3">
+      {plan ? <ActiveBaseline a={list(0)} b={list(1)} /> : list(null)}
       {data.truncated && view !== "table" && (
         <p className="text-sm text-muted-foreground">
           Showing the top {data.creatives.length} creatives; more ran in these dates.
@@ -451,6 +627,12 @@ function CreativesView({
             overlap across ad platforms. ROAS is revenue / spend; cost per conversion is spend / conversions. Both use
             period totals. Compare spend and conversion volume before interpreting a high return. Platform-reported
             conversions can be fractional; attribution models, windows and conversion-event settings are unverified.
+          </p>
+          <p>
+            Each change compares a creative with its own delivery in the comparison period, and shows a dash when it had
+            none then. &ldquo;New&rdquo; marks a creative whose first spend falls in these dates: its first day with
+            spend on this ad platform, on any campaign, looking back {LAUNCH_LOOKBACK_DAYS} days before them. Formats
+            are the ad platform&apos;s, as SourceMedium classifies them.
           </p>
           <MetricDefinition binding={creativeBinding("roas")} scope={{ filters: scopeFilters, currency, timeZone }} />
         </div>

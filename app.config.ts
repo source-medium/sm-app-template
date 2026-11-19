@@ -77,6 +77,7 @@ export const appConfig = {
     {
       group: "Marketing",
       href: "/creatives",
+      comparisons: true,
       label: "Creatives",
       icon: ImageIcon,
       metrics: [

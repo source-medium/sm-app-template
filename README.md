@@ -23,8 +23,8 @@ SourceMedium's demo warehouse. No sign-in required._
 
 ## What you get
 
-- **Reports that lead with the answer.** Four primary metrics, a one-sentence
-  readout of what moved, one large trend you switch without a new query, and
+- **Reports that lead with the numbers.** Four primary metrics against the
+  periods you compare, one large trend you switch without a new query, and
   the biggest changes by sales channel, all on one screen.
 - **Sales by geography.** Valid-order revenue by shipping country and U.S.
   state on bundled, public-domain maps. No tiles, no map API keys, no
@@ -38,9 +38,10 @@ SourceMedium's demo warehouse. No sign-in required._
 - **Honest data status.** One quiet line under the filters says what the
   warehouse actually published, with the evidence a click away, and never
   infers "all current" from a recent record date.
-- **Side-by-side creatives.** Compare two to four creatives at identical
-  scope, with minimum-spend and minimum-conversion thresholds applied after
-  aggregation.
+- **Creative analytics.** Every ad platform's creatives with thumbnails,
+  format and first spend, each compared with itself in the comparison period;
+  how concentrated spend is, what new creatives took, and how each format
+  returned. Compare two to four creatives side by side at identical scope.
 - **Explore your data.** Every published metric in one searchable list,
   grouped by SourceMedium's categories, with a plain-English drawer, a link to
   the report that shows it, and a hand-off to the coding-agent composer; field

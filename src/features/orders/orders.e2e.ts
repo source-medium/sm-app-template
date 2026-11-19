@@ -103,11 +103,11 @@ test("orders: agent prompts identify omitted search text without copying it", as
 
 test("orders: attribution evidence is opt-in, safe and keyboard accessible", async ({ page }) => {
   await page.goto("/orders?store=sample-store-a&from=2026-09-01&to=2026-09-28");
+  // A paid social order in the fixtures, so it carries UTM traffic evidence.
   await page
     .getByRole("table", { name: "Orders, newest first" })
     .getByRole("row")
-    .filter({ hasText: "Paid Social" })
-    .first()
+    .filter({ hasText: "#50054" })
     .getByRole("link")
     .click();
   const drawer = page.getByRole("dialog", { name: "Order details" });

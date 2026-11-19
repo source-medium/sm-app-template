@@ -11,7 +11,6 @@ export const ACQUISITION_DIMENSIONS = [
   { value: "source/medium", label: "First-order source / medium" },
   { value: "campaign", label: "First-order campaign" },
   { value: "zero_party_attribution", label: "First-order survey attribution" },
-  { value: "sub_channel", label: "First-order sub-channel" },
 ] as const;
 export type AcquisitionDimension = (typeof ACQUISITION_DIMENSIONS)[number]["value"];
 /** `chartLabel` names the measure in a curve's title menu. */

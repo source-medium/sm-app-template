@@ -3,11 +3,11 @@ import { expect, it } from "vitest";
 import { OverviewPurchases } from "./purchases";
 import { formatMoney, EMPTY_VALUE } from "@/lib/format";
 
-it("uses each group's own order measure for its ratio, including fractional counts", () => {
+it("uses each group's own order count for its ratio", () => {
   render(
     <OverviewPurchases
       current={{
-        first: { netRevenue: "150", orders: 1.5 },
+        first: { netRevenue: "300", orders: 3 },
         repeat: { netRevenue: "240", orders: 2 },
       }}
       previous={null}

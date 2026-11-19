@@ -12,7 +12,6 @@ const SAMPLE_SEGMENTS: Record<string, string[]> = {
   "source/medium": ["google / cpc", "direct / none"],
   campaign: ["Prospecting", "Brand search"],
   zero_party_attribution: ["Search", "Friend referral"],
-  sub_channel: ["Web", "Mobile app"],
 };
 
 export function sampleRetentionSegments(filters: RetentionSegmentFilters) {

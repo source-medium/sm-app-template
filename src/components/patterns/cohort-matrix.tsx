@@ -7,9 +7,12 @@ export type CohortCell = {
   intensity: number | null;
   state: "value" | "missing" | "immature";
 };
-const SHADES = ["bg-primary/5", "bg-primary/10", "bg-primary/15", "bg-primary/20", "bg-primary/25"] as const;
-
-/** Accessible presentation only. The feature supplies age eligibility, values, labels and color scale. */
+/**
+ * Accessible presentation only. The feature supplies age eligibility, values,
+ * labels and each cell's intensity, or null for a cell it leaves unshaded.
+ * Shades run continuously from the lowest to the highest intensity, so equal
+ * values match and the order of shades is the order of values.
+ */
 export function CohortMatrix({
   caption,
   columns,
@@ -19,6 +22,16 @@ export function CohortMatrix({
   columns: string[];
   rows: { id: string; label: string; size: string; cells: CohortCell[] }[];
 }) {
+  const intensities = rows.flatMap((row) =>
+    row.cells.flatMap((cell) => (cell.state === "value" && cell.intensity !== null ? [cell.intensity] : [])),
+  );
+  const lowest = Math.min(...intensities);
+  const highest = Math.max(...intensities);
+  /** The cell's place from the lowest (0) to the highest (1) intensity, or none for a cell without one. */
+  const shade = (cell: CohortCell) => {
+    if (cell.state !== "value" || cell.intensity === null) return undefined;
+    return highest > lowest ? Math.round(((cell.intensity - lowest) / (highest - lowest)) * 100) / 100 : 1;
+  };
   return (
     <Table
       data-agent-target={caption}
@@ -45,24 +58,33 @@ export function CohortMatrix({
               {row.label}
             </TableHead>
             <TableCell className="text-right tabular-nums">{row.size}</TableCell>
-            {row.cells.map((cell, index) => (
-              <TableCell
-                key={columns[index]}
-                title={cell.description}
-                aria-label={`${row.label}, ${columns[index]}: ${cell.description}`}
-                data-state={cell.state}
-                className={cn(
-                  "min-w-16 px-2 text-right tabular-nums",
-                  cell.state === "immature" && "bg-muted/30 text-muted-foreground",
-                  cell.state === "missing" && "text-muted-foreground",
-                  cell.state === "value" &&
-                    cell.intensity !== null &&
-                    SHADES[Math.min(4, Math.max(0, Math.floor(cell.intensity * 5)))],
-                )}
-              >
-                {cell.display}
-              </TableCell>
-            ))}
+            {row.cells.map((cell, index) => {
+              const position = shade(cell);
+              return (
+                <TableCell
+                  key={columns[index]}
+                  title={cell.description}
+                  aria-label={`${row.label}, ${columns[index]}: ${cell.description}`}
+                  data-state={cell.state}
+                  data-shade={position}
+                  style={
+                    position === undefined
+                      ? undefined
+                      : {
+                          // The theme sets the lightest and darkest shares (tokens.css); each cell sits between them by value.
+                          backgroundColor: `color-mix(in oklab, var(--color-primary) calc(var(--cohort-lightest) + ${position} * (var(--cohort-darkest) - var(--cohort-lightest))), transparent)`,
+                        }
+                  }
+                  className={cn(
+                    "min-w-16 px-2 text-right tabular-nums",
+                    cell.state === "immature" && "bg-muted/30 text-muted-foreground",
+                    cell.state === "missing" && "text-muted-foreground",
+                  )}
+                >
+                  {cell.display}
+                </TableCell>
+              );
+            })}
           </TableRow>
         ))}
       </TableBody>

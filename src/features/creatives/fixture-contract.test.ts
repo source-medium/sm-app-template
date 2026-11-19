@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CreativeRow, toCreative, safeAdUrl } from "./rows";
-import { sampleCreatives } from "./sample";
+import { CreativeRow, firstSpend, lookbackStart, toCreative, safeAdUrl } from "./rows";
+import { sampleCreatives as sample, sampleCreativeSummary } from "./sample";
 import { sumDecimals } from "@/lib/data/decimal";
+import type { CreativesFilters } from "./queries";
+import type { BaselineRanges } from "@/lib/comparison";
+
+const sampleCreatives = (filters: CreativesFilters) => sample(filters, [null, null]);
 
 const FILTERS = { storeId: "sample-store-a", range: { from: "2026-09-01", to: "2026-09-28" } };
 
@@ -65,24 +69,37 @@ describe("creatives fixture contract", () => {
   });
 
   it("only renders https or same-origin images; anything else becomes a text card", () => {
+    const period = (prefix: string) => ({
+      [`${prefix}spend`]: "1.5",
+      [`${prefix}impressions`]: "1",
+      [`${prefix}clicks`]: "0",
+      [`${prefix}conversions`]: "0",
+      [`${prefix}ctr`]: "0",
+      [`${prefix}revenue`]: "0",
+      [`${prefix}roas`]: "0",
+      [`${prefix}cpo`]: null,
+    });
     const base = {
       creative_id: "c1",
-      spend: "1.5",
       title: "t",
       body: "b",
+      name: null,
       thumbnail_url: null,
       call_to_action: null,
       channel: "meta_ads",
-      impressions: "1",
-      clicks: "0",
-      conversions: "0",
-      ctr: "0",
-      revenue: "0",
-      roas: "0",
-      cpo: null,
+      format: "image",
+      post_url: null,
       ad_url: null,
+      first_date: null,
+      ...period(""),
+      ...period("previous_"),
+      ...period("second_"),
+      latest_date: null,
+      previous_latest_date: null,
+      second_latest_date: null,
     };
-    const urlFor = (image: string | null) => toCreative(CreativeRow.parse({ ...base, image_url: image })).imageUrl;
+    const urlFor = (image: string | null) =>
+      toCreative(CreativeRow.parse({ ...base, image_url: image }), FILTERS.range).imageUrl;
     expect(urlFor("https://scontent.xx.fbcdn.net/v/t45/abc.jpg?stp=dst")).toBe(
       "https://scontent.xx.fbcdn.net/v/t45/abc.jpg?stp=dst",
     );
@@ -100,4 +117,87 @@ it("filters ad platforms before sorting and does not silently substitute unknown
   expect(google.creatives.length).toBeGreaterThan(0);
   expect(google.creatives.every((row) => row.channel === "google_ads")).toBe(true);
   expect((await sampleCreatives({ ...FILTERS, sort: "ctr", channel: "unknown" })).creatives).toEqual([]);
+});
+
+describe("creative comparisons, launches and summary", () => {
+  const RANGE = { from: "2026-09-29", to: "2026-10-26" };
+  const PREVIOUS = { from: "2026-09-01", to: "2026-09-28" };
+  const scope = { storeId: "sample-store-a", range: RANGE, sort: "spend" as const };
+
+  it("reads a creative's comparison values as its own delivery in the comparison dates", async () => {
+    const compared = await sample(scope, [PREVIOUS, null]);
+    const earlier = await sample({ ...scope, range: PREVIOUS }, [null, null]);
+    for (const creative of compared.creatives) {
+      const before = earlier.creatives.find((row) => row.creativeId === creative.creativeId);
+      expect(creative.baselines[0].spend).toBe(before?.spend ?? null);
+      expect(creative.baselines[1].spend).toBeNull();
+    }
+    expect(compared.coverage).toEqual({
+      latest_date: RANGE.to,
+      previous_latest_date: PREVIOUS.to,
+      second_latest_date: null,
+    });
+  });
+
+  it("marks creatives whose first spend falls in the range as new, and evergreen ones as running before", async () => {
+    const { creatives } = await sample(scope, [null, null]);
+    const launched = creatives.filter((creative) => creative.firstSpend?.when === "launched");
+    expect(launched.length).toBeGreaterThan(0);
+    for (const { firstSpend: first } of launched)
+      expect(first?.when === "launched" && first.date >= RANGE.from).toBe(true);
+    // Already spending on the lookback's first day: older than the lookback, never a dated launch.
+    const tote = creatives.find((creative) => creative.creativeId === "crv-01");
+    expect(tote?.firstSpend).toEqual({ when: "older" });
+  });
+
+  it("totals every creative in scope, not just the listed ones, and splits them by format and launch", async () => {
+    const summary = await sampleCreativeSummary(scope, [PREVIOUS, null]);
+    const { creatives } = await sample(scope, [PREVIOUS, null]);
+    expect(summary.totals?.current.spend).toBe(sumDecimals(creatives.map((creative) => creative.spend)));
+    expect(summary.totals?.current.creatives).toBe(BigInt(creatives.length));
+    expect(sumDecimals(summary.formats.map((row) => row.current.spend))).toBe(summary.totals?.current.spend);
+    expect(sumDecimals(summary.launches.map((row) => row.spend))).toBe(summary.totals?.current.spend);
+    expect(summary.newCreatives).toBe(
+      BigInt(creatives.filter((creative) => creative.firstSpend?.when === "launched").length),
+    );
+    // Minimums shape the list only.
+    expect(await sampleCreativeSummary({ ...scope, minimumSpend: "999999" }, [PREVIOUS, null])).toEqual(summary);
+  });
+
+  it("scopes the whole report to one format", async () => {
+    const videos = await sample({ ...scope, format: "video" }, [null, null]);
+    expect(videos.creatives.length).toBeGreaterThan(0);
+    expect(videos.creatives.every((creative) => creative.format === "video")).toBe(true);
+    const summary = await sampleCreativeSummary({ ...scope, format: "video" }, [null, null]);
+    expect(summary.formats.map((row) => row.format)).toEqual(["video"]);
+    expect(summary.totals?.current.spend).toBe(sumDecimals(videos.creatives.map((creative) => creative.spend)));
+  });
+});
+
+it("reads a first spend as launched in the range, running since a day in the lookback, or older than it", () => {
+  const from = "2026-09-01";
+  expect(lookbackStart(from)).toBe("2025-09-01");
+  expect(firstSpend(null, from)).toBeNull();
+  expect(firstSpend(from, from)).toEqual({ when: "launched", date: from });
+  expect(firstSpend("2026-08-31", from)).toEqual({ when: "running", date: "2026-08-31" });
+  expect(firstSpend("2025-09-02", from)).toEqual({ when: "running", date: "2025-09-02" });
+  expect(firstSpend("2025-09-01", from)).toEqual({ when: "older" });
+});
+
+it("judges a selection's coverage against every creative in scope, as the list does", async () => {
+  const filters = { ...FILTERS, sort: "spend" as const };
+  const baselines: BaselineRanges = [{ from: "2026-08-04", to: "2026-08-31" }, null];
+  const list = await sample(filters, baselines);
+  // The earliest-started flight still running ends before the range does, so its own days stop early.
+  const [ending] = list.creatives
+    .flatMap((creative) =>
+      creative.firstSpend?.when === "running" ? [{ creative, date: creative.firstSpend.date }] : [],
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if (!ending) throw new Error("The sample needs a flight that ends inside the range");
+  const picked: [string, string][] = [[ending.creative.channel, ending.creative.creativeId]];
+  const selected = await sample({ ...filters, selection: picked }, baselines);
+  expect(selected.creatives.map((creative) => creative.creativeId)).toEqual([ending.creative.creativeId]);
+  expect(list.coverage?.latest_date).toBe(FILTERS.range.to);
+  expect(selected.coverage).toEqual(list.coverage);
 });

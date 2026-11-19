@@ -5,6 +5,7 @@ import { isValidSalesChannel } from "@/lib/sales-channels";
 import { isSummaryOrderMeasure } from "@/lib/summary-measures";
 import { randomInt, seededRandom } from "./random";
 import { SAMPLE_STORE_SCALE, SAMPLE_STORES } from "./stores";
+import { samplePaidSource } from "./ad-delivery";
 
 export type SummarySourceRow = {
   sm_store_id: string;
@@ -101,6 +102,9 @@ export function sampleSummarySource(storeId: string, range: DateRange, today?: s
   const scale = SAMPLE_STORE_SCALE.get(storeId);
   if (!store || scale === undefined) return [];
   const cutoff = today ?? calendarDate(new Date(), store.timeZone);
+  const adSpend = new Map<string, bigint>();
+  for (const row of samplePaidSource(storeId, range))
+    adSpend.set(row.date, (adSpend.get(row.date) ?? 0n) + row.spendCents);
   const rows: SummarySourceRow[] = [];
   for (const date of datesInRange(range)) {
     const day = seededRandom(`overview|${storeId}|${date}`);
@@ -110,6 +114,7 @@ export function sampleSummarySource(storeId: string, range: DateRange, today?: s
     const weekly = weekday === 0 || weekday === 6 ? 0.82 : 1.06;
     const dailyOrders = 140 * scale * weekly * (0.85 + day() * 0.3);
 
+    const firstOfDay = rows.length;
     for (const source of SOURCES) {
       const base = { sm_store_id: storeId, sm_channel: source.channel, sm_sub_channel: source.subChannel, date };
       if (date > cutoff) {
@@ -132,11 +137,7 @@ export function sampleSummarySource(storeId: string, range: DateRange, today?: s
       }
       const valid = isValidSalesChannel(source.channel);
       const random = seededRandom(`overview|${storeId}|${date}|${source.subChannel}`);
-      // Marketplace orders arrive split across attribution, so the measure can be fractional.
-      const orders =
-        source.channel === "amazon"
-          ? Math.round(dailyOrders * source.share * 2) / 2
-          : Math.round(dailyOrders * source.share);
+      const orders = Math.round(dailyOrders * source.share);
       const clicks =
         source.clicksPerOrder === 0 ? 0 : randomInt(random, 0, 9) + Math.round(orders * source.clicksPerOrder);
       const row = {
@@ -162,6 +163,28 @@ export function sampleSummarySource(storeId: string, range: DateRange, today?: s
         repeat_customer_order_count: valid ? orders - firstOrders : 0,
       });
     }
+    if (date <= cutoff) splitAdSpend(rows.slice(firstOfDay), adSpend.get(date) ?? 0n);
   }
   return rows;
+}
+
+/**
+ * The day's ad spend is the sample ad delivery's (Paid marketing's total), so
+ * the two views agree. It splits across the sources that buy traffic in
+ * proportion to the spend their clicks imply, exactly to the cent.
+ */
+function splitAdSpend(day: SummarySourceRow[], total: bigint) {
+  const buyers = day.filter((row) => row.ad_spend_cents > 0n);
+  const weight = buyers.reduce((sum, row) => sum + row.ad_spend_cents, 0n);
+  if (weight === 0n) {
+    const buyer = day.find((row) => SOURCES.some((s) => s.subChannel === row.sm_sub_channel && s.centsPerClick > 0));
+    if (buyer) buyer.ad_spend_cents = total;
+    return;
+  }
+  let left = total;
+  buyers.forEach((row, index) => {
+    const share = index === buyers.length - 1 ? left : (total * row.ad_spend_cents) / weight;
+    row.ad_spend_cents = share;
+    left -= share;
+  });
 }

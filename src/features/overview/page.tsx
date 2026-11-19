@@ -36,7 +36,6 @@ import { OverviewPurchases } from "./purchases";
 import { OverviewHighlights } from "./highlights";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { overviewTrends, SPARKLINE_DAILY_DAYS, sparklineValues, TREND_MODES } from "./trends";
-import { overviewHeadline } from "./headline";
 import { ReportControls } from "@/components/shell/report-controls";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -249,7 +248,7 @@ function OverviewView({
       key: "orders",
       label: "Orders",
       description:
-        "Published order counts on the valid sales channels within the selected scope. Draft, exchanged and excluded rows are not sales, and this published measure can include fractional attribution and differ from the number of valid orders.",
+        "Published order counts on the valid sales channels within the selected scope. Draft, exchanged and excluded rows are not sales.",
     },
     {
       key: "average",
@@ -278,9 +277,9 @@ function OverviewView({
   ];
 
   /**
-   * Everything that reads one comparison slot: the headline, the chart
-   * overlay, the biggest changes and the detail tables. Both slots are
-   * rendered and the caption's switch shows one, so switching makes no request.
+   * Everything that reads one comparison slot: the chart overlay, the biggest
+   * changes and the detail tables. Both slots are rendered and the caption's
+   * switch shows one, so switching makes no request.
    */
   const slotView = (slot: 0 | 1) => {
     const baseline = plan?.slots[slot];
@@ -297,7 +296,6 @@ function OverviewView({
       currency,
       showLines && baseline && compared ? { period: baseline, days: compared.days } : undefined,
     );
-    const headline = overviewHeadline(slice, filters, baseline, currency);
     return {
       note:
         showDelta &&
@@ -307,15 +305,6 @@ function OverviewView({
             Some dates have no rows. Compare period totals with care; missing days are not zeros.
           </p>
         ) : null,
-      headline: headline ? (
-        <p
-          data-agent-target="Summary"
-          data-agent-component="Headline"
-          className="max-w-prose font-display text-lg leading-snug text-balance sm:text-xl"
-        >
-          {headline}
-        </p>
-      ) : null,
       charts: (
         <OverviewTrendSelector
           param="metric"
@@ -371,33 +360,7 @@ function OverviewView({
 
   return (
     <div className="flex flex-col gap-6">
-      {pick("headline")}
-      <section aria-label="Period totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {cards
-          .filter((card) => ["revenue", "orders", "spend", "mer"].includes(card.key))
-          .map((card) => {
-            const current = currentMeasures[card.key];
-            return (
-              <KpiCard
-                key={card.key}
-                label={card.label}
-                description={card.description}
-                binding={overviewBindings.find((binding) => binding.id === card.key)}
-                scope={scope}
-                value={compactHeadline(
-                  current.amount,
-                  current.display,
-                  overviewBindings.find((binding) => binding.id === card.key)?.format ?? "number",
-                  currency,
-                )}
-                fullValue={current.display}
-                trend={trend(card.key)}
-                deltas={deltas(card.key)}
-              />
-            );
-          })}
-      </section>
-      {/* The switch scopes what follows; the KPI cards above show both comparisons. */}
+      {/* The switch picks the comparison every chart and table uses, KPI sparklines included; KPI cards show both changes as numbers. */}
       {plan && (
         <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)}>
           <p>
@@ -425,6 +388,31 @@ function OverviewView({
           )}
         </ComparisonCaption>
       )}
+      <section aria-label="Period totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {cards
+          .filter((card) => ["revenue", "orders", "spend", "mer"].includes(card.key))
+          .map((card) => {
+            const current = currentMeasures[card.key];
+            return (
+              <KpiCard
+                key={card.key}
+                label={card.label}
+                description={card.description}
+                binding={overviewBindings.find((binding) => binding.id === card.key)}
+                scope={scope}
+                value={compactHeadline(
+                  current.amount,
+                  current.display,
+                  overviewBindings.find((binding) => binding.id === card.key)?.format ?? "number",
+                  currency,
+                )}
+                fullValue={current.display}
+                trend={trend(card.key)}
+                deltas={deltas(card.key)}
+              />
+            );
+          })}
+      </section>
       {pick("note")}
       {report.baselines.map((entry, index) =>
         entry?.error ? (

@@ -1,11 +1,11 @@
+import { PlanSwitch } from "@/components/patterns/comparison-caption";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
-import { ComparisonCaption } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { slotChanges, type ComparisonPlan } from "@/lib/comparison";
 import { changeCell, kpiDelta } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
-import { formatMoney, formatMoneyIn } from "@/lib/format";
+import { formatMoneyIn, moneyAxis } from "@/lib/format";
 import { withParams, type SearchParams } from "@/lib/filters";
 import { adPlatformLabel } from "@/lib/ad-platforms";
 import { BREAKDOWN_DIMENSIONS, type BreakdownDimension } from "./filters";
@@ -30,16 +30,18 @@ export function SpendBreakdownView({
   const first = data.rows[0];
   const total = first?.total_spend ?? null;
   const changes = plan ? slotChanges(plan, first) : null;
-  const title = BREAKDOWN_DIMENSIONS.find((item) => item.value === dimension)?.label.toLowerCase();
+  const label = BREAKDOWN_DIMENSIONS.find((item) => item.value === dimension)?.label ?? dimension;
   /** The ranking for one comparison slot; both are rendered and the active one shows. */
   const ranking = (slot: 0 | 1) => {
     const baseline = plan?.slots[slot];
     const compare = Boolean(changes?.[slot].show && baseline?.range);
     return (
       <RankedBreakdown
-        title={`Spend by ${title}`}
+        title={`Spend by ${label.toLowerCase()}`}
+        categoryLabel={label}
         valueLabel="Spend"
-        description={`${formatMoney(total, currency)} in the selected period.${data.hasMore ? " Top 10 by spend." : ""}`}
+        valueFormat={moneyAxis(currency)}
+        description={data.hasMore ? "Top 10 by spend." : "Ranked by spend."}
         comparisonLabel={compare && baseline ? `Change vs ${baseline.short}` : undefined}
         hasMore={data.hasMore}
         rows={data.rows.map((row) => ({
@@ -66,7 +68,7 @@ export function SpendBreakdownView({
   };
   return (
     <div className="flex flex-col gap-3">
-      {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
+      {plan && <PlanSwitch plan={plan} />}
       {(dimension === "type" || dimension === "tactic") && (
         <p className="text-sm text-muted-foreground">
           Published campaign classifications. Unclassified rows appear as (none); types and tactics are not inferred

@@ -8,7 +8,8 @@ import { STORE_SWITCHER_SLOT } from "@/lib/store-navigation";
 export function TopBar({ mode, viewer }: { mode: "sample" | "live"; viewer: Viewer }) {
   const info = instanceInfo();
   const config = readConfig();
-  const probe = config.status === "ok" && config.mode === "managed" && config.hosted.authMethod === "probe";
+  const hosted = config.status === "ok" && config.mode === "managed";
+  const probe = hosted && config.hosted.authMethod === "probe";
   return (
     <header className="sticky top-0 z-20 flex min-h-14 flex-wrap items-center gap-x-2 border-b bg-background/90 px-2 py-1 backdrop-blur sm:gap-3 sm:px-4 lg:h-14 lg:flex-nowrap lg:py-0">
       <SidebarTrigger aria-label="Toggle navigation" />
@@ -27,7 +28,8 @@ export function TopBar({ mode, viewer }: { mode: "sample" | "live"; viewer: View
         <AgentPrompt
           mode={mode}
           build={buildId()}
-          hosting={config.status === "ok" && config.mode === "managed" ? "sourcemedium" : undefined}
+          hosting={hosted ? "sourcemedium" : undefined}
+          codeSource={hosted ? config.hosted.codeSource : undefined}
         />
         <ModeChip mode={mode} />
         {(probe || info.environment === "Staging") && (

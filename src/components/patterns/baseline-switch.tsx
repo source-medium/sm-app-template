@@ -53,9 +53,10 @@ export function BaselineSwitch({ labels, available }: { labels: [string, string]
   if (!context || available.filter(Boolean).length < 2) return null;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {/* KPI cards show both comparisons; this picks the one the charts and tables use. */}
-      <span aria-hidden className="text-sm text-muted-foreground">
-        Compared with
+      {/* KPI cards show both comparisons as numbers; this picks the one every chart and table draws. */}
+      {/* On a phone the label wraps beside the switch rather than taking a row of its own. */}
+      <span aria-hidden className="text-sm text-muted-foreground max-sm:max-w-24">
+        Charts and tables vs
       </span>
       <div
         role="group"
@@ -74,7 +75,7 @@ export function BaselineSwitch({ labels, available }: { labels: [string, string]
               disabled={!available[slot]}
               inert={!hydrated}
               onClick={() => context.choose(slot)}
-              className="px-2.5 aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-card"
+              className="px-2.5 text-muted-foreground aria-pressed:bg-segment aria-pressed:text-foreground aria-pressed:shadow-card aria-pressed:ring-1 aria-pressed:ring-border"
             >
               {label}
             </Button>

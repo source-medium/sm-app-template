@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { goLive, rowsResponse } from "../../../tests/helpers/live";
-import { samplePaidSource, sampleSpendBreakdown } from "./sample";
+import { samplePaidSource } from "@/lib/sample/ad-delivery";
+import { sampleSpendBreakdown } from "./sample";
 import { sumDecimals } from "@/lib/data/decimal";
 
 const filters = { storeId: "sample-store-a", range: { from: "2026-09-01", to: "2026-09-07" }, channel: null };

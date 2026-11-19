@@ -3,7 +3,10 @@ import { COHORT_MONTHS, type CohortWindow, type RetentionMetric } from "./filter
 import { retentionMatrix } from "./matrix";
 import type { RetentionRowData } from "./rows";
 
-/** Curves and the matrix share values, denominators, age eligibility and missing-value handling. */
+/**
+ * Curves and the matrix share values, denominators, age eligibility and missing-value handling.
+ * A curve needs two elapsed ages, so the window counts only cohorts past their first month; the matrix keeps them all.
+ */
 export function retentionChart(
   rows: RetentionRowData[],
   channel: string,
@@ -12,10 +15,9 @@ export function retentionChart(
   window: CohortWindow,
   currency: string | null,
 ) {
-  const cohorts = retentionMatrix(rows, channel, metric, asOf, currency).slice(
-    window === "recent" ? -6 : 0,
-    window === "recent" ? undefined : 6,
-  );
+  const cohorts = retentionMatrix(rows, channel, metric, asOf, currency)
+    .filter((cohort) => cohort.cells.filter((cell) => cell.state !== "immature").length >= 2)
+    .slice(window === "recent" ? -6 : 0, window === "recent" ? undefined : 6);
   const series = cohorts.map((cohort, index) => ({
     key: `cohort_${index}`,
     label: cohort.label,

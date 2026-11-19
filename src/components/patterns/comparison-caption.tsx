@@ -35,12 +35,7 @@ export function ComparisonCaption({
   return (
     <div className="flex flex-col gap-2" data-slot="comparison-caption">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        {switchable && (
-          <BaselineSwitch
-            labels={[switchLabel(plan.slots[0]), switchLabel(plan.slots[1])]}
-            available={[plan.slots[0].range !== null, plan.slots[1].range !== null]}
-          />
-        )}
+        {switchable && <PlanSwitch plan={plan} />}
         <Disclosure
           aria-label="Comparison periods"
           summary="Comparison dates"
@@ -65,6 +60,16 @@ export function ComparisonCaption({
         )
       )}
     </div>
+  );
+}
+
+/** The switch between the plan's two comparisons, for a section whose dates the caption above already gives. */
+export function PlanSwitch({ plan }: { plan: ComparisonPlan }) {
+  return (
+    <BaselineSwitch
+      labels={[switchLabel(plan.slots[0]), switchLabel(plan.slots[1])]}
+      available={[plan.slots[0].range !== null, plan.slots[1].range !== null]}
+    />
   );
 }
 
