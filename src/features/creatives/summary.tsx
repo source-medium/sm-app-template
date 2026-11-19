@@ -13,7 +13,7 @@ import { DataTable } from "@/components/patterns/data-table";
 import { SectionHeader } from "@/components/patterns/section-header";
 import { changeCell, kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
 import { slotChanges, type ComparisonPlan, type Polarity } from "@/lib/comparison";
-import { decimalToNumber, nonnegativeShare, ratio, sumDecimals } from "@/lib/data/decimal";
+import { decimalToNumber, minDecimal, nonnegativeShare, ratio, sumDecimals } from "@/lib/data/decimal";
 import { toChartNumber } from "@/lib/data/decode";
 import { withParams, type DateRange, type SearchParams } from "@/lib/filters";
 import {
@@ -27,9 +27,9 @@ import {
   formatShare,
 } from "@/lib/format";
 import { periodRange } from "@/lib/time-grain";
-import { creativeFormatLabel, type CreativeFormat } from "./filters";
+import { creativeFormatLabel, isCreativeFormat, type CreativeFormat } from "./filters";
 import { CREATIVE_POLARITY } from "./metrics";
-import type { CreativeSummary, CreativeSummaryGroup } from "./queries";
+import type { CreativeLaunch, CreativeSummary, CreativeSummaryGroup } from "./queries";
 
 /** A group's ratios, always of its sums. */
 export function groupRatios(group: CreativeSummaryGroup) {
@@ -51,9 +51,21 @@ function weekLabel(week: DateRange): string {
     : formatDateRange(week);
 }
 
-/** A share of a positive total, or null where it is undefined (a negative member, a zero total). */
-function share(value: string | null, total: string | null, minimum: string | null = "0"): number | null {
-  return nonnegativeShare(value, total, minimum);
+/** Each launch week in date order, then the creatives already running. */
+export function launchOrder(launches: readonly CreativeLaunch[]): CreativeLaunch[] {
+  return [...launches].sort((a, b) =>
+    a.week === b.week ? 0 : a.week === null ? 1 : b.week === null ? -1 : a.week.localeCompare(b.week),
+  );
+}
+
+/** The share of spend on creatives launched in these dates, or null where a share is undefined. */
+export function newCreativeShare(summary: CreativeSummary): number | null {
+  const launched = summary.launches.filter((row) => row.week !== null).map((row) => row.spend);
+  return nonnegativeShare(
+    sumDecimals(launched),
+    summary.totals?.current.spend ?? null,
+    minDecimal(summary.launches.map((row) => row.spend)),
+  );
 }
 
 export function CreativeSummaryView({
@@ -85,10 +97,7 @@ export function CreativeSummaryView({
     better: Polarity,
   ): KpiDelta[] =>
     slotDeltas(plan, changes, (label, slot) => kpiDelta(value(null), value(slot), formatValue, better, label));
-  const newShare = share(
-    sumDecimals(summary.launches.filter((row) => row.week !== null).map((row) => row.spend)),
-    totals.current.spend,
-  );
+  const newShare = newCreativeShare(summary);
   return (
     <div className="flex flex-col gap-6">
       {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
@@ -188,10 +197,9 @@ function FormatMix({
       </p>
     );
   const changes = plan ? slotChanges(plan, summary.coverage) : null;
-  const rows = summary.formats
-    .filter((row) => row.current.spend !== null)
-    .sort((a, b) => (decimalToNumber(b.current.spend) ?? 0) - (decimalToNumber(a.current.spend) ?? 0));
-  const minimum = rows.at(-1)?.current.spend ?? null;
+  // Highest spend first, as the query orders formats.
+  const rows = summary.formats.filter((row) => row.current.spend !== null);
+  const minimum = minDecimal(rows.map((row) => row.current.spend));
   const table = (slot: 0 | 1) => {
     const baseline = plan?.slots[slot];
     const compare = Boolean(changes?.[slot].show && baseline?.range);
@@ -213,13 +221,14 @@ function FormatMix({
         rows={rows.map((row) => {
           const now = groupRatios(row.current);
           const then = groupRatios(row.baselines[slot]);
-          const portion = share(row.current.spend, totals.current.spend, minimum);
+          const portion = nonnegativeShare(row.current.spend, totals.current.spend, minimum);
           return {
             id: row.format ?? "(none)",
             cells: {
               format: {
                 display: creativeFormatLabel(row.format),
-                href: row.format ? withParams(pathname, params, { format: row.format }) : undefined,
+                // Only a format the filter can choose links; any other would reload unfiltered.
+                href: isCreativeFormat(row.format) ? withParams(pathname, params, { format: row.format }) : undefined,
               },
               creatives: {
                 display: formatCount(row.current.creatives),
@@ -276,14 +285,8 @@ function Launches({
   money: (value: string | number | null) => string;
 }) {
   const total = summary.totals?.current.spend ?? null;
-  // Each launch week in date order, then the creatives already running.
-  const rows = [...summary.launches].sort((a, b) =>
-    a.week === b.week ? 0 : a.week === null ? 1 : b.week === null ? -1 : a.week.localeCompare(b.week),
-  );
-  const minimum = rows.reduce<string | null>(
-    (low, row) => (row.spend !== null && (low === null || Number(row.spend) < Number(low)) ? row.spend : low),
-    null,
-  );
+  const rows = launchOrder(summary.launches);
+  const minimum = minDecimal(rows.map((row) => row.spend));
   if (!rows.some((row) => row.week !== null)) return null;
   return (
     <section aria-labelledby="creative-launches-heading" className="flex flex-col gap-3">
@@ -305,7 +308,7 @@ function Launches({
         ]}
         rows={rows.map((row) => {
           const ratios = groupRatios(row);
-          const portion = share(row.spend, total, minimum);
+          const portion = nonnegativeShare(row.spend, total, minimum);
           return {
             id: row.week ?? "running",
             cells: {

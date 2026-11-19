@@ -117,7 +117,7 @@ function hostedCodeGuidance(codeSource: AgentPageContext["codeSource"]): string[
     "a workspace admin or editor opens Dashboards & Apps in SourceMedium, chooses Customize the code on this app, then Create repository and Connect GitHub";
   if (codeSource === "template")
     return [
-      `- SourceMedium hosts this app from its standard template, and it has no GitHub repository yet. Before changing anything, check that you are in a clone of this app's own copy. If not, stop and ask me to set one up (${setup}; ${HOSTED_CODE_GUIDE}), then clone it.`,
+      `- SourceMedium hosts this app, and its live version runs SourceMedium's standard template, so a GitHub copy may not be connected yet. Before changing anything, check that you are in a clone of this app's own copy. If not, stop and ask me to set one up (${setup}; ${HOSTED_CODE_GUIDE}), then clone it.`,
       `- Commit on a branch and push. ${preview}`,
     ];
   return [

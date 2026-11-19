@@ -16,13 +16,15 @@ import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import { sampleAdNames, sampleNameMatches } from "@/lib/sample/ad-names";
 import { matchesAdNames } from "@/lib/ad-name-filters";
 import { periodStart } from "@/lib/time-grain";
+import { PERIOD_PREFIXES, type PeriodPrefix } from "@/lib/data/period-sql";
 import type { CreativeSummary, CreativesData, CreativesFilters } from "./queries";
 import type { CreativeSort } from "./filters";
 import {
   CREATIVE_RELATION,
   CreativeRow,
   CreativeSummaryRow,
-  LAUNCH_LOOKBACK_DAYS,
+  firstSpend,
+  lookbackStart,
   MAX_CREATIVES,
   toCreative,
   toCreativeSummary,
@@ -242,12 +244,10 @@ function grouped(filters: CreativesFilters, baselines: BaselineRanges): Grouped[
   if (!scale) return [];
   const ranges: (DateRange | null)[] = [filters.range, baselines[0], baselines[1]];
   const dates = ranges.flatMap((range) => (range ? [range.from, range.to] : [])).sort();
-  const lookback = addDays(filters.range.from, -LAUNCH_LOOKBACK_DAYS);
+  const lookback = lookbackStart(filters.range.from);
   const all = [...EVERGREEN, ...flights(dates[0] ?? filters.range.from, dates.at(-1) ?? filters.range.to)];
   return all.flatMap((creative) => {
     if (filters.format && creative.format !== filters.format) return [];
-    if (filters.selection && !filters.selection.some(([c, id]) => c === creative.source_system && id === creative.id))
-      return [];
     const selected = placements(creative, filters);
     if (!selected.length) return [];
     const periods = ranges.map((range) => {
@@ -276,12 +276,11 @@ function grouped(filters: CreativesFilters, baselines: BaselineRanges): Grouped[
 
 const ratio = (numerator: number, denominator: number) => (denominator === 0 ? null : String(numerator / denominator));
 
-type Prefix = "" | "previous_" | "second_";
 /** The sample's platform revenue per conversion. */
 const ORDER_VALUE = 71;
 
 /** One period's sums in BigQuery's wire format, under the column names `prefix` gives them. */
-function wireSums(sums: Sums | null, prefix: Prefix) {
+function wireSums(sums: Sums | null, prefix: PeriodPrefix) {
   return {
     [`${prefix}spend`]: sums ? fromUnits(sums.spendCents * 10_000_000n) : null,
     [`${prefix}impressions`]: sums ? String(sums.impressions) : null,
@@ -292,7 +291,7 @@ function wireSums(sums: Sums | null, prefix: Prefix) {
 }
 
 /** The ratios the live query computes from those sums. */
-function wireRatios(sums: Sums | null, prefix: Prefix) {
+function wireRatios(sums: Sums | null, prefix: PeriodPrefix) {
   const spend = sums ? Number(sums.spendCents) / 100 : 0;
   return {
     [`${prefix}roas`]: sums ? ratio(sums.conversions * ORDER_VALUE, spend) : null,
@@ -300,8 +299,6 @@ function wireRatios(sums: Sums | null, prefix: Prefix) {
     [`${prefix}ctr`]: sums ? ratio(Number(sums.clicks), Number(sums.impressions)) : null,
   };
 }
-
-const PREFIXES = ["", "previous_", "second_"] as const;
 
 function coverage(groups: Grouped[]) {
   const latest = (slot: 0 | 1 | 2) =>
@@ -319,9 +316,14 @@ function sortValue(row: Record<string, string | null>, sort: CreativeSort): numb
 }
 
 export async function sampleCreatives(filters: CreativesFilters, baselines: BaselineRanges): Promise<CreativesData> {
+  // As live: coverage spans every creative in scope, before the selection or minimums keep some.
   const groups = grouped(filters, baselines);
   const covered = coverage(groups);
+  const { selection } = filters;
   const rows = groups
+    .filter(
+      ({ creative }) => !selection || selection.some(([c, id]) => c === creative.source_system && id === creative.id),
+    )
     .map(({ creative, periods, firstDate }) => ({
       creative_id: creative.id,
       title: creative.title,
@@ -335,8 +337,8 @@ export async function sampleCreatives(filters: CreativesFilters, baselines: Base
       post_url: null,
       ad_url: null,
       first_date: firstDate,
-      ...Object.assign({}, ...PREFIXES.map((prefix, slot) => wireSums(periods[slot] ?? null, prefix))),
-      ...Object.assign({}, ...PREFIXES.map((prefix, slot) => wireRatios(periods[slot] ?? null, prefix))),
+      ...Object.assign({}, ...PERIOD_PREFIXES.map((prefix, slot) => wireSums(periods[slot] ?? null, prefix))),
+      ...Object.assign({}, ...PERIOD_PREFIXES.map((prefix, slot) => wireRatios(periods[slot] ?? null, prefix))),
       ...covered,
     }))
     .filter(
@@ -372,11 +374,13 @@ export async function sampleCreativeSummary(
   filters: CreativesFilters,
   baselines: BaselineRanges,
 ): Promise<CreativeSummary> {
-  const groups = grouped({ ...filters, selection: undefined }, baselines);
+  const groups = grouped(filters, baselines);
   if (!groups.length) return toCreativeSummary([]);
   const covered = coverage(groups);
-  const launchWeek = (group: Grouped) =>
-    group.firstDate !== null && group.firstDate >= filters.range.from ? periodStart(group.firstDate, "week") : null;
+  const launchWeek = (group: Grouped) => {
+    const first = firstSpend(group.firstDate, filters.range.from);
+    return first?.when === "launched" ? periodStart(first.date, "week") : null;
+  };
 
   const total = (members: Grouped[], key: { kind: string; format: string | null; launch_week: string | null }) => {
     const sum = (slot: 0 | 1 | 2) => {
@@ -399,7 +403,7 @@ export async function sampleCreativeSummary(
     return {
       ...key,
       has_creative: "true",
-      ...Object.assign({}, ...PREFIXES.map((prefix, slot) => wireSums(sum(slot as 0 | 1 | 2), prefix))),
+      ...Object.assign({}, ...PERIOD_PREFIXES.map((prefix, slot) => wireSums(sum(slot as 0 | 1 | 2), prefix))),
       creatives: count(0),
       previous_creatives: count(1),
       second_creatives: count(2),

@@ -15,7 +15,7 @@ function open(props: Partial<Parameters<typeof AgentPrompt>[0]>) {
 
 it("tells a template-hosted app's viewer to get the code first, with the setup steps and the guide", () => {
   const dialog = open({ hosting: "sourcemedium", codeSource: "template" });
-  const steps = within(dialog).getByRole("region", { name: "Get this app's code first" });
+  const steps = within(dialog).getByRole("region", { name: "This version runs the standard template" });
   expect(steps).toHaveTextContent("Customize the code");
   expect(steps).toHaveTextContent("Create repository");
   expect(within(steps).getByRole("link", { name: "How changing a hosted app works" })).toHaveAttribute(

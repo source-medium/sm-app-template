@@ -16,7 +16,8 @@ const percent = new Intl.NumberFormat(appConfig.locale, {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
-const multiple = new Intl.NumberFormat(appConfig.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** Exactly two decimals: multiples and platform-attributed conversions. */
+const twoDecimals = new Intl.NumberFormat(appConfig.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const wholePercent = new Intl.NumberFormat(appConfig.locale, { style: "percent", maximumFractionDigits: 0 });
 const changePercent = new Intl.NumberFormat(appConfig.locale, {
   style: "percent",
@@ -88,7 +89,7 @@ export function moneyAxis(currency: string | null): { prefix: string; suffix: st
 
 /** A multiple such as MER or ROAS: 3.42x. */
 export function formatMultiple(value: number | null): string {
-  return value === null || !Number.isFinite(value) ? EMPTY_VALUE : `${multiple.format(value)}x`;
+  return value === null || !Number.isFinite(value) ? EMPTY_VALUE : `${twoDecimals.format(value)}x`;
 }
 
 /** Exact integers (INT64 as bigint) keep every digit. */
@@ -108,7 +109,7 @@ export function formatPercent(value: number | null): string {
   return value === null || !Number.isFinite(value) ? EMPTY_VALUE : percent.format(value);
 }
 
-/** A share in a sentence, to the whole percent: "52%", or "under 1%" rather than a rounded zero. */
+/** A share of a whole, to the whole percent: "52%", or "under 1%" rather than a rounded zero. */
 export function formatShare(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return EMPTY_VALUE;
   return value > 0 && value < 0.005 ? `under ${wholePercent.format(0.01)}` : wholePercent.format(value);
@@ -258,11 +259,6 @@ export function compactHeadline(
   }).format(number);
 }
 
-const attributedConversions = new Intl.NumberFormat(appConfig.locale, {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
 /**
  * Platform credit can be fractional, so every count shows two decimals and
  * whole and fractional counts line up ("201.00", "143.25"). Credit too small
@@ -274,5 +270,5 @@ export function formatAttributedConversions(value: number | null): string {
     if (Math.abs(value) < 0.000001) return value < 0 ? ">−0.000001" : "<0.000001";
     return new Intl.NumberFormat(appConfig.locale, { maximumFractionDigits: 6 }).format(value);
   }
-  return attributedConversions.format(value);
+  return twoDecimals.format(value);
 }

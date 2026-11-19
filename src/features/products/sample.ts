@@ -88,31 +88,24 @@ export function sampleProductSource(storeId: string, range: DateRange): ProductS
     const key = `${row.date}|${row.sm_channel}`;
     orderRevenue.set(key, (orderRevenue.get(key) ?? 0n) + row.order_net_revenue_cents);
   }
-  return datesInRange(range).flatMap((date) =>
-    (["amazon", "online_dtc"] as const).flatMap((channel) => {
+  return datesInRange(range).flatMap((date) => {
+    const lines = TITLES.flatMap((title, index) =>
+      ["Standard", "Large"].map((variant, v) => {
+        const random = seededRandom(`product|${storeId}|${date}|${index}|${v}`);
+        const units = Math.round(randomInt(random, 2, 35) * scale * 2) / 2;
+        const weight = BigInt(Math.round(units * (1200 + index * 185 + v * 900)));
+        return { title, index, variant, v, units, weight, channel: index % 3 === 0 ? "amazon" : "online_dtc" };
+      }),
+    );
+    return [...new Set(lines.map((line) => line.channel))].flatMap((channel) => {
       const revenue = orderRevenue.get(`${date}|${channel}`) ?? 0n;
       if (revenue <= 0n) return [];
-      const lines = TITLES.flatMap((title, index) =>
-        (index % 3 === 0) === (channel === "amazon")
-          ? ["Standard", "Large"].map((variant, v) => {
-              const random = seededRandom(`product|${storeId}|${date}|${index}|${v}`);
-              const units = Math.round(randomInt(random, 2, 35) * scale * 2) / 2;
-              return {
-                title,
-                index,
-                variant,
-                v,
-                units,
-                weight: BigInt(Math.round(units * (1200 + index * 185 + v * 900))),
-              };
-            })
-          : [],
-      );
+      const members = lines.filter((line) => line.channel === channel);
       const amounts = allocate(
         revenue,
-        lines.map((line) => line.weight),
+        members.map((line) => line.weight),
       );
-      return lines.map(({ title, index, variant, v, units }, line) => {
+      return members.map(({ title, index, variant, v, units }, line) => {
         const amount = amounts[line] ?? 0n;
         return {
           storeId,
@@ -142,8 +135,8 @@ export function sampleProductSource(storeId: string, range: DateRange): ProductS
           cost: index === 5 ? null : index === 8 ? "0" : money(percent(amount, 42n)),
         };
       });
-    }),
-  );
+    });
+  });
 }
 
 /** Source-grain fixture aggregation: exact sums before ranking, like the live query. */

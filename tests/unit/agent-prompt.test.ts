@@ -110,7 +110,7 @@ describe("composeAgentPrompt", () => {
       hosting: "sourcemedium",
       codeSource: "template",
     });
-    expect(fromTemplate).toContain("it has no GitHub repository yet");
+    expect(fromTemplate).toContain("a GitHub copy may not be connected yet");
     expect(fromTemplate).toContain("Customize the code");
     expect(fromTemplate).toContain("docs.sourcemedium.com");
     const fromRepository = composeAgentPrompt("change", "Rename a card", {
@@ -119,7 +119,7 @@ describe("composeAgentPrompt", () => {
       hosting: "sourcemedium",
       codeSource: "repository",
     });
-    expect(fromRepository).not.toContain("no GitHub repository yet");
+    expect(fromRepository).not.toContain("may not be connected yet");
     expect(fromRepository).toContain("Change it in the app's GitHub repository");
   });
 });

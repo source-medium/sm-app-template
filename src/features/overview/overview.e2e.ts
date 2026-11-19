@@ -2,6 +2,7 @@ import { choose, chooseMeasure, openDates, openDisclosure } from "../../../e2e/h
 import { copyReportLink, switchStore } from "../../../e2e/helpers";
 import { expect, test } from "@playwright/test";
 import { CHART_MEMORY_COOKIE, serializeChartMemory } from "../../lib/chart-memory";
+import { COMPARISON_DASH } from "../../components/ui/line-swatch";
 
 test("overview: cumulative trends and revenue highlights preserve scope and exact accessible values", async ({
   page,
@@ -267,13 +268,13 @@ test("unknown stores remain unselected until the viewer chooses a valid store", 
 test("overview: comparison dates and the dashed baseline survive the table toggle", async ({ page }) => {
   await page.goto("/overview?store=sample-store-a&from=2026-09-02&to=2026-09-08&compare=previous");
   const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
-  await expect(card.locator('.recharts-line-curve[stroke-dasharray="6 4"]')).toBeVisible();
+  await expect(card.locator(`.recharts-line-curve[stroke-dasharray="${COMPARISON_DASH}"]`)).toBeVisible();
   await card.getByRole("button", { name: "View as table" }).click();
   await expect(card.getByRole("columnheader", { name: "Previous 7 days", exact: true })).toBeVisible();
   await expect(card.getByRole("cell").filter({ hasText: "Aug 26, 2026" })).toBeVisible();
   await choose(page, "Compare with", "off");
   await expect(page).toHaveURL(/compare=off/);
-  await expect(card.locator('.recharts-line-curve[stroke-dasharray="6 4"]')).toHaveCount(0);
+  await expect(card.locator(`.recharts-line-curve[stroke-dasharray="${COMPARISON_DASH}"]`)).toHaveCount(0);
 });
 
 test("overview: channel and grain filter the summary and raw export together", async ({ page, request }) => {
@@ -385,7 +386,7 @@ test("overview: hides period changes only when the selected period's last days h
   await expect(totals.locator('[data-slot="kpi-delta"]')).toHaveCount(4);
   // Per-day lines align date by date, so the dashed comparison still shows.
   const card = page.locator('[data-slot="card"]', { hasText: "Net revenue by day" });
-  await expect(card.locator('.recharts-line-curve[stroke-dasharray="6 4"]')).toBeVisible();
+  await expect(card.locator(`.recharts-line-curve[stroke-dasharray="${COMPARISON_DASH}"]`)).toBeVisible();
 
   // A gap before the end is not a day still loading: changes show, with the caution note.
   await page.goto("/overview?store=sample-store-b&from=2026-09-01&to=2026-09-07&compare=previous");

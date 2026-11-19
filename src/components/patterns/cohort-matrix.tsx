@@ -12,10 +12,9 @@ const SHADE = { lightest: 12, darkest: 52 } as const;
 
 /**
  * Accessible presentation only. The feature supplies age eligibility, values,
- * labels and each cell's intensity. The first age column is the acquisition
- * month, which every customer is in, so it anchors each row unshaded; the
- * later ages shade continuously from their lowest to their highest value, so
- * equal values match and the order of shades is the order of values.
+ * labels and each cell's intensity, or null for a cell it leaves unshaded.
+ * Shades run continuously from the lowest to the highest intensity, so equal
+ * values match and the order of shades is the order of values.
  */
 export function CohortMatrix({
   caption,
@@ -26,14 +25,14 @@ export function CohortMatrix({
   columns: string[];
   rows: { id: string; label: string; size: string; cells: CohortCell[] }[];
 }) {
-  const values = rows.flatMap((row) =>
-    row.cells.slice(1).flatMap((cell) => (cell.state === "value" && cell.intensity !== null ? [cell.intensity] : [])),
+  const intensities = rows.flatMap((row) =>
+    row.cells.flatMap((cell) => (cell.state === "value" && cell.intensity !== null ? [cell.intensity] : [])),
   );
-  const lowest = Math.min(...values);
-  const highest = Math.max(...values);
-  /** Primary's percentage in the cell's background, or none for Month 0 and cells without a value. */
-  const shade = (cell: CohortCell, age: number) => {
-    if (age === 0 || cell.state !== "value" || cell.intensity === null || values.length === 0) return undefined;
+  const lowest = Math.min(...intensities);
+  const highest = Math.max(...intensities);
+  /** Primary's percentage in the cell's background, or none for a cell without an intensity. */
+  const shade = (cell: CohortCell) => {
+    if (cell.state !== "value" || cell.intensity === null) return undefined;
     const position = highest > lowest ? (cell.intensity - lowest) / (highest - lowest) : 1;
     return Math.round(SHADE.lightest + position * (SHADE.darkest - SHADE.lightest));
   };
@@ -64,7 +63,7 @@ export function CohortMatrix({
             </TableHead>
             <TableCell className="text-right tabular-nums">{row.size}</TableCell>
             {row.cells.map((cell, index) => {
-              const percent = shade(cell, index);
+              const percent = shade(cell);
               return (
                 <TableCell
                   key={columns[index]}

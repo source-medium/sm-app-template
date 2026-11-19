@@ -27,6 +27,10 @@ export const CREATIVE_FORMATS = [
   { value: "other", label: "Other" },
 ] as const;
 export type CreativeFormat = (typeof CREATIVE_FORMATS)[number]["value"];
+/** Whether a stored format is one the report's format filter can choose. */
+export function isCreativeFormat(value: string | null): value is CreativeFormat {
+  return CREATIVE_FORMATS.some((format) => format.value === value);
+}
 /** How the report names a stored format: a known one in words, anything else as stored. */
 export function creativeFormatLabel(value: string | null): string {
   if (value === null) return "Unknown format";

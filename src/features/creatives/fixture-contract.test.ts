@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { CreativeRow, toCreative, safeAdUrl } from "./rows";
+import { CreativeRow, firstSpend, lookbackStart, toCreative, safeAdUrl } from "./rows";
 import { sampleCreatives as sample, sampleCreativeSummary } from "./sample";
 import { sumDecimals } from "@/lib/data/decimal";
 import type { CreativesFilters } from "./queries";
+import type { BaselineRanges } from "@/lib/comparison";
 
 const sampleCreatives = (filters: CreativesFilters) => sample(filters, [null, null]);
 
@@ -140,11 +141,13 @@ describe("creative comparisons, launches and summary", () => {
 
   it("marks creatives whose first spend falls in the range as new, and evergreen ones as running before", async () => {
     const { creatives } = await sample(scope, [null, null]);
-    const launched = creatives.filter((creative) => creative.launched);
+    const launched = creatives.filter((creative) => creative.firstSpend?.when === "launched");
     expect(launched.length).toBeGreaterThan(0);
-    for (const creative of launched) expect((creative.firstDate ?? "") >= RANGE.from).toBe(true);
+    for (const { firstSpend: first } of launched)
+      expect(first?.when === "launched" && first.date >= RANGE.from).toBe(true);
+    // Already spending on the lookback's first day: older than the lookback, never a dated launch.
     const tote = creatives.find((creative) => creative.creativeId === "crv-01");
-    expect(tote).toMatchObject({ launched: false, firstDate: "2025-09-29" });
+    expect(tote?.firstSpend).toEqual({ when: "older" });
   });
 
   it("totals every creative in scope, not just the listed ones, and splits them by format and launch", async () => {
@@ -154,7 +157,9 @@ describe("creative comparisons, launches and summary", () => {
     expect(summary.totals?.current.creatives).toBe(BigInt(creatives.length));
     expect(sumDecimals(summary.formats.map((row) => row.current.spend))).toBe(summary.totals?.current.spend);
     expect(sumDecimals(summary.launches.map((row) => row.spend))).toBe(summary.totals?.current.spend);
-    expect(summary.newCreatives).toBe(BigInt(creatives.filter((creative) => creative.launched).length));
+    expect(summary.newCreatives).toBe(
+      BigInt(creatives.filter((creative) => creative.firstSpend?.when === "launched").length),
+    );
     // Minimums shape the list only.
     expect(await sampleCreativeSummary({ ...scope, minimumSpend: "999999" }, [PREVIOUS, null])).toEqual(summary);
   });
@@ -167,4 +172,32 @@ describe("creative comparisons, launches and summary", () => {
     expect(summary.formats.map((row) => row.format)).toEqual(["video"]);
     expect(summary.totals?.current.spend).toBe(sumDecimals(videos.creatives.map((creative) => creative.spend)));
   });
+});
+
+it("reads a first spend as launched in the range, running since a day in the lookback, or older than it", () => {
+  const from = "2026-09-01";
+  expect(lookbackStart(from)).toBe("2025-09-01");
+  expect(firstSpend(null, from)).toBeNull();
+  expect(firstSpend(from, from)).toEqual({ when: "launched", date: from });
+  expect(firstSpend("2026-08-31", from)).toEqual({ when: "running", date: "2026-08-31" });
+  expect(firstSpend("2025-09-02", from)).toEqual({ when: "running", date: "2025-09-02" });
+  expect(firstSpend("2025-09-01", from)).toEqual({ when: "older" });
+});
+
+it("judges a selection's coverage against every creative in scope, as the list does", async () => {
+  const filters = { ...FILTERS, sort: "spend" as const };
+  const baselines: BaselineRanges = [{ from: "2026-08-04", to: "2026-08-31" }, null];
+  const list = await sample(filters, baselines);
+  // The earliest-started flight still running ends before the range does, so its own days stop early.
+  const [ending] = list.creatives
+    .flatMap((creative) =>
+      creative.firstSpend?.when === "running" ? [{ creative, date: creative.firstSpend.date }] : [],
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if (!ending) throw new Error("The sample needs a flight that ends inside the range");
+  const picked: [string, string][] = [[ending.creative.channel, ending.creative.creativeId]];
+  const selected = await sample({ ...filters, selection: picked }, baselines);
+  expect(selected.creatives.map((creative) => creative.creativeId)).toEqual([ending.creative.creativeId]);
+  expect(list.coverage?.latest_date).toBe(FILTERS.range.to);
+  expect(selected.coverage).toEqual(list.coverage);
 });

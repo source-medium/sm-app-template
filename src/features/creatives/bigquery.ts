@@ -8,29 +8,27 @@
  * alias carry the ad platform (AD_PLATFORM_SQL).
  */
 import "server-only";
-import type { ReportFilters } from "@/lib/filters";
-import { addDays } from "@/lib/filters";
+import { rangeLength, type ReportFilters } from "@/lib/filters";
 import type { BaselineRanges } from "@/lib/comparison";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { adNamePredicate } from "@/lib/data/ad-name-sql";
 import { AD_PLATFORM_SQL } from "@/lib/data/channel-sql";
 import { decodeRows } from "@/lib/data/decode";
-import { PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
+import { PERIOD_COVERAGE, PERIOD_PREFIXES, periodParams, periodSql } from "@/lib/data/period-sql";
 import { GRAIN_SQL } from "@/lib/time-grain";
 import type { CreativeSummary, CreativesData, CreativesFilters } from "./queries";
-import type { CreativeSort } from "./filters";
+import { CREATIVE_FORMATS, type CreativeSort } from "./filters";
 import {
   CREATIVE_RELATION,
   CreativeChannelRow,
   CreativeRow,
   CreativeSummaryRow,
-  LAUNCH_LOOKBACK_DAYS,
   MAX_CREATIVES,
+  lookbackStart,
   toCreative,
   toCreativeSummary,
 } from "./rows";
 import { CACHE_POLICY } from "@/lib/data/query-cache";
-import { appConfig } from "@/app.config";
 
 const ORDER_BY: Record<CreativeSort, string> = {
   spend: "spend DESC",
@@ -55,16 +53,39 @@ const PERIOD_SUMS = [
 ].join(",\n        ");
 
 /** Ratios of each period's sums, never an average of daily ratios. */
-const PERIOD_RATIOS = (["", "previous_", "second_"] as const)
-  .map(
-    (prefix) => `SAFE_DIVIDE(${prefix}revenue, ${prefix}spend) AS ${prefix}roas,
+const PERIOD_RATIOS = PERIOD_PREFIXES.map(
+  (prefix) => `SAFE_DIVIDE(${prefix}revenue, ${prefix}spend) AS ${prefix}roas,
       SAFE_DIVIDE(${prefix}spend, ${prefix}conversions) AS ${prefix}cpo,
       SAFE_DIVIDE(${prefix}clicks, ${prefix}impressions) AS ${prefix}ctr`,
-  )
-  .join(",\n      ");
+).join(",\n      ");
 
 /** The newest of a column's values, by date: platform image links are signed and expire, and MAX() would pick by spelling. */
 const latest = (column: string) => `ARRAY_AGG(${column} IGNORE NULLS ORDER BY date DESC LIMIT 1)[SAFE_OFFSET(0)]`;
+
+/**
+ * Each creative's first day with spend on its ad platform, from the lookback
+ * before the selection (lookbackStart) through its end, on any campaign: a
+ * creative launches once, wherever it runs, so only the store and platform
+ * scope this. firstSpend() in rows.ts reads the date.
+ */
+const launches = (table: string) => `launches AS (
+        SELECT ${AD_PLATFORM_SQL} AS channel, ad_creative_id AS creative_id, MIN(date) AS first_date
+        FROM ${table}
+        WHERE sm_store_id = @store_id AND date BETWEEN @lookback_from AND @end_date
+          AND ad_creative_id IS NOT NULL AND ad_spend > 0
+          AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
+        GROUP BY channel, creative_id
+      )`;
+
+/**
+ * The delivery both reads group, after the store predicate each read states
+ * beside its FROM: rows in each period, with the page's platform, campaign
+ * and name filters.
+ */
+const scopeRows = (names: { sql: string }) => `${period.rows}
+          AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
+          AND (@campaign = '' OR ad_campaign_id = @campaign)
+          AND ${names.sql}`;
 
 function scopeParams(filters: CreativesFilters, baselines: BaselineRanges) {
   return [
@@ -72,7 +93,7 @@ function scopeParams(filters: CreativesFilters, baselines: BaselineRanges) {
     { name: "channel", type: "STRING", value: filters.channel ?? "" },
     { name: "campaign", type: "STRING", value: filters.campaign ?? "" },
     { name: "format", type: "STRING", value: filters.format ?? "" },
-    { name: "lookback_from", type: "DATE", value: addDays(filters.range.from, -LAUNCH_LOOKBACK_DAYS) },
+    { name: "lookback_from", type: "DATE", value: lookbackStart(filters.range.from) },
     ...periodParams(filters.range, baselines[0], baselines[1]),
   ] as const;
 }
@@ -87,15 +108,7 @@ export async function queryCreatives(filters: CreativesFilters, baselines: Basel
     partial: !filters.selection,
     maxRows: filters.selection ? 4 : MAX_CREATIVES,
     sql: `
-      WITH launches AS (
-        -- A creative launches once, whichever campaign it runs in, so only the store and platform scope this.
-        SELECT ${AD_PLATFORM_SQL} AS channel, ad_creative_id AS creative_id, MIN(date) AS first_date
-        FROM ${table}
-        WHERE sm_store_id = @store_id AND date BETWEEN @lookback_from AND @end_date
-          AND ad_creative_id IS NOT NULL AND ad_spend > 0
-          AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
-        GROUP BY channel, creative_id
-      ), grouped AS (
+      WITH ${launches(table)}, grouped AS (
         SELECT
           ad_creative_id AS creative_id,
           ${AD_PLATFORM_SQL} AS channel,
@@ -112,23 +125,23 @@ export async function queryCreatives(filters: CreativesFilters, baselines: Basel
         ${period.latest}
         FROM ${table}
         WHERE sm_store_id = @store_id
-          AND ${period.rows}
+          AND ${scopeRows(names)}
           AND ad_creative_id IS NOT NULL
-          AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
-          AND (@campaign = '' OR ad_campaign_id = @campaign)
-          AND ${names.sql}
-          AND (@selection = '' OR EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(@selection)) AS selected
-            WHERE ${AD_PLATFORM_SQL} = JSON_VALUE(selected, '$[0]') AND ad_creative_id = JSON_VALUE(selected, '$[1]')))
         GROUP BY creative_id, channel
+      ), scoped AS (
+        -- Coverage spans every creative in scope, before the list keeps those that ran in the
+        -- selected period at the minimums, or the creatives selected to compare.
+        SELECT ${PERIOD_COVERAGE},
+          ${PERIOD_RATIOS}
+        FROM grouped LEFT JOIN launches USING (channel, creative_id)
+        WHERE @format = '' OR format = @format
       )
-      SELECT ${PERIOD_COVERAGE},
-        ${PERIOD_RATIOS}
-      FROM grouped LEFT JOIN launches USING (channel, creative_id)
-      WHERE (@format = '' OR format = @format)
-      -- Coverage spans every creative in scope; the list keeps those that ran in the selected period, at the minimums.
-      QUALIFY spend IS NOT NULL
+      SELECT * FROM scoped
+      WHERE spend IS NOT NULL
         AND (@minimum_spend = '' OR spend >= CAST(NULLIF(@minimum_spend, '') AS NUMERIC))
         AND (@minimum_conversions = '' OR IFNULL(conversions, 0) >= CAST(NULLIF(@minimum_conversions, '') AS FLOAT64))
+        AND (@selection = '' OR EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(@selection)) AS selected
+          WHERE channel = JSON_VALUE(selected, '$[0]') AND creative_id = JSON_VALUE(selected, '$[1]')))
       ORDER BY ${ORDER_BY[filters.sort]} NULLS LAST, creative_id, channel
       LIMIT @limit`,
     params: [
@@ -168,21 +181,15 @@ export async function queryCreativeSummary(
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const table = warehouse.table(CREATIVE_RELATION);
   const names = adNamePredicate(filters.names);
-  // Totals and uncovered spend, every format, and one row per launch week plus those running before.
-  const weeks = Math.ceil(appConfig.dateRange.maxDays / 7) + 2;
+  // With and without a creative identity: a total, each format or none, and each launch week the
+  // range touches plus those running before it.
+  const weeks = Math.ceil(rangeLength(filters.range) / 7) + 2;
   const result = await warehouse.query({
     name: "creative_summary",
     cache: CACHE_POLICY.aggregate,
-    maxRows: 2 * (1 + 10 + weeks),
+    maxRows: 2 * (1 + CREATIVE_FORMATS.length + 1 + weeks),
     sql: `
-      WITH launches AS (
-        SELECT ${AD_PLATFORM_SQL} AS channel, ad_creative_id AS creative_id, MIN(date) AS first_date
-        FROM ${table}
-        WHERE sm_store_id = @store_id AND date BETWEEN @lookback_from AND @end_date
-          AND ad_creative_id IS NOT NULL AND ad_spend > 0
-          AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
-        GROUP BY channel, creative_id
-      ), grouped AS (
+      WITH ${launches(table)}, grouped AS (
         SELECT
           ad_creative_id AS creative_id,
           ${AD_PLATFORM_SQL} AS channel,
@@ -191,15 +198,12 @@ export async function queryCreativeSummary(
         ${period.latest}
         FROM ${table}
         WHERE sm_store_id = @store_id
-          AND ${period.rows}
-          AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
-          AND (@campaign = '' OR ad_campaign_id = @campaign)
-          AND ${names.sql}
+          AND ${scopeRows(names)}
         GROUP BY creative_id, channel
       ), scoped AS (
+        -- A launch week only for a creative that launched in the selected dates, as firstSpend() reads it.
         SELECT grouped.*, creative_id IS NOT NULL AS has_creative,
-          IF(first_date >= @start_date, DATE_TRUNC(first_date, ${GRAIN_SQL.week}), NULL) AS launch_week,
-          first_date >= @start_date AS launched
+          IF(first_date >= @start_date, DATE_TRUNC(first_date, ${GRAIN_SQL.week}), NULL) AS launch_week
         FROM grouped LEFT JOIN launches USING (channel, creative_id)
         WHERE @format = '' OR format = @format
       )
@@ -212,7 +216,7 @@ export async function queryCreativeSummary(
         SUM(conversions) AS conversions, SUM(previous_conversions) AS previous_conversions, SUM(second_conversions) AS second_conversions,
         SUM(revenue) AS revenue, SUM(previous_revenue) AS previous_revenue, SUM(second_revenue) AS second_revenue,
         COUNTIF(spend > 0) AS creatives, COUNTIF(previous_spend > 0) AS previous_creatives, COUNTIF(second_spend > 0) AS second_creatives,
-        COUNTIF(launched AND spend > 0) AS new_creatives,
+        COUNTIF(launch_week IS NOT NULL AND spend > 0) AS new_creatives,
         MAX(group_latest_date) AS latest_date,
         MAX(group_previous_latest_date) AS previous_latest_date,
         MAX(group_second_latest_date) AS second_latest_date

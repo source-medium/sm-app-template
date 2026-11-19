@@ -77,7 +77,7 @@ export const creativeBindings: readonly MetricBinding[] = measures.map(
       format,
       source: CREATIVE_RELATION,
       population:
-        "Published ad delivery with a creative identity, scoped to the selected store, dates, ad platform, campaign and name filters; minimums apply to each creative after period aggregation.",
+        "Published ad delivery with a creative identity, scoped to the selected store, dates, ad platform, campaign, creative format and name filters; minimums apply to each creative after period aggregation.",
       grain: "Ad platform and creative identity over the selected period",
       dateBasis: "Published ad delivery date in the store's reporting timezone",
       attribution:

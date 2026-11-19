@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChartCard } from "@/components/charts/chart-card";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { COMPARISON_DASH } from "@/components/ui/line-swatch";
 
 const DATA = [
   { label: "Oct 1", orders: 10, orders__display: "10" },
@@ -73,7 +74,7 @@ describe("ChartCard", () => {
       { wrapper: TooltipProvider },
     );
     const swatches = [...container.querySelectorAll(".recharts-legend-wrapper line")];
-    expect(swatches.map((line) => line.getAttribute("stroke-dasharray"))).toEqual([null, "4 3"]);
+    expect(swatches.map((line) => line.getAttribute("stroke-dasharray"))).toEqual([null, COMPARISON_DASH]);
     expect(screen.getAllByText(/^\$\d+$/).length).toBeGreaterThan(0);
   });
 

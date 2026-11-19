@@ -41,8 +41,8 @@ All colors come from `src/styles/tokens.css` through theme classes
 - Charts use `--chart-1` to `--chart-8` in order. A comparison period is drawn
   dashed behind the selected period on the same scale, and legends draw line
   series as strokes, dashed where the series is.
-- The cohort matrix shades ages after Month 0 continuously from their lowest to
-  their highest value, so equal values match; Month 0, the acquisition month,
+- The cohort matrix shades continuously from the lowest to the highest value, so
+  equal values match. Monthly retention's Month 0, every customer by definition,
   anchors each row unshaded.
 
 ## Typography

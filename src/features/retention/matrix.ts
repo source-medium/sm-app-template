@@ -30,7 +30,6 @@ export function retentionMatrix(
 ) {
   const selected = rows.filter((row) => row.channel === channel);
   const byKey = new Map(selected.map((row) => [`${row.cohort_month}|${row.month_age}`, row]));
-  const maximum = Math.max(0, ...selected.map((row) => cohortValue(row, metric) ?? 0));
   const format =
     metric === "retention" || metric === "second"
       ? formatPercent
@@ -58,14 +57,9 @@ export function retentionMatrix(
           value,
           display: format(value),
           description: format(value),
-          intensity:
-            value < 0
-              ? null
-              : metric === "retention" || metric === "second"
-                ? value
-                : maximum > 0
-                  ? value / maximum
-                  : 0,
+          // Monthly retention's Month 0 is every customer by definition, so it anchors the row unshaded.
+          // Other values shade by their own size; a negative one (a loss) is not shaded.
+          intensity: value < 0 || (metric === "retention" && age === 0) ? null : value,
           state: "value",
         };
       }),

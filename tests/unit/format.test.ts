@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { axisTick, compactNumber, valueTicks } from "@/components/charts/compact-number";
+import { axisTick, compactNumber, tickTarget, valueTicks } from "@/components/charts/compact-number";
 import {
   calendarDate,
   EMPTY_VALUE,
@@ -10,6 +10,7 @@ import {
   formatLabel,
   formatMeasure,
   formatPercent,
+  formatShare,
   moneyAxis,
   formatWallTime,
   isTimeZone,
@@ -53,6 +54,15 @@ describe("server formatting", () => {
   it("formats ratios as percents", () => {
     expect(formatPercent(0.0126)).toBe("1.26%");
     expect(formatPercent(null)).toBe("—");
+  });
+
+  it("formats shares to the whole percent, never rounding a positive share to zero", () => {
+    expect(formatShare(0.524)).toBe("52%");
+    expect(formatShare(0.004)).toBe("under 1%");
+    expect(formatShare(0.005)).toBe("1%");
+    expect(formatShare(0)).toBe("0%");
+    expect(formatShare(null)).toBe("—");
+    expect(formatShare(Number.NaN)).toBe("—");
   });
 
   it("compacts axis ticks without locale APIs", () => {
@@ -108,4 +118,22 @@ it("ends a ranking's value axis at the first nice step past its longest bar", ()
   expect(valueTicks([12, 3])).toEqual([0, 5, 10, 15]);
   expect(valueTicks([0.37, 0.1])).toEqual([0, 0.1, 0.2, 0.3, 0.4]);
   expect(valueTicks([])).toEqual([0]);
+});
+
+it("aims for fewer value steps on a narrow plot", () => {
+  expect(tickTarget(undefined)).toBe(5);
+  expect(tickTarget(700)).toBe(5);
+  expect(tickTarget(200)).toBe(3);
+  expect(tickTarget(100)).toBe(2);
+  // A phone's ranking plot: $0, $20K, $40K rather than five crowded labels.
+  expect(valueTicks([33_662], tickTarget(200))).toEqual([0, 20_000, 40_000]);
+});
+
+it("labels every value tick exactly, so no two read the same", () => {
+  const usd = { prefix: "$", suffix: "" };
+  const labels = (max: number) => valueTicks([max]).map((tick) => axisTick(tick, usd));
+  expect(labels(1100)).toEqual(["$0", "$250", "$500", "$750", "$1K", "$1.25K"]);
+  expect(labels(1_200_000)).toEqual(["$0", "$250K", "$500K", "$750K", "$1M", "$1.25M"]);
+  expect(labels(0.08)).toEqual(["$0", "$0.02", "$0.04", "$0.06", "$0.08"]);
+  expect(valueTicks([0.37]).map((tick) => axisTick(tick, "percent"))).toEqual(["0%", "10%", "20%", "30%", "40%"]);
 });

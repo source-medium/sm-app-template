@@ -115,6 +115,16 @@ function build(): void {
   if (result.status !== 0) throw new Error("next build failed.");
 }
 
+/** Whether anything already answers on the capture's port; a leftover server would serve an older build. */
+async function portTaken(): Promise<boolean> {
+  try {
+    await fetch(ORIGIN);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function serve(): Promise<ChildProcess> {
   const server = spawn("pnpm", ["exec", "next", "start", "--hostname", "127.0.0.1", "--port", String(PORT)], {
     cwd: ROOT,
@@ -228,6 +238,8 @@ async function capture(
 async function main() {
   const { routes, themes, viewports, out } = parseArgs(process.argv.slice(2));
   if (existsSync(out)) throw new Error(`${out} already exists; choose a new directory for each capture.`);
+  if (await portTaken())
+    throw new Error(`Something already answers on ${ORIGIN}; stop it so the capture reads this build.`);
   const staging = join(dirname(out), `.${basename(out)}.partial-${process.pid}`);
   rmSync(staging, { recursive: true, force: true });
   mkdirSync(join(staging, "rubric"), { recursive: true });
@@ -241,25 +253,33 @@ async function main() {
     items: [] as Awaited<ReturnType<typeof capture>>[],
   };
 
+  // The server runs in its own process group, so an interrupt reaches it only through this process.
+  let server: ChildProcess | undefined;
+  let browser: Browser | undefined;
+  const interrupted = (code: number) => () => {
+    if (server) stop(server);
+    rmSync(staging, { recursive: true, force: true });
+    process.exit(code);
+  };
+  process.once("SIGINT", interrupted(130));
+  process.once("SIGTERM", interrupted(143));
   try {
     build();
-    const server = await serve();
-    const browser = await chromium.launch();
-    try {
-      for (const route of routes)
-        for (const viewport of viewports)
-          for (const theme of themes) {
-            const item = await capture(browser, route, viewport, theme, staging);
-            manifest.items.push(item);
-            console.log(`${item.file}${item.overflow.page ? "  (page overflows)" : ""}`);
-          }
-    } finally {
-      await browser.close();
-      stop(server);
-    }
+    server = await serve();
+    browser = await chromium.launch();
+    for (const route of routes)
+      for (const viewport of viewports)
+        for (const theme of themes) {
+          const item = await capture(browser, route, viewport, theme, staging);
+          manifest.items.push(item);
+          console.log(`${item.file}${item.overflow.page ? "  (page overflows)" : ""}`);
+        }
   } catch (error) {
     rmSync(staging, { recursive: true, force: true });
     throw error;
+  } finally {
+    await browser?.close();
+    if (server) stop(server);
   }
   writeFileSync(join(staging, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
   mkdirSync(dirname(out), { recursive: true });

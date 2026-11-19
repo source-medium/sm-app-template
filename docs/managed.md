@@ -41,9 +41,10 @@ Hosted mode is set by SourceMedium's deploy. `pnpm dev`, `pnpm diagnose` and
 Hosted apps use individual workspace sign-in and `SM_GATEWAY_AUTH=workspace`.
 SourceMedium sets `APP_ENVIRONMENT` for the deployment's environment, and
 `SM_APP_SOURCE` to `template` (its standard template) or `repository` (a
-build of your GitHub copy). **Vibe code** uses it to say when the app has no
-copy of its code yet and how to make one; a deploy that leaves it out, or a
-value this version does not know, shows those steps as a fallback. These
+build of your GitHub copy). It says only where the live version came from: a
+copy can be connected while a template version is still live. **Vibe code**
+shows how to make a copy unless the live version is a build of one; a deploy
+that leaves it out, or a value this version does not know, shows the same steps. These
 labels never authorize a request: the gateway viewer and the data API's app,
 deployment and membership checks still apply.
 

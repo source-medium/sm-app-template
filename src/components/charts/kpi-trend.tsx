@@ -1,5 +1,6 @@
 import { toChartNumber } from "@/lib/data/decode";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
+import { COMPARISON_DASH, LineSwatch } from "@/components/ui/line-swatch";
 
 type TrendValues = readonly (number | bigint | null)[];
 /** One comparison period's values, aligned to the selected dates with comparisonDates(); null is a gap. */
@@ -65,7 +66,7 @@ function Sparkline({
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
-          strokeDasharray="5 3"
+          strokeDasharray={COMPARISON_DASH}
           vectorEffect="non-scaling-stroke"
           className="text-chart-2"
         />
@@ -87,13 +88,11 @@ function Sparkline({
   );
 }
 
-/** Names the dashed line under the sparkline, drawn as the main chart's legend draws it. */
+/** Names the dashed line under the sparkline with the swatch the charts' legends use. */
 function ComparisonKey({ label }: { label: string }) {
   return (
     <span aria-hidden className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-      <svg viewBox="0 0 16 4" className="h-1 w-4 shrink-0 text-chart-2">
-        <line x1="0" y1="2" x2="16" y2="2" stroke="currentColor" strokeWidth="1.5" strokeDasharray="5 3" />
-      </svg>
+      <LineSwatch color="var(--chart-2)" dashed />
       {/* Capitalized as the main chart's legend is; the label itself reads mid-sentence elsewhere. */}
       <span className="inline-block first-letter:uppercase">{label}</span>
     </span>

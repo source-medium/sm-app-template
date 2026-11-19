@@ -25,12 +25,11 @@ import {
 import { cn } from "@/lib/utils";
 import { Disclosure } from "@/components/ui/disclosure";
 import { useHydrated } from "@/hooks/use-hydrated";
-import { axisTick, valueTicks, type AxisFormat } from "./compact-number";
+import { axisTick, tickTarget, valueTicks, type AxisFormat } from "./compact-number";
+import { COMPARISON_DASH } from "@/components/ui/line-swatch";
 
 /** Room for a two-line label beside each horizontal bar. */
 const HORIZONTAL_ROW_PX = 40;
-/** Room each value label needs on a ranking's axis, so a narrow plot draws fewer, wider steps. */
-const VALUE_TICK_PX = 64;
 
 /**
  * A ranking's value axis: as many nice steps as fit the plot's width, every
@@ -38,8 +37,7 @@ const VALUE_TICK_PX = 64;
  * plot is measured it draws the full five steps.
  */
 function RankingValueAxis({ values, format }: { values: number[]; format: (value: number) => string }) {
-  const width = usePlotArea()?.width;
-  const ticks = valueTicks(values, width ? Math.max(2, Math.min(5, Math.floor(width / VALUE_TICK_PX))) : 5);
+  const ticks = valueTicks(values, tickTarget(usePlotArea()?.width));
   return (
     <XAxis
       type="number"
@@ -219,7 +217,7 @@ export function ChartCard({
                     type="linear"
                     stroke={`var(--color-${item.key})`}
                     strokeWidth={2}
-                    strokeDasharray={item.dashed ? "6 4" : undefined}
+                    strokeDasharray={item.dashed ? COMPARISON_DASH : undefined}
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     dot={showPoints ? { r: 3, strokeWidth: 0, fill: `var(--color-${item.key})` } : false}

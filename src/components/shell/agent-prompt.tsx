@@ -378,20 +378,19 @@ export function AgentPrompt({
   );
 }
 /**
- * A hosted app on SourceMedium's standard template has no code for an agent
- * to change until someone makes it a copy, so the panel says how first. When
- * the deploy did not say where its code came from, the same steps read as
- * what to do if no copy exists yet.
+ * How a hosted app gets the GitHub copy an agent changes. SM_APP_SOURCE says
+ * only where the live version came from: a template version can still be live
+ * after a copy is connected, so the steps read as what to do if there is none.
  */
 function HostedCodeSteps({ fromTemplate }: { fromTemplate: boolean }) {
   return (
     <section aria-labelledby="hosted-code-steps" className="rounded-md border bg-muted/40 p-3 text-sm">
       <h3 id="hosted-code-steps" className="font-medium">
-        {fromTemplate ? "Get this app's code first" : "No copy of this app's code yet?"}
+        {fromTemplate ? "This version runs the standard template" : "No copy of this app's code yet?"}
       </h3>
       <p className="mt-1 text-muted-foreground">
         {fromTemplate
-          ? "This app runs SourceMedium's standard template, so there is no code for an agent to change yet. A workspace admin or editor sets it up once:"
+          ? "An agent changes this app in its own GitHub copy of SourceMedium's template. If none is connected yet, a workspace admin or editor sets one up once:"
           : "An agent changes this app in its GitHub copy. A workspace admin or editor sets one up once:"}
       </p>
       <ol className="mt-2 list-decimal space-y-1 pl-5">

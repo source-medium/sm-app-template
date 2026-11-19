@@ -2,8 +2,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { expectEveryQueryScopedTo, goLive, rowsResponse } from "../../../tests/helpers/live";
 import type { BaselineRanges } from "@/lib/comparison";
+import { PERIOD_PREFIXES as PERIODS } from "@/lib/data/period-sql";
 
-const PERIODS = ["", "previous_", "second_"] as const;
 const FIELDS = [
   ...["creative_id", "title", "body", "name", "image_url", "thumbnail_url", "call_to_action", "channel"].map(
     (name) => ({ name, type: "STRING" }),
@@ -100,8 +100,7 @@ describe("creatives, live", () => {
       imageUrl: "https://cdn.example.com/t.jpg",
       impressions: 9_007_199_254_740_993n,
       format: "video",
-      firstDate: "2026-09-02",
-      launched: true,
+      firstSpend: { when: "launched", date: "2026-09-02" },
       adUrl: "https://www.tiktok.com/@brand/video/1",
     });
     expect(data.creatives[0]?.baselines[0]).toMatchObject({ spend: "0.05", roas: 1.5 });
@@ -117,7 +116,7 @@ describe("creatives, live", () => {
     expect(submit.query).toContain(`${PLATFORM} AS channel`);
     expect(submit.query).toContain("GROUP BY creative_id, channel");
     expect(submit.query).toContain(`(@channel = '' OR ${PLATFORM} = @channel)`);
-    expect(submit.query).toContain("(@format = '' OR format = @format)");
+    expect(submit.query).toContain("WHERE @format = '' OR format = @format");
     expect(submit.query).not.toContain("sm_channel");
     expect(submit.query).not.toContain(channel);
     expect(submit.query).not.toContain(campaign);
@@ -322,12 +321,18 @@ it("applies fractional thresholds after aggregation before ranking, and fetches 
     NONE,
   );
   const query = fake.submitted(0);
-  expect(query.query.indexOf("GROUP BY creative_id")).toBeLessThan(query.query.indexOf("QUALIFY"));
-  expect(query.query.indexOf("QUALIFY")).toBeLessThan(query.query.indexOf("ORDER BY cpo"));
+  const sql = query.query;
+  // Thresholds and the selection apply after aggregation and after coverage is taken across the whole scope.
+  expect(sql.indexOf("GROUP BY creative_id")).toBeLessThan(sql.indexOf("MAX(group_latest_date) OVER ()"));
+  expect(sql.indexOf("MAX(group_latest_date) OVER ()")).toBeLessThan(sql.indexOf("SELECT * FROM scoped"));
+  for (const predicate of ["@minimum_spend", "@minimum_conversions", "@selection"]) {
+    expect(sql.slice(0, sql.indexOf("SELECT * FROM scoped"))).not.toContain(predicate);
+    expect(sql.indexOf(predicate)).toBeLessThan(sql.indexOf("ORDER BY cpo"));
+  }
   expect(query.query).toContain("ORDER BY cpo ASC NULLS LAST");
   expect(query.query).toContain("CAST(NULLIF(@minimum_spend, '') AS NUMERIC)");
   expect(query.query).toContain("CAST(NULLIF(@minimum_conversions, '') AS FLOAT64)");
-  expect(query.query).toContain(`${PLATFORM} = JSON_VALUE(selected, '$[0]')`);
+  expect(query.query).toContain("channel = JSON_VALUE(selected, '$[0]')");
   expect(query.query).toContain("JSON_VALUE(selected, '$[1]')");
   expect(query.query).not.toContain("outside-top-list");
   expect(query.queryParameters).toContainEqual({

@@ -83,18 +83,19 @@ export async function sampleOrders(filters: OrdersFilters): Promise<OrdersPage> 
   };
 }
 
-function sampleOrderRow(storeId: string, ref: OrderRef): WireOrder | undefined {
+/** The fixture order a reference names, as its wire row and as the detail view decodes it. */
+function sampleOrder(storeId: string, ref: OrderRef): { wire: WireOrder; detail: OrderDetail } | null {
   const day = ref.processedLocal.slice(0, 10);
-  return scopedRows(storeId, { from: day, to: day }, ref.dateBasis).find(
+  const wire = scopedRows(storeId, { from: day, to: day }, ref.dateBasis).find(
     (order) => order.order_key === ref.key && processed(order) === ref.processedLocal,
   );
+  if (!wire) return null;
+  const [row] = decodeRows(OrderDetailRow, [wire], ORDERS_RELATION);
+  return row ? { wire, detail: toOrderDetail(row) } : null;
 }
 
 export async function sampleOrderDetail(storeId: string, ref: OrderRef): Promise<OrderDetail | null> {
-  const match = sampleOrderRow(storeId, ref);
-  if (!match) return null;
-  const [row] = decodeRows(OrderDetailRow, [match], ORDERS_RELATION);
-  return row ? toOrderDetail(row) : null;
+  return sampleOrder(storeId, ref)?.detail ?? null;
 }
 
 export function sampleOrderChannels(
@@ -110,16 +111,16 @@ export function sampleOrderChannels(
 }
 
 export async function sampleOrderAttribution(storeId: string, ref: OrderRef): Promise<OrderAttribution> {
-  const order = await sampleOrderDetail(storeId, ref);
-  if (!order) return toOrderAttribution([], false);
-  if (!order.utmSource) return toOrderAttribution([], false);
+  const found = sampleOrder(storeId, ref);
+  if (!found?.detail.utmSource) return toOrderAttribution([], false);
+  const { wire, detail: order } = found;
   return toOrderAttribution(
     [
       {
         evidence_type: "traffic_source_candidate",
         evidence_source: "sample_traffic_capture",
         // The sample's traffic evidence names the channel the fixture order came from.
-        sm_marketing_channel: sampleOrderRow(storeId, ref)?.sm_sub_channel ?? null,
+        sm_marketing_channel: wire.sm_sub_channel,
         sm_utm_source: order.utmSource,
         sm_utm_medium: order.utmMedium,
         sm_attribution_inference_method: "raw_utm",

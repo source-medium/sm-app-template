@@ -1,7 +1,8 @@
 /**
  * Axis ticks in the browser without locale APIs, so server and client render
- * identical text: 950, 1.2K, 3.4M. Values shown to people elsewhere are
- * formatted on the server.
+ * identical text: 950, 1.2K, 12.5K, 1.25M. Up to three significant digits, so
+ * every nice step valueTicks() picks reads exactly. Values shown to people
+ * elsewhere are formatted on the server.
  */
 export function compactNumber(value: number): string {
   const sign = value < 0 ? "-" : "";
@@ -19,8 +20,7 @@ export function compactNumber(value: number): string {
 }
 
 function trim(value: number): string {
-  const rounded = value >= 100 ? Math.round(value) : Math.round(value * 10) / 10;
-  return String(rounded);
+  return String(value >= 100 ? Math.round(value) : Number(value.toPrecision(3)));
 }
 
 /** A money axis's currency symbol and the side it sits on, worked out on the server (`moneyAxis` in lib/format). */
@@ -28,6 +28,17 @@ export type MoneyAxis = { prefix: string; suffix: string };
 
 /** How a value axis labels its ticks; labels and tooltips still arrive formatted by the server. */
 export type AxisFormat = "number" | "percent" | MoneyAxis;
+
+/** Room each value label needs on an axis, so a narrow plot draws fewer, wider steps. */
+const VALUE_TICK_PX = 64;
+
+/**
+ * How many steps a value axis aims for across a plot `width` pixels wide:
+ * one per label's room, from two to five; five before the plot is measured.
+ */
+export function tickTarget(width: number | undefined): number {
+  return width ? Math.max(2, Math.min(5, Math.floor(width / VALUE_TICK_PX))) : 5;
+}
 
 /** One axis tick: 1.2K, 45%, or $12K with the report's currency symbol on its side. */
 export function axisTick(value: number, format: AxisFormat = "number"): string {

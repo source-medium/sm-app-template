@@ -8,6 +8,7 @@
 import "server-only";
 import { parseCreativeSelection, type CreativeFormat, type CreativeIdentity, type CreativeSort } from "./filters";
 import { requireViewer } from "@/lib/auth/require-viewer";
+import type { FirstSpend } from "./rows";
 import type { ReportFilters } from "@/lib/filters";
 import type { AdNameMatches, AdNameRule } from "@/lib/ad-name-filters";
 import type { BaselineRanges, PeriodCoverage } from "@/lib/comparison";
@@ -41,10 +42,8 @@ export type Creative = CreativeMeasures & {
   channel: string;
   /** ad_creative_format as published (CREATIVE_FORMATS), or null. */
   format: string | null;
-  /** First day with spend since the lookback began (LAUNCH_LOOKBACK_DAYS before the range). */
-  firstDate: string | null;
-  /** Whether that first day falls in the selected range: a creative new in these dates. */
-  launched: boolean;
+  /** When it first spent, relative to the selected dates (firstSpend in rows.ts), or null with no spend. */
+  firstSpend: FirstSpend | null;
   /** The same creative in each comparison slot's period. */
   baselines: readonly [CreativeMeasures, CreativeMeasures];
   adUrl: string | null;
@@ -86,10 +85,13 @@ export type CreativeSummary = {
   /** Selected-period spend on delivery with no creative identity; null when there is none. */
   uncoveredSpend: string | null;
   coverage: PeriodCoverage | null;
+  /** Each format, highest selected-period spend first, as the query orders them. */
   formats: ({ format: string | null } & Periods)[];
-  /** Selected-period delivery by launch week; `week` null is creatives running before the range. */
-  launches: ({ week: string | null } & CreativeSummaryGroup)[];
+  launches: CreativeLaunch[];
 };
+
+/** Selected-period delivery by launch week; `week` null is creatives running before the range. */
+export type CreativeLaunch = { week: string | null } & CreativeSummaryGroup;
 
 export async function getCreatives(filters: CreativesFilters, baselines: BaselineRanges): Promise<CreativesData> {
   const access = await requireViewer({ storeId: filters.storeId });

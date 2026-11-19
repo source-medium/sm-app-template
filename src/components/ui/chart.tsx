@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { LineSwatch } from "./line-swatch";
 import { cn } from "@/lib/utils";
 import * as RechartsPrimitive from "recharts";
 import type { TooltipValueType } from "recharts";
@@ -259,19 +260,7 @@ function ChartLegendContent({
               {itemConfig?.icon && !hideIcon ? (
                 <itemConfig.icon />
               ) : swatch === "line" ? (
-                <span aria-hidden className="flex shrink-0">
-                  <svg viewBox="0 0 18 4" className="h-1 w-[18px]">
-                    <line
-                      x1="0"
-                      y1="2"
-                      x2="18"
-                      y2="2"
-                      stroke={item.color}
-                      strokeWidth="2"
-                      strokeDasharray={itemConfig?.dashed ? "4 3" : undefined}
-                    />
-                  </svg>
-                </span>
+                <LineSwatch color={item.color} dashed={itemConfig?.dashed} />
               ) : (
                 <div
                   className="h-2 w-2 shrink-0 rounded-[2px]"

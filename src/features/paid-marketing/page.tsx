@@ -208,23 +208,34 @@ export default async function PaidMarketingPage({ searchParams }: { searchParams
   );
 }
 
-/** Measures in the store's currency, so their chart axis carries its symbol. */
-const MONEY_METRICS = new Set<PaidMetric>(["spend", "revenue", "cpo"]);
+/** Each measure's unit: how its values read, and whether its chart axis carries the currency symbol. */
+const METRIC_UNITS: Record<PaidMetric, "money" | "multiple" | "measure" | "count"> = {
+  spend: "money",
+  impressions: "count",
+  clicks: "count",
+  conversions: "measure",
+  revenue: "money",
+  roas: "multiple",
+  cpo: "money",
+};
 
 function point(value: MetricValue, currency: string | null, metric: PaidMetric): PointValue {
-  if (metric === "roas")
-    return {
-      value: typeof value === "number" ? value : null,
-      display: formatMultiple(typeof value === "number" ? value : null),
-    };
-  if (metric === "revenue" || metric === "cpo")
-    return {
-      value: typeof value === "number" ? value : null,
-      display: formatMoney(typeof value === "number" ? value : null, currency),
-    };
-  if (typeof value === "string") return { value: decimalToNumber(value), display: formatMoney(value, currency) };
-  if (typeof value === "number") return { value, display: formatMeasure(value) };
-  return { value, display: value === null ? EMPTY_VALUE : formatCount(value) };
+  const number = typeof value === "number" ? value : null;
+  switch (METRIC_UNITS[metric]) {
+    case "money":
+      // Spend arrives as exact NUMERIC text; revenue and cost per conversion as numbers.
+      return typeof value === "string"
+        ? { value: decimalToNumber(value), display: formatMoney(value, currency) }
+        : { value: number, display: formatMoney(number, currency) };
+    case "multiple":
+      return { value: number, display: formatMultiple(number) };
+    case "measure":
+      return { value: number, display: formatMeasure(number) };
+    case "count": {
+      const count = typeof value === "bigint" ? value : number;
+      return { value: count, display: count === null ? EMPTY_VALUE : formatCount(count) };
+    }
+  }
 }
 
 function PaidMarketingView({
@@ -250,7 +261,7 @@ function PaidMarketingView({
   const metrics = PAID_METRICS.map((metric) => ({
     key: metric,
     label: METRIC_LABELS[metric],
-    valueFormat: MONEY_METRICS.has(metric) ? moneyAxis(currency) : ("number" as const),
+    valueFormat: METRIC_UNITS[metric] === "money" ? moneyAxis(currency) : ("number" as const),
     series,
     ...buildChartData(
       periods.map((date) => {

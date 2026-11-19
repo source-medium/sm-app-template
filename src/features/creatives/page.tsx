@@ -9,7 +9,7 @@ import {
   type CreativeIdentity,
   type CreativeSort,
 } from "./filters";
-import { CREATIVE_RELATION, LAUNCH_LOOKBACK_DAYS } from "./rows";
+import { CREATIVE_RELATION, LAUNCH_LOOKBACK_DAYS, type FirstSpend } from "./rows";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -26,14 +26,7 @@ import { serializeAdNameFilters } from "@/lib/ad-name-filters";
 import { adPlatformLabel } from "@/lib/ad-platforms";
 import { ReportControls } from "@/components/shell/report-controls";
 import { ReportPage } from "@/components/shell/report-page";
-import {
-  addDays,
-  single,
-  withParams,
-  REPORT_FILTER_FORM_ID,
-  type ReportFilters,
-  type SearchParams,
-} from "@/lib/filters";
+import { single, withParams, REPORT_FILTER_FORM_ID, type ReportFilters, type SearchParams } from "@/lib/filters";
 import {
   formatCount,
   formatAttributedConversions,
@@ -346,7 +339,6 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                               <CreativesView
                                 data={data}
                                 plan={plan}
-                                range={filters.range}
                                 currency={currency}
                                 timeZone={timeZone}
                                 view="returns"
@@ -398,7 +390,6 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                         <CreativesView
                           data={data}
                           plan={plan}
-                          range={filters.range}
                           currency={currency}
                           timeZone={timeZone}
                           view={view}
@@ -440,7 +431,6 @@ function creativeChange<M extends Measure>(
   );
 }
 
-/** A card's change line: the percentage at a glance. A missing comparison value shows no line, never a zero. */
 /** A card's change line; a compared creative with no comparison value (a new one) shows a dash, keeping rows aligned. */
 function cardChange(delta: KpiDelta | undefined) {
   if (!delta) return undefined;
@@ -448,10 +438,16 @@ function cardChange(delta: KpiDelta | undefined) {
   return { display: delta.direction === "flat" ? "No change" : EMPTY_VALUE, tone: null };
 }
 
+/** A creative's first spend in words, the same on its card and in the table; null with no spend. */
+function firstSpendLabel(first: FirstSpend | null): string | null {
+  if (!first) return null;
+  if (first.when === "older") return "Running for over a year";
+  return `${first.when === "launched" ? "Launched" : "Running since"} ${formatDate(first.date)}`;
+}
+
 function CreativesView({
   data,
   plan,
-  range,
   currency,
   timeZone,
   view,
@@ -466,22 +462,12 @@ function CreativesView({
   comparison?: boolean;
   data: CreativesData;
   plan?: ComparisonPlan;
-  range: { from: string; to: string };
   currency: string | null;
   timeZone: string;
   view: "delivery" | "returns" | "table";
 }) {
   const money = (value: string | number | null) => formatMoney(value, currency);
   const changes = plan ? slotChanges(plan, data.coverage) : null;
-  // A first spend on the lookback's first day may be older still, so it reads as a year or more.
-  const firstSpend = (creative: Creative) =>
-    creative.firstDate === null
-      ? null
-      : creative.launched
-        ? `First spend ${formatDate(creative.firstDate)}`
-        : creative.firstDate > addDays(range.from, -LAUNCH_LOOKBACK_DAYS)
-          ? `Running since ${formatDate(creative.firstDate)}`
-          : "Running for over a year";
   /** The list for one comparison slot (null: no comparison); both slots render and the active one shows. */
   const list = (slot: 0 | 1 | null) => {
     const baseline = slot === null ? undefined : plan?.slots[slot];
@@ -496,7 +482,7 @@ function CreativesView({
             { key: "name", header: "Creative" },
             { key: "channel", header: "Ad platform" },
             { key: "format", header: "Format" },
-            { key: "first", header: "First spend", nowrap: true },
+            { key: "first", header: "Started", nowrap: true },
             { key: "spend", header: "Spend", align: "right" },
             ...(versus ? [{ key: "spendChange", header: `Spend ${versus}`, align: "right" as const }] : []),
             { key: "revenue", header: "Platform revenue", align: "right" },
@@ -518,13 +504,10 @@ function CreativesView({
                 name: { display: c.title ?? c.name ?? c.creativeId },
                 channel: { display: adPlatformLabel(c.channel) },
                 format: { display: creativeFormatLabel(c.format) },
+                // An older creative sorts before every dated one.
                 first: {
-                  display: c.firstDate
-                    ? c.launched
-                      ? `${formatDate(c.firstDate)} (new)`
-                      : formatDate(c.firstDate)
-                    : "",
-                  sort: c.firstDate,
+                  display: firstSpendLabel(c.firstSpend) ?? EMPTY_VALUE,
+                  sort: c.firstSpend === null ? null : c.firstSpend.when === "older" ? "" : c.firstSpend.date,
                 },
                 spend: { display: money(c.spend), sort: decimalToNumber(c.spend) },
                 spendChange: change("spend", money),
@@ -562,9 +545,9 @@ function CreativesView({
             badge: adPlatformLabel(creative.channel),
             tags: [
               ...(creative.format ? [{ label: creativeFormatLabel(creative.format) }] : []),
-              ...(creative.launched ? [{ label: "New", highlight: true }] : []),
+              ...(creative.firstSpend?.when === "launched" ? [{ label: "New", highlight: true }] : []),
             ],
-            caption: firstSpend(creative) ?? undefined,
+            caption: firstSpendLabel(creative.firstSpend) ?? undefined,
             imageUrl: creative.imageUrl,
             footer: (() => {
               const identity: CreativeIdentity = [creative.channel, creative.creativeId];
@@ -646,10 +629,10 @@ function CreativesView({
             conversions can be fractional; attribution models, windows and conversion-event settings are unverified.
           </p>
           <p>
-            Each change compares a creative with its own delivery in the comparison period; &ldquo;New&rdquo; means it
-            had no delivery then. A creative&apos;s first spend is its first day with spend on this ad platform in the{" "}
-            {LAUNCH_LOOKBACK_DAYS} days before these dates or in them, on any campaign. Formats are the ad
-            platform&apos;s, as SourceMedium classifies them.
+            Each change compares a creative with its own delivery in the comparison period, and shows a dash when it had
+            none then. &ldquo;New&rdquo; marks a creative whose first spend falls in these dates: its first day with
+            spend on this ad platform, on any campaign, looking back {LAUNCH_LOOKBACK_DAYS} days before them. Formats
+            are the ad platform&apos;s, as SourceMedium classifies them.
           </p>
           <MetricDefinition binding={creativeBinding("roas")} scope={{ filters: scopeFilters, currency, timeZone }} />
         </div>

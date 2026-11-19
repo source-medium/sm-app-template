@@ -704,9 +704,10 @@ all ages despite their names. The [published cohort schema](https://sourcemedium
 and [query guidance](https://sourcemedium.com/docs/data-activation/template-resources/sql-query-library/ltv-and-retention)
 describe the underlying report.
 
-`CohortMatrix` only renders formatted cells and intensity shades (Month 0
-unshaded, later ages scaled to each other). Retention owns
-the formulas, eligible ages and missing-value decisions. To remove either view,
+`CohortMatrix` only renders formatted cells and shades each cell's intensity
+continuously from the lowest to the highest. Retention owns the formulas,
+eligible ages, missing-value decisions and which cells shade: Monthly
+retention's Month 0, every customer by definition, is left unshaded. To remove either view,
 delete its feature folder, route folder and navigation entry as usual.
 
 ## Refresh and freshness
@@ -995,18 +996,19 @@ links provide equivalent keyboard selection. Regenerate reviewed assets with
 
 ## Performance exploration and attribution
 
-Creatives opens with one sentence on how concentrated spend is and what new
-creatives took, then the scope's KPIs against both comparisons, spend and
+Creatives opens with the scope's KPIs against both comparisons, then spend and
 results by format (`ad_creative_format`; choosing a format sets `?format=` for
 the whole report), and spend by launch week. A creative's first spend is its
 first day with spend on its ad platform, on any campaign, in the 365 days before
-the range or in it (`LAUNCH_LOOKBACK_DAYS` in `creatives/rows.ts`); one that
-spent on the first of those days reads as running before, never as launched.
+the range or in it (`LAUNCH_LOOKBACK_DAYS` and `firstSpend()` in
+`creatives/rows.ts`); one that spent on the first of those days reads as running
+for over a year, never as launched.
 Totals, formats and launches come from one grouped query over every creative
 in scope (`GROUPING SETS`), never from the bounded list, and spend without a
 creative identity is named rather than counted. Each card and table row
 compares a creative with its own delivery in the comparison period; a creative
-with none then shows no change rather than a zero. New creatives are not
+with none then shows a dash rather than a zero. Comparing selected creatives
+judges coverage across the whole scope, as the list does. New creatives are not
 compared: a comparison period would need its own year of history.
 
 Creatives defaults to Performance (`view=returns` remains compatible). Minimum

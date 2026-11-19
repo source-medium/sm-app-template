@@ -23,9 +23,10 @@ it("keeps cumulative second purchase separate from monthly retention and hides i
   const january = retentionMatrix(rows, "online_dtc", "second", "2026-03", null).find(
     (cohort) => cohort.id === row.cohort_month,
   );
+  // Month 0 of a second purchase is a real rate, so it shades like any other age.
   expect(january?.cells.slice(0, 4)).toMatchObject([
-    { display: "12.00%", state: "value" },
-    { display: "35.00%", state: "value" },
+    { display: "12.00%", state: "value", intensity: 0.12 },
+    { display: "35.00%", state: "value", intensity: 0.35 },
     { display: "No data", state: "missing" },
     { state: "immature" },
   ]);
@@ -65,9 +66,10 @@ it("distinguishes zero, missing data and immature periods without filling gaps",
   const rows = decodeRetention([row, { ...row, month_age: "1", customers: "0" }]);
   const matrix = retentionMatrix(rows, "online_dtc", "retention", "2026-03", null);
   const january = matrix.find((item) => item.id === row.cohort_month);
+  // Monthly retention's Month 0 is every customer, so it anchors the row unshaded.
   expect(january?.cells.slice(0, 4)).toMatchObject([
-    { display: "100.00%", state: "value" },
-    { display: "0.00%", state: "value" },
+    { display: "100.00%", state: "value", intensity: null },
+    { display: "0.00%", state: "value", intensity: 0 },
     { display: "No data", state: "missing" },
     { display: "—", state: "immature" },
   ]);

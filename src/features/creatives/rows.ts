@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { safeImageUrl } from "@/lib/image-url";
 import { bq } from "@/lib/data/decode";
-import { periodCoverageFields, periodFields } from "@/lib/data/period-sql";
+import { addDays } from "@/lib/filters";
+import { periodCoverageFields, periodFields, type PeriodPrefix } from "@/lib/data/period-sql";
 import type { Creative, CreativeMeasures, CreativeSummary, CreativeSummaryGroup } from "./queries";
 
 export const CREATIVE_RELATION = "rpt_ad_performance_daily";
@@ -14,10 +15,26 @@ export const MAX_CREATIVES = 48;
  */
 export const LAUNCH_LOOKBACK_DAYS = 365;
 
-/** Measures every period sums, decoded as their published types. */
-export const SUMMED_MEASURES = ["spend", "impressions", "clicks", "conversions", "revenue"] as const;
+/** The first day searched for a creative's first spend: the lookback before the selected range. */
+export function lookbackStart(from: string): string {
+  return addDays(from, -LAUNCH_LOOKBACK_DAYS);
+}
+
+/**
+ * When a creative first spent, relative to the selected dates: in them
+ * (launched), in the lookback year before them (running), or already on the
+ * lookback's first day, so before that year (older).
+ */
+export type FirstSpend = { when: "launched" | "running"; date: string } | { when: "older" };
+
+export function firstSpend(firstDate: string | null, from: string): FirstSpend | null {
+  if (firstDate === null) return null;
+  if (firstDate >= from) return { when: "launched", date: firstDate };
+  return firstDate > lookbackStart(from) ? { when: "running", date: firstDate } : { when: "older" };
+}
+
 /** Ratios of each period's sums, computed in SQL after aggregation. */
-export const RATIO_MEASURES = ["roas", "cpo", "ctr"] as const;
+const RATIO_MEASURES = ["roas", "cpo", "ctr"] as const;
 
 const measureFields = {
   ...periodFields(["spend"], bq.numeric().nullable()),
@@ -95,9 +112,8 @@ export function safeAdUrl(value: string | null): string | null {
 
 type Row = z.output<typeof CreativeRow>;
 type SummaryRow = z.output<typeof CreativeSummaryRow>;
-type Prefix = "" | "previous_" | "second_";
 
-function measures(row: Row, prefix: Prefix): CreativeMeasures {
+function measures(row: Row, prefix: PeriodPrefix): CreativeMeasures {
   return {
     spend: row[`${prefix}spend`],
     impressions: row[`${prefix}impressions`],
@@ -120,15 +136,14 @@ export function toCreative(row: Row, range: { from: string }): Creative {
     callToAction: row.call_to_action,
     channel: row.channel,
     format: row.format,
-    firstDate: row.first_date,
-    launched: row.first_date !== null && row.first_date >= range.from,
+    firstSpend: firstSpend(row.first_date, range.from),
     ...measures(row, ""),
     baselines: [measures(row, "previous_"), measures(row, "second_")],
     adUrl: safeAdUrl(row.post_url) ?? safeAdUrl(row.ad_url),
   };
 }
 
-function group(row: SummaryRow, prefix: Prefix): CreativeSummaryGroup {
+function group(row: SummaryRow, prefix: PeriodPrefix): CreativeSummaryGroup {
   return {
     spend: row[`${prefix}spend`],
     impressions: row[`${prefix}impressions`],
