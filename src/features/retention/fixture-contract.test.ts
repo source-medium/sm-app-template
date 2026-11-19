@@ -98,9 +98,10 @@ it("has deterministic store-specific sample cohorts, no future months, and a del
   expect(rows).toEqual(sampleRetention(filters));
   expect(new Set(rows.map((item) => item.channel))).toEqual(new Set(["online_dtc", "amazon"]));
   expect(rows.every((item) => monthIsElapsed(item.cohort_month, Number(item.month_age), filters.asOf))).toBe(true);
-  expect(
-    rows.some((item) => item.channel === "online_dtc" && item.cohort_month === "2026-01-01" && item.month_age === 2n),
-  ).toBe(false);
+  const published = (channel: string) =>
+    rows.some((item) => item.channel === channel && item.cohort_month === "2026-01-01" && item.month_age === 2n);
+  expect(published("amazon")).toBe(false);
+  expect(published("online_dtc")).toBe(true);
   expect(sampleRetention({ ...filters, storeId: "sample-store-b" })[0]?.cohort_size).not.toBe(rows[0]?.cohort_size);
   expect(sampleRetention({ ...filters, storeId: "unknown" })).toEqual([]);
 });

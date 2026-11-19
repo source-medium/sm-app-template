@@ -67,6 +67,7 @@
   --shadow-card: var(--shadow-card);
   --color-scroll-cue: var(--scroll-cue);
   --color-segment: var(--segment);
+  --color-mark-ground: var(--mark-ground);
 }
 
 @layer base {

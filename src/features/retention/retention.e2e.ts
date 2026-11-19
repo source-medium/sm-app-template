@@ -117,7 +117,7 @@ import { expectNoSeriousA11yViolations } from "../../../e2e/helpers";
 test("retention: incomplete months, published gaps, and measure/channel selections remain explicit", async ({
   page,
 }) => {
-  await page.goto("/retention?store=sample-store-a&as_of=2026-09&channel=online_dtc");
+  await page.goto("/retention?store=sample-store-a&as_of=2026-09&channel=amazon");
   await openFilters(page);
   const table = page.getByRole("table", { name: "Monthly retention", exact: true });
   await expect(table).toBeVisible();
@@ -138,8 +138,8 @@ test("retention: incomplete months, published gaps, and measure/channel selectio
   const profit = page.getByRole("table", { name: "Cumulative gross profit / customer (LTV)", exact: true });
   await expect(profit).toBeVisible();
   expect(await profit.locator('td[data-state="value"]').allTextContents()).not.toEqual(revenueValues);
-  await page.getByLabel("Acquisition sales channel", { exact: true }).selectOption("amazon");
-  await expect(page).toHaveURL(/channel=amazon/);
+  await page.getByLabel("Acquisition sales channel", { exact: true }).selectOption("online_dtc");
+  await expect(page).toHaveURL(/channel=online_dtc/);
   expect(new URL(page.url()).searchParams.get("as_of")).toBe("2026-09");
   await page.getByLabel("Through completed month").fill("2026-08");
   await page.getByRole("button", { name: "Apply month", exact: true }).click();

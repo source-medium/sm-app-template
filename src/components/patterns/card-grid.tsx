@@ -16,6 +16,8 @@ export type GridCard = {
   /** The ad's button text ("Shop now"), shown under the copy when the card has no image. */
   callToAction?: string;
   badge: string | null;
+  /** A small mark shown before the badge, such as the ad platform's logo. */
+  badgeMark?: React.ReactNode;
   /** Short facts beside the badge, such as a format or "New"; the first is emphasized when `highlight` is set. */
   tags?: { label: string; highlight?: boolean }[];
   imageUrl: string | null;
@@ -49,7 +51,12 @@ export function CardGrid({ cards, label }: { cards: GridCard[]; label: string })
                 <h3 className="line-clamp-2 font-medium">{card.title}</h3>
                 {(card.badge || card.tags?.length) && (
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-muted-foreground uppercase">
-                    {card.badge && <span>{card.badge}</span>}
+                    {card.badge && (
+                      <span className="flex items-center gap-1.5">
+                        {card.badgeMark}
+                        {card.badge}
+                      </span>
+                    )}
                     {card.tags?.map((tag) => (
                       <span
                         key={tag.label}

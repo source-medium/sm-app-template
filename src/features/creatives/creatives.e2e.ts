@@ -24,7 +24,9 @@ test("creatives: an unreachable image shows the card's text, never a broken imag
     .getByRole("list", { name: "Ad creatives" })
     .locator("img")
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("src") ?? ""));
-  for (const src of sources) expect(src.startsWith("/sample-creatives/")).toBe(true);
+  // Sample creatives and platform marks are local files; nothing in the grid loads a remote image.
+  expect(sources.some((src) => src.startsWith("/platform-marks/"))).toBe(true);
+  for (const src of sources) expect(src).toMatch(/^\/(sample-creatives|platform-marks)\//);
 });
 
 test("creatives: ad platform filtering survives sorting and unknown selections can be reset", async ({ page }) => {

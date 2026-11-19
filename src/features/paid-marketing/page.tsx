@@ -15,6 +15,7 @@ import { AdNameFilter } from "@/components/patterns/ad-name-filter";
 import { AdNameMatchesRegion } from "@/components/patterns/ad-name-matches";
 import { serializeAdNameFilters } from "@/lib/ad-name-filters";
 import { adPlatformLabel } from "@/lib/ad-platforms";
+import { PlatformMark } from "@/components/patterns/platform-mark";
 import { ReportControls } from "@/components/shell/report-controls";
 import { ReportPage } from "@/components/shell/report-page";
 import { toChartNumber } from "@/lib/data/decode";
@@ -426,6 +427,7 @@ function PaidMarketingView({
                     channel: {
                       display: adPlatformLabel(campaign.channel),
                       href: withParams(PATHNAME, params, { channel: campaign.channel }),
+                      leading: <PlatformMark platform={campaign.channel} />,
                     },
                     spend: { display: money(campaign.spend), sort: spend },
                     impressions: { display: formatCount(campaign.impressions), sort: impressions },
