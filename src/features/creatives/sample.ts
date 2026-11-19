@@ -10,6 +10,7 @@
  * any period reads the same day the same way. No external image host is
  * referenced.
  */
+import { ASSET_PAGE_SIZE, type AssetScope, type CreativeAsset } from "./assets";
 import { decodeRows } from "@/lib/data/decode";
 import { fromUnits, toUnits } from "@/lib/data/decimal";
 import { addDays, type DateRange, type ReportFilters } from "@/lib/filters";
@@ -549,4 +550,47 @@ export function sampleCreativeNames(filters: CreativesFilters) {
         .map((placement) => placement.names),
     ),
   );
+}
+
+/** Current creative inventory includes archived flights, regardless of their spend in a report period. */
+export function sampleCreativeAssets(filters: AssetScope, today: string) {
+  const rows: CreativeAsset[] = [];
+  if (SAMPLE_STORE_SCALE.has(filters.storeId)) {
+    for (const c of [...EVERGREEN, ...flights(FLIGHT_EPOCH, today)]) {
+      if ((filters.entity && filters.entity !== c.id) || (filters.channel && filters.channel !== c.source_system))
+        continue;
+      const add = (role: string, values: Partial<CreativeAsset>, variant = 0) => {
+        const key = `${c.id}-${role}-${variant}`;
+        if ((filters.role && filters.role !== role) || key <= filters.cursor) return;
+        rows.push({
+          sm_ad_creative_asset_key: key,
+          source_system: c.source_system,
+          ad_creative_id: c.id,
+          ad_id: null,
+          ad_campaign_id: c.campaign,
+          asset_role: role,
+          asset_id: null,
+          asset_text: null,
+          asset_video_id: null,
+          asset_image_url: null,
+          asset_video_url: null,
+          asset_link_url: null,
+          ...values,
+        });
+      };
+      add("title", { asset_text: c.title });
+      add("body", { asset_text: c.body });
+      if (c.cta) add("call_to_action", { asset_text: c.cta });
+      if (c.format === "video")
+        add("video", {
+          asset_video_id: c.id + "-video",
+          asset_image_url: c.image,
+          asset_video_url: c.id === "crv-03" ? "/sample-creatives/creative-03.mp4" : null,
+        });
+      else if (c.image) add("image", { asset_image_url: c.image });
+      if (c.format === "carousel") add("image", { asset_image_url: "/sample-creatives/creative-05.svg" }, 1);
+    }
+  }
+  rows.sort((a, b) => (a.sm_ad_creative_asset_key < b.sm_ad_creative_asset_key ? -1 : 1));
+  return { rows: rows.slice(0, ASSET_PAGE_SIZE), truncated: rows.length > ASSET_PAGE_SIZE };
 }

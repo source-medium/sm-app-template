@@ -1,3 +1,5 @@
+import { assetHref } from "./assets";
+import { AssetGallery } from "./asset-gallery";
 import { creativeBindings, creativeBinding } from "./metrics";
 import { MetricDefinition } from "@/components/patterns/metric-definition";
 import { Input } from "@/components/ui/input";
@@ -78,6 +80,7 @@ const VIEW_LABELS: Record<"delivery" | "returns" | "table", string> = {
 
 export default async function CreativesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
+  if (single(params, "view") === "assets") return <AssetGallery params={params} />;
   const { channel, campaign, format, view, sort, minimumSpend, minimumConversions, thresholdError, selection, names } =
     creativesOptions(params);
   // The parsed filters, so a metric definition never echoes a rejected or overlong URL value.
@@ -151,6 +154,13 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
         };
         return (
           <div className="flex flex-col gap-6">
+            <Link
+              prefetch={false}
+              className="w-fit text-sm font-medium underline underline-offset-4"
+              href={assetHref(filters.storeId, channel)}
+            >
+              Browse creative assets
+            </Link>
             <ReportControls
               keepOpen={Boolean(names.error) || Boolean(thresholdError)}
               summary={[
@@ -459,7 +469,7 @@ function CreativesView({
 }: {
   selection: readonly CreativeIdentity[];
   params: SearchParams;
-  scopeFilters: Record<string, string | null>;
+  scopeFilters: Record<string, string | null> & { store: string };
   comparison?: boolean;
   data: CreativesData;
   plan?: ComparisonPlan;
@@ -502,7 +512,10 @@ function CreativesView({
             return {
               id: JSON.stringify([c.channel, c.creativeId]),
               cells: {
-                name: { display: c.title ?? c.name ?? c.creativeId },
+                name: {
+                  display: c.title ?? c.name ?? c.creativeId,
+                  href: assetHref(scopeFilters.store, c.channel, c.creativeId),
+                },
                 channel: { display: adPlatformLabel(c.channel), leading: <PlatformMark platform={c.channel} /> },
                 format: { display: creativeFormatLabel(c.format) },
                 // An older creative sorts before every dated one.
@@ -551,24 +564,35 @@ function CreativesView({
             ],
             caption: firstSpendLabel(creative.firstSpend) ?? undefined,
             imageUrl: creative.imageUrl,
-            footer: (() => {
-              const identity: CreativeIdentity = [creative.channel, creative.creativeId];
-              const selected = selection.some(([platform, id]) => platform === identity[0] && id === identity[1]);
-              if (!selected && selection.length >= 4)
-                return <span className="text-sm text-muted-foreground">Four selected</span>;
-              const next = selected
-                ? selection.filter(([platform, id]) => platform !== identity[0] || id !== identity[1])
-                : [...selection, identity];
-              return (
+            footer: (
+              <>
                 <Link
                   prefetch={false}
-                  className="text-sm underline underline-offset-4"
-                  href={withParams(PATHNAME, params, { selection: next.length ? JSON.stringify(next) : null })}
+                  className="text-sm font-medium underline underline-offset-4"
+                  href={assetHref(scopeFilters.store, creative.channel, creative.creativeId)}
                 >
-                  {selected ? "Remove from comparison" : "Compare creative"}
+                  View assets
                 </Link>
-              );
-            })(),
+                {(() => {
+                  const identity: CreativeIdentity = [creative.channel, creative.creativeId];
+                  const selected = selection.some(([platform, id]) => platform === identity[0] && id === identity[1]);
+                  if (!selected && selection.length >= 4)
+                    return <span className="text-sm text-muted-foreground">Four selected</span>;
+                  const next = selected
+                    ? selection.filter(([platform, id]) => platform !== identity[0] || id !== identity[1])
+                    : [...selection, identity];
+                  return (
+                    <Link
+                      prefetch={false}
+                      className="text-sm underline underline-offset-4"
+                      href={withParams(PATHNAME, params, { selection: next.length ? JSON.stringify(next) : null })}
+                    >
+                      {selected ? "Remove from comparison" : "Compare creative"}
+                    </Link>
+                  );
+                })()}
+              </>
+            ),
             action: creative.adUrl ? { href: creative.adUrl, label: "Open ad" } : undefined,
             metrics:
               view === "returns"

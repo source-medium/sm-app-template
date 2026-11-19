@@ -7,6 +7,7 @@
  * map in code; the browser only picks the key. The `channel` parameter and
  * alias carry the ad platform (AD_PLATFORM_SQL).
  */
+import { ASSET_RELATION, ASSET_PAGE_SIZE, AssetRow, type AssetScope } from "./assets";
 import "server-only";
 import { rangeLength, type ReportFilters } from "@/lib/filters";
 import type { BaselineRanges } from "@/lib/comparison";
@@ -238,4 +239,29 @@ export async function queryCreativeChannels(filters: ReportFilters): Promise<str
     ],
   });
   return decodeRows(CreativeChannelRow, result.rows, CREATIVE_RELATION).map((row) => row.channel);
+}
+
+export async function queryCreativeAssets(filters: AssetScope) {
+  const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
+  const result = await warehouse.query({
+    name: "creative_assets",
+    maxRows: ASSET_PAGE_SIZE,
+    partial: true,
+    sql: `SELECT sm_ad_creative_asset_key, source_system, ad_creative_id, ad_id, ad_campaign_id, asset_role,
+        asset_id, asset_text, asset_image_url, asset_video_url, asset_video_id, asset_link_url
+      FROM ${warehouse.table(ASSET_RELATION)}
+      WHERE sm_store_id = @store_id AND (@channel = '' OR source_system = @channel)
+        AND (@entity = '' OR ad_creative_id = @entity) AND (@role = '' OR asset_role = @role)
+        AND sm_ad_creative_asset_key > @cursor
+      ORDER BY sm_ad_creative_asset_key LIMIT @limit`,
+    params: [
+      { name: "store_id", type: "STRING", value: filters.storeId },
+      { name: "channel", type: "STRING", value: filters.channel },
+      { name: "entity", type: "STRING", value: filters.entity },
+      { name: "role", type: "STRING", value: filters.role },
+      { name: "cursor", type: "STRING", value: filters.cursor },
+      { name: "limit", type: "INT64", value: ASSET_PAGE_SIZE + 1 },
+    ],
+  });
+  return { rows: decodeRows(AssetRow, result.rows, ASSET_RELATION), truncated: result.truncated };
 }

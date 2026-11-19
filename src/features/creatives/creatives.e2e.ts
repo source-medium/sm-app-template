@@ -198,3 +198,52 @@ test("creatives: compares totals and each creative, and drills into a format", a
   await expect(deltas(page.getByRole("region", { name: "Creative totals" }))).toHaveCount(0);
   await expect(first.locator("dd")).toHaveCount(await first.locator("dt").count());
 });
+
+test("creatives: current assets open from performance, play a supplied video and browse beyond the ranking", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-28");
+  const card = page
+    .getByRole("list", { name: "Ad creatives" })
+    .getByRole("listitem")
+    .filter({ hasText: "Customers on repeat" });
+  await card.getByRole("link", { name: "View assets" }).click();
+  await expect(page.getByRole("heading", { name: "Creative assets", exact: true })).toBeVisible();
+  const assets = page.getByRole("list", { name: "Creative assets" });
+  await expect(assets.getByRole("heading", { name: "Primary text" })).toBeVisible();
+  const video = assets.locator("video");
+  await video.evaluate(async (element: HTMLVideoElement) => {
+    element.muted = true;
+    await element.play();
+  });
+  await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime)).toBeGreaterThan(0);
+  await page.getByRole("link", { name: "All creative assets" }).click();
+  await expect(page.getByLabel("Creative ID", { exact: true })).toHaveValue("");
+  await page.getByLabel("Asset type").selectOption("video");
+  await expect(page).toHaveURL(/role=video/);
+  await expect(assets.getByText("Playback URL unavailable").first()).toBeVisible();
+  await page.getByLabel("Asset type").selectOption("");
+  await expect(assets.getByRole("heading", { name: "Primary text" }).first()).toBeVisible();
+  const first = await assets.getByRole("listitem").first().innerText();
+  await page.getByRole("link", { name: "Next assets" }).click();
+  await expect(page).toHaveURL(/cursor=/);
+  await expect(assets.getByRole("listitem").first()).not.toHaveText(first);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+});
+
+test("creatives: an unavailable video keeps its platform link and ID", async ({ page }) => {
+  await page.route("**/sample-creatives/creative-03.mp4", (route) => route.abort());
+  await page.goto("/creatives?store=sample-store-a&view=assets&entity=crv-03&channel=meta_ads&role=video");
+  const card = page.getByRole("list", { name: "Creative assets" }).getByRole("listitem");
+  await card.locator("video").evaluate((video: HTMLVideoElement) => video.play().catch(() => {}));
+  await expect(card.getByText("Inline playback unavailable.", { exact: false })).toBeVisible();
+  await expect(card.getByRole("link", { name: "Open video" })).toHaveAttribute(
+    "href",
+    "/sample-creatives/creative-03.mp4",
+  );
+  await expect(card).toContainText("Video ID crv-03-video");
+  await page.getByLabel("Creative ID", { exact: true }).fill("missing-creative-id");
+  await page.getByRole("button", { name: "Find assets" }).click();
+  await expect(page.getByText("No published assets match this selection.")).toBeVisible();
+});

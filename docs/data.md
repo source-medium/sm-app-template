@@ -885,6 +885,15 @@ deeper checks with your own BigQuery access, SourceMedium publishes the
 [SM BigQuery Analyst skill (v1.1.0)](https://github.com/source-medium/skills/tree/v1.1.0/skills/sm-bigquery-analyst);
 it uses your own `gcloud` login, not the app's key.
 
+## Creative assets
+
+In Creatives, **Browse creative assets** opens the store’s current inventory from `rpt_ad_creative_assets`.
+**View assets** on a card, or the creative name in the performance table, opens that platform and creative ID.
+Filter by asset type or creative ID and use **Next assets** to continue through the inventory. Inventory includes
+assets without delivery in the selected dates. Spend and ROAS come only from the daily performance table.
+A video can have a playable URL, a platform link, a cover image, or only an ID. Video files load on demand
+from the published HTTPS URL. The local sample includes a short silent animation.
+
 ## Creative images
 
 The Creatives view loads each ad's image straight from the URL in your
