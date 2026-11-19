@@ -64,9 +64,10 @@ export function ComparisonCaption({
 }
 
 /** The switch between the plan's two comparisons, for a section whose dates the caption above already gives. */
-export function PlanSwitch({ plan }: { plan: ComparisonPlan }) {
+export function PlanSwitch({ plan, label }: { plan: ComparisonPlan; label?: string }) {
   return (
     <BaselineSwitch
+      label={label}
       labels={[switchLabel(plan.slots[0]), switchLabel(plan.slots[1])]}
       available={[plan.slots[0].range !== null, plan.slots[1].range !== null]}
     />

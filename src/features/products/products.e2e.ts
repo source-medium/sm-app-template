@@ -12,11 +12,13 @@ for (const ranking of ["gainers", "decliners"]) {
         .getByRole("table", { name: "Net revenue by product details", exact: true })
         .getByRole("columnheader", { name: /^Change vs / }),
     ).toContainText("Change vs previous 7 days");
-    await expect(page.getByRole("group", { name: "Comparison shown in charts and tables" })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Compare table with" })).toHaveCount(0);
   });
 }
 
-test("products: photo links preserve report scope and table identities stay pinned on phones", async ({ page }) => {
+test("products: photo links preserve report scope and ranked values stay beside their identity on phones", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto(
     "/products?store=sample-store-a&range=last-7-days&sales_channel=online_dtc&dimension=variant&metric=units",
@@ -24,20 +26,18 @@ test("products: photo links preserve report scope and table identities stay pinn
   await expect(page.getByRole("button", { name: /^Filters:/ })).toHaveAttribute("aria-expanded", "false");
   const table = page.getByRole("table", { name: "Net units by variant details", exact: true });
   await expect(table.getByRole("columnheader", { name: "Variant", exact: true })).toBeVisible();
-  const change = table.getByRole("columnheader", { name: /^Change vs / });
-  const before = await change.innerText();
-  await page.getByRole("group", { name: "Comparison shown in charts and tables" }).getByRole("button").nth(1).click();
-  await expect(change).not.toHaveText(before);
+  const change = table.locator('td[data-mobile-label^="Change vs"]').first();
+  const before = await change.getAttribute("data-mobile-label");
+  expect(before).toMatch(/^Change vs /);
+  await page.getByRole("group", { name: "Compare table with" }).getByRole("button").nth(1).click();
+  await expect(change).not.toHaveAttribute("data-mobile-label", before ?? "");
   const link = table.getByRole("link").first();
   const scroller = page.getByRole("region", { name: "Net units by variant details", exact: true });
   const identity = table.locator("tbody tr").first().locator("td").first();
-  const left = await identity.evaluate((node) => node.getBoundingClientRect().left);
-  await scroller.evaluate((node) => {
-    node.scrollLeft = node.scrollWidth;
-  });
-  await expect.poll(() => scroller.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
-  expect(Math.abs((await identity.evaluate((node) => node.getBoundingClientRect().left)) - left)).toBeLessThanOrEqual(
-    1,
+  await identity.scrollIntoViewIfNeeded();
+  await expect(identity).toBeInViewport();
+  expect(await scroller.evaluate((node) => node.scrollWidth)).toBeLessThanOrEqual(
+    await scroller.evaluate((node) => node.clientWidth),
   );
   await link.locator("img").click();
   await expect(page).toHaveURL((url) => url.searchParams.has("entity"));
@@ -204,4 +204,25 @@ test("products: sales-channel scope changes totals and survives the other contro
   await expect(page.getByLabel("Sales channel", { exact: true })).toHaveValue("unknown");
   await choose(page, "Sales channel", "");
   await expect(totals).toHaveCount(2);
+});
+
+test("phone rankings show each complete change amount inside the table frame", async ({ page }) => {
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/products?store=sample-store-a&from=2026-09-01&to=2026-09-28&compare=previous");
+    const table = page.getByRole("table", { name: "Net revenue by product details" });
+    const changes = table.locator('td[data-mobile-label^="Change"]');
+    await expect(changes.first()).toBeVisible();
+    expect(
+      await changes.evaluateAll((cells) =>
+        cells.every((cell) => {
+          const frame = cell.closest('[data-slot="table-container"]')?.getBoundingClientRect();
+          const range = document.createRange();
+          range.selectNodeContents(cell);
+          const text = range.getBoundingClientRect();
+          return !!frame && text.width > 0 && text.left >= frame.left && text.right <= frame.right;
+        }),
+      ),
+    ).toBe(true);
+  }
 });

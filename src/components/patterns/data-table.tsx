@@ -20,6 +20,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
@@ -40,7 +41,7 @@ export type DataTableCell = {
   display: string;
   /** A change that is good or bad for its measure, colored like a KPI card's; see changeCell(). */
   tone?: ChangeTone;
-  sort?: string | number | null;
+  sort?: string | number | bigint | null;
   href?: string;
   leading?: React.ReactNode;
 };
@@ -81,6 +82,7 @@ export function DataTable({
   rows,
   pageSize = 10,
   paginate = true,
+  stackOnMobile = false,
   truncated = false,
   totals,
   actions,
@@ -90,6 +92,8 @@ export function DataTable({
   rows: DataTableRow[];
   pageSize?: number;
   paginate?: boolean;
+  /** Show each record as labelled rows on narrow screens. */
+  stackOnMobile?: boolean;
   truncated?: boolean;
   /** Full-query totals supplied by the server, never the visible page's sum. */
   totals?: DataTableRow;
@@ -118,6 +122,7 @@ export function DataTable({
     getSortedRowModel: getSortedRowModel(),
     ...(paginate ? { getPaginationRowModel: getPaginationRowModel(), initialState: { pagination: { pageSize } } } : {}),
   });
+  const mobileSortColumns = stackOnMobile ? table.getAllLeafColumns().filter((column) => column.getCanSort()) : [];
   const paginated = paginate && table.getPageCount() > 1;
   const { pageIndex, pageSize: rowsPerPage } = table.getState().pagination;
   const firstVisible = pageIndex * rowsPerPage + 1;
@@ -125,9 +130,33 @@ export function DataTable({
 
   return (
     <div data-agent-target={caption} data-agent-component="DataTable" className="flex flex-col gap-3">
+      {mobileSortColumns.length > 0 && (
+        <label className="flex items-center gap-2 text-sm font-medium sm:hidden">
+          Sort by
+          <NativeSelect
+            aria-label={`Sort by column in ${caption}`}
+            className="w-auto max-w-full"
+            value={sorting[0] ? (sorting[0].desc ? "-" : "+") + sorting[0].id : ""}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSorting(value ? [{ id: value.slice(1), desc: value.startsWith("-") }] : []);
+            }}
+          >
+            <option value="">Default order</option>
+            {mobileSortColumns.flatMap((column) =>
+              [false, true].map((desc) => (
+                <option key={column.id + desc} value={(desc ? "-" : "+") + column.id}>
+                  {column.columnDef.header?.toString()} ({desc ? "descending" : "ascending"})
+                </option>
+              )),
+            )}
+          </NativeSelect>
+        </label>
+      )}
       {/* Only a long table scrolls inside itself under a sticky header; a short one shows every row. */}
       <Table
         containerClassName={cn("rounded-xl border bg-card", table.getRowModel().rows.length > 12 && "max-h-[32rem]")}
+        className={stackOnMobile ? "stacked-records" : undefined}
         regionLabel={caption}
       >
         <caption className="sr-only">{caption}</caption>
@@ -141,10 +170,12 @@ export function DataTable({
                 return (
                   <TableHead
                     key={header.id}
+                    scope="col"
                     aria-label={column?.definition ? column.header : undefined}
                     className={cn("text-muted-foreground", column?.align === "right" && "text-right")}
                     aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
                   >
+                    {stackOnMobile && header.column.getCanSort() && <span className="sm:hidden">{column?.header}</span>}
                     {header.column.getCanSort() ? (
                       <button
                         type="button"
@@ -152,6 +183,7 @@ export function DataTable({
                         onClick={header.column.getToggleSortingHandler()}
                         className={cn(
                           "group/sort inline-flex min-h-9 items-center gap-2 rounded-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11",
+                          stackOnMobile && "max-sm:hidden",
                           column?.align === "right" ? "flex-row-reverse text-right" : "text-left",
                           sorted && "text-primary",
                         )}
@@ -188,6 +220,7 @@ export function DataTable({
                 return (
                   <TableCell
                     key={cell.id}
+                    data-mobile-label={stackOnMobile ? column?.header : undefined}
                     className={cn(
                       column?.align === "right" && "text-right tabular-nums",
                       column?.nowrap && "max-w-none! whitespace-nowrap!",

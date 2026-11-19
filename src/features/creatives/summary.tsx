@@ -81,10 +81,9 @@ export function CreativeSummaryView({
   const newShare = newCreativeShare(summary);
   return (
     <div className="flex flex-col gap-6">
-      {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
       {/* Six cards go two across on a phone, so the totals fit about one screen. */}
       <section aria-label="Creative totals" className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <AdKpis totals={totals} plan={plan} changes={changes} money={money} />
+        <AdKpis spendLabel="Spend linked to creatives" totals={totals} plan={plan} changes={changes} money={money} />
         <KpiCard
           label="Creatives with spend"
           value={formatCount(totals.current.creatives)}
@@ -110,6 +109,7 @@ export function CreativeSummaryView({
           {money(summary.uncoveredSpend)} of ad spend in these dates has no creative and is not counted here.
         </p>
       )}
+      {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
       <FormatMix summary={summary} plan={plan} format={format} params={params} pathname={pathname} money={money} />
       <Launches summary={summary} range={range} money={money} />
     </div>
@@ -156,9 +156,9 @@ function FormatMix({
     const versus = compare && baseline ? `vs ${baseline.short}` : null;
     const formats = (
       <DataTable
+        stackOnMobile
         caption="Spend and results by creative format"
         columns={[
-          // What each format spent and returned reads first on a phone; counts and shares scroll.
           { key: "format", header: "Format" },
           { key: "spend", header: "Spend", align: "right" },
           { key: "roas", header: "Platform ROAS", align: "right" },

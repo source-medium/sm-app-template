@@ -13,7 +13,9 @@ export function AdKpis({
   plan,
   changes,
   money,
+  spendLabel = "Spend",
 }: {
+  spendLabel?: string;
   totals: AdPeriods;
   plan?: ComparisonPlan;
   changes: readonly PeriodChanges[] | null;
@@ -32,7 +34,7 @@ export function AdKpis({
   return (
     <>
       <KpiCard
-        label="Spend"
+        label={spendLabel}
         value={money(totals.current.spend)}
         deltas={deltas((slot) => sums(slot).spend, money, AD_POLARITY.spend)}
       />

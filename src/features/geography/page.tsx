@@ -15,12 +15,12 @@ import { DataTable } from "@/components/patterns/data-table";
 import type { AxisFormat } from "@/components/charts/compact-number";
 import { MetricChart } from "@/components/charts/metric-chart";
 import { buildChartData, type PointValue } from "@/components/charts/chart-data";
-import { ComparisonCaption } from "@/components/patterns/comparison-caption";
+import { ComparisonCaption, PlanSwitch } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { changeCell, kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { Disclosure } from "@/components/ui/disclosure";
-import { formatCount, formatDate, formatMoneyIn, formatPercent, moneyAxis } from "@/lib/format";
+import { formatCount, formatDate, formatDay, formatMoneyIn, formatPercent, moneyAxis } from "@/lib/format";
 import { decimalToNumber } from "@/lib/data/decimal";
 import { planRanges, slotChanges } from "@/lib/comparison";
 import { drillDown } from "@/lib/drill-down";
@@ -217,7 +217,10 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                       series: [{ key, label: metricLabel, color: "var(--chart-1)" }],
                       ...buildChartData(
                         datesInRange(filters.range).map((date) => ({
-                          label: formatDate(date),
+                          label:
+                            filters.range.from.slice(0, 4) === filters.range.to.slice(0, 4)
+                              ? formatDay(date)
+                              : formatDate(date),
                           values: { [key]: point(trends.get(date)) },
                         })),
                       ),
@@ -275,7 +278,13 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                             remedy="The independently queried total does not match all destination groups. Coverage and changes require maintainer review."
                           />
                         )}
-                        {plan && <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)} />}
+                        {plan && (
+                          <ComparisonCaption
+                            plan={plan}
+                            switchable={false}
+                            issues={changes?.map((change) => change.issue)}
+                          />
+                        )}
                         <section aria-label="Geographic sales totals" className="grid gap-4 sm:grid-cols-3">
                           <KpiCard
                             label="Net revenue"
@@ -322,6 +331,7 @@ export default async function GeographyPage({ searchParams }: { searchParams: Pr
                           />
                           <div className="grid min-w-0 gap-5 lg:grid-cols-5">
                             <div className="flex min-w-0 flex-col gap-3 lg:order-2 lg:col-span-3">
+                              {plan && <PlanSwitch plan={plan} label="Compare table with" />}
                               {plan ? <ActiveBaseline a={table(0)} b={table(1)} /> : table(0)}
                             </div>
                             {!country || country === "US" ? (

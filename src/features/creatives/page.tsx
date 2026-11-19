@@ -419,7 +419,7 @@ function creativeChange<M extends Measure>(
   slot: 0 | 1 | null,
   measure: M,
   format: (value: Creative[M]) => string,
-): KpiDelta | undefined {
+) {
   if (slot === null) return undefined;
   const better: Polarity = CREATIVE_POLARITY[measure];
   type Value = NonNullable<Creative[M]>;

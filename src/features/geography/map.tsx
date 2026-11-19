@@ -23,18 +23,18 @@ export function GeographyMap(props: MapProps) {
           </Button>
         </CardAction>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {shown && (
+      {shown && (
+        <CardContent className="space-y-3">
           <Suspense fallback={<p role="status">Loading local map…</p>}>
             <Shapes {...props} />
           </Suspense>
-        )}
-        <p className="text-xs text-muted-foreground">
-          Darker means more valid orders. Select a destination to drill in. Natural Earth 5.1.1, public domain.
-          Simplified de facto boundaries; small or unmapped destinations remain in the table.{" "}
-          {props.country === "US" && "Alaska and Hawaii are shown in separately scaled insets."}
-        </p>
-      </CardContent>
+          <p className="text-xs text-muted-foreground">
+            Stronger blue means more valid orders. Select a destination to drill in. Natural Earth 5.1.1, public domain.
+            Simplified de facto boundaries; small or unmapped destinations remain in the table.{" "}
+            {props.country === "US" && "Alaska and Hawaii are shown in separately scaled insets."}
+          </p>
+        </CardContent>
+      )}
     </Card>
   );
 }

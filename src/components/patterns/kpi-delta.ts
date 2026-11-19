@@ -5,10 +5,12 @@ import {
   compareValues,
   type Baseline,
   type ComparisonPlan,
+  type MetricChange,
   type MetricValue,
   type PeriodChanges,
   type Polarity,
 } from "@/lib/comparison";
+import { toUnits } from "@/lib/data/decimal";
 import { formatChangePercent, formatDateRange } from "@/lib/format";
 import type { DataTableCell } from "./data-table";
 import type { KpiDelta } from "./kpi-card";
@@ -25,7 +27,7 @@ export function kpiDelta<T extends MetricValue>(
   format: (value: T | null) => string,
   better: Polarity,
   label = "vs comparison",
-): KpiDelta {
+): KpiDelta & Pick<MetricChange<T>, "difference" | "percent"> {
   const change = compareValues(current, baseline);
   let display = baseline === null ? "No comparison value" : "No current value";
   if (change.difference !== null) {
@@ -42,6 +44,8 @@ export function kpiDelta<T extends MetricValue>(
   }
   return {
     display,
+    difference: change.difference,
+    percent: change.percent,
     // The percentage reads at a glance; a change with none keeps its amount.
     short: change.direction !== "flat" && change.percent !== null ? formatChangePercent(change.percent) : undefined,
     direction: change.direction,
@@ -56,8 +60,16 @@ export function kpiDelta<T extends MetricValue>(
  * `short` only its percentage (as a KPI row shows it), for a table whose own columns
  * already carry the amounts.
  */
-export function changeCell(delta: KpiDelta, { short = false }: { short?: boolean } = {}): DataTableCell {
-  return { display: (short && delta.short) || delta.display, tone: delta.tone ?? undefined };
+export function changeCell(
+  delta: ReturnType<typeof kpiDelta>,
+  { short = false }: { short?: boolean } = {},
+): DataTableCell {
+  const value = short ? delta.percent : delta.difference;
+  return {
+    display: (short && delta.short) || delta.display,
+    tone: delta.tone ?? undefined,
+    sort: typeof value === "string" ? toUnits(value) : value,
+  };
 }
 
 /** How a KPI row names its baseline: "vs previous 28 days", "vs last year". */
