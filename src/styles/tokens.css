@@ -124,7 +124,8 @@
     --chart-axis: #94a3b8;
 
     --shadow-card: none;
-    --scroll-cue: rgba(0, 0, 0, 0.5);
+    /* The text color at the light theme's strength; a black shade disappears on a dark card. */
+    --scroll-cue: rgba(226, 232, 240, 0.16);
     --segment: #2c3b5c;
     /* Primary is dark on a dark card, so the lowest values need more of it to read as shaded. */
     --cohort-lightest: 24%;

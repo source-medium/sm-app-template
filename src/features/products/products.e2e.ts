@@ -23,6 +23,7 @@ test("products: photo links preserve report scope and table identities stay pinn
   );
   await expect(page.getByRole("button", { name: /^Filters:/ })).toHaveAttribute("aria-expanded", "false");
   const table = page.getByRole("table", { name: "Net units by variant details", exact: true });
+  await expect(table.getByRole("columnheader", { name: "Variant", exact: true })).toBeVisible();
   const change = table.getByRole("columnheader", { name: /^Change vs / });
   const before = await change.innerText();
   await page.getByRole("group", { name: "Comparison shown in charts and tables" }).getByRole("button").nth(1).click();

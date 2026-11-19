@@ -8,7 +8,7 @@ import { ReportPage } from "@/components/shell/report-page";
 import { DataRegion } from "@/components/patterns/data-region";
 import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { KpiCard, type KpiDelta } from "@/components/patterns/kpi-card";
-import { ComparisonCaption } from "@/components/patterns/comparison-caption";
+import { ComparisonCaption, PlanSwitch } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { changeCell, kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
@@ -192,6 +192,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                     return (
                       <RankedBreakdown
                         title={`${metricLabel} by ${options.dimension}`}
+                        categoryLabel={
+                          PRODUCT_DIMENSIONS.find((item) => item.value === options.dimension)?.label ??
+                          options.dimension
+                        }
                         valueLabel={metricLabel}
                         valueFormat={format === money ? moneyAxis(currency) : "number"}
                         description={
@@ -236,7 +240,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         <ComparisonCaption
                           plan={plan}
                           issues={changes?.map((change) => change.issue)}
-                          switchable={perSlot}
+                          switchable={false}
                         />
                       )}
                       <section aria-label="All product totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -285,8 +289,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                           remedy="Choose a first comparison with sufficient matching coverage to rank period gainers or decliners, or select Largest value."
                           tone="warning"
                         />
-                      ) : perSlot ? (
-                        <ActiveBaseline a={ranking(0)} b={ranking(1)} />
+                      ) : perSlot && plan ? (
+                        // The switch sits with the ranking, the only section that draws a comparison.
+                        <div className="flex flex-col gap-3">
+                          <PlanSwitch plan={plan} />
+                          <ActiveBaseline a={ranking(0)} b={ranking(1)} />
+                        </div>
                       ) : (
                         ranking(0)
                       )}

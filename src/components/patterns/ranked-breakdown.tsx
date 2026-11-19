@@ -13,6 +13,7 @@ import { DataTable, type DataTableCell } from "./data-table";
 export function RankedBreakdown({
   title,
   description,
+  categoryLabel,
   valueLabel,
   rows,
   hasMore = false,
@@ -21,6 +22,8 @@ export function RankedBreakdown({
 }: {
   title: string;
   description: string;
+  /** What the rows are, such as "Ad platform" or "Product"; it heads the first column. */
+  categoryLabel: string;
   valueLabel: string;
   rows: {
     id: string;
@@ -46,7 +49,7 @@ export function RankedBreakdown({
         description={description}
         kind="bar"
         horizontal
-        categoryHeader="Name"
+        categoryHeader={categoryLabel}
         series={[{ key: "value", label: valueLabel, color: "var(--chart-1)" }]}
         data={chart.data.map((point, index) => ({ ...point, axisLabel: rows[index]?.chartLabel ?? point.label }))}
         plottable={chart.plottable}
@@ -57,7 +60,7 @@ export function RankedBreakdown({
         paginate={false}
         truncated={hasMore}
         columns={[
-          { key: "name", header: "Name", sortable: false },
+          { key: "name", header: categoryLabel, sortable: false },
           { key: "value", header: valueLabel, align: "right", sortable: false },
           ...(comparisonLabel
             ? [{ key: "change", header: comparisonLabel, align: "right" as const, sortable: false }]
