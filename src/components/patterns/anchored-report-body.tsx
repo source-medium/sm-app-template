@@ -26,11 +26,13 @@ export function AnchoredReportBody({
   }, []);
 
   useEffect(() => {
-    const target = document.getElementById(location.hash.slice(1) || defaultFragment || "");
+    const fragment = location.hash.slice(1);
+    const target =
+      (fragment && document.getElementById(fragment)) || (defaultFragment && document.getElementById(defaultFragment));
     if (target && body.current?.contains(target)) {
       const disclosure = target.closest("details");
       if (disclosure) disclosure.open = true;
-      target.scrollIntoView();
+      target.scrollIntoView({ block: target.hasAttribute("data-scroll-nearest") ? "nearest" : "start" });
       target.focus({ preventScroll: true });
     }
   }, [navigationKey, defaultFragment]);

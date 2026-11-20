@@ -148,12 +148,17 @@ test("creatives defaults to Performance, preserves explicit views and compares c
   const card = page.getByRole("list", { name: "Ad creatives" }).getByRole("listitem").nth(4);
   const title = await card.getByRole("heading").innerText();
   await card.getByRole("link", { name: "Compare creative" }).press("Enter");
-  const comparison = page.getByRole("region", { name: "Creative comparison (1/4)" });
-  await expect(comparison.getByRole("heading")).toBeFocused();
-  await expect(comparison.getByText(title, { exact: true })).toBeVisible();
-  await comparison.getByRole("link", { name: "Choose another creative" }).press("Enter");
-  await expect(card.getByRole("link", { name: "Remove from comparison" })).toBeFocused();
-  await page.getByRole("link", { name: "Compare creative", exact: true }).first().click();
+  const bar = page.getByRole("complementary", { name: "Your comparison" });
+  await expect(card.getByRole("link", { name: /Remove from comparison/ })).toBeFocused();
+  await expect(bar).toContainText(title);
+  await expect(bar).toContainText("Choose one more creative");
+  const second = page.getByRole("list", { name: "Ad creatives" }).getByRole("listitem").first();
+  await second.getByRole("link", { name: "Compare creative", exact: true }).click();
+  await expect(second.getByRole("link", { name: /Remove from comparison/ })).toBeFocused();
+  await expect(bar.getByRole("link", { name: "View comparison" })).toBeInViewport();
+  await page.keyboard.press("Tab");
+  await expect(second.getByRole("link", { name: "View comparison" })).toBeFocused();
+  await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Creative comparison (2/4)", exact: true })).toBeFocused();
   await expect(page.getByRole("table", { name: "Selected creatives" })).toBeVisible();
   const ids = new URL(page.url()).searchParams.get("selection");
@@ -285,8 +290,11 @@ test("creatives: compare and return stay visible below the phone header", async 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-07");
   const card = page.getByRole("list", { name: "Ad creatives" }).getByRole("listitem").nth(5);
-  await card.getByRole("link", { name: "Compare creative" }).click();
-  const heading = page.getByRole("heading", { name: "Creative comparison (1/4)" });
+  const add = card.getByRole("link", { name: "Compare creative" });
+  await add.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  const before = await add.evaluate((el) => el.getBoundingClientRect().top);
+  await add.click();
+  const bar = page.getByRole("complementary", { name: "Your comparison" });
   async function expectLanding(target: Locator) {
     await expect(target).toBeFocused();
     await expect(target).toBeInViewport({ ratio: 1 });
@@ -300,12 +308,15 @@ test("creatives: compare and return stay visible below the phone header", async 
       )
       .toBe(true);
   }
-  await expectLanding(heading);
-  await page.getByRole("link", { name: "Choose another creative" }).click();
-  const remove = card.getByRole("link", { name: "Remove from comparison" });
+  const remove = card.getByRole("link", { name: /Remove from comparison/ });
   await expectLanding(remove);
+  await expect(bar).toBeInViewport({ ratio: 1 });
+  const top = (locator: Locator) => locator.evaluate((el) => el.getBoundingClientRect().top);
+  expect(Math.abs((await top(remove)) - before)).toBeLessThan(45);
+  expect(await remove.evaluate((el) => el.getBoundingClientRect().bottom)).toBeLessThanOrEqual(await top(bar));
   await remove.click();
-  await expect(page.getByRole("heading", { name: "All creatives" })).toBeFocused();
+  await expectLanding(add);
+  await expect(bar).toHaveCount(0);
 });
 
 test("creatives: compare table rows side by side on a phone, including four selections", async ({ page }) => {
@@ -328,7 +339,13 @@ test("creatives: compare table rows side by side on a phone, including four sele
     costs.push(await row.getByRole("cell").nth(costColumn).innerText());
     names.push((await row.getByRole("cell").first().innerText()).split("\n")[0] ?? "");
     await row.getByRole("link", { name: "Compare creative", exact: true }).click();
-    await expect(page.getByRole("heading", { name: `Creative comparison (${index + 1}/4)` })).toBeFocused();
+    await expect(row.getByRole("link", { name: /Remove from comparison/ })).toBeFocused();
+    const bar = page.getByRole("complementary", { name: "Your comparison" });
+    await expect(bar).toContainText(`${index + 1} creative`);
+    if (index === 1 || index === 3) {
+      await bar.getByRole("link", { name: "View comparison" }).click();
+      await expect(page.getByRole("heading", { name: `Creative comparison (${index + 1}/4)` })).toBeFocused();
+    }
     if (index === 1) {
       await expect(headers.nth(1)).toContainText(names[0] ?? "");
       await expect(headers.nth(2)).toContainText(names[1] ?? "");
@@ -343,7 +360,7 @@ test("creatives: compare table rows side by side on a phone, including four sele
       const frame = selected.locator("..");
       expect(await frame.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
     }
-    if (index < 3) await page.getByRole("link", { name: "Choose another creative" }).click();
+    if (index === 1) await page.getByRole("link", { name: "Choose another creative" }).click();
   }
   await expect(headers).toHaveCount(5);
   await expect(ranking.getByRole("link", { name: "Compare creative", exact: true })).toHaveCount(0);
@@ -357,4 +374,26 @@ test("creatives: compare table rows side by side on a phone, including four sele
   await selected.getByRole("link", { name: "Remove from comparison" }).last().click();
   await expect(page.getByRole("heading", { name: "Creative comparison (3/4)" })).toBeFocused();
   await expect(page.getByLabel("View", { exact: true })).toHaveValue("table");
+});
+
+test("creatives: selection keeps the table page, sorting resets it, and an off-page pick opens on reload", async ({
+  page,
+}) => {
+  await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-07&view=table");
+  const ranking = page.getByRole("table", { name: "Creative performance" });
+  const gallery = page.getByRole("region", { name: "All creatives" });
+  const sort = ranking.getByRole("columnheader", { name: "Creative", exact: true }).getByRole("button");
+  await gallery.getByRole("button", { name: "Next", exact: true }).click();
+  const row = ranking.locator("tbody tr").first();
+  const add = row.getByRole("link", { name: "Compare creative" });
+  const id = await add.evaluate((link) => link.id);
+  await add.click();
+  const picked = row.getByRole("link", { name: /Remove from comparison/ });
+  await expect(picked).toBeFocused();
+  await expect(picked).toHaveAttribute("id", id);
+  await expect(gallery.getByText(/Page 2 of/)).toBeVisible();
+  await sort.click();
+  await expect(gallery.getByText(/Page 1 of/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Creative comparison (1/4)" })).toBeFocused();
 });

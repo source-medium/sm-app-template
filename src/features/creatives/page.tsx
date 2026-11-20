@@ -2,6 +2,10 @@ import { assetHref } from "./assets";
 import { AssetGallery } from "./asset-gallery";
 import { creativeBindings, creativeBinding } from "./metrics";
 import { MetricDefinition } from "@/components/patterns/metric-definition";
+import { Check, Plus } from "lucide-react";
+import { LinkPending } from "@/components/shell/pending";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
   CREATIVE_FORMATS,
@@ -337,6 +341,54 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                     form={REPORT_FILTER_FORM_ID}
                   />
                 )}
+                <section aria-labelledby={GALLERY_HEADING} className="flex flex-col gap-3">
+                  <SectionHeader
+                    id={GALLERY_HEADING}
+                    headingProps={{ tabIndex: -1 }}
+                    title="All creatives"
+                    description={`${SORT_LABELS[sort]} first.`}
+                  />
+                  <Suspense
+                    key={`list|${scopeKey}|${sort}|${view}|${minimumSpend}|${minimumConversions}`}
+                    fallback={<LoadingState variant="grid" label="Loading creatives" />}
+                  >
+                    <DataRegion
+                      timestamp={timeZone}
+                      load={loadList}
+                      isEmpty={(data) => data.creatives.length === 0}
+                      emptyMessage={
+                        names.rules.length
+                          ? "No ad creatives match these filters. Try editing or clearing a filter."
+                          : "No ad creatives match this store, ad platform, and date range."
+                      }
+                      emptyAction={
+                        names.rules.length
+                          ? { href: withParams(PATHNAME, params, { names: null }), label: "Clear name filters" }
+                          : format
+                            ? { href: withParams(PATHNAME, params, { format: null }), label: "Show all formats" }
+                            : channel
+                              ? {
+                                  href: withParams(PATHNAME, params, { channel: null }),
+                                  label: "Show all ad platforms",
+                                }
+                              : undefined
+                      }
+                    >
+                      {(data) => (
+                        <CreativesView
+                          data={data}
+                          plan={plan}
+                          currency={currency}
+                          timeZone={timeZone}
+                          view={view}
+                          selection={selection.items}
+                          scopeFilters={definitionFilters(filters)}
+                          params={applied}
+                        />
+                      )}
+                    </DataRegion>
+                  </Suspense>
+                </section>
                 {lastSelected && (
                   <section aria-labelledby={COMPARISON_HEADING} className="space-y-3">
                     <SectionHeader
@@ -396,54 +448,6 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                     )}
                   </section>
                 )}
-                <section aria-labelledby={GALLERY_HEADING} className="flex flex-col gap-3">
-                  <SectionHeader
-                    id={GALLERY_HEADING}
-                    headingProps={{ tabIndex: -1 }}
-                    title="All creatives"
-                    description={`${SORT_LABELS[sort]} first.`}
-                  />
-                  <Suspense
-                    key={`list|${scopeKey}|${sort}|${view}|${minimumSpend}|${minimumConversions}`}
-                    fallback={<LoadingState variant="grid" label="Loading creatives" />}
-                  >
-                    <DataRegion
-                      timestamp={timeZone}
-                      load={loadList}
-                      isEmpty={(data) => data.creatives.length === 0}
-                      emptyMessage={
-                        names.rules.length
-                          ? "No ad creatives match these filters. Try editing or clearing a filter."
-                          : "No ad creatives match this store, ad platform, and date range."
-                      }
-                      emptyAction={
-                        names.rules.length
-                          ? { href: withParams(PATHNAME, params, { names: null }), label: "Clear name filters" }
-                          : format
-                            ? { href: withParams(PATHNAME, params, { format: null }), label: "Show all formats" }
-                            : channel
-                              ? {
-                                  href: withParams(PATHNAME, params, { channel: null }),
-                                  label: "Show all ad platforms",
-                                }
-                              : undefined
-                      }
-                    >
-                      {(data) => (
-                        <CreativesView
-                          data={data}
-                          plan={plan}
-                          currency={currency}
-                          timeZone={timeZone}
-                          view={view}
-                          selection={selection.items}
-                          scopeFilters={definitionFilters(filters)}
-                          params={applied}
-                        />
-                      )}
-                    </DataRegion>
-                  </Suspense>
-                </section>
               </>
             )}
           </AnchoredReportBody>
@@ -544,6 +548,10 @@ function assetAction(store: string, creative: Creative) {
   }
 }
 
+function matchesCreative(creative: Creative, [platform, id]: CreativeIdentity) {
+  return creative.channel === platform && creative.creativeId === id;
+}
+
 function ComparisonAction({
   creative,
   selection,
@@ -556,19 +564,49 @@ function ComparisonAction({
   anchorId?: string;
 }) {
   const identity: CreativeIdentity = [creative.channel, creative.creativeId];
-  const matches = ([platform, id]: CreativeIdentity) => platform === identity[0] && id === identity[1];
+  const matches = (item: CreativeIdentity) => matchesCreative(creative, item);
   const selected = selection.some(matches);
   if (!selected && selection.length >= 4) return <span className="text-sm text-muted-foreground">Four selected</span>;
   const next = selected ? selection.filter((item) => !matches(item)) : [...selection, identity];
   return (
-    <Link
-      prefetch={false}
-      className="w-fit text-sm underline underline-offset-4"
-      id={anchorId}
-      href={`${withParams(PATHNAME, params, { selection: next.length ? JSON.stringify(next) : null })}#${next.length ? COMPARISON_HEADING : GALLERY_HEADING}`}
-    >
-      {selected ? "Remove from comparison" : "Compare creative"}
-    </Link>
+    <>
+      <Link
+        prefetch={false}
+        className={cn(
+          "inline-flex w-fit scroll-mb-28 items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring",
+          selected && anchorId ? "bg-accent text-accent-foreground" : "underline underline-offset-4",
+        )}
+        scroll={!anchorId}
+        data-scroll-nearest={anchorId ? "" : undefined}
+        id={anchorId}
+        href={`${withParams(PATHNAME, params, { selection: next.length ? JSON.stringify(next) : null })}#${anchorId ?? (next.length ? COMPARISON_HEADING : GALLERY_HEADING)}`}
+      >
+        {anchorId &&
+          (selected ? (
+            <Check aria-hidden className="size-4 shrink-0" />
+          ) : (
+            <Plus aria-hidden className="size-4 shrink-0" />
+          ))}
+        {selected && anchorId ? (
+          <>
+            Selected{" "}
+            <span className="font-normal underline">
+              Remove<span className="sr-only"> from comparison</span>
+            </span>
+          </>
+        ) : selected ? (
+          "Remove from comparison"
+        ) : (
+          "Compare creative"
+        )}
+        <LinkPending />
+      </Link>
+      {anchorId && selected && selection.length >= 2 && (
+        <a href={`#${COMPARISON_HEADING}`} className="sr-only focus:not-sr-only focus:underline">
+          View comparison
+        </a>
+      )}
+    </>
   );
 }
 
@@ -603,6 +641,7 @@ function CreativesView({
     if (view === "table")
       return (
         <DataTable
+          key={data.creatives.length}
           caption="Creative performance"
           truncated={data.truncated}
           columns={[
@@ -621,7 +660,8 @@ function CreativesView({
             ...(versus ? [{ key: "cpoChange", header: `Cost / conversion ${versus}`, align: "right" as const }] : []),
             { key: "ctr", header: "CTR", align: "right" },
           ]}
-          rows={data.creatives.map((c) => {
+          preservePageOnDataChange
+          rows={data.creatives.map((c, index) => {
             const action = assetAction(scopeFilters.store, c);
             const change = <M extends Measure>(measure: M, format: (value: Creative[M]) => string) => {
               const delta = creativeChange(c, shown, measure, format);
@@ -633,7 +673,14 @@ function CreativesView({
                 name: {
                   display: c.title ?? c.name ?? c.creativeId,
                   href: action.href,
-                  secondary: <ComparisonAction creative={c} params={params} selection={selection} />,
+                  secondary: (
+                    <ComparisonAction
+                      creative={c}
+                      params={params}
+                      selection={selection}
+                      anchorId={rankedActionId(index)}
+                    />
+                  ),
                 },
                 assets: { display: action.href ? "Available" : action.display },
                 channel: { display: adPlatformLabel(c.channel), leading: <PlatformMark platform={c.channel} /> },
@@ -692,6 +739,7 @@ function CreativesView({
         id: JSON.stringify([creative.channel, creative.creativeId]),
         creativeId: creative.creativeId,
         title: creativeTitle(creative),
+        selected: selection.some((item) => matchesCreative(creative, item)),
         body: creative.body,
         callToAction: creative.callToAction ? humanize(creative.callToAction) : undefined,
         badge: adPlatformLabel(creative.channel),
@@ -762,7 +810,56 @@ function CreativesView({
           <MetricDefinition binding={creativeBinding("roas")} scope={{ filters: scopeFilters, currency, timeZone }} />
         </div>
       </Disclosure>
+      {!comparison && <SelectionBar selection={selection} creatives={data.creatives} />}
     </div>
+  );
+}
+
+/** Keep the next action in sight while the operator is making picks in the ranking. */
+function SelectionBar({ selection, creatives }: { selection: readonly CreativeIdentity[]; creatives: Creative[] }) {
+  const names = selection.map((item) => {
+    const creative = creatives.find((c) => matchesCreative(c, item));
+    return creative ? creativeTitle(creative) : item[1];
+  });
+  const count = names.length;
+  const message = count === 1 ? "Choose one more creative to compare." : names.join(" · ");
+  return (
+    <>
+      <p aria-live="polite" aria-atomic="true" className="sr-only">
+        {count
+          ? `${count} selected for comparison. ${names.join(", ")}. ${count === 1 ? message : "View comparison is available."}`
+          : ""}
+      </p>
+      {count > 0 && (
+        <aside
+          aria-label="Your comparison"
+          className="sticky bottom-2 z-10 flex items-center justify-between gap-3 rounded-xl border-2 border-primary bg-card px-3 py-2 text-card-foreground shadow-lg sm:px-4"
+        >
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-sm font-semibold">
+              <Check aria-hidden className="size-4 shrink-0" />
+              {count === 1 ? "1 creative selected" : `${count} creatives selected`}
+            </p>
+            {count === 1 && (
+              <p className="truncate text-sm font-medium" title={names[0]}>
+                {names[0]}
+              </p>
+            )}
+            <p
+              className={cn("text-sm text-muted-foreground", count > 1 && "truncate")}
+              title={count > 1 ? message : undefined}
+            >
+              {message}
+            </p>
+          </div>
+          {count >= 2 && (
+            <a href={`#${COMPARISON_HEADING}`} className={buttonVariants({ size: "sm" })}>
+              View comparison
+            </a>
+          )}
+        </aside>
+      )}
+    </>
   );
 }
 
