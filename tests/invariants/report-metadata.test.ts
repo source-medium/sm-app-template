@@ -3,6 +3,7 @@ import { goLive, requestHeaders, rowsResponse } from "../helpers/live";
 import { TEST_PASSWORD } from "../helpers/service-account";
 import { resetQueryCache, setQueryCacheEnabled } from "@/lib/data/query-cache.server";
 import { googleError } from "../fake-bigquery/fake-bigquery";
+import { requireViewer } from "@/lib/auth/require-viewer";
 import { loadReportMetadata } from "@/lib/data/report-metadata.server";
 vi.unmock("@/lib/request-scope");
 const schemaFields = ["table_name", "column_name", "data_type"].map((name) => ({ name, type: "STRING" }));
@@ -117,7 +118,10 @@ it("present incompatible types are incompatible rather than absent optional fiel
         { table_name: "dim_semantic_metric_catalog", column_name: "value_format", data_type: "INT64" },
       ]),
   });
+  const { warehouse } = await requireViewer({ live: true, storeId: "store-a" });
+  const query = vi.spyOn(warehouse, "query");
   expect((await loadReportMetadata("store-a", ["obt_orders"])).catalog).toBe("incompatible");
+  expect(query.mock.calls.map(([request]) => request.name)).toEqual(["report_metadata_schema"]);
   expect(fake.calls.filter((call) => call.kind === "submit")).toHaveLength(1);
 });
 it("refuses another store before metadata reads", async () => {

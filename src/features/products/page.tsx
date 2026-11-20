@@ -10,7 +10,7 @@ import { ErrorState, LoadingState } from "@/components/patterns/data-states";
 import { KpiCard, type KpiDelta } from "@/components/patterns/kpi-card";
 import { ComparisonCaption, PlanSwitch } from "@/components/patterns/comparison-caption";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
-import { changeCell, kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
+import { kpiDelta, slotDeltas } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
 import { ProductCosts } from "./costs";
 import { ProductPhoto } from "./product-image";
@@ -20,7 +20,7 @@ import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { planRanges, slotChanges } from "@/lib/comparison";
-import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
+import { nonnegativeShare } from "@/lib/data/decimal";
 import { formatMeasure, formatMoneyIn, moneyAxis } from "@/lib/format";
 import { parseSalesChannel, salesChannelLabel, withParams, type SearchParams } from "@/lib/filters";
 import { Disclosure } from "@/components/ui/disclosure";
@@ -204,32 +204,22 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                             : `Top 10 ${options.ranking} vs ${plan?.slots[0].label ?? "the first comparison"}.`
                         }
                         hasMore={data.hasMore}
-                        comparisonLabel={compare && baseline ? `Change vs ${baseline.short}` : undefined}
+                        baselineLabel={compare ? baseline?.short : undefined}
+                        formatValue={format}
+                        better={productPolarity(options.metric)}
                         rows={data.rows.map((row) => ({
                           id: row.product_key,
                           label: productName(row),
                           chartLabel: row.label,
                           leading: <ProductPhoto images={images} productKey={row.product_key} />,
                           href: productHref(row.product_key),
-                          value: {
-                            value: decimalToNumber(row[options.metric]),
-                            display: format(row[options.metric]),
-                          },
+                          value: row[options.metric],
+                          baseline: row[slotColumn(slot, options.metric)],
                           share: nonnegativeShare(
                             row[options.metric],
                             row[`total_${options.metric}`],
                             row.minimum_value,
                           ),
-                          change: compare
-                            ? changeCell(
-                                kpiDelta(
-                                  row[options.metric],
-                                  row[slotColumn(slot, options.metric)],
-                                  format,
-                                  productPolarity(options.metric),
-                                ),
-                              )
-                            : undefined,
                         }))}
                       />
                     );
@@ -292,7 +282,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                       ) : perSlot && plan ? (
                         // The switch sits with the ranking, the only section that draws a comparison.
                         <div className="flex flex-col gap-3">
-                          <PlanSwitch plan={plan} label="Compare table with" />
+                          <PlanSwitch plan={plan} />
                           <ActiveBaseline a={ranking(0)} b={ranking(1)} />
                         </div>
                       ) : (

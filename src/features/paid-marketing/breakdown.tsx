@@ -2,9 +2,8 @@ import { PlanSwitch } from "@/components/patterns/comparison-caption";
 import { RankedBreakdown } from "@/components/patterns/ranked-breakdown";
 import { ActiveBaseline } from "@/components/patterns/baseline-switch";
 import { slotChanges, type ComparisonPlan } from "@/lib/comparison";
-import { changeCell, kpiDelta } from "@/components/patterns/kpi-delta";
 import { slotColumn } from "@/lib/data/period-sql";
-import { decimalToNumber, nonnegativeShare } from "@/lib/data/decimal";
+import { nonnegativeShare } from "@/lib/data/decimal";
 import { formatMoneyIn, moneyAxis } from "@/lib/format";
 import { withParams, type SearchParams } from "@/lib/filters";
 import { adPlatformLabel } from "@/lib/ad-platforms";
@@ -43,7 +42,9 @@ export function SpendBreakdownView({
         valueLabel="Spend"
         valueFormat={moneyAxis(currency)}
         description={data.hasMore ? "Top 10 by spend." : "Ranked by spend."}
-        comparisonLabel={compare && baseline ? `Change vs ${baseline.short}` : undefined}
+        baselineLabel={compare ? baseline?.short : undefined}
+        formatValue={money}
+        better="neutral"
         hasMore={data.hasMore}
         rows={data.rows.map((row) => ({
           id: row.dimension_key,
@@ -54,12 +55,9 @@ export function SpendBreakdownView({
                 ? adPlatformLabel(row.label)
                 : row.label,
           leading: dimension === "channel" ? <PlatformMark platform={row.label} /> : undefined,
-          value: { value: decimalToNumber(row.spend), display: money(row.spend) },
+          value: row.spend,
+          baseline: row[slotColumn(slot, "spend")],
           share: nonnegativeShare(row.spend, total, first?.minimum_spend ?? null),
-          // Spend is neither good nor bad on its own, so its change stays uncolored.
-          change: compare
-            ? changeCell(kpiDelta(row.spend, row[slotColumn(slot, "spend")], money, "neutral"))
-            : undefined,
           href:
             dimension === "channel"
               ? withParams("/paid-marketing", params, { store: filters.storeId, channel: row.dimension_key })
