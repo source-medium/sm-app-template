@@ -17,7 +17,9 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { DataTable } from "@/components/patterns/data-table";
 import { decimalToNumber } from "@/lib/data/decimal";
+import { AnchoredReportBody } from "@/components/patterns/anchored-report-body";
 import { CardGrid } from "@/components/patterns/card-grid";
+import { WarehouseError } from "@/lib/data/warehouse-error";
 import { DataRegion } from "@/components/patterns/data-region";
 import { LoadingState } from "@/components/patterns/data-states";
 import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
@@ -61,6 +63,14 @@ import {
 export const metadata: Metadata = { title: "Creatives" };
 
 const PATHNAME = "/creatives";
+const COMPARISON_HEADING = "creative-comparison-heading";
+const GALLERY_HEADING = "creative-list-heading";
+const rankedActionId = (index: number) => `ranked-creative-${index + 1}`;
+
+function creativeTitle(creative: Creative) {
+  return creative.title ?? creative.name ?? creative.body ?? `Creative ${creative.creativeId}`;
+}
+
 const SORT_LABELS: Record<CreativeSort, string> = {
   spend: "Most spend",
   impressions: "Most impressions",
@@ -146,14 +156,20 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
         const loadSummary = () => (summaryLoad ??= getCreativeSummary(scope, baselines));
         let selectedLoad: ReturnType<typeof getCreatives> | undefined;
         const loadSelected = () => (selectedLoad ??= getCreatives({ ...scope, selection: selection.items }, baselines));
-        const loadList = async () => {
+        const resolveList = async () => {
           const data = await getCreatives(scope, baselines);
           const others = [loadSummary(), ...(selection.items.length >= 2 ? [loadSelected()] : [])];
           await Promise.allSettled(others);
           return data;
         };
+        let listLoad: ReturnType<typeof getCreatives> | undefined;
+        const loadList = () => (listLoad ??= resolveList());
+        const lastSelected = selection.items.at(-1);
         return (
-          <div className="flex flex-col gap-6">
+          <AnchoredReportBody
+            navigationKey={JSON.stringify(selection.items)}
+            defaultFragment={lastSelected ? COMPARISON_HEADING : undefined}
+          >
             <Link
               prefetch={false}
               className="w-fit text-sm font-medium underline underline-offset-4"
@@ -314,22 +330,30 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                     form={REPORT_FILTER_FORM_ID}
                   />
                 )}
-                {selection.items.length > 0 && (
-                  <section aria-labelledby="creative-comparison-heading" className="space-y-3">
-                    <h2 id="creative-comparison-heading" className="text-lg font-semibold">
-                      Creative comparison ({selection.items.length}/4)
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Choose two to four creatives. Platforms attribute differently, so compare across platforms with
-                      care.
-                    </p>
-                    <Link
-                      prefetch={false}
-                      className="text-sm underline"
-                      href={withParams(PATHNAME, applied, { selection: null })}
-                    >
-                      Clear selection
-                    </Link>
+                {lastSelected && (
+                  <section aria-labelledby={COMPARISON_HEADING} className="space-y-3">
+                    <SectionHeader
+                      id={COMPARISON_HEADING}
+                      title={`Creative comparison (${selection.items.length}/4)`}
+                      headingProps={{ tabIndex: -1 }}
+                      actions={
+                        <Link
+                          prefetch={false}
+                          className="text-sm underline"
+                          href={`${withParams(PATHNAME, applied, { selection: null })}#${GALLERY_HEADING}`}
+                        >
+                          Clear selection
+                        </Link>
+                      }
+                    />
+                    <Suspense fallback={browseGallery}>
+                      <ComparisonNavigation
+                        load={loadList}
+                        lastSelected={lastSelected}
+                        count={selection.items.length}
+                        table={view === "table"}
+                      />
+                    </Suspense>
                     {selection.items.length >= 2 && (
                       <Suspense
                         key={JSON.stringify([scopeKey, minimumSpend, minimumConversions, selection.items])}
@@ -345,7 +369,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                             <>
                               <p className="text-sm">
                                 {data.creatives.length} of {selection.items.length} selected creatives match. Missing
-                                selections are not zero.
+                                selections are not zero. Platforms may attribute conversions differently.
                               </p>
                               <CreativesView
                                 data={data}
@@ -365,9 +389,10 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                     )}
                   </section>
                 )}
-                <section aria-labelledby="creative-list-heading" className="flex flex-col gap-3">
+                <section aria-labelledby={GALLERY_HEADING} className="flex flex-col gap-3">
                   <SectionHeader
-                    id="creative-list-heading"
+                    id={GALLERY_HEADING}
+                    headingProps={{ tabIndex: -1 }}
                     title="All creatives"
                     description={`${SORT_LABELS[sort]} first.`}
                   />
@@ -414,10 +439,53 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                 </section>
               </>
             )}
-          </div>
+          </AnchoredReportBody>
         );
       }}
     </ReportPage>
+  );
+}
+
+const browseGallery = (
+  <a className="text-sm underline" href={`#${GALLERY_HEADING}`}>
+    Browse all creatives
+  </a>
+);
+
+/** The same ranking supplies both the name and the action to return to, including after a sort or filter change. */
+async function ComparisonNavigation({
+  load,
+  lastSelected: [channel, id],
+  count,
+  table,
+}: {
+  load: () => Promise<CreativesData>;
+  lastSelected: CreativeIdentity;
+  count: number;
+  table: boolean;
+}) {
+  let data: CreativesData;
+  try {
+    data = await load();
+  } catch (error) {
+    // The gallery owns the warehouse error. Its heading remains a usable return target.
+    if (error instanceof WarehouseError) return browseGallery;
+    throw error;
+  }
+  const index = data.creatives.findIndex((creative) => creative.channel === channel && creative.creativeId === id);
+  const last = data.creatives[index];
+  const target = last && !table ? rankedActionId(index) : GALLERY_HEADING;
+  return (
+    <>
+      {count === 1 && (
+        <p className="text-sm">
+          Selected <strong>{last ? creativeTitle(last) : id}</strong> · {adPlatformLabel(channel)}
+        </p>
+      )}
+      <a className="w-fit text-sm font-medium underline underline-offset-4" href={`#${target}`}>
+        {count < 4 && !table ? "Choose another creative" : "Back to all creatives"}
+      </a>
+    </>
   );
 }
 
@@ -556,7 +624,7 @@ function CreativesView({
     const grid = (
       <CardGrid
         label={comparison ? "Selected creatives" : "Ad creatives"}
-        cards={data.creatives.map((creative) => {
+        cards={data.creatives.map((creative, index) => {
           const action = assetAction(scopeFilters.store, creative);
           const metric = <M extends Measure>(
             label: string,
@@ -570,7 +638,7 @@ function CreativesView({
           });
           return {
             id: JSON.stringify([creative.channel, creative.creativeId]),
-            title: creative.title ?? creative.name ?? creative.body ?? `Creative ${creative.creativeId}`,
+            title: creativeTitle(creative),
             body: creative.body,
             callToAction: creative.callToAction ? humanize(creative.callToAction) : undefined,
             badge: adPlatformLabel(creative.channel),
@@ -607,7 +675,8 @@ function CreativesView({
                     <Link
                       prefetch={false}
                       className="text-sm underline underline-offset-4"
-                      href={withParams(PATHNAME, params, { selection: next.length ? JSON.stringify(next) : null })}
+                      id={comparison ? undefined : rankedActionId(index)}
+                      href={`${withParams(PATHNAME, params, { selection: next.length ? JSON.stringify(next) : null })}#${next.length ? COMPARISON_HEADING : GALLERY_HEADING}`}
                     >
                       {selected ? "Remove from comparison" : "Compare creative"}
                     </Link>
