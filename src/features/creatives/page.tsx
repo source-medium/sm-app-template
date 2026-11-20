@@ -23,6 +23,7 @@ import { DataTable } from "@/components/patterns/data-table";
 import { decimalToNumber } from "@/lib/data/decimal";
 import { AnchoredReportBody } from "@/components/patterns/anchored-report-body";
 import { CreativeComparisonTable } from "./comparison-table";
+import { CardImage } from "@/components/patterns/card-image";
 import { CardGrid } from "@/components/patterns/card-grid";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { DataRegion } from "@/components/patterns/data-region";
@@ -155,20 +156,18 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
         const baselines = planRanges(plan);
         const comparisonKey = `${plan?.slots[0].mode}|${plan?.slots[1].mode}`;
         const scopeKey = `${filters.storeId}|${filters.range.from}|${filters.range.to}|${channel}|${campaign}|${format}|${nameKey}|${comparisonKey}`;
-        // The view states one load time, under its last region: the creative list waits for the
-        // summary and the selection to settle, so its stamp covers every query the view made.
         let summaryLoad: ReturnType<typeof getCreativeSummary> | undefined;
         const loadSummary = () => (summaryLoad ??= getCreativeSummary(scope, baselines));
+        let listLoad: ReturnType<typeof getCreatives> | undefined;
+        const loadList = () => (listLoad ??= getCreatives(scope, baselines));
         let selectedLoad: ReturnType<typeof getCreatives> | undefined;
         const loadSelected = () => (selectedLoad ??= getCreatives({ ...scope, selection: selection.items }, baselines));
-        const resolveList = async () => {
-          const data = await getCreatives(scope, baselines);
-          const others = [loadSummary(), ...(selection.items.length >= 2 ? [loadSelected()] : [])];
-          await Promise.allSettled(others);
-          return data;
+        // Only the final region waits for the other queries to finish before stamping the report.
+        const loadFinalSummary = async () => {
+          const totals = await loadSummary();
+          await Promise.allSettled([loadList(), ...(selection.items.length >= 2 ? [loadSelected()] : [])]);
+          return totals;
         };
-        let listLoad: ReturnType<typeof getCreatives> | undefined;
-        const loadList = () => (listLoad ??= resolveList());
         const lastSelected = selection.items.at(-1);
         return (
           <AnchoredReportBody
@@ -182,6 +181,11 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
               {!names.error && !thresholdError && (
                 <a className="underline" href={`#${GALLERY_HEADING}`}>
                   Jump to ranked creatives
+                </a>
+              )}
+              {!names.error && !thresholdError && (
+                <a className="underline" href="#creative-performance-heading">
+                  Performance summary
                 </a>
               )}
               <Link prefetch={false} className="underline" href={assetHref(filters.storeId, channel)}>
@@ -310,29 +314,6 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                   </Disclosure>
                 )}
                 {dataStatus}
-                <Suspense
-                  key={`summary|${scopeKey}`}
-                  fallback={<LoadingState variant="kpis" label="Loading creative totals" />}
-                >
-                  <DataRegion
-                    timestamp={false}
-                    load={loadSummary}
-                    isEmpty={() => false}
-                    emptyMessage="No ad creatives match this store, ad platform, and date range."
-                  >
-                    {(summary) => (
-                      <CreativeSummaryView
-                        summary={summary}
-                        plan={plan}
-                        range={filters.range}
-                        format={format}
-                        params={applied}
-                        pathname={PATHNAME}
-                        currency={currency}
-                      />
-                    )}
-                  </DataRegion>
-                </Suspense>
                 {selection.items.length > 0 && (
                   <input
                     type="hidden"
@@ -346,14 +327,23 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                     id={GALLERY_HEADING}
                     headingProps={{ tabIndex: -1 }}
                     title="All creatives"
-                    description={`${SORT_LABELS[sort]} first.`}
+                    description={
+                      <>
+                        {SORT_LABELS[sort]} first.
+                        {!minimumSpend && !minimumConversions && (
+                          <Suspense fallback={null}>
+                            <CreativeHeadline load={loadSummary} currency={currency} />
+                          </Suspense>
+                        )}
+                      </>
+                    }
                   />
                   <Suspense
                     key={`list|${scopeKey}|${sort}|${view}|${minimumSpend}|${minimumConversions}`}
                     fallback={<LoadingState variant="grid" label="Loading creatives" />}
                   >
                     <DataRegion
-                      timestamp={timeZone}
+                      timestamp={false}
                       load={loadList}
                       isEmpty={(data) => data.creatives.length === 0}
                       emptyMessage={
@@ -448,6 +438,36 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                     )}
                   </section>
                 )}
+                <section aria-labelledby="creative-performance-heading" className="flex flex-col gap-3">
+                  <SectionHeader
+                    id="creative-performance-heading"
+                    title="Performance summary"
+                    headingProps={{ tabIndex: -1 }}
+                  />
+                  <Suspense
+                    key={`summary|${scopeKey}`}
+                    fallback={<LoadingState variant="kpis" label="Loading creative totals" />}
+                  >
+                    <DataRegion
+                      timestamp={timeZone}
+                      load={loadFinalSummary}
+                      isEmpty={() => false}
+                      emptyMessage="No ad creatives match this store, ad platform, and date range."
+                    >
+                      {(summary) => (
+                        <CreativeSummaryView
+                          summary={summary}
+                          plan={plan}
+                          range={filters.range}
+                          format={format}
+                          params={applied}
+                          pathname={PATHNAME}
+                          currency={currency}
+                        />
+                      )}
+                    </DataRegion>
+                  </Suspense>
+                </section>
               </>
             )}
           </AnchoredReportBody>
@@ -455,6 +475,26 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
       }}
     </ReportPage>
   );
+}
+
+async function CreativeHeadline({
+  load,
+  currency,
+}: {
+  load: () => ReturnType<typeof getCreativeSummary>;
+  currency: string | null;
+}) {
+  const summary = await load().catch((error: unknown) => {
+    if (error instanceof WarehouseError) return null; // The full summary owns its error and remedy.
+    throw error;
+  });
+  const totals = summary?.totals?.current;
+  return totals ? (
+    <>
+      {" "}
+      · {formatCount(totals.creatives)} creatives with spend · {formatMoney(totals.spend, currency)} linked spend
+    </>
+  ) : null;
 }
 
 const browseGallery = (
@@ -573,7 +613,7 @@ function ComparisonAction({
       <Link
         prefetch={false}
         className={cn(
-          "inline-flex w-fit scroll-mb-28 items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring",
+          "inline-flex w-fit scroll-mb-52 items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring",
           selected && anchorId ? "bg-accent text-accent-foreground" : "underline underline-offset-4",
         )}
         scroll={!anchorId}
@@ -817,46 +857,79 @@ function CreativesView({
 
 /** Keep the next action in sight while the operator is making picks in the ranking. */
 function SelectionBar({ selection, creatives }: { selection: readonly CreativeIdentity[]; creatives: Creative[] }) {
-  const names = selection.map((item) => {
-    const creative = creatives.find((c) => matchesCreative(c, item));
-    return creative ? creativeTitle(creative) : item[1];
+  const picks = selection.map(([platform, id]) => {
+    const c = creatives.find((c) => matchesCreative(c, [platform, id]));
+    return {
+      id,
+      platform,
+      title: c ? creativeTitle(c) : id,
+      image: c?.imageUrl,
+      format: c?.format ? creativeFormatLabel(c.format) : null,
+      started: c?.firstSpend && c.firstSpend.when !== "older" ? c.firstSpend.date : null,
+    };
   });
-  const count = names.length;
-  const message = count === 1 ? "Choose one more creative to compare." : names.join(" · ");
+  const count = picks.length;
+  const labels = picks.map((pick) => {
+    const samePlatform = picks.filter(
+      (other) => other !== pick && other.title === pick.title && other.platform === pick.platform,
+    );
+    const parts = [adPlatformLabel(pick.platform)];
+    if (samePlatform.length && pick.format) parts.push(pick.format);
+    const sameFormat = samePlatform.filter((other) => other.format === pick.format);
+    if (sameFormat.length && pick.started) parts.push(formatDate(pick.started));
+    if (sameFormat.some((other) => other.started === pick.started)) parts.push(pick.id);
+    return parts.join(" · ");
+  });
   return (
     <>
       <p aria-live="polite" aria-atomic="true" className="sr-only">
-        {count
-          ? `${count} selected for comparison. ${names.join(", ")}. ${count === 1 ? message : "View comparison is available."}`
-          : ""}
+        {count > 0 &&
+          `${count} selected for comparison. ${picks.map((pick, i) => `${pick.title}, ${labels[i]}`).join(". ")}. ${count === 1 ? "Choose one more creative to compare." : "View comparison is available."}`}
       </p>
       {count > 0 && (
         <aside
           aria-label="Your comparison"
-          className="sticky bottom-2 z-10 flex items-center justify-between gap-3 rounded-xl border-2 border-primary bg-card px-3 py-2 text-card-foreground shadow-lg sm:px-4"
+          className="sticky bottom-2 z-10 space-y-2 rounded-xl border-2 border-primary bg-card px-3 py-2 text-card-foreground shadow-lg sm:px-4"
         >
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-sm font-semibold">
-              <Check aria-hidden className="size-4 shrink-0" />
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold">
               {count === 1 ? "1 creative selected" : `${count} creatives selected`}
             </p>
-            {count === 1 && (
-              <p className="truncate text-sm font-medium" title={names[0]}>
-                {names[0]}
-              </p>
+            {count >= 2 && (
+              <a href={`#${COMPARISON_HEADING}`} className={buttonVariants({ size: "sm" })}>
+                View comparison
+              </a>
             )}
-            <p
-              className={cn("text-sm text-muted-foreground", count > 1 && "truncate")}
-              title={count > 1 ? message : undefined}
-            >
-              {message}
-            </p>
           </div>
-          {count >= 2 && (
-            <a href={`#${COMPARISON_HEADING}`} className={buttonVariants({ size: "sm" })}>
-              View comparison
-            </a>
-          )}
+          <ul
+            aria-label="Selected ads"
+            className={cn("grid gap-x-3 gap-y-2", count > 1 && "grid-cols-2 lg:flex lg:flex-wrap lg:gap-x-6")}
+          >
+            {picks.map((pick, i) => {
+              const mark = <PlatformMark platform={pick.platform} />;
+              return (
+                <li key={JSON.stringify([pick.platform, pick.id])} className="flex min-w-0 items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="grid size-9 shrink-0 place-items-center overflow-hidden rounded bg-muted"
+                  >
+                    {pick.image ? (
+                      <CardImage src={pick.image} alt="" fallback={mark} className="size-full object-contain" />
+                    ) : (
+                      mark
+                    )}
+                  </span>
+                  <span className="min-w-0 text-xs leading-tight">
+                    <span className="line-clamp-2 font-medium" title={pick.title}>
+                      {pick.title}
+                    </span>
+                    <span className="block [overflow-wrap:anywhere] text-muted-foreground">{labels[i]}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {count === 1 && <p className="text-xs text-muted-foreground">Choose one more creative to compare.</p>}
         </aside>
       )}
     </>

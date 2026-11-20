@@ -445,3 +445,37 @@ test("comparison previews enlarge images and video without moving the metrics", 
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
   }
 });
+
+test("creatives puts the gallery first and distinguishes two same-name ads", async ({ page }) => {
+  const url = "/creatives?store=sample-store-a&from=2026-08-01&to=2026-10-15&channel=meta_ads";
+  const grid = page.getByRole("list", { name: "Ad creatives" });
+  const summary = page.getByRole("heading", { name: "Performance summary" });
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(url);
+    await expect(page.getByRole("button", { name: /^(Switch store|Store):/ })).toBeVisible();
+    await expect(grid.getByRole("listitem").first()).toBeInViewport();
+    expect(await summary.evaluate((el) => el.getBoundingClientRect().top)).toBeGreaterThan(844);
+    await page.getByRole("link", { name: "Performance summary" }).click();
+    await expect(summary).toBeFocused();
+  }
+  const cards = grid
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: "Behind the seams", exact: true }) });
+  await expect(cards).toHaveCount(2);
+  for (const card of await cards.all()) {
+    await card.getByRole("link", { name: "Compare creative", exact: true }).click();
+    await expect(card.getByRole("link", { name: /Remove from comparison/ })).toBeFocused();
+  }
+  const picks = page.getByRole("list", { name: "Selected ads" }).getByRole("listitem");
+  await expect(picks).toHaveCount(2);
+  for (const pick of await picks.all()) {
+    await expect(pick).toContainText("Behind the seams");
+    await expect(pick).toContainText("Meta");
+    await expect(pick.locator('img[src^="/sample-creatives/"]')).toBeInViewport({ ratio: 1 });
+  }
+  expect(new Set(await picks.allInnerTexts()).size).toBe(2);
+  await expect(page.getByRole("complementary").getByRole("link", { name: "View comparison" })).toBeInViewport({
+    ratio: 1,
+  });
+});
