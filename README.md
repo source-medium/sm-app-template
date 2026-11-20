@@ -18,8 +18,8 @@ rework a view, or build your next report. The app and its source code are yours.
   <img alt="A 21-second tour of the app: Overview cards compare each number with the previous period and the same period last year; switching the comparison redraws the cards' sparklines and the trend chart without a new query; About this number shows the published definition and calculation; a map shows sales by shipping destination; and Vibe code prepares a change request for your coding agent." src="docs/images/reel-light.webp" width="1280">
 </picture>
 
-_Every screenshot and the tour use synthetic sample data. The hosted demo reads
-SourceMedium's demo warehouse. No sign-in required._
+_The comparison screenshot shows the public DemoCo warehouse. The other
+screenshots and the tour use the starter's sample data._
 
 ## What you get
 
@@ -176,11 +176,19 @@ changing a number.
 
 ### Compare creatives side by side
 
-<img src="docs/images/creatives-compare.jpg" width="1084" alt="Creative comparison with two Meta creatives selected, showing spend, platform ROAS, cost per conversion, conversions, platform revenue, impressions, and CTR for each at identical scope.">
+Open **Creatives** and choose **Compare creative** on two to four ads. The
+selection tray shows which ads you picked. When titles match, look for the
+platform, format, start date or creative ID. Choose **View comparison** to see
+spend, conversions and platform ROAS for the same store, dates and filters.
+Choose **Preview** to enlarge the media and browse any additional images or video.
 
-Pick up to four creatives from the cards. The comparison fetches exactly those
-identities at the same store, dates, and filters, keeps platform-reported
-attribution labeled as such, and never declares a winner across platforms.
+<img src="docs/images/creatives-compare.jpg" width="1084" alt="DemoCo compares Behind the seams on Meta with The gift edit on Google. Each column shows the ad preview above its spend, conversions, cost per conversion and platform ROAS.">
+
+The gallery ranks ads with a creative ID. Spend reported only against a campaign
+or affiliate still counts in **Paid marketing**. Use **Performance summary** to
+see creative totals and breakdowns by format and launch week.
+
+[Try the DemoCo gallery](https://app-demo.sourcemedium.app/creatives?store=democo) · [See the phone and desktop walkthrough](https://sourcemedium.com/docs/onboarding/analytics-tools/reporting-app-hosted-by-sourcemedium#compare-ad-creatives)
 
 <details>
 <summary><strong>Compare stores, then drill into one</strong></summary>
