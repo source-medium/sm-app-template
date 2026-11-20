@@ -30,6 +30,7 @@ export type GridCard = {
   caption?: string;
   action?: { href: string; label: string };
   footer?: React.ReactNode;
+  selected?: boolean;
 };
 
 export function CardGrid({ cards, label }: { cards: GridCard[]; label: string }) {
@@ -37,7 +38,7 @@ export function CardGrid({ cards, label }: { cards: GridCard[]; label: string })
     <ul data-agent-target={label} data-agent-component="CardGrid" aria-label={label} className={cardGridStyles}>
       {cards.map((card, index) => (
         <li key={card.id} data-agent-item={index + 1} className="min-w-0">
-          <Card className="h-full gap-0 overflow-hidden py-0">
+          <Card className={cn("h-full gap-0 overflow-hidden py-0", card.selected && "ring-2 ring-primary")}>
             {card.media?.length && (card.media.length > 1 || card.media[0]?.kind === "video") ? (
               <MediaPreview items={card.media} title={card.title} fallback={<TextPanel card={card} />} />
             ) : card.imageUrl ? (

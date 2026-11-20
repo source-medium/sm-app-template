@@ -91,6 +91,7 @@ export function DataTable({
   columns,
   rows,
   pageSize = 10,
+  preservePageOnDataChange = false,
   paginate = true,
   stackOnMobile = false,
   truncated = false,
@@ -101,6 +102,8 @@ export function DataTable({
   columns: DataTableColumn[];
   rows: DataTableRow[];
   pageSize?: number;
+  /** For scope-keyed rankings that update row selection without changing the result set. */
+  preservePageOnDataChange?: boolean;
   paginate?: boolean;
   /** Show each record as labelled rows on narrow screens. */
   stackOnMobile?: boolean;
@@ -125,9 +128,13 @@ export function DataTable({
 
   const table = useReactTable({
     data: rows,
+    autoResetPageIndex: preservePageOnDataChange ? false : undefined,
     columns: columnDefs,
     state: { sorting },
-    onSortingChange: setSorting,
+    onSortingChange: (update) => {
+      setSorting(update);
+      if (preservePageOnDataChange) table.resetPageIndex();
+    },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     ...(paginate ? { getPaginationRowModel: getPaginationRowModel(), initialState: { pagination: { pageSize } } } : {}),
@@ -149,7 +156,7 @@ export function DataTable({
             value={sorting[0] ? (sorting[0].desc ? "-" : "+") + sorting[0].id : ""}
             onChange={(event) => {
               const value = event.target.value;
-              setSorting(value ? [{ id: value.slice(1), desc: value.startsWith("-") }] : []);
+              table.setSorting(value ? [{ id: value.slice(1), desc: value.startsWith("-") }] : []);
             }}
           >
             <option value="">Default order</option>
