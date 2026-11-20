@@ -289,6 +289,9 @@ test("creatives: an unavailable video keeps its platform link and ID", async ({ 
 test("creatives: compare and return stay visible below the phone header", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  // The store roster streams independently of the ranking and adds a row to the phone header.
+  // Measure the selection movement after that initial layout has arrived.
+  await expect(page.getByRole("button", { name: /^(Switch store|Store):/ })).toBeVisible();
   const card = page.getByRole("list", { name: "Ad creatives" }).getByRole("listitem").nth(5);
   const add = card.getByRole("link", { name: "Compare creative" });
   await add.evaluate((el) => el.scrollIntoView({ block: "center" }));
