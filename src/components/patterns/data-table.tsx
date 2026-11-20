@@ -44,6 +44,8 @@ export type DataTableCell = {
   sort?: string | number | bigint | null;
   href?: string;
   leading?: React.ReactNode;
+  /** An independent action below the cell value, outside its primary link. */
+  secondary?: React.ReactNode;
 };
 export type DataTableRow = { id: string; cells: Record<string, DataTableCell> };
 
@@ -62,7 +64,7 @@ function DataCell({ row, column }: CellContext<DataTableRow, unknown>) {
   ) : (
     cell.display
   );
-  return cell.href ? (
+  const primary = cell.href ? (
     <Link
       prefetch={false}
       href={cell.href}
@@ -73,6 +75,14 @@ function DataCell({ row, column }: CellContext<DataTableRow, unknown>) {
     </Link>
   ) : (
     content
+  );
+  return cell.secondary ? (
+    <div className="flex flex-col items-start gap-1">
+      {primary}
+      {cell.secondary}
+    </div>
+  ) : (
+    primary
   );
 }
 

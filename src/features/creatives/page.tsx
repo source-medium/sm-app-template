@@ -18,6 +18,7 @@ import Link from "next/link";
 import { DataTable } from "@/components/patterns/data-table";
 import { decimalToNumber } from "@/lib/data/decimal";
 import { AnchoredReportBody } from "@/components/patterns/anchored-report-body";
+import { CreativeComparisonTable } from "./comparison-table";
 import { CardGrid } from "@/components/patterns/card-grid";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { DataRegion } from "@/components/patterns/data-region";
@@ -170,13 +171,19 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
             navigationKey={JSON.stringify(selection.items)}
             defaultFragment={lastSelected ? COMPARISON_HEADING : undefined}
           >
-            <Link
-              prefetch={false}
-              className="w-fit text-sm font-medium underline underline-offset-4"
-              href={assetHref(filters.storeId, channel)}
+            <nav
+              aria-label="Creative report shortcuts"
+              className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium underline-offset-4"
             >
-              Browse creative assets
-            </Link>
+              {!names.error && !thresholdError && (
+                <a className="underline" href={`#${GALLERY_HEADING}`}>
+                  Jump to ranked creatives
+                </a>
+              )}
+              <Link prefetch={false} className="underline" href={assetHref(filters.storeId, channel)}>
+                Browse creative assets
+              </Link>
+            </nav>
             <ReportControls
               keepOpen={Boolean(names.error) || Boolean(thresholdError)}
               summary={[
@@ -483,7 +490,7 @@ async function ComparisonNavigation({
         </p>
       )}
       <a className="w-fit text-sm font-medium underline underline-offset-4" href={`#${target}`}>
-        {count < 4 && !table ? "Choose another creative" : "Back to all creatives"}
+        {count < 4 ? "Choose another creative" : "Back to all creatives"}
       </a>
     </>
   );
@@ -535,6 +542,34 @@ function assetAction(store: string, creative: Creative) {
     case "unknown":
       return { display: "Asset availability unknown" };
   }
+}
+
+function ComparisonAction({
+  creative,
+  selection,
+  params,
+  anchorId,
+}: {
+  creative: Creative;
+  selection: readonly CreativeIdentity[];
+  params: SearchParams;
+  anchorId?: string;
+}) {
+  const identity: CreativeIdentity = [creative.channel, creative.creativeId];
+  const matches = ([platform, id]: CreativeIdentity) => platform === identity[0] && id === identity[1];
+  const selected = selection.some(matches);
+  if (!selected && selection.length >= 4) return <span className="text-sm text-muted-foreground">Four selected</span>;
+  const next = selected ? selection.filter((item) => !matches(item)) : [...selection, identity];
+  return (
+    <Link
+      prefetch={false}
+      className="w-fit text-sm underline underline-offset-4"
+      id={anchorId}
+      href={`${withParams(PATHNAME, params, { selection: next.length ? JSON.stringify(next) : null })}#${next.length ? COMPARISON_HEADING : GALLERY_HEADING}`}
+    >
+      {selected ? "Remove from comparison" : "Compare creative"}
+    </Link>
+  );
 }
 
 function CreativesView({
@@ -598,6 +633,7 @@ function CreativesView({
                 name: {
                   display: c.title ?? c.name ?? c.creativeId,
                   href: action.href,
+                  secondary: <ComparisonAction creative={c} params={params} selection={selection} />,
                 },
                 assets: { display: action.href ? "Available" : action.display },
                 channel: { display: adPlatformLabel(c.channel), leading: <PlatformMark platform={c.channel} /> },
@@ -621,105 +657,77 @@ function CreativesView({
           })}
         />
       );
-    const grid = (
-      <CardGrid
-        label={comparison ? "Selected creatives" : "Ad creatives"}
-        cards={data.creatives.map((creative, index) => {
-          const action = assetAction(scopeFilters.store, creative);
-          const metric = <M extends Measure>(
-            label: string,
-            measure: M,
-            display: string,
-            format: (value: Creative[M]) => string,
-          ) => ({
-            label,
-            display,
-            change: cardChange(creativeChange(creative, shown, measure, format)),
-          });
-          return {
-            id: JSON.stringify([creative.channel, creative.creativeId]),
-            title: creativeTitle(creative),
-            body: creative.body,
-            callToAction: creative.callToAction ? humanize(creative.callToAction) : undefined,
-            badge: adPlatformLabel(creative.channel),
-            badgeMark: <PlatformMark platform={creative.channel} className="size-4" />,
-            tags: [
-              ...(creative.format ? [{ label: creativeFormatLabel(creative.format) }] : []),
-              ...(creative.firstSpend?.when === "launched" ? [{ label: "New", highlight: true }] : []),
-            ],
-            caption: firstSpendLabel(creative.firstSpend) ?? undefined,
-            imageUrl: creative.imageUrl,
-            media: creative.media,
-            footer: (
-              <>
-                {action.href ? (
-                  <Link
-                    prefetch={false}
-                    className="text-sm font-medium underline underline-offset-4"
-                    href={action.href}
-                  >
-                    {action.display}
-                  </Link>
-                ) : (
-                  <span className="text-sm text-muted-foreground">{action.display}</span>
-                )}
-                {(() => {
-                  const identity: CreativeIdentity = [creative.channel, creative.creativeId];
-                  const selected = selection.some(([platform, id]) => platform === identity[0] && id === identity[1]);
-                  if (!selected && selection.length >= 4)
-                    return <span className="text-sm text-muted-foreground">Four selected</span>;
-                  const next = selected
-                    ? selection.filter(([platform, id]) => platform !== identity[0] || id !== identity[1])
-                    : [...selection, identity];
-                  return (
-                    <Link
-                      prefetch={false}
-                      className="text-sm underline underline-offset-4"
-                      id={comparison ? undefined : rankedActionId(index)}
-                      href={`${withParams(PATHNAME, params, { selection: next.length ? JSON.stringify(next) : null })}#${next.length ? COMPARISON_HEADING : GALLERY_HEADING}`}
-                    >
-                      {selected ? "Remove from comparison" : "Compare creative"}
-                    </Link>
-                  );
-                })()}
-              </>
-            ),
-            action: creative.adUrl ? { href: creative.adUrl, label: "Open ad" } : undefined,
-            metrics:
-              view === "returns"
-                ? [
-                    metric("Spend", "spend", money(creative.spend), money),
-                    metric("Platform ROAS", "roas", formatMultiple(creative.roas), formatMultiple),
-                    metric("Cost / conversion", "cpo", money(creative.cpo), money),
-                    metric(
-                      "Conversions",
-                      "conversions",
-                      formatAttributedConversions(creative.conversions),
-                      formatAttributedConversions,
-                    ),
-                    // A side-by-side comparison keeps every measure; a browsing card keeps the four that decide.
-                    ...(comparison
-                      ? [
-                          metric("Platform revenue", "revenue", money(creative.revenue), money),
-                          { label: "Impressions", display: formatCount(creative.impressions) },
-                          metric("CTR", "ctr", formatPercent(creative.ctr), formatPercent),
-                        ]
-                      : []),
-                  ]
-                : [
-                    metric("Spend", "spend", money(creative.spend), money),
-                    { label: "Impressions", display: formatCount(creative.impressions) },
-                    metric("CTR", "ctr", formatPercent(creative.ctr), formatPercent),
-                    metric(
-                      "Conversions",
-                      "conversions",
-                      formatAttributedConversions(creative.conversions),
-                      formatAttributedConversions,
-                    ),
-                  ],
-          };
-        })}
-      />
+    const creatives = comparison
+      ? selection.flatMap(([platform, id]) =>
+          data.creatives.filter((c) => c.channel === platform && c.creativeId === id),
+        )
+      : data.creatives;
+    const cards = creatives.map((creative, index) => {
+      const action = assetAction(scopeFilters.store, creative);
+      const metric = <M extends Measure>(label: string, measure: M, format: (value: Creative[M]) => string) => ({
+        label,
+        display: format(creative[measure]),
+        change: cardChange(creativeChange(creative, shown, measure, format)),
+      });
+      const spend = metric("Spend", "spend", money);
+      const conversions = metric("Conversions", "conversions", formatAttributedConversions);
+      const impressions = { label: "Impressions", display: formatCount(creative.impressions) };
+      function metrics() {
+        if (view === "delivery") return [spend, impressions, metric("CTR", "ctr", formatPercent), conversions];
+        const roas = metric("Platform ROAS", "roas", formatMultiple);
+        const cpo = metric("Cost / conversion", "cpo", money);
+        return comparison
+          ? [
+              spend,
+              conversions,
+              cpo,
+              roas,
+              metric("Platform revenue", "revenue", money),
+              impressions,
+              metric("CTR", "ctr", formatPercent),
+            ]
+          : [spend, roas, cpo, conversions];
+      }
+      return {
+        id: JSON.stringify([creative.channel, creative.creativeId]),
+        creativeId: creative.creativeId,
+        title: creativeTitle(creative),
+        body: creative.body,
+        callToAction: creative.callToAction ? humanize(creative.callToAction) : undefined,
+        badge: adPlatformLabel(creative.channel),
+        badgeMark: <PlatformMark platform={creative.channel} className="size-4" />,
+        tags: [
+          ...(creative.format ? [{ label: creativeFormatLabel(creative.format) }] : []),
+          ...(creative.firstSpend?.when === "launched" ? [{ label: "New", highlight: true }] : []),
+        ],
+        caption: firstSpendLabel(creative.firstSpend) ?? undefined,
+        imageUrl: creative.imageUrl,
+        media: creative.media,
+        footer: (
+          <>
+            {action.href ? (
+              <Link prefetch={false} className="text-sm font-medium underline underline-offset-4" href={action.href}>
+                {action.display}
+              </Link>
+            ) : (
+              <span className="text-sm text-muted-foreground">{action.display}</span>
+            )}
+            <ComparisonAction
+              creative={creative}
+              selection={selection}
+              params={params}
+              anchorId={comparison ? undefined : rankedActionId(index)}
+            />
+          </>
+        ),
+        action: creative.adUrl ? { href: creative.adUrl, label: "Open ad" } : undefined,
+        metrics: metrics(),
+      };
+    });
+    const grid = comparison ? (
+      <CreativeComparisonTable cards={cards} />
+    ) : (
+      <CardGrid label="Ad creatives" cards={cards} />
     );
     if (!versus) return grid;
     return (

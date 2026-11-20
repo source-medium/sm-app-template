@@ -155,7 +155,7 @@ test("creatives defaults to Performance, preserves explicit views and compares c
   await expect(card.getByRole("link", { name: "Remove from comparison" })).toBeFocused();
   await page.getByRole("link", { name: "Compare creative", exact: true }).first().click();
   await expect(page.getByRole("heading", { name: "Creative comparison (2/4)", exact: true })).toBeFocused();
-  await expect(page.getByRole("list", { name: "Selected creatives" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Selected creatives" })).toBeVisible();
   const ids = new URL(page.url()).searchParams.get("selection");
   expect(JSON.parse(ids ?? "[]")).toHaveLength(2);
   await page.getByRole("button", { name: "Vibe code", exact: true }).click();
@@ -163,7 +163,7 @@ test("creatives defaults to Performance, preserves explicit views and compares c
   expect(prompt).not.toContain(ids);
   await page.getByRole("dialog", { name: "Vibe code" }).getByRole("button", { name: "Close", exact: true }).click();
   await page.reload();
-  await expect(page.getByRole("list", { name: "Selected creatives" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Selected creatives" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Creative comparison (2/4)" })).toBeFocused();
   await page.getByRole("link", { name: "Clear selection" }).click();
   await expect(page.getByRole("heading", { name: "All creatives" })).toBeFocused();
@@ -306,4 +306,55 @@ test("creatives: compare and return stay visible below the phone header", async 
   await expectLanding(remove);
   await remove.click();
   await expect(page.getByRole("heading", { name: "All creatives" })).toBeFocused();
+});
+
+test("creatives: compare table rows side by side on a phone, including four selections", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-07&view=table");
+  await page.getByRole("link", { name: "Jump to ranked creatives" }).press("Enter");
+  const heading = page.getByRole("heading", { name: "All creatives" });
+  await expect(heading).toBeFocused();
+  await expect(heading).toBeInViewport();
+  const ranking = page.getByRole("table", { name: "Creative performance" });
+  const selected = page.getByRole("table", { name: "Selected creatives" });
+  const headers = selected.getByRole("columnheader");
+  const names: string[] = [];
+  const costs: string[] = [];
+  await expect(ranking.getByRole("columnheader", { name: "Cost / conversion", exact: true })).toBeVisible();
+  const costColumn = (await ranking.getByRole("columnheader").allTextContents()).indexOf("Cost / conversion");
+  expect(costColumn).toBeGreaterThan(0);
+  for (let index = 0; index < 4; index++) {
+    const row = ranking.locator("tbody tr").nth(index);
+    costs.push(await row.getByRole("cell").nth(costColumn).innerText());
+    names.push((await row.getByRole("cell").first().innerText()).split("\n")[0] ?? "");
+    await row.getByRole("link", { name: "Compare creative", exact: true }).click();
+    await expect(page.getByRole("heading", { name: `Creative comparison (${index + 1}/4)` })).toBeFocused();
+    if (index === 1) {
+      await expect(headers.nth(1)).toContainText(names[0] ?? "");
+      await expect(headers.nth(2)).toContainText(names[1] ?? "");
+      const cpo = selected.getByRole("row", { name: /Cost \/ conversion/ });
+      await cpo.scrollIntoViewIfNeeded();
+      const values = cpo.getByRole("cell");
+      await expect(values).toHaveCount(2);
+      for (const [column, cell] of (await values.all()).entries()) {
+        await expect(cell).toBeInViewport({ ratio: 1 });
+        await expect(cell.locator("span").first()).toHaveText(costs[column] ?? "");
+      }
+      const frame = selected.locator("..");
+      expect(await frame.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+    }
+    if (index < 3) await page.getByRole("link", { name: "Choose another creative" }).click();
+  }
+  await expect(headers).toHaveCount(5);
+  await expect(ranking.getByRole("link", { name: "Compare creative", exact: true })).toHaveCount(0);
+  const frame = selected.locator("..");
+  const label = selected.getByRole("rowheader", { name: "Spend", exact: true });
+  const left = await label.evaluate((el) => el.getBoundingClientRect().left);
+  await frame.evaluate((el) => (el.scrollLeft = el.scrollWidth));
+  expect(await frame.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+  expect(await label.evaluate((el) => el.getBoundingClientRect().left)).toBeCloseTo(left, 0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await selected.getByRole("link", { name: "Remove from comparison" }).last().click();
+  await expect(page.getByRole("heading", { name: "Creative comparison (3/4)" })).toBeFocused();
+  await expect(page.getByLabel("View", { exact: true })).toHaveValue("table");
 });
