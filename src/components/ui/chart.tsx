@@ -147,6 +147,9 @@ function ChartTooltipContent({
             const key = `${nameKey ?? item.name ?? item.dataKey ?? "value"}`;
             const itemConfig = getPayloadConfigFromPayload(config, item, key);
             const indicatorColor = color ?? item.payload?.fill ?? item.color;
+            // A grouped ranking can include a missing value with its own server-formatted explanation.
+            const display =
+              (item.payload as Record<string, unknown> | undefined)?.[`${String(item.dataKey)}__display`] ?? item.value;
 
             return (
               <div
@@ -190,18 +193,12 @@ function ChartTooltipContent({
                         {nestLabel ? tooltipLabel : null}
                         <span className="text-muted-foreground">{itemConfig?.label ?? item.name}</span>
                       </div>
-                      {item.value != null && (
+                      {display != null && (
                         <span
                           data-slot="chart-tooltip-value"
                           className="min-w-0 text-right font-mono font-medium text-foreground tabular-nums"
                         >
-                          {/* Values are formatted on the server and sent as `<key>__display`;
-                              client-side locale formatting risks hydration mismatches. */}
-                          {String(
-                            (item.payload as Record<string, unknown> | undefined)?.[
-                              `${String(item.dataKey)}__display`
-                            ] ?? item.value,
-                          )}
+                          {String(display)}
                         </span>
                       )}
                     </div>

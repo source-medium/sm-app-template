@@ -30,6 +30,8 @@ import { COMPARISON_DASH } from "@/components/ui/line-swatch";
 
 /** Room for a two-line label beside each horizontal bar. */
 const HORIZONTAL_ROW_PX = 40;
+const RANK_LABEL_WIDTH = 116;
+const RANK_LABEL_HEIGHT = 32;
 
 /**
  * A ranking's value axis: as many nice steps as fit the plot's width, every
@@ -178,13 +180,29 @@ export function ChartCard({
                     dataKey="label"
                     width={128}
                     interval={0}
-                    tick={{ width: 116 }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(label: string, index: number) => {
+                    tick={({ x, y, index, payload, className }) => {
+                      const label = String(payload.value);
                       const axisLabel = data[index]?.axisLabel;
-                      const text = typeof axisLabel === "string" ? axisLabel : label;
-                      return text.length > 22 ? `${text.slice(0, 21)}…` : text;
+                      return (
+                        <foreignObject
+                          className={className}
+                          x={Number(x) - RANK_LABEL_WIDTH}
+                          y={Number(y) - RANK_LABEL_HEIGHT / 2}
+                          width={RANK_LABEL_WIDTH}
+                          height={RANK_LABEL_HEIGHT}
+                        >
+                          <div className="flex h-full items-center justify-end">
+                            <span
+                              title={label}
+                              className="line-clamp-2 text-right leading-4 wrap-anywhere text-(--chart-axis)"
+                            >
+                              {typeof axisLabel === "string" ? axisLabel : label}
+                            </span>
+                          </div>
+                        </foreignObject>
+                      );
                     }}
                   />
                 </>
@@ -202,7 +220,11 @@ export function ChartCard({
                   <YAxis tickLine={false} axisLine={false} width={44 + affix * 7} tickFormatter={tickValue} />
                 </>
               )}
-              <ChartTooltip cursor content={<ChartTooltipContent indicator={kind === "line" ? "line" : "dot"} />} />
+              <ChartTooltip
+                cursor
+                filterNull={!(horizontal && series.length > 1)}
+                content={<ChartTooltipContent indicator={kind === "line" ? "line" : "dot"} />}
+              />
               {series.length > 1 && (
                 <ChartLegend
                   itemSorter={null}

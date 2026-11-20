@@ -12,7 +12,7 @@ for (const ranking of ["gainers", "decliners"]) {
         .getByRole("table", { name: "Net revenue by product details", exact: true })
         .getByRole("columnheader", { name: /^Change vs / }),
     ).toContainText("Change vs previous 7 days");
-    await expect(page.getByRole("group", { name: "Compare table with" })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Comparison shown in charts and tables" })).toHaveCount(0);
   });
 }
 
@@ -29,7 +29,7 @@ test("products: photo links preserve report scope and ranked values stay beside 
   const change = table.locator('td[data-mobile-label^="Change vs"]').first();
   const before = await change.getAttribute("data-mobile-label");
   expect(before).toMatch(/^Change vs /);
-  await page.getByRole("group", { name: "Compare table with" }).getByRole("button").nth(1).click();
+  await page.getByRole("group", { name: "Comparison shown in charts and tables" }).getByRole("button").nth(1).click();
   await expect(change).not.toHaveAttribute("data-mobile-label", before ?? "");
   const link = table.getByRole("link").first();
   const scroller = page.getByRole("region", { name: "Net units by variant details", exact: true });

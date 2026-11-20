@@ -3,7 +3,7 @@ import { MAX_MATCHED_NAMES, type AdNameMatches, type AdNames } from "../ad-name-
 export const SAMPLE_CAMPAIGN_NAMES = {
   "cmp-1001": "Prospecting – Broad",
   "cmp-1002": "[retargeting] Site Visitors",
-  "cmp-1003": "Advantage+ Shopping",
+  "cmp-1003": "WW_SHOPPING_ADVANTAGE_PLUS_FALL_LAUNCH",
   "cmp-2001": "Brand Search",
   "cmp-2002": "Performance Max",
   "cmp-3001": "Spark Ads – Creators",

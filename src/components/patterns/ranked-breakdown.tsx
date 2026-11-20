@@ -1,12 +1,15 @@
 import { ChartCard } from "@/components/charts/chart-card";
 import type { AxisFormat } from "@/components/charts/compact-number";
-import { buildChartData, type PointValue } from "@/components/charts/chart-data";
-import { formatShare } from "@/lib/format";
-import { DataTable, type DataTableCell } from "./data-table";
+import { buildChartData } from "@/components/charts/chart-data";
+import { decimalToNumber } from "@/lib/data/decimal";
+import type { Polarity } from "@/lib/comparison";
+import { formatLabel, formatShare } from "@/lib/format";
+import { DataTable } from "./data-table";
+import { changeCell, kpiDelta } from "./kpi-delta";
 
 /**
- * The feature supplies ranking, full-query shares, and formatted changes. This
- * pattern only presents them. A share is null where it is undefined (a negative
+ * The feature ranks the rows and supplies their full-query shares. The chart
+ * and the change column compare the same two values for each ranked key. A share is null where it is undefined (a negative
  * value in the set); when no row has one, the column is left out rather than
  * filled with dashes.
  */
@@ -17,7 +20,9 @@ export function RankedBreakdown({
   valueLabel,
   rows,
   hasMore = false,
-  comparisonLabel,
+  baselineLabel,
+  formatValue,
+  better,
   valueFormat,
 }: {
   title: string;
@@ -29,28 +34,49 @@ export function RankedBreakdown({
     id: string;
     label: string;
     chartLabel?: string;
-    value: PointValue;
+    value: string | null;
+    baseline: string | null;
     share: number | null;
-    /** From changeCell(), so the change is colored by its measure's polarity. */
-    change?: DataTableCell;
     href?: string;
     leading?: React.ReactNode;
   }[];
   hasMore?: boolean;
-  comparisonLabel?: string;
+  /** Active comparison's short name, only when period totals can be compared. */
+  baselineLabel?: string;
+  formatValue: (value: string | null) => string;
+  better: Polarity;
   /** The chart axis's format; money passes `moneyAxis(currency)` so its ticks carry the currency. */
   valueFormat?: AxisFormat;
 }) {
-  const chart = buildChartData(rows.map((row) => ({ label: row.label, values: { value: row.value } })));
+  const chart = buildChartData(
+    rows.map((row) => ({
+      label: row.label,
+      values: {
+        value: { value: decimalToNumber(row.value), display: formatValue(row.value) },
+        ...(baselineLabel && {
+          baseline: {
+            value: decimalToNumber(row.baseline),
+            display: row.baseline === null ? "No value" : formatValue(row.baseline),
+          },
+        }),
+      },
+    })),
+  );
+  const noBaselineValues = baselineLabel && rows.length > 0 && rows.every((row) => row.baseline === null);
   return (
     <div className="flex flex-col gap-3">
       <ChartCard
         title={title}
-        description={description}
+        description={
+          noBaselineValues ? `${description} These ranked rows have no values in the comparison period.` : description
+        }
         kind="bar"
         horizontal
         categoryHeader={categoryLabel}
-        series={[{ key: "value", label: valueLabel, color: "var(--chart-1)" }]}
+        series={[
+          { key: "value", label: baselineLabel ? "Selected period" : valueLabel, color: "var(--chart-1)" },
+          ...(baselineLabel ? [{ key: "baseline", label: formatLabel(baselineLabel), color: "var(--chart-2)" }] : []),
+        ]}
         data={chart.data.map((point, index) => ({ ...point, axisLabel: rows[index]?.chartLabel ?? point.label }))}
         plottable={chart.plottable}
         valueFormat={valueFormat}
@@ -63,8 +89,8 @@ export function RankedBreakdown({
         columns={[
           { key: "name", header: categoryLabel, sortable: false },
           { key: "value", header: valueLabel, align: "right", sortable: false },
-          ...(comparisonLabel
-            ? [{ key: "change", header: comparisonLabel, align: "right" as const, sortable: false }]
+          ...(baselineLabel
+            ? [{ key: "change", header: `Change vs ${baselineLabel}`, align: "right" as const, sortable: false }]
             : []),
           ...(rows.some((row) => row.share !== null)
             ? [{ key: "share", header: "Share of total", align: "right" as const, sortable: false }]
@@ -74,9 +100,9 @@ export function RankedBreakdown({
           id: row.id,
           cells: {
             name: { display: row.label, href: row.href, leading: row.leading },
-            value: { display: row.value.display },
+            value: { display: formatValue(row.value) },
             share: { display: formatShare(row.share) },
-            change: row.change ?? { display: "—" },
+            ...(baselineLabel && { change: changeCell(kpiDelta(row.value, row.baseline, formatValue, better)) }),
           },
         }))}
       />

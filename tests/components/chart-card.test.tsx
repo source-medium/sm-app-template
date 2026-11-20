@@ -15,16 +15,8 @@ const DATA = [
 describe("ChartCard", () => {
   beforeEach(() => {
     // jsdom has no layout; give the real responsive chart a measurable container.
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
-      width: 640,
-      height: 256,
-      top: 0,
-      left: 0,
-      bottom: 256,
-      right: 640,
-      x: 0,
-      y: 0,
-      toJSON: () => ({}),
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return DOMRect.fromRect({ width: 640, height: this.classList.contains("recharts-legend-wrapper") ? 20 : 256 });
     });
   });
   afterEach(() => vi.restoreAllMocks());
@@ -56,6 +48,37 @@ describe("ChartCard", () => {
     expect(chart).toHaveAttribute("aria-pressed", "true");
     expect(toggle).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("img", { name: "Orders by day chart" })).toBeInTheDocument();
+  });
+
+  it("keeps the full category and the missing comparison value in a ranking's keyboard tooltip", async () => {
+    const label = "夏季商品広告".repeat(12) + " 🧑🏽‍💻";
+    render(
+      <ChartCard
+        title="Spend by campaign"
+        kind="bar"
+        horizontal
+        categoryHeader="Campaign"
+        series={[
+          { key: "spend", label: "Selected period", color: "red" },
+          { key: "baseline", label: "Previous year", color: "blue" },
+        ]}
+        data={[
+          {
+            label,
+            axisLabel: "夏季商品広告",
+            spend: 12,
+            spend__display: "$12",
+            baseline: null,
+            baseline__display: "No value",
+          },
+        ]}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getByTitle(label)).toHaveTextContent("夏季商品広告");
+    fireEvent.keyDown(screen.getByRole("application"), { key: "ArrowRight" });
+    expect(await screen.findByText("No value")).toBeVisible();
+    expect(screen.getByText(label)).toBeVisible();
   });
 
   it("draws line legends with each series' dash and money ticks with the currency symbol", () => {
