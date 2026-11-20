@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useId, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { AssetVideo } from "./asset-video";
 import { CardImage } from "./card-image";
 
@@ -11,10 +12,12 @@ export function MediaPreview({
   items,
   title,
   fallback,
+  frameClassName,
 }: {
   items: PreviewMedia[];
   title: string;
   fallback: React.ReactNode;
+  frameClassName?: string;
 }) {
   const track = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -31,7 +34,10 @@ export function MediaPreview({
         ref={track}
         role="group"
         aria-label={multiple ? "Scrollable media" : undefined}
-        className="flex aspect-[4/3] snap-x snap-mandatory overflow-x-auto overscroll-x-contain bg-muted sm:aspect-square"
+        className={cn(
+          "flex aspect-[4/3] snap-x snap-mandatory overflow-x-auto overscroll-x-contain bg-muted sm:aspect-square",
+          frameClassName,
+        )}
         onScroll={(event) => {
           const el = event.currentTarget;
           const next = Math.max(0, Math.min(items.length - 1, Math.round(el.scrollLeft / el.clientWidth)));

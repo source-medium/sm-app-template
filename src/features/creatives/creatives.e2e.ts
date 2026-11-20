@@ -397,3 +397,40 @@ test("creatives: selection keeps the table page, sorting resets it, and an off-p
   await page.reload();
   await expect(page.getByRole("heading", { name: "Creative comparison (1/4)" })).toBeFocused();
 });
+
+test("comparison previews enlarge images and video without moving the metrics", async ({ page }) => {
+  const selection = JSON.stringify([
+    ["meta_ads", "crv-02"],
+    ["meta_ads", "crv-03"],
+  ]);
+  const url = `/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-28&selection=${encodeURIComponent(selection)}`;
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(url);
+    const table = page.getByRole("table", { name: "Selected creatives" });
+    const open = table.getByRole("button", { name: /Preview Back in stock/ });
+    await expect(open.locator("img")).toBeVisible();
+    const thumb = await open.locator("img").boundingBox();
+    expect(thumb?.width).toBeGreaterThan(90);
+    await open.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "Back in stock: the linen set" });
+    const image = dialog.getByRole("img").first();
+    await expect(image).toBeVisible();
+    expect((await image.boundingBox())?.width).toBeGreaterThan(width < 500 ? 340 : 600);
+    await dialog.getByRole("button", { name: "Next media" }).click();
+    await expect(dialog.getByText("Image 2 of 2")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(open).toBeFocused();
+    const videoTrigger = table.getByRole("button", { name: /Preview Customers on repeat/ });
+    await videoTrigger.click();
+    const videoDialog = page.getByRole("dialog", { name: "Customers on repeat" });
+    const video = videoDialog.locator("video");
+    await video.evaluate(async (v: HTMLVideoElement) => v.play());
+    await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0);
+    await videoDialog.getByRole("button", { name: "Close" }).click();
+    await expect(videoDialog).toHaveCount(0);
+    await expect(videoTrigger).toBeFocused();
+    expect(new URL(page.url()).searchParams.get("selection")).toBe(selection);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+  }
+});
