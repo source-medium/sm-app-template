@@ -415,6 +415,7 @@ export async function sampleCreatives(filters: CreativesFilters, baselines: Base
       name: null,
       image_url: creative.image,
       thumbnail_url: null,
+      video_url: sampleClip(creative.id),
       call_to_action: creative.cta,
       channel: creative.source_system,
       format: creative.format,
@@ -446,7 +447,12 @@ export async function sampleCreatives(filters: CreativesFilters, baselines: Base
   const limit = filters.selection ? 4 : MAX_CREATIVES;
   return {
     creatives: decodeRows(CreativeRow, rows.slice(0, limit), CREATIVE_RELATION).map((row) =>
-      toCreative(row, filters.range, "available"),
+      toCreative(
+        row,
+        filters.range,
+        "available",
+        row.format === "carousel" ? [{ kind: "image", src: carouselDetail }] : [],
+      ),
     ),
     truncated: rows.length > limit,
     coverage: rows.length ? covered : null,
@@ -552,6 +558,9 @@ export function sampleCreativeNames(filters: CreativesFilters) {
   );
 }
 
+const sampleClip = (id: string) => (id === "crv-03" ? "/sample-creatives/creative-03.mp4" : null);
+const carouselDetail = "/sample-creatives/creative-05.svg";
+
 /** Current creative inventory includes archived flights, regardless of their spend in a report period. */
 export function sampleCreativeAssets(filters: AssetScope, today: string) {
   const rows: CreativeAsset[] = [];
@@ -588,10 +597,10 @@ export function sampleCreativeAssets(filters: AssetScope, today: string) {
         add("video", {
           asset_video_id: c.id + "-video",
           asset_image_url: c.image,
-          asset_video_url: c.id === "crv-03" ? "/sample-creatives/creative-03.mp4" : null,
+          asset_video_url: sampleClip(c.id),
         });
       else if (c.image) add("image", { asset_image_url: c.image });
-      if (c.format === "carousel") add("image", { asset_image_url: "/sample-creatives/creative-05.svg" }, 1);
+      if (c.format === "carousel") add("image", { asset_image_url: carouselDetail }, 1);
     }
   }
   rows.sort((a, b) => (a.sm_ad_creative_asset_key < b.sm_ad_creative_asset_key ? -1 : 1));

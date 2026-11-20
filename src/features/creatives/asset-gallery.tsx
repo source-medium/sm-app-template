@@ -9,7 +9,7 @@ import { Card, CardContent, cardGridStyles } from "@/components/ui/card";
 import { adPlatformLabel } from "@/lib/ad-platforms";
 import { REPORT_FILTER_FORM_ID, single, withParams, type SearchParams } from "@/lib/filters";
 import { ASSET_RELATION, assetHref, assetLabel, assetRoles, type CreativeAsset } from "./assets";
-import { AssetVideo } from "./asset-video";
+import { AssetVideo } from "@/components/patterns/asset-video";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getCreativeAssets } from "./queries";
@@ -30,7 +30,22 @@ function AssetCard({ asset }: { asset: CreativeAsset }) {
   );
   return (
     <Card className="min-w-0 gap-0 overflow-hidden py-0">
-      {video ? <AssetVideo src={video} poster={image} label={description} fallback={preview} /> : preview}
+      {video ? (
+        <AssetVideo
+          src={video}
+          poster={image}
+          label={description}
+          className="aspect-video w-full bg-muted object-contain"
+          fallback={
+            <>
+              {preview}
+              <p className="px-4 pt-2 text-xs text-muted-foreground">Inline playback unavailable. Try Open video.</p>
+            </>
+          }
+        />
+      ) : (
+        preview
+      )}
       <CardContent className="space-y-2 p-4 wrap-anywhere">
         <h2 className="font-semibold">{assetLabel(asset.asset_role)}</h2>
         {asset.asset_text && <p>{asset.asset_text}</p>}

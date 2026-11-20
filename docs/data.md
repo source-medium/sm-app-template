@@ -894,7 +894,12 @@ assets without delivery in the selected dates. Spend and ROAS come only from the
 A video can have a playable URL, a platform link, a cover image, or only an ID. Video files load on demand
 from the published HTTPS URL. The local sample includes a short silent animation.
 
-## Creative images
+## Creative media
+
+The ranking plays a supplied video inline. Swipe or scroll horizontally through a card’s previews,
+or use its keyboard-accessible arrow buttons. Cards include
+the ranked media and up to eight distinct images and eight videos from current inventory.
+**View assets** opens the full inventory. Videos load on demand.
 
 The Creatives view loads each ad's image straight from the URL in your
 warehouse (`ad_creative_image_url`, else `ad_creative_thumbnail_url`), from any

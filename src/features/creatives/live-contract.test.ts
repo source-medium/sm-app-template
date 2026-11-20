@@ -5,9 +5,17 @@ import type { BaselineRanges } from "@/lib/comparison";
 import { PERIOD_PREFIXES as PERIODS } from "@/lib/data/period-sql";
 
 const FIELDS = [
-  ...["creative_id", "title", "body", "name", "image_url", "thumbnail_url", "call_to_action", "channel"].map(
-    (name) => ({ name, type: "STRING" }),
-  ),
+  ...[
+    "creative_id",
+    "title",
+    "body",
+    "name",
+    "image_url",
+    "thumbnail_url",
+    "video_url",
+    "call_to_action",
+    "channel",
+  ].map((name) => ({ name, type: "STRING" })),
   ...["format", "post_url", "ad_url"].map((name) => ({ name, type: "STRING" })),
   { name: "first_date", type: "DATE" },
   ...PERIODS.flatMap((prefix) => [
@@ -24,6 +32,7 @@ const ROW = {
   body: null,
   name: "Summer hero",
   image_url: "javascript:alert(1)",
+  video_url: null,
   thumbnail_url: "https://cdn.example.com/t.jpg",
   call_to_action: "SHOP_NOW",
   channel: "meta_ads",
@@ -180,13 +189,26 @@ describe("creatives, live", () => {
       { ...ROW, channel: "google_ads", creative_id: "shared" },
       { ...ROW, channel: "impact", creative_id: "historical" },
     ];
-    const fields = ["channel", "creative_id"].map((name) => ({ name, type: "STRING" }));
+    const fields = ["channel", "creative_id", "kind", "src", "poster"].map((name) => ({ name, type: "STRING" }));
     const fake = await goLive({
       submit: (call) => {
         if (String((call.body as { query: string }).query).includes("rpt_ad_creative_assets")) {
           return rowsResponse(fields, [
-            { channel: "meta_ads", creative_id: "shared" },
-            { channel: "google_ads", creative_id: null },
+            {
+              channel: "meta_ads",
+              creative_id: "shared",
+              kind: "video",
+              src: "https://example.com/clip.mp4",
+              poster: null,
+            },
+            {
+              channel: "meta_ads",
+              creative_id: "shared",
+              kind: "image",
+              src: "https://cdn.example.com/t.jpg",
+              poster: null,
+            },
+            { channel: "google_ads", creative_id: null, kind: null, src: null, poster: null },
           ]);
         }
         return rowsResponse(FIELDS, rankings);
@@ -194,6 +216,10 @@ describe("creatives, live", () => {
     });
     const { getCreatives } = await import("./queries");
     const result = await getCreatives({ ...FILTERS, sort: "spend" }, NONE);
+    expect(result.creatives[0]?.media).toEqual([
+      { kind: "image", src: "https://cdn.example.com/t.jpg" },
+      { kind: "video", src: "https://example.com/clip.mp4", poster: null },
+    ]);
     expect(result.creatives.map((c) => c.assets)).toEqual(["available", "no_match", "no_platform_inventory"]);
     expectEveryQueryScopedTo(fake, FILTERS.storeId);
     expect(fake.submitted()).toHaveLength(2);

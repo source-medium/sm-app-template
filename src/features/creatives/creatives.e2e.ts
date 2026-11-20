@@ -208,6 +208,21 @@ test("creatives: current assets open from performance, play a supplied video and
     .getByRole("list", { name: "Ad creatives" })
     .getByRole("listitem")
     .filter({ hasText: "Customers on repeat" });
+  const inline = card.locator("video");
+  await inline.evaluate(async (video: HTMLVideoElement) => {
+    await video.play();
+  });
+  await expect.poll(() => inline.evaluate((video: HTMLVideoElement) => video.currentTime)).toBeGreaterThan(0);
+  const carousel = page
+    .getByRole("list", { name: "Ad creatives" })
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: "Back in stock: the linen set", exact: true }) });
+  await carousel.getByRole("button", { name: "Next media" }).click();
+  await expect(carousel.getByText("Image 2 of 2")).toBeVisible();
+  await expect(carousel.getByRole("button", { name: "Next media" })).toBeDisabled();
+  await carousel.getByRole("button", { name: "Previous media" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(carousel.getByText("Image 1 of 2")).toBeVisible();
   await card.getByRole("link", { name: "View assets" }).click();
   await expect(page.getByRole("heading", { name: "Creative assets", exact: true })).toBeVisible();
   const assets = page.getByRole("list", { name: "Creative assets" });
