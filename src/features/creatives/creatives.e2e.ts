@@ -289,6 +289,9 @@ test("creatives: an unavailable video keeps its platform link and ID", async ({ 
 test("creatives: compare and return stay visible below the phone header", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  // The store roster streams independently of the ranking and adds a row to the phone header.
+  // Measure the selection movement after that initial layout has arrived.
+  await expect(page.getByRole("button", { name: /^(Switch store|Store):/ })).toBeVisible();
   const card = page.getByRole("list", { name: "Ad creatives" }).getByRole("listitem").nth(5);
   const add = card.getByRole("link", { name: "Compare creative" });
   await add.evaluate((el) => el.scrollIntoView({ block: "center" }));
@@ -412,11 +415,19 @@ test("comparison previews enlarge images and video without moving the metrics", 
     await expect(open.locator("img")).toBeVisible();
     const thumb = await open.locator("img").boundingBox();
     expect(thumb?.width).toBeGreaterThan(90);
+    const isContained = await open.locator("img").evaluate((image) => {
+      const cover = image.getBoundingClientRect();
+      const frame = image.parentElement?.getBoundingClientRect();
+      return frame && cover.top >= frame.top && cover.bottom <= frame.bottom + 1;
+    });
+    expect(isContained).toBe(true);
     await open.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Back in stock: the linen set" });
     const image = dialog.getByRole("img").first();
     await expect(image).toBeVisible();
-    expect((await image.boundingBox())?.width).toBeGreaterThan(width < 500 ? 340 : 600);
+    const enlarged = await image.boundingBox();
+    expect(enlarged?.width).toBeGreaterThan(width < 500 ? 340 : 600);
+    expect(enlarged?.height).toBeGreaterThan(340);
     await dialog.getByRole("button", { name: "Next media" }).click();
     await expect(dialog.getByText("Image 2 of 2")).toBeVisible();
     await page.keyboard.press("Escape");

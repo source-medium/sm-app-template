@@ -21,9 +21,14 @@ function ComparisonPreview({ card, duplicate }: { card: ComparisonCard; duplicat
         {thumbnail && (
           <span
             aria-hidden
-            className="grid aspect-[4/3] max-h-48 w-full place-items-center overflow-hidden rounded-md bg-muted"
+            className="relative grid aspect-[4/3] max-h-48 w-full place-items-center overflow-hidden rounded-md bg-muted"
           >
-            <CardImage src={thumbnail} alt="" fallback={card.badgeMark} className="size-full object-contain" />
+            <CardImage
+              src={thumbnail}
+              alt=""
+              fallback={card.badgeMark}
+              className="absolute inset-0 size-full object-contain"
+            />
           </span>
         )}
         <span className="inline-flex min-h-6 items-center gap-1 underline underline-offset-2">
@@ -43,7 +48,7 @@ function ComparisonPreview({ card, duplicate }: { card: ComparisonCard; duplicat
             <MediaPreview
               items={card.media}
               title={card.title}
-              frameClassName="max-h-[65dvh] sm:aspect-[4/3]"
+              frameClassName="aspect-square max-h-[65dvh] sm:aspect-[4/3]"
               fallback={<span className="m-auto text-sm text-muted-foreground">Image unavailable</span>}
             />
           ) : null}
