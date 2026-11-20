@@ -44,6 +44,7 @@ export const CreativeRow = z.object({
   body: bq.string().nullable(),
   name: bq.string().nullable(),
   image_url: bq.string().nullable(),
+  video_url: bq.string().nullable(),
   thumbnail_url: bq.string().nullable(),
   call_to_action: bq.string().nullable(),
   channel: bq.string(),
@@ -121,14 +122,32 @@ function measures(row: Row, prefix: PeriodPrefix): CreativeMeasures {
   };
 }
 
-export function toCreative(row: Row, range: { from: string }, assets: Creative["assets"] = "unknown"): Creative {
+export function toCreative(
+  row: Row,
+  range: { from: string },
+  assets: Creative["assets"] = "unknown",
+  extras: Creative["media"] = [],
+): Creative {
+  const cover = safeImageUrl(row.image_url) ?? safeImageUrl(row.thumbnail_url);
+  const video = safeImageUrl(row.video_url);
+  const media: Creative["media"] = [];
+  if (video) media.push({ kind: "video", src: video, poster: cover });
+  else if (cover) media.push({ kind: "image", src: cover });
+  for (const item of extras) {
+    if (
+      !media.some((existing) => existing.kind === item.kind && existing.src === item.src) &&
+      !(video && item.kind === "image" && item.src === cover)
+    )
+      media.push(item);
+  }
   return {
     creativeId: row.creative_id,
     assets,
     title: row.title,
     body: row.body,
     name: row.name,
-    imageUrl: safeImageUrl(row.image_url) ?? safeImageUrl(row.thumbnail_url),
+    imageUrl: cover ?? media.find((item) => item.kind === "image")?.src ?? null,
+    media,
     callToAction: row.call_to_action,
     channel: row.channel,
     format: row.format,

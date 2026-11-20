@@ -581,6 +581,7 @@ function CreativesView({
             ],
             caption: firstSpendLabel(creative.firstSpend) ?? undefined,
             imageUrl: creative.imageUrl,
+            media: creative.media,
             footer: (
               <>
                 {action.href ? (

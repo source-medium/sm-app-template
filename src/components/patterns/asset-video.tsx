@@ -8,18 +8,17 @@ export function AssetVideo({
   poster,
   label,
   fallback,
+  className,
 }: {
   src: string;
   poster: string | null;
   label: string;
   fallback: React.ReactNode;
+  className: string;
 }) {
   const [failed, setFailed] = useState<string | null>(null);
   return failed === src ? (
-    <>
-      {fallback}
-      <p className="px-4 pt-2 text-xs text-muted-foreground">Inline playback unavailable. Try Open video.</p>
-    </>
+    fallback
   ) : (
     <video
       controls
@@ -30,7 +29,7 @@ export function AssetVideo({
       aria-label={label}
       src={src}
       onError={() => setFailed(src)}
-      className="aspect-video w-full bg-muted object-contain"
+      className={className}
     />
   );
 }

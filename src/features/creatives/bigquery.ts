@@ -21,7 +21,7 @@ import { bq, decodeRows } from "@/lib/data/decode";
 import { PERIOD_COVERAGE, PERIOD_PREFIXES, periodParams, periodSql } from "@/lib/data/period-sql";
 import { AD_PERIOD_SUMS } from "@/lib/ad-totals";
 import { GRAIN_SQL } from "@/lib/time-grain";
-import type { CreativeSummary, CreativesData, CreativesFilters } from "./queries";
+import type { Creative, CreativeSummary, CreativesData, CreativesFilters } from "./queries";
 import { CREATIVE_FORMATS, type CreativeSort } from "./filters";
 import {
   CREATIVE_RELATION,
@@ -95,32 +95,64 @@ function scopeParams(filters: CreativesFilters, baselines: BaselineRanges) {
 }
 
 // Only enrich the returned ranking. A warehouse without the inventory table can still serve performance.
+const PREVIEWS_PER_KIND = 8;
 async function assetCoverage(warehouse: Warehouse, storeId: string, rows: { channel: string; creative_id: string }[]) {
   if (!rows.length) return null;
   try {
     const result = await warehouse.query({
       name: "creative_asset_coverage",
       cache: CACHE_POLICY.aggregate,
-      maxRows: rows.length * 2,
+      maxRows: rows.length * (2 * PREVIEWS_PER_KIND + 2),
       sql: `WITH requested AS (
           SELECT JSON_VALUE(pair, '$[0]') AS channel, JSON_VALUE(pair, '$[1]') AS creative_id
           FROM UNNEST(JSON_QUERY_ARRAY(@identities)) pair
+        ), candidates AS (
+          SELECT source_system AS channel, requested.creative_id, asset_position,
+            IF(requested.creative_id IS NULL, NULL, CASE
+              WHEN STARTS_WITH(asset_video_url, 'https://') THEN 'video'
+              WHEN asset_role IN ('image','logo','video') AND STARTS_WITH(asset_image_url,'https://') THEN 'image'
+            END) AS kind, asset_image_url, asset_video_url
+          FROM ${warehouse.table(ASSET_RELATION)}
+          LEFT JOIN requested ON requested.channel = source_system AND requested.creative_id = ad_creative_id
+          WHERE sm_store_id = @store_id AND source_system IN (SELECT channel FROM requested)
+        ), distinct_media AS (
+          SELECT channel, creative_id, kind,
+            CASE kind WHEN 'video' THEN asset_video_url WHEN 'image' THEN asset_image_url END AS src,
+            MIN(IF(kind = 'video' AND STARTS_WITH(asset_image_url,'https://'), asset_image_url, NULL)) AS poster,
+            MIN(asset_position) AS position
+          FROM candidates GROUP BY channel, creative_id, kind, src
         )
-        SELECT DISTINCT source_system AS channel, requested.creative_id
-        FROM ${warehouse.table(ASSET_RELATION)}
-        LEFT JOIN requested ON requested.channel = source_system AND requested.creative_id = ad_creative_id
-        WHERE sm_store_id = @store_id AND source_system IN (SELECT channel FROM requested)`,
+        SELECT channel, creative_id, kind, src, poster FROM distinct_media
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY channel, creative_id, kind ORDER BY position, src) <= ${PREVIEWS_PER_KIND}
+        ORDER BY channel, creative_id, kind DESC, position, src`,
       params: [
         { name: "store_id", type: "STRING", value: storeId },
         { name: "identities", type: "STRING", value: JSON.stringify(rows.map((r) => [r.channel, r.creative_id])) },
       ],
     });
     const hits = decodeRows(
-      z.object({ channel: bq.string(), creative_id: bq.string().nullable() }),
+      z.object({
+        channel: bq.string(),
+        creative_id: bq.string().nullable(),
+        kind: z.enum(["image", "video"]).nullable(),
+        src: AssetRow.shape.asset_image_url,
+        poster: AssetRow.shape.asset_image_url,
+      }),
       result.rows,
       ASSET_RELATION,
     );
+    const previews = new Map<string, Creative["media"]>();
+    for (const hit of hits) {
+      if (!hit.creative_id || !hit.kind || !hit.src) continue;
+      const key = JSON.stringify([hit.channel, hit.creative_id]);
+      const items = previews.get(key) ?? [];
+      items.push(
+        hit.kind === "video" ? { kind: "video", src: hit.src, poster: hit.poster } : { kind: "image", src: hit.src },
+      );
+      previews.set(key, items);
+    }
     return {
+      previews,
       platforms: new Set(hits.map((r) => r.channel)),
       creatives: new Set(hits.map((r) => JSON.stringify([r.channel, r.creative_id]))),
     };
@@ -149,6 +181,7 @@ export async function queryCreatives(filters: CreativesFilters, baselines: Basel
           ${latest("ad_creative_name")} AS name,
           ${latest("ad_creative_image_url")} AS image_url,
           ${latest("ad_creative_thumbnail_url")} AS thumbnail_url,
+          ${latest("IF(STARTS_WITH(ad_creative_video_url, 'https://'), ad_creative_video_url, NULL)")} AS video_url,
           ${latest("ad_creative_format")} AS format,
           ${latest("NULLIF(ad_creative_post_url, '')")} AS post_url,
           ${latest("COALESCE(NULLIF(ad_creative_facebook_url, ''), NULLIF(ad_creative_instagram_url, ''))")} AS ad_url,
@@ -200,6 +233,7 @@ export async function queryCreatives(filters: CreativesFilters, baselines: Basel
             : assets.platforms.has(row.channel)
               ? "no_match"
               : "no_platform_inventory",
+        assets?.previews.get(JSON.stringify([row.channel, row.creative_id])),
       ),
     ),
     truncated: result.truncated,

@@ -7,6 +7,7 @@
  */
 import { type AssetScope } from "./assets";
 import "server-only";
+import type { PreviewMedia } from "@/components/patterns/media-preview";
 import { parseCreativeSelection, type CreativeFormat, type CreativeIdentity, type CreativeSort } from "./filters";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { FirstSpend } from "./rows";
@@ -46,6 +47,7 @@ export type Creative = CreativeMeasures & {
   name: string | null;
   /** Hotlinked from the ad platform; it may expire. The card falls back to text. */
   imageUrl: string | null;
+  media: PreviewMedia[];
   callToAction: string | null;
   /** The ad platform: source_system (src/lib/ad-platforms.ts), not the sales channel. */
   channel: string;

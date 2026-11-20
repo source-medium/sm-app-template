@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { CardImage } from "./card-image";
 import { CHANGE_TONE_CLASS } from "./change-tone";
 
+import { MediaPreview, type PreviewMedia } from "./media-preview";
+
 export type GridCard = {
   id: string;
   title: string;
@@ -21,6 +23,7 @@ export type GridCard = {
   /** Short facts beside the badge, such as a format or "New"; the first is emphasized when `highlight` is set. */
   tags?: { label: string; highlight?: boolean }[];
   imageUrl: string | null;
+  media?: PreviewMedia[];
   /** `change` is the metric's change against the report's comparison, colored by its measure's polarity. */
   metrics: { label: string; display: string; change?: { display: string; tone: ChangeTone | null } }[];
   /** One quiet line under the title, such as when the creative first ran. */
@@ -35,7 +38,9 @@ export function CardGrid({ cards, label }: { cards: GridCard[]; label: string })
       {cards.map((card, index) => (
         <li key={card.id} data-agent-item={index + 1} className="min-w-0">
           <Card className="h-full gap-0 overflow-hidden py-0">
-            {card.imageUrl ? (
+            {card.media?.length && (card.media.length > 1 || card.media[0]?.kind === "video") ? (
+              <MediaPreview items={card.media} title={card.title} fallback={<TextPanel card={card} />} />
+            ) : card.imageUrl ? (
               <CardImage
                 src={card.imageUrl}
                 alt={card.title}

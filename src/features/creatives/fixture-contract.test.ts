@@ -86,6 +86,7 @@ describe("creatives fixture contract", () => {
       body: "b",
       name: null,
       thumbnail_url: null,
+      video_url: null,
       call_to_action: null,
       channel: "meta_ads",
       format: "image",
