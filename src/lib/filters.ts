@@ -10,6 +10,7 @@
  * appear as zero-valued days.
  */
 import { appConfig } from "@/app.config";
+import { adPlatformKey } from "@/lib/ad-platforms";
 
 export const REPORT_FILTER_FORM_ID = "report-filters";
 
@@ -67,6 +68,12 @@ function isCalendarDate(value: string | undefined): value is string {
 export function single(params: SearchParams, name: string): string | undefined {
   const value = params[name];
   return Array.isArray(value) ? value[0] : value;
+}
+
+/** An ad platform parameter as reports group it (an older key reads as its platform's), or null when absent. */
+export function parseAdPlatform(params: SearchParams, name: string): string | null {
+  const value = single(params, name)?.slice(0, 100);
+  return value ? adPlatformKey(value) : null;
 }
 
 /** Sales-channel values are data, never SQL identifiers. Keep unknown choices explicit. */

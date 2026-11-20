@@ -1,6 +1,6 @@
 import { parseAdNameFilters } from "@/lib/ad-name-filters";
 import { adPlatformKey } from "@/lib/ad-platforms";
-import { parseChoice, single, type SearchParams } from "@/lib/filters";
+import { parseAdPlatform, parseChoice, single, type SearchParams } from "@/lib/filters";
 
 export const CREATIVE_SORTS = [
   "spend",
@@ -68,15 +68,17 @@ export function parseCreativeSelection(params: SearchParams): { items: CreativeI
   }
 }
 
+/** Creative performance's layouts. */
+export const CREATIVE_VIEWS = ["delivery", "returns", "table"] as const;
+
 /** Applied data options for the report; the view only changes presentation. */
 export function creativesOptions(params: SearchParams) {
-  const channel = single(params, "channel")?.slice(0, 100);
   const minimumSpend = parseCreativeThreshold(single(params, "min_spend"));
   const minimumConversions = parseCreativeThreshold(single(params, "min_conversions"));
   return {
-    channel: channel ? adPlatformKey(channel) : null,
+    channel: parseAdPlatform(params, "channel"),
     campaign: single(params, "campaign")?.slice(0, 200) || null,
-    view: parseChoice(params, "view", ["delivery", "returns", "table"] as const, "returns"),
+    view: parseChoice(params, "view", CREATIVE_VIEWS, "returns"),
     format: parseChoice(params, "format", ["", ...CREATIVE_FORMATS.map((format) => format.value)] as const, "") || null,
     sort: parseChoice(params, "sort", CREATIVE_SORTS, "spend"),
     minimumSpend,

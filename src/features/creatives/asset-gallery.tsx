@@ -6,8 +6,15 @@ import { LoadingState } from "@/components/patterns/data-states";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { ReportPage } from "@/components/shell/report-page";
 import { Card, CardContent, cardGridStyles } from "@/components/ui/card";
-import { adPlatformKey, adPlatformLabel } from "@/lib/ad-platforms";
-import { REPORT_FILTER_FORM_ID, SHARED_FILTERS, single, withParams, type SearchParams } from "@/lib/filters";
+import { adPlatformLabel } from "@/lib/ad-platforms";
+import {
+  REPORT_FILTER_FORM_ID,
+  SHARED_FILTERS,
+  parseAdPlatform,
+  single,
+  withParams,
+  type SearchParams,
+} from "@/lib/filters";
 import {
   ASSET_PARAMS,
   ASSET_RELATION,
@@ -97,7 +104,7 @@ function AssetCard({ asset }: { asset: CreativeAsset }) {
 
 export function AssetGallery({ params }: { params: SearchParams }) {
   const entity = single(params, "entity") ?? "";
-  const channel = adPlatformKey(single(params, "channel") ?? "");
+  const channel = parseAdPlatform(params, "channel") ?? "";
   const role = single(params, "role") ?? "";
   const cursor = single(params, "cursor") ?? "";
   return (
