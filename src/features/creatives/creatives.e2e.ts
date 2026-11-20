@@ -412,11 +412,19 @@ test("comparison previews enlarge images and video without moving the metrics", 
     await expect(open.locator("img")).toBeVisible();
     const thumb = await open.locator("img").boundingBox();
     expect(thumb?.width).toBeGreaterThan(90);
+    const isContained = await open.locator("img").evaluate((image) => {
+      const cover = image.getBoundingClientRect();
+      const frame = image.parentElement?.getBoundingClientRect();
+      return frame && cover.top >= frame.top && cover.bottom <= frame.bottom + 1;
+    });
+    expect(isContained).toBe(true);
     await open.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Back in stock: the linen set" });
     const image = dialog.getByRole("img").first();
     await expect(image).toBeVisible();
-    expect((await image.boundingBox())?.width).toBeGreaterThan(width < 500 ? 340 : 600);
+    const enlarged = await image.boundingBox();
+    expect(enlarged?.width).toBeGreaterThan(width < 500 ? 340 : 600);
+    expect(enlarged?.height).toBeGreaterThan(340);
     await dialog.getByRole("button", { name: "Next media" }).click();
     await expect(dialog.getByText("Image 2 of 2")).toBeVisible();
     await page.keyboard.press("Escape");
