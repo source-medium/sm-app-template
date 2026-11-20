@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { expectTextContained, openFilters } from "../../../e2e/helpers";
 
 test("creatives: large metric values cannot overlap adjacent cells", async ({ page }) => {
@@ -145,10 +145,16 @@ test("creatives defaults to Performance, preserves explicit views and compares c
   await expect(
     page.getByRole("list", { name: "Ad creatives" }).getByText("Platform ROAS", { exact: true }).first(),
   ).toBeVisible();
+  const card = page.getByRole("list", { name: "Ad creatives" }).getByRole("listitem").nth(4);
+  const title = await card.getByRole("heading").innerText();
+  await card.getByRole("link", { name: "Compare creative" }).press("Enter");
+  const comparison = page.getByRole("region", { name: "Creative comparison (1/4)" });
+  await expect(comparison.getByRole("heading")).toBeFocused();
+  await expect(comparison.getByText(title, { exact: true })).toBeVisible();
+  await comparison.getByRole("link", { name: "Choose another creative" }).press("Enter");
+  await expect(card.getByRole("link", { name: "Remove from comparison" })).toBeFocused();
   await page.getByRole("link", { name: "Compare creative", exact: true }).first().click();
-  await expect(page.getByRole("heading", { name: "Creative comparison (1/4)", exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Compare creative", exact: true }).first().click();
-  await expect(page.getByRole("heading", { name: "Creative comparison (2/4)", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Creative comparison (2/4)", exact: true })).toBeFocused();
   await expect(page.getByRole("list", { name: "Selected creatives" })).toBeVisible();
   const ids = new URL(page.url()).searchParams.get("selection");
   expect(JSON.parse(ids ?? "[]")).toHaveLength(2);
@@ -158,6 +164,17 @@ test("creatives defaults to Performance, preserves explicit views and compares c
   await page.getByRole("dialog", { name: "Vibe code" }).getByRole("button", { name: "Close", exact: true }).click();
   await page.reload();
   await expect(page.getByRole("list", { name: "Selected creatives" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Creative comparison (2/4)" })).toBeFocused();
+  await page.getByRole("link", { name: "Clear selection" }).click();
+  await expect(page.getByRole("heading", { name: "All creatives" })).toBeFocused();
+  await expect(page).not.toHaveURL(/selection=/);
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Creative comparison (2/4)" })).toBeFocused();
+  const savedSelection = new URL(page.url());
+  savedSelection.hash = "";
+  await page.goto("about:blank");
+  await page.goto(savedSelection.href);
+  await expect(page.getByRole("heading", { name: "Creative comparison (2/4)" })).toBeFocused();
   await page.goto("/creatives?view=delivery");
   await expect(page.getByLabel("View", { exact: true })).toHaveValue("delivery");
   await page.goto("/creatives?view=returns&min_spend=999999999&min_conversions=1.5");
@@ -262,4 +279,31 @@ test("creatives: an unavailable video keeps its platform link and ID", async ({ 
   await page.getByLabel("Creative ID", { exact: true }).fill("missing-creative-id");
   await page.getByRole("button", { name: "Find assets" }).click();
   await expect(page.getByText("No published assets match this selection.")).toBeVisible();
+});
+
+test("creatives: compare and return stay visible below the phone header", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-07");
+  const card = page.getByRole("list", { name: "Ad creatives" }).getByRole("listitem").nth(5);
+  await card.getByRole("link", { name: "Compare creative" }).click();
+  const heading = page.getByRole("heading", { name: "Creative comparison (1/4)" });
+  async function expectLanding(target: Locator) {
+    await expect(target).toBeFocused();
+    await expect(target).toBeInViewport({ ratio: 1 });
+    await expect
+      .poll(() =>
+        target.evaluate(
+          (el) =>
+            el.getBoundingClientRect().top >=
+            (document.getElementById("report-top-bar")?.getBoundingClientRect().bottom ?? Infinity) - 1,
+        ),
+      )
+      .toBe(true);
+  }
+  await expectLanding(heading);
+  await page.getByRole("link", { name: "Choose another creative" }).click();
+  const remove = card.getByRole("link", { name: "Remove from comparison" });
+  await expectLanding(remove);
+  await remove.click();
+  await expect(page.getByRole("heading", { name: "All creatives" })).toBeFocused();
 });

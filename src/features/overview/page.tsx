@@ -4,7 +4,7 @@ import { appConfig } from "@/app.config";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { OverviewReportBody } from "./report-body";
+import { AnchoredReportBody } from "@/components/patterns/anchored-report-body";
 import { ReportAnchor, type ReportHref } from "@/components/patterns/report-anchor";
 import { OverviewTrendSelector } from "./trend-selector";
 import { Disclosure } from "@/components/ui/disclosure";
@@ -404,7 +404,7 @@ function OverviewView({
   }
 
   return (
-    <OverviewReportBody>
+    <AnchoredReportBody>
       {/* The switch picks the comparison every chart and table uses, KPI sparklines included; KPI cards show both changes as numbers. */}
       {plan && (
         <ComparisonCaption plan={plan} issues={changes?.map((change) => change.issue)}>
@@ -495,6 +495,6 @@ function OverviewView({
           </a>
         </Disclosure>
       </div>
-    </OverviewReportBody>
+    </AnchoredReportBody>
   );
 }

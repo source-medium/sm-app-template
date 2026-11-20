@@ -3,7 +3,15 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
 /** The report and its fragment targets arrive together, after the page shell streams. */
-export function OverviewReportBody({ children }: { children: ReactNode }) {
+export function AnchoredReportBody({
+  children,
+  navigationKey,
+  defaultFragment,
+}: {
+  children: ReactNode;
+  navigationKey?: string;
+  defaultFragment?: string;
+}) {
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const report = body.current;
@@ -14,14 +22,18 @@ export function OverviewReportBody({ children }: { children: ReactNode }) {
     const observer = new ResizeObserver(measure);
     observer.observe(bar);
 
-    const target = document.getElementById(location.hash.slice(1));
-    if (target && report.contains(target)) {
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const target = document.getElementById(location.hash.slice(1) || defaultFragment || "");
+    if (target && body.current?.contains(target)) {
       const disclosure = target.closest("details");
       if (disclosure) disclosure.open = true;
       target.scrollIntoView();
+      target.focus({ preventScroll: true });
     }
-    return () => observer.disconnect();
-  }, []);
+  }, [navigationKey, defaultFragment]);
   return (
     <div ref={body} className="flex flex-col gap-6 [&_[id]]:scroll-mt-(--report-top-bar-height)">
       {children}
