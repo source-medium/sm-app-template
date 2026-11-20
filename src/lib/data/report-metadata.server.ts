@@ -8,6 +8,7 @@ import { sourceEvidence, type Availability, type SourceEvidence } from "./eviden
 import { CACHE_POLICY } from "./query-cache";
 import { WarehouseError } from "./warehouse-error";
 import { bq, decodeRows } from "./decode";
+import type { QueryRequest } from "./bigquery-rest.server";
 import type { Warehouse } from "./warehouse.server";
 
 /** The catalog read's row bound; a longer catalog is reported as partial. */
@@ -148,14 +149,14 @@ async function readMetadata(
     };
     // Two independent reads with different lifetimes: the store-free catalog changes with a
     // SourceMedium release; the selected store's observations change with each delivery.
-    const observationsRead =
+    // Build both queries before starting either read so incompatible columns cannot leave a query running.
+    const observationsQuery: QueryRequest | null =
       dictionaryStatus === "accessible" && sources.length
-        ? warehouse.query(
-            {
-              name: "report_metadata_sources",
-              cache: CACHE_POLICY.observation,
-              maxRows: 200,
-              sql: `SELECT TO_JSON_STRING(STRUCT(dataset_name AS dataset, table_name AS relation,
+        ? {
+            name: "report_metadata_sources",
+            cache: CACHE_POLICY.observation,
+            maxRows: 200,
+            sql: `SELECT TO_JSON_STRING(STRUCT(dataset_name AS dataset, table_name AS relation,
         sm_store_id AS storeId, ${optional(dictionary, "table_has_data", "BOOL")} AS hasData,
         ${optional(dictionary, "table_has_fresh_data_14d", "BOOL")} AS recentRecord,
         CAST(${optional(dictionary, "table_last_data_date", "DATE")} AS STRING) AS observedDate)) AS payload
@@ -164,20 +165,17 @@ async function readMetadata(
         SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(@sources)) AS source
         WHERE dataset_name = JSON_VALUE(source, '$[0]') AND table_name = JSON_VALUE(source, '$[1]'))
       GROUP BY payload ORDER BY payload`,
-              params: [storeParam, { name: "sources", type: "STRING", value: JSON.stringify(sources) }],
-            },
-            { signal },
-          )
+            params: [storeParam, { name: "sources", type: "STRING", value: JSON.stringify(sources) }],
+          }
         : null;
-    const catalogRead =
+    const catalogQuery: QueryRequest | null =
       catalogStatus === "accessible"
-        ? warehouse.query(
-            {
-              name: "report_metadata_catalog",
-              cache: CACHE_POLICY.catalog,
-              maxRows: CATALOG_LIMIT,
-              partial: true,
-              sql: `SELECT TO_JSON_STRING(STRUCT(
+        ? {
+            name: "report_metadata_catalog",
+            cache: CACHE_POLICY.catalog,
+            maxRows: CATALOG_LIMIT,
+            partial: true,
+            sql: `SELECT TO_JSON_STRING(STRUCT(
         ${[
           "metric_name",
           "metric_label",
@@ -202,13 +200,14 @@ async function readMetadata(
         ${optional(catalog, "is_abbreviation", "BOOL")} AS is_abbreviation,
         CAST(${optional(catalog, "catalog_updated_at", "TIMESTAMP")} AS STRING) AS catalog_updated_at)) AS payload
         FROM ${warehouse.table(METRIC_CATALOG, "metadata")} ORDER BY payload LIMIT ${CATALOG_LIMIT + 1}`,
-              params: [storeParam],
-            },
-            { signal },
-          )
+            params: [storeParam],
+          }
         : null;
-    if (!observationsRead && !catalogRead) return { ...empty(dictionaryStatus), catalog: catalogStatus };
-    const [observationsData, catalogData] = await Promise.all([observationsRead, catalogRead]);
+    if (!observationsQuery && !catalogQuery) return { ...empty(dictionaryStatus), catalog: catalogStatus };
+    const [observationsData, catalogData] = await Promise.all([
+      observationsQuery && warehouse.query(observationsQuery, { signal }),
+      catalogQuery && warehouse.query(catalogQuery, { signal }),
+    ]);
     const metrics = catalogData
       ? decodeRows(PayloadRow, catalogData.rows, "metric catalog").map((row) => Metric.parse(JSON.parse(row.payload)))
       : [];
