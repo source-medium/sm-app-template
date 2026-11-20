@@ -1,5 +1,6 @@
 import { parseAdNameFilters } from "@/lib/ad-name-filters";
-import { parseChoice, single, type SearchParams } from "@/lib/filters";
+import { adPlatformKey } from "@/lib/ad-platforms";
+import { parseAdPlatform, parseChoice, single, type SearchParams } from "@/lib/filters";
 
 export const CREATIVE_SORTS = [
   "spend",
@@ -59,20 +60,25 @@ export function parseCreativeSelection(params: SearchParams): { items: CreativeI
       throw new Error();
     const items = parsed as CreativeIdentity[];
     if (new Set(items.map((item) => JSON.stringify(item))).size !== items.length) throw new Error();
-    return { items, error: null };
+    // A selection saved under a platform's older key names the same creative as its current key, once.
+    const keyed = items.map(([platform, id]): CreativeIdentity => [adPlatformKey(platform), id]);
+    return { items: [...new Map(keyed.map((item) => [JSON.stringify(item), item])).values()], error: null };
   } catch {
     return { items: [], error: "Choose up to four distinct creatives to compare. Clear the selection to start again." };
   }
 }
+
+/** Creative performance's layouts. */
+export const CREATIVE_VIEWS = ["delivery", "returns", "table"] as const;
 
 /** Applied data options for the report; the view only changes presentation. */
 export function creativesOptions(params: SearchParams) {
   const minimumSpend = parseCreativeThreshold(single(params, "min_spend"));
   const minimumConversions = parseCreativeThreshold(single(params, "min_conversions"));
   return {
-    channel: single(params, "channel")?.slice(0, 100) || null,
+    channel: parseAdPlatform(params, "channel"),
     campaign: single(params, "campaign")?.slice(0, 200) || null,
-    view: parseChoice(params, "view", ["delivery", "returns", "table"] as const, "returns"),
+    view: parseChoice(params, "view", CREATIVE_VIEWS, "returns"),
     format: parseChoice(params, "format", ["", ...CREATIVE_FORMATS.map((format) => format.value)] as const, "") || null,
     sort: parseChoice(params, "sort", CREATIVE_SORTS, "spend"),
     minimumSpend,

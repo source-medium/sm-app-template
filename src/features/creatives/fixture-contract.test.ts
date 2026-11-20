@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CreativeRow, firstSpend, lookbackStart, toCreative, safeAdUrl } from "./rows";
+import { creativesOptions } from "./filters";
 import { sampleCreatives as sample, sampleCreativeSummary } from "./sample";
 import { samplePaidSummary } from "@/features/paid-marketing/sample";
 import { sumDecimals } from "@/lib/data/decimal";
@@ -119,6 +120,19 @@ it("filters ad platforms before sorting and does not silently substitute unknown
   expect(google.creatives.length).toBeGreaterThan(0);
   expect(google.creatives.every((row) => row.channel === "google_ads")).toBe(true);
   expect((await sampleCreatives({ ...FILTERS, sort: "ctr", channel: "unknown" })).creatives).toEqual([]);
+});
+
+it("reads a link or saved selection made with an older platform key as its platform's current key", async () => {
+  const meta = await sampleCreatives({ ...FILTERS, sort: "spend", channel: "meta_ads" });
+  const [first] = meta.creatives;
+  if (!first) throw new Error("Expected Meta sample creatives");
+  const old = creativesOptions({
+    channel: "facebook_ads",
+    selection: JSON.stringify([["facebook_ads", first.creativeId]]),
+  });
+  expect(await sampleCreatives({ ...FILTERS, sort: "spend", channel: old.channel })).toEqual(meta);
+  const saved = await sampleCreatives({ ...FILTERS, sort: "spend", selection: old.selection.items });
+  expect(saved.creatives.map((c) => [c.channel, c.creativeId])).toEqual([["meta_ads", first.creativeId]]);
 });
 
 describe("creative comparisons, launches and summary", () => {

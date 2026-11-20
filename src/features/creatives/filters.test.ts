@@ -14,6 +14,24 @@ it("preserves compound identity and refuses duplicates and more than four select
   for (const value of [[items[0], items[0]], [...items, ["Meta", "2"], ["Meta", "3"], ["Meta", "4"]], [["Meta"]]])
     expect(parseCreativeSelection({ selection: JSON.stringify(value) }).error).not.toBeNull();
 });
+it("reads an older platform key in the ad platform filter and a saved selection as its platform's key", () => {
+  expect(creativesOptions({ channel: "facebook_ads" }).channel).toBe("meta_ads");
+  expect(creativesOptions({ channel: "tiktok" }).channel).toBe("tiktok_ads");
+  expect(creativesOptions({ channel: "snapchat_ads" }).channel).toBe("snapchat_ads");
+  const saved = [
+    ["facebook_ads", "crv-1"],
+    ["meta_ads", "crv-1"],
+    ["tiktok", "crv-2"],
+  ];
+  // Both Meta keys name one creative, so the selection keeps it once.
+  expect(parseCreativeSelection({ selection: JSON.stringify(saved) })).toEqual({
+    items: [
+      ["meta_ads", "crv-1"],
+      ["tiktok_ads", "crv-2"],
+    ],
+    error: null,
+  });
+});
 it("flags a rejected threshold rather than dropping it silently, and bounds free text", () => {
   expect(creativesOptions({ min_spend: "-1" })).toMatchObject({ minimumSpend: null, thresholdError: true });
   expect(creativesOptions({ min_conversions: "2.5" })).toMatchObject({

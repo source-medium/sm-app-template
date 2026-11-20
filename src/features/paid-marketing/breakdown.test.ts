@@ -3,6 +3,7 @@ import { goLive, rowsResponse } from "../../../tests/helpers/live";
 import { samplePaidSource } from "@/lib/sample/ad-delivery";
 import { sampleSpendBreakdown } from "./sample";
 import { sumDecimals } from "@/lib/data/decimal";
+import { AD_PLATFORM_SQL } from "@/lib/data/channel-sql";
 
 const filters = { storeId: "sample-store-a", range: { from: "2026-09-01", to: "2026-09-07" }, channel: null };
 const baseline = { from: "2025-09-01", to: "2025-09-07" };
@@ -61,10 +62,8 @@ it("uses typed parameters and SQL totals before top-N, retaining exact decimals"
   expect(body.query).toContain("SUM(spend) OVER () AS total_spend");
   expect(body.query).toContain("LIMIT 11");
   // Campaign IDs are unique within an ad platform; sm_channel is the sales channel.
-  expect(body.query).toContain(
-    "CONCAT(COALESCE(source_system, '(unknown platform)'), ' / ', IFNULL(ad_campaign_id, '(none)')) AS dimension_key",
-  );
-  expect(body.query).toContain("AND (@channel = '' OR COALESCE(source_system, '(unknown platform)') = @channel)");
+  expect(body.query).toContain(`CONCAT(${AD_PLATFORM_SQL}, ' / ', IFNULL(ad_campaign_id, '(none)')) AS dimension_key`);
+  expect(body.query).toContain(`AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)`);
   expect(body.query).not.toContain("sm_channel");
   expect(body.query).not.toContain(channel);
   const params = Object.fromEntries(body.queryParameters.map((param) => [param.name, param.parameterValue.value]));

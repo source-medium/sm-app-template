@@ -225,15 +225,15 @@ test("creatives: current assets open from performance, play a supplied video and
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-28");
+  await page.goto("/creatives?store=sample-store-a&from=2026-09-01&to=2026-09-28&sort=clicks");
   const card = page
     .getByRole("list", { name: "Ad creatives" })
     .getByRole("listitem")
     .filter({ hasText: "Customers on repeat" });
+  // A video is its lazy poster until played: no player, and no request for the file, before then.
   const inline = card.locator("video");
-  await inline.evaluate(async (video: HTMLVideoElement) => {
-    await video.play();
-  });
+  await expect(inline).toHaveCount(0);
+  await card.getByRole("button", { name: /^Play / }).click();
   await expect.poll(() => inline.evaluate((video: HTMLVideoElement) => video.currentTime)).toBeGreaterThan(0);
   const carousel = page
     .getByRole("list", { name: "Ad creatives" })
@@ -250,11 +250,8 @@ test("creatives: current assets open from performance, play a supplied video and
   const assets = page.getByRole("list", { name: "Creative assets" });
   await expect(assets.getByRole("heading", { name: "Primary text" })).toBeVisible();
   await expect(assets.getByText("Pinned position: HEADLINE_1")).toBeVisible();
+  await assets.getByRole("button", { name: /^Play / }).click();
   const video = assets.locator("video");
-  await video.evaluate(async (element: HTMLVideoElement) => {
-    element.muted = true;
-    await element.play();
-  });
   await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime)).toBeGreaterThan(0);
   await page.getByRole("link", { name: "All creative assets" }).click();
   await expect(page.getByLabel("Creative ID", { exact: true })).toHaveValue("");
@@ -268,13 +265,24 @@ test("creatives: current assets open from performance, play a supplied video and
   await expect(page).toHaveURL(/cursor=/);
   await expect(assets.getByRole("listitem").first()).not.toHaveText(first);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  // Through the assets and their filters, the way back keeps the report's dates and its own choices.
+  await page.getByRole("link", { name: "Creative performance" }).click();
+  await expect(page).toHaveURL(
+    (url) =>
+      url.searchParams.get("from") === "2026-09-01" &&
+      url.searchParams.get("to") === "2026-09-28" &&
+      url.searchParams.get("sort") === "clicks" &&
+      !url.searchParams.has("view") &&
+      !url.searchParams.has("cursor"),
+  );
+  await expect(page.getByRole("heading", { name: "Creatives", exact: true })).toBeVisible();
 });
 
 test("creatives: an unavailable video keeps its platform link and ID", async ({ page }) => {
   await page.route("**/sample-creatives/creative-03.mp4", (route) => route.abort());
   await page.goto("/creatives?store=sample-store-a&view=assets&entity=crv-03&channel=meta_ads&role=video");
   const card = page.getByRole("list", { name: "Creative assets" }).getByRole("listitem");
-  await card.locator("video").evaluate((video: HTMLVideoElement) => video.play().catch(() => {}));
+  await card.getByRole("button", { name: /^Play / }).click();
   await expect(card.getByText("Inline playback unavailable.", { exact: false })).toBeVisible();
   await expect(card.getByRole("link", { name: "Open video" })).toHaveAttribute(
     "href",
@@ -435,8 +443,8 @@ test("comparison previews enlarge images and video without moving the metrics", 
     const videoTrigger = table.getByRole("button", { name: /Preview Customers on repeat/ });
     await videoTrigger.click();
     const videoDialog = page.getByRole("dialog", { name: "Customers on repeat" });
+    await videoDialog.getByRole("button", { name: /^Play / }).click();
     const video = videoDialog.locator("video");
-    await video.evaluate(async (v: HTMLVideoElement) => v.play());
     await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0);
     await videoDialog.getByRole("button", { name: "Close" }).click();
     await expect(videoDialog).toHaveCount(0);

@@ -7,8 +7,23 @@ import { SelectFilter } from "@/components/patterns/select-filter";
 import { ReportPage } from "@/components/shell/report-page";
 import { Card, CardContent, cardGridStyles } from "@/components/ui/card";
 import { adPlatformLabel } from "@/lib/ad-platforms";
-import { REPORT_FILTER_FORM_ID, single, withParams, type SearchParams } from "@/lib/filters";
-import { ASSET_RELATION, assetHref, assetLabel, assetRoles, type CreativeAsset } from "./assets";
+import {
+  REPORT_FILTER_FORM_ID,
+  SHARED_FILTERS,
+  parseAdPlatform,
+  single,
+  withParams,
+  type SearchParams,
+} from "@/lib/filters";
+import {
+  ASSET_PARAMS,
+  ASSET_RELATION,
+  assetHref,
+  assetLabel,
+  assetRoles,
+  reportHref,
+  type CreativeAsset,
+} from "./assets";
 import { AssetVideo } from "@/components/patterns/asset-video";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -89,7 +104,7 @@ function AssetCard({ asset }: { asset: CreativeAsset }) {
 
 export function AssetGallery({ params }: { params: SearchParams }) {
   const entity = single(params, "entity") ?? "";
-  const channel = single(params, "channel") ?? "";
+  const channel = parseAdPlatform(params, "channel") ?? "";
   const role = single(params, "role") ?? "";
   const cursor = single(params, "cursor") ?? "";
   return (
@@ -108,25 +123,30 @@ export function AssetGallery({ params }: { params: SearchParams }) {
         },
       ]}
     >
-      {({ filters: { storeId }, today, timeZone }) => {
+      {({ filters: { storeId }, params: applied, today, timeZone }) => {
         const scope = { storeId, entity, channel, role, cursor };
+        // Creative performance's own choices, which Find assets submits unchanged; the filter bar carries the rest.
+        const carried = Object.keys(applied).flatMap((name) => {
+          const value = single(applied, name);
+          const own = ASSET_PARAMS.includes(name) || (SHARED_FILTERS as readonly string[]).includes(name);
+          return value === undefined || own ? [] : [{ name, value }];
+        });
         return (
           <>
             <nav className="flex flex-wrap items-center gap-4" aria-label="Creative reports">
-              <Link
-                prefetch={false}
-                className={linkStyle}
-                href={withParams("/creatives", {}, { store: storeId, channel: channel || null })}
-              >
+              <Link prefetch={false} className={linkStyle} href={reportHref(applied)}>
                 Creative performance
               </Link>
               {(entity || channel || role || cursor) && (
-                <Link prefetch={false} className={linkStyle} href={assetHref(storeId)}>
+                <Link prefetch={false} className={linkStyle} href={assetHref(applied)}>
                   All creative assets
                 </Link>
               )}
             </nav>
             <input type="hidden" form={REPORT_FILTER_FORM_ID} name="view" value="assets" />
+            {carried.map(({ name, value }) => (
+              <input key={name} type="hidden" form={REPORT_FILTER_FORM_ID} name={name} value={value} />
+            ))}
 
             {channel && <input type="hidden" form={REPORT_FILTER_FORM_ID} name="channel" value={channel} />}
             <div className="flex flex-wrap items-end gap-4">

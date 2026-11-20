@@ -9,6 +9,7 @@ import {
   rowsResponse,
   withStores,
 } from "../../../tests/helpers/live";
+import { AD_PLATFORM_SQL as PLATFORM } from "@/lib/data/channel-sql";
 import { periodColumns } from "@/lib/data/period-sql";
 import { MAX_SERIES_ROWS } from "./rows";
 
@@ -50,8 +51,6 @@ const CAMPAIGN_ROW = {
   platform_revenue: "2.5",
 };
 const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-09-02" }, channel: "meta_ads" };
-/** The ad platform; rpt_ad_performance_daily's sm_channel is the sales channel. */
-const PLATFORM = "COALESCE(source_system, '(unknown platform)')";
 
 const queryName = (call: FakeCall) => (call.body as SubmittedQuery).labels.sm_query;
 
@@ -180,7 +179,8 @@ describe("paid marketing, live", () => {
     const campaigns = fake.calls.find((call) => call.kind === "submit" && queryName(call) === "paid_campaigns")
       ?.body as SubmittedQuery;
     expect(campaigns.query).toContain("`sm-demotenant.sm_transformed_v2.rpt_ad_performance_daily`");
-    expect(campaigns.query).not.toContain("meta_ads");
+    // The filter's value is a parameter; meta_ads appears only as a platform key in code.
+    expect(campaigns.query.replaceAll(PLATFORM, "")).not.toContain("meta_ads");
     expect(campaigns.query).toContain(`${PLATFORM} AS channel`);
     expect(campaigns.query).toContain(`AND (@channel = '' OR ${PLATFORM} = @channel)`);
     expect(campaigns.queryParameters).toContainEqual({

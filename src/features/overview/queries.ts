@@ -42,7 +42,6 @@ export type RevenueDeductions = {
 export type RevenueContribution = {
   channel: string | null;
   revenue: string | null;
-  remainder: boolean;
 };
 
 export type OverviewData = {

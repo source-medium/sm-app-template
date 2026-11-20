@@ -44,13 +44,9 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
         WHERE sm_store_id = @store_id AND date BETWEEN @start_date AND @end_date
           AND ${SALES_CHANNEL_PREDICATE}
       ), contributions AS (
-        SELECT sm_channel AS channel, SUM(order_net_revenue) AS revenue,
-          ROW_NUMBER() OVER (ORDER BY ABS(SUM(order_net_revenue)) DESC NULLS LAST, sm_channel) AS rank
+        -- One row per valid sales channel, so the list is short and complete.
+        SELECT sm_channel AS channel, CAST(SUM(order_net_revenue) AS STRING) AS revenue
         FROM scoped WHERE ${VALID_SALES_CHANNEL_SQL} GROUP BY sm_channel
-      ), contribution_rows AS (
-        SELECT channel, CAST(revenue AS STRING) AS revenue, FALSE AS remainder FROM contributions WHERE rank <= 200
-        UNION ALL
-        SELECT CAST(NULL AS STRING), CAST(SUM(revenue) AS STRING), TRUE FROM contributions WHERE rank > 200 HAVING COUNT(*) > 0
       ), daily AS (
         SELECT
           date,
@@ -91,7 +87,7 @@ export async function queryOverview(filters: OverviewFilters): Promise<OverviewD
         SUM(repeat_revenue) OVER () AS total_repeat_revenue,
         SUM(repeat_orders) OVER () AS total_repeat_orders,
         IF(ROW_NUMBER() OVER (ORDER BY date) = 1,
-          (SELECT TO_JSON_STRING(ARRAY_AGG(STRUCT(channel, revenue, remainder) ORDER BY remainder, channel)) FROM contribution_rows),
+          (SELECT TO_JSON_STRING(ARRAY_AGG(STRUCT(channel, revenue) ORDER BY channel)) FROM contributions),
           NULL) AS contributions_json,
         MAX(date) OVER () AS latest_date
       FROM daily

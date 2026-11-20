@@ -78,6 +78,23 @@ test("overview: a phone shows the revenue movement and opens its channel trend w
   await expect(channels).toHaveCount(0);
 });
 
+test("overview: All channel values opens its closed section in browsers that do not expand it for a fragment", async ({
+  page,
+}) => {
+  await page.goto("/overview?store=sample-store-a&from=2026-10-22&to=2026-11-18&compare=previous");
+  const link = page
+    .getByRole("region", { name: "Revenue change by channel" })
+    .getByRole("link", { name: "All channel values" });
+  const table = page.getByRole("table", { name: "Summary revenue contributions" });
+  // Chromium opens a closed <details> for a fragment itself; with the navigation cancelled, only the report can.
+  await page.evaluate(() => window.addEventListener("click", (event) => event.preventDefault(), { capture: true }));
+  await expect(async () => {
+    await link.click();
+    await expect(table).toBeVisible({ timeout: 1_000 });
+  }).toPass();
+  expect(new URL(page.url()).hash).toBe("");
+});
+
 test("overview: scoped channel links fit the phone and land below its header even on the same report", async ({
   page,
 }) => {

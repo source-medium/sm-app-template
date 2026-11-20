@@ -5,6 +5,7 @@
  */
 import { z } from "zod";
 import { bq } from "@/lib/data/decode";
+import { VALID_SALES_CHANNELS } from "@/lib/sales-channels";
 import type { OverviewData } from "./queries";
 
 export const OVERVIEW_RELATION = "rpt_executive_summary_daily";
@@ -15,10 +16,9 @@ const Contributions = z
     z.object({
       channel: z.string().nullable(),
       revenue: bq.numeric().nullable(),
-      remainder: z.boolean(),
     }),
   )
-  .max(201);
+  .max(VALID_SALES_CHANNELS.length);
 
 export const OverviewRow = z.object({
   contributions_json: z.string().nullable().optional(),

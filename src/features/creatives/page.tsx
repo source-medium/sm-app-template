@@ -188,7 +188,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                   Performance summary
                 </a>
               )}
-              <Link prefetch={false} className="underline" href={assetHref(filters.storeId, channel)}>
+              <Link prefetch={false} className="underline" href={assetHref(applied, channel)}>
                 Browse creative assets
               </Link>
             </nav>
@@ -575,10 +575,10 @@ function firstSpendLabel(first: FirstSpend | null): string | null {
   return `${first.when === "launched" ? "Launched" : "Running since"} ${formatDate(first.date)}`;
 }
 
-function assetAction(store: string, creative: Creative) {
+function assetAction(params: SearchParams, creative: Creative) {
   switch (creative.assets) {
     case "available":
-      return { display: "View assets", href: assetHref(store, creative.channel, creative.creativeId) };
+      return { display: "View assets", href: assetHref(params, creative.channel, creative.creativeId) };
     case "no_match":
       return { display: "No current assets" };
     case "no_platform_inventory":
@@ -702,7 +702,7 @@ function CreativesView({
           ]}
           preservePageOnDataChange
           rows={data.creatives.map((c, index) => {
-            const action = assetAction(scopeFilters.store, c);
+            const action = assetAction(params, c);
             const change = <M extends Measure>(measure: M, format: (value: Creative[M]) => string) => {
               const delta = creativeChange(c, shown, measure, format);
               return delta ? changeCell(delta) : { display: "" };
@@ -711,7 +711,7 @@ function CreativesView({
               id: JSON.stringify([c.channel, c.creativeId]),
               cells: {
                 name: {
-                  display: c.title ?? c.name ?? c.creativeId,
+                  display: creativeTitle(c),
                   href: action.href,
                   secondary: (
                     <ComparisonAction
@@ -750,7 +750,7 @@ function CreativesView({
         )
       : data.creatives;
     const cards = creatives.map((creative, index) => {
-      const action = assetAction(scopeFilters.store, creative);
+      const action = assetAction(params, creative);
       const metric = <M extends Measure>(label: string, measure: M, format: (value: Creative[M]) => string) => ({
         label,
         display: format(creative[measure]),
