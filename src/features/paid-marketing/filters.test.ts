@@ -14,4 +14,6 @@ it("normalizes the report and export scope from one parse", () => {
     breakdown: "tactic",
   });
   expect(paidMarketingOptions({ breakdown: "unknown" }).breakdown).toBe("channel");
+  // A link made with a platform's older key reads as its current key (AD_PLATFORM_ALIASES).
+  expect(paidMarketingOptions({ channel: "facebook_ads" }).channel).toBe("meta_ads");
 });

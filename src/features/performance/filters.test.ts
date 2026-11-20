@@ -27,4 +27,6 @@ it("normalizes report choices while retaining explicit unknown channels and plat
   ).toEqual({ view: "platforms", grain: "month", channel: '["amazon","online_dtc"]', platform: "Meta" });
   expect(performanceOptions({ sales_channel: "[null]" }).channel).not.toBeNull();
   expect(performanceOptions({ platform: "x".repeat(201) }).platform).toHaveLength(200);
+  // A link made with a platform's older key reads as its current key (AD_PLATFORM_ALIASES).
+  expect(performanceOptions({ platform: "tiktok" }).platform).toBe("tiktok_ads");
 });

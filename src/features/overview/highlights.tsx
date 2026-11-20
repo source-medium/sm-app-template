@@ -6,7 +6,7 @@ import { largestRevenueChanges } from "./revenue-changes";
 import { toUnits } from "@/lib/data/decimal";
 import Link from "next/link";
 import { CHANGE_TONE_CLASS } from "@/components/patterns/change-tone";
-import { channelName, withParams, type SearchParams } from "@/lib/filters";
+import { withParams, type SearchParams } from "@/lib/filters";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { OverviewFilters, OverviewSlice } from "./queries";
 import { SectionHeader } from "@/components/patterns/section-header";
@@ -40,7 +40,7 @@ export function ChannelChanges({
   params: SearchParams;
   currency: string | null;
 }) {
-  if (!contributions || contributions.limited) return null;
+  if (!contributions) return null;
   const rows = contributions.rows.filter((row) => row.difference !== null).slice(0, 3);
   if (!rows.length) return null;
   return (
@@ -137,63 +137,29 @@ export function OverviewHighlights({
           }))}
         />
         {contributions && (
-          <>
-            {contributions.limited ? (
-              <>
-                <p>
-                  More than 200 groups were published. Named group changes are unavailable because the remainder may
-                  contain different groups in each period. The period breakdowns include that remainder.
-                </p>
-                {contributions.periods?.map((period) => (
-                  <DataTable
-                    key={period.label}
-                    caption={`${period.label} summary revenue groups`}
-                    columns={[
-                      { key: "group", header: "Sales channel" },
-                      { key: "revenue", header: "Net revenue", align: "right" },
-                    ]}
-                    rows={period.groups.map((row, index) => ({
-                      id: String(index),
-                      cells: {
-                        group: {
-                          display: row.remainder
-                            ? "Other groups (bounded remainder)"
-                            : row.channel
-                              ? channelName(row.channel)
-                              : "Unclassified sales channel",
-                        },
-                        revenue: revenueCell(row.revenue, currency),
-                      },
-                    }))}
-                  />
-                ))}
-              </>
-            ) : (
-              <Disclosure summary="All channel values">
-                <div id="channel-breakdown">
-                  <DataTable
-                    stackOnMobile
-                    caption="Summary revenue contributions"
-                    columns={[
-                      { key: "group", header: "Sales channel" },
-                      { key: "change", header: "Revenue change", align: "right" },
-                      { key: "current", header: "Net revenue", align: "right" },
-                      { key: "previous", header: "Comparison revenue", align: "right" },
-                    ]}
-                    rows={contributions.rows.map((row) => ({
-                      id: row.id,
-                      cells: {
-                        group: { display: row.label },
-                        current: revenueCell(row.current, currency),
-                        previous: revenueCell(row.previous, currency),
-                        change: revenueChange(row.difference, currency, row.id === "residual" ? "neutral" : "higher"),
-                      },
-                    }))}
-                  />
-                </div>
-              </Disclosure>
-            )}
-          </>
+          <Disclosure summary="All channel values">
+            <div id="channel-breakdown">
+              <DataTable
+                stackOnMobile
+                caption="Summary revenue contributions"
+                columns={[
+                  { key: "group", header: "Sales channel" },
+                  { key: "change", header: "Revenue change", align: "right" },
+                  { key: "current", header: "Net revenue", align: "right" },
+                  { key: "previous", header: "Comparison revenue", align: "right" },
+                ]}
+                rows={contributions.rows.map((row) => ({
+                  id: row.id,
+                  cells: {
+                    group: { display: row.label },
+                    current: revenueCell(row.current, currency),
+                    previous: revenueCell(row.previous, currency),
+                    change: revenueChange(row.difference, currency, row.id === "residual" ? "neutral" : "higher"),
+                  },
+                }))}
+              />
+            </div>
+          </Disclosure>
         )}
         <Disclosure summary="About these changes" variant="note">
           <div className="max-w-prose space-y-2">

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { bq } from "@/lib/data/decode";
 import { safeImageUrl } from "@/lib/image-url";
-import { withParams } from "@/lib/filters";
+import { single, withParams, type SearchParams } from "@/lib/filters";
 
 export const ASSET_RELATION = "rpt_ad_creative_assets";
 export const ASSET_PAGE_SIZE = 24;
@@ -48,6 +48,32 @@ export const AssetRow = z.object({
 export type CreativeAsset = z.output<typeof AssetRow>;
 export type AssetScope = { storeId: string; channel: string; entity: string; role: string; cursor: string };
 
-export function assetHref(store: string, channel?: string | null, entity?: string | null) {
-  return withParams("/creatives", {}, { store, view: "assets", channel: channel || null, entity: entity || null });
+/** The asset view's own URL parameters. The others are Creative performance's and ride along, so returning keeps them. */
+export const ASSET_PARAMS = ["view", "channel", "role", "entity", "cursor"];
+
+/** Creative performance's own `view` (its layout), kept aside while the asset view owns `view`. */
+const REPORT_VIEW = "report_view";
+
+/** One platform's and creative's current assets, or all of them, from the report's parameters (store included). */
+export function assetHref(params: SearchParams, channel?: string | null, entity?: string | null) {
+  const view = single(params, "view");
+  return withParams("/creatives", params, {
+    view: "assets",
+    [REPORT_VIEW]: view === "assets" ? (single(params, REPORT_VIEW) ?? null) : (view ?? null),
+    channel: channel || null,
+    entity: entity || null,
+    role: null,
+    cursor: null,
+  });
+}
+
+/** Creative performance again, with the parameters it came with, its layout included. */
+export function reportHref(params: SearchParams) {
+  return withParams("/creatives", params, {
+    view: single(params, REPORT_VIEW) ?? null,
+    [REPORT_VIEW]: null,
+    role: null,
+    entity: null,
+    cursor: null,
+  });
 }

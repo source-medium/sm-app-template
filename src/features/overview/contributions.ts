@@ -14,16 +14,6 @@ export function revenueContributions(report: OverviewSlice, filters: OverviewFil
     !previous
   )
     return null;
-  // A ranked remainder may contain different entities in each period; do not assign its movement to named groups.
-  if ([...current, ...previous].some((row) => row.remainder))
-    return {
-      rows: [],
-      limited: true,
-      periods: [
-        { label: "Selected period", groups: current },
-        { label: "Comparison period", groups: previous },
-      ],
-    };
   const key = (row: RevenueContribution) => JSON.stringify([row.channel]);
   const before = new Map(previous.map((row) => [key(row), row]));
   const now = new Map(current.map((row) => [key(row), row]));
@@ -71,6 +61,5 @@ export function revenueContributions(report: OverviewSlice, filters: OverviewFil
           ? 1
           : a.id.localeCompare(b.id);
     }),
-    limited: false,
   };
 }

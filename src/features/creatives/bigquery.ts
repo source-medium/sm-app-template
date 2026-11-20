@@ -107,14 +107,14 @@ async function assetCoverage(warehouse: Warehouse, storeId: string, rows: { chan
           SELECT JSON_VALUE(pair, '$[0]') AS channel, JSON_VALUE(pair, '$[1]') AS creative_id
           FROM UNNEST(JSON_QUERY_ARRAY(@identities)) pair
         ), candidates AS (
-          SELECT source_system AS channel, requested.creative_id, asset_position,
+          SELECT ${AD_PLATFORM_SQL} AS channel, requested.creative_id, asset_position,
             IF(requested.creative_id IS NULL, NULL, CASE
               WHEN STARTS_WITH(asset_video_url, 'https://') THEN 'video'
               WHEN asset_role IN ('image','logo','video') AND STARTS_WITH(asset_image_url,'https://') THEN 'image'
             END) AS kind, asset_image_url, asset_video_url
           FROM ${warehouse.table(ASSET_RELATION)}
-          LEFT JOIN requested ON requested.channel = source_system AND requested.creative_id = ad_creative_id
-          WHERE sm_store_id = @store_id AND source_system IN (SELECT channel FROM requested)
+          LEFT JOIN requested ON requested.channel = ${AD_PLATFORM_SQL} AND requested.creative_id = ad_creative_id
+          WHERE sm_store_id = @store_id AND ${AD_PLATFORM_SQL} IN (SELECT channel FROM requested)
         ), distinct_media AS (
           SELECT channel, creative_id, kind,
             CASE kind WHEN 'video' THEN asset_video_url WHEN 'image' THEN asset_image_url END AS src,
@@ -336,7 +336,7 @@ export async function queryCreativeAssets(filters: AssetScope) {
     sql: `SELECT sm_ad_creative_asset_key, source_system, ad_creative_id, ad_id, ad_campaign_id, asset_role,
         asset_pinned_position, asset_performance_label, asset_status, asset_id, asset_text, asset_image_url, asset_video_url, asset_video_id, asset_link_url
       FROM ${warehouse.table(ASSET_RELATION)}
-      WHERE sm_store_id = @store_id AND (@channel = '' OR source_system = @channel)
+      WHERE sm_store_id = @store_id AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
         AND (@entity = '' OR ad_creative_id = @entity) AND (@role = '' OR asset_role = @role)
         AND sm_ad_creative_asset_key > @cursor
       ORDER BY sm_ad_creative_asset_key LIMIT @limit`,

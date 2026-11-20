@@ -607,7 +607,11 @@ to (for example `online_dtc` for every platform), so it never identifies the pla
 Performance's platform view groups by the same `source_system`. These reports show
 platforms by name with `adPlatformLabel()` (`src/lib/ad-platforms.ts`, shared with
 Performance) and keep the published value in URLs, SQL and CSV; an unlisted value
-shows as published and a missing one as `(unknown platform)`. Ad platforms and
+shows as published and a missing one as `(unknown platform)`. A platform published
+under two keys reads as one, `facebook_ads` as `meta_ads` and `tiktok` as `tiktok_ads`
+(`AD_PLATFORM_ALIASES`), so a store with both counts each campaign and creative once,
+as the Metabase dashboards do. Links, saved views and comparison selections made with
+an older key read it as the current one (`adPlatformKey`), so they return the same rows. Ad platforms and
 sales channels are different domains; navigation does not silently carry one into
 another view.
 
@@ -803,7 +807,7 @@ own layer.
 
 Paid marketing's **Download CSV** re-reads the applied store, dates and ad platform
 with the same campaign query as the table. Each campaign row carries its
-`ad_platform` (the published `source_system` value). It includes all loaded campaigns
+`ad_platform` (the `source_system` key, with an alias read as its platform's). It includes all loaded campaigns
 across the table's pages, up to 200, in the query's spend order. It does not
 run the chart query or start a background export job. Unapplied filter edits
 are ignored. Each row includes the store, inclusive dates, sample/live mode,
@@ -891,20 +895,24 @@ In Creatives, **Browse creative assets** opens the store’s current inventory f
 **View assets** on a card, or the creative name in the performance table, opens that platform and creative ID.
 Filter by asset type or creative ID and use **Next assets** to continue through the inventory. Inventory includes
 assets without delivery in the selected dates. Spend and ROAS come only from the daily performance table.
-A video can have a playable URL, a platform link, a cover image, or only an ID. Video files load on demand
-from the published HTTPS URL. The local sample includes a short silent animation.
+**Creative performance** returns with the report's dates, comparisons and filters; after **View assets**, its ad
+platform is the creative's. A video can have a playable URL, a platform link, a cover image, or only an ID. A video
+shows its cover image until you press Play; the player then loads the file from the published HTTPS URL. The local
+sample includes a short silent animation.
 
 ## Creative media
 
 The ranking plays a supplied video inline. Swipe or scroll horizontally through a card’s previews,
 or use its keyboard-accessible arrow buttons. Cards include
 the ranked media and up to eight distinct images and eight videos from current inventory.
-**View assets** opens the full inventory. Videos load on demand.
+**View assets** opens the full inventory. Videos load when played.
 
 The Creatives view loads each ad's image straight from the URL in your
 warehouse (`ad_creative_image_url`, else `ad_creative_thumbnail_url`), from any
-https host, without a referrer. Ad platforms do not promise how long those
-links last, so a card whose image fails shows the creative's text instead. To
+https host, without a referrer; video cover images load the same way. Ad
+platforms do not promise how long those links last, so a card whose image fails
+shows the creative's text instead. A video file loads only when played and, like
+other media, sends the app's origin under the page's `Referrer-Policy`. To
 allow only specific image hosts, narrow `img-src` in
 `src/lib/security-headers.ts`.
 

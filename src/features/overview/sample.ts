@@ -102,9 +102,7 @@ export function aggregateOverviewWire(
       date,
       contributions_json:
         date === days[0]?.[0]
-          ? JSON.stringify(
-              [...contributions.values()].map((row) => ({ ...row, revenue: money(row.revenue), remainder: false })),
-            )
+          ? JSON.stringify([...contributions.values()].map((row) => ({ ...row, revenue: money(row.revenue) })))
           : null,
       net_revenue: money(sums.revenue),
       order_count: String(sums.orders),

@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { goLive, rowsResponse } from "../../../tests/helpers/live";
+import { AD_PLATFORM_SQL } from "@/lib/data/channel-sql";
 import { BUSINESS_FIELDS, PLATFORM_FIELDS } from "./rows";
 import type { PerformanceFilters } from "./queries";
 
@@ -86,7 +87,7 @@ it.each(["business", "platforms"] as const)(
       parameterType: { type: "STRING" },
       parameterValue: { value: filters.storeId },
     });
-    if (kind === "platforms") expect(body.query).toContain("COALESCE(source_system, '(unknown platform)') AS platform");
+    if (kind === "platforms") expect(body.query).toContain(`${AD_PLATFORM_SQL} AS platform`);
   },
 );
 it.each(

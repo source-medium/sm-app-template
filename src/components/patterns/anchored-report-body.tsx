@@ -25,6 +25,20 @@ export function AnchoredReportBody({
     return () => observer.disconnect();
   }, []);
 
+  // A same-page link into a closed <details> opens it before the browser scrolls there; only Chromium does that itself.
+  useEffect(() => {
+    const report = body.current;
+    if (!report) return;
+    const reveal = (event: MouseEvent) => {
+      const link = event.target instanceof Element ? event.target.closest("a[href^='#']") : null;
+      const target = link instanceof HTMLAnchorElement ? document.getElementById(link.hash.slice(1)) : null;
+      const disclosure = target && report.contains(target) ? target.closest("details") : null;
+      if (disclosure) disclosure.open = true;
+    };
+    report.addEventListener("click", reveal);
+    return () => report.removeEventListener("click", reveal);
+  }, []);
+
   useEffect(() => {
     const fragment = location.hash.slice(1);
     const target =

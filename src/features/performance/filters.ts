@@ -1,3 +1,4 @@
+import { adPlatformKey } from "@/lib/ad-platforms";
 import { parseChoice, single, summarySalesChannel, type SearchParams } from "@/lib/filters";
 import { parseTimeGrain } from "@/lib/time-grain";
 
@@ -8,6 +9,6 @@ export function performanceOptions(params: SearchParams) {
     grain: parseTimeGrain(params),
     channel: summarySalesChannel(params),
     // One platform's detail, or the combined platforms when empty.
-    platform: single(params, "platform")?.slice(0, 200) ?? "",
+    platform: adPlatformKey(single(params, "platform")?.slice(0, 200) ?? ""),
   };
 }

@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { expectEveryQueryScopedTo, goLive, rowsResponse } from "../../../tests/helpers/live";
 import type { BaselineRanges } from "@/lib/comparison";
+import { AD_PLATFORM_SQL as PLATFORM } from "@/lib/data/channel-sql";
 import { PERIOD_PREFIXES as PERIODS } from "@/lib/data/period-sql";
 
 const FIELDS = [
@@ -53,8 +54,6 @@ const ROW = {
 const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-09-02" } };
 const NONE: BaselineRanges = [null, null];
 const PREVIOUS: BaselineRanges = [{ from: "2026-08-30", to: "2026-08-31" }, null];
-/** The ad platform; rpt_ad_performance_daily's sm_channel is the sales channel. */
-const PLATFORM = "COALESCE(source_system, '(unknown platform)')";
 
 describe("creatives, live", () => {
   it("applies literal name predicates before creative aggregation, with the same inspection scope", async () => {
@@ -223,6 +222,9 @@ describe("creatives, live", () => {
     expect(result.creatives.map((c) => c.assets)).toEqual(["available", "no_match", "no_platform_inventory"]);
     expectEveryQueryScopedTo(fake, FILTERS.storeId);
     expect(fake.submitted()).toHaveLength(2);
+    // Inventory rows match the ranking by the same platform key, so an aliased platform finds its assets.
+    expect(fake.submitted(1).query).toContain(`${PLATFORM} AS channel`);
+    expect(fake.submitted(1).query).toContain(`requested.channel = ${PLATFORM}`);
     expect(fake.submitted(1).queryParameters).toContainEqual({
       name: "identities",
       parameterType: { type: "STRING" },
@@ -478,7 +480,7 @@ it("loads current assets independently of spend, scoped by store, platform and c
       parameterValue: { value },
     });
   }
-  expect(query.query).toContain("source_system = @channel");
+  expect(query.query).toContain(`(@channel = '' OR ${PLATFORM} = @channel)`);
   expect(query.query).toContain("ad_creative_id = @entity");
   expect(query.query).toContain("asset_role = @role");
   expect(query.query).toContain("sm_ad_creative_asset_key > @cursor");

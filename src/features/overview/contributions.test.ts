@@ -25,24 +25,13 @@ it("reconciles same-source groups and preserves the existing comparison coverage
   ).toBeNull();
   const unknown = {
     ...current,
-    contributions: [{ channel: null, revenue: current.totals?.netRevenue ?? null, remainder: false }],
+    contributions: [{ channel: null, revenue: current.totals?.netRevenue ?? null }],
   };
   expect(
     revenueContributions({ ...report, current: unknown }, filters, comparison)?.rows.some((row) =>
       row.label.includes("Unclassified"),
     ),
   ).toBe(true);
-  const limited = revenueContributions(
-    {
-      ...report,
-      current: { ...unknown, contributions: [{ channel: null, revenue: "1", remainder: true }] },
-    },
-    filters,
-    comparison,
-  );
-  expect(limited?.limited).toBe(true);
-  expect(limited?.rows).toEqual([]);
-  expect(limited?.periods?.[0]?.groups[0]).toMatchObject({ remainder: true, revenue: "1" });
 });
 
 it("keeps a lost channel's change visible and links only channels with current rows, including recorded zero", async () => {
@@ -50,13 +39,13 @@ it("keeps a lost channel's change visible and links only channels with current r
   if (!baseline.range) throw new Error("Expected comparison");
   const sample = await sampleOverview(filters, "2026-10-05");
   const report = {
-    current: { ...sample, contributions: [{ channel: "amazon", revenue: "0", remainder: false }] },
+    current: { ...sample, contributions: [{ channel: "amazon", revenue: "0" }] },
     comparison: {
       data: {
         ...sample,
         contributions: [
-          { channel: "amazon", revenue: "5", remainder: false },
-          { channel: "retail", revenue: "10", remainder: false },
+          { channel: "amazon", revenue: "5" },
+          { channel: "retail", revenue: "10" },
         ],
       },
       error: null,
