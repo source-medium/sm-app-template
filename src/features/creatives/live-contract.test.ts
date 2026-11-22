@@ -91,9 +91,7 @@ describe("creatives, live", () => {
       // A creative launches once and keeps one format across the comparison-safe lookback: no campaign, name or comparison filter.
       const launches = query.slice(query.indexOf("launches AS"), query.indexOf("grouped AS"));
       const grouped = query.slice(query.indexOf("grouped AS"), query.indexOf("scoped AS"));
-      expect(launches).toContain(
-        "date BETWEEN LEAST(@lookback_from, DATE_SUB(@start_date, INTERVAL GREATEST(DATE_DIFF(@end_date, @start_date, DAY) + 1, 366) DAY)) AND @end_date",
-      );
+      expect(launches).toContain("date BETWEEN @format_from AND @end_date");
       expect(launches).toContain("MIN(IF(date >= @lookback_from AND ad_spend > 0, date, NULL)) AS first_date");
       expect(launches).toContain(
         "ARRAY_AGG(NULLIF(TRIM(ad_creative_format), '') IGNORE NULLS ORDER BY date DESC, NULLIF(TRIM(ad_creative_format), '') DESC LIMIT 1)[SAFE_OFFSET(0)] AS format",
@@ -105,7 +103,7 @@ describe("creatives, live", () => {
     }
   });
 
-  it("keeps first_date on the 365-day lookback while widening format lookback for leap-year and >365-day comparisons", async () => {
+  it("reads first spend from the 365-day lookback and each format from the earliest day a comparison can start", async () => {
     const fake = await goLive({ submit: () => rowsResponse([], []) });
     const { getCreatives, getCreativeSummary } = await import("./queries");
     const leapYearRange = { from: "2025-01-01", to: "2025-01-31" };
@@ -116,20 +114,26 @@ describe("creatives, live", () => {
     await getCreatives({ storeId: "store-1", range: leapYearRange, sort: "spend" }, leapYearYoY);
     await getCreativeSummary({ storeId: "store-1", range: longRange, sort: "spend" }, longPrevious);
 
-    for (const submit of fake.submitted()) {
+    expect(fake.submitted()).toHaveLength(2);
+    // 366 days before a month, so its leap-year comparison (2024-01-01) is inside; a 380-day
+    // selection's whole length before it, so its previous period (2023-12-18) is too.
+    for (const [submit, formatFrom] of [
+      [fake.submitted(0), "2024-01-01"],
+      [fake.submitted(1), "2023-12-18"],
+    ] as const) {
       const launches = submit.query.slice(submit.query.indexOf("launches AS"), submit.query.indexOf("grouped AS"));
-      // first_date stays bound to @lookback_from (365 days) so firstSpend()'s contract does not shift.
       expect(launches).toContain("MIN(IF(date >= @lookback_from AND ad_spend > 0, date, NULL)) AS first_date");
-      // launches WHERE widens to at least 366 days or the selection span (independent of @compare) so
-      // comparison-only creatives in leap-year YoY or >365-day windows still resolve their latest format.
-      expect(launches).toContain(
-        "date BETWEEN LEAST(@lookback_from, DATE_SUB(@start_date, INTERVAL GREATEST(DATE_DIFF(@end_date, @start_date, DAY) + 1, 366) DAY)) AND @end_date",
-      );
+      expect(launches).toContain("date BETWEEN @format_from AND @end_date");
       expect(launches).not.toContain("@compare");
       expect(submit.queryParameters).toContainEqual({
         name: "lookback_from",
         parameterType: { type: "DATE" },
         parameterValue: { value: "2024-01-02" },
+      });
+      expect(submit.queryParameters).toContainEqual({
+        name: "format_from",
+        parameterType: { type: "DATE" },
+        parameterValue: { value: formatFrom },
       });
     }
   });

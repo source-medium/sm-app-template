@@ -58,8 +58,9 @@ import {
   ResolvedSelectionBar,
   SelectionBar,
   creativeTitle,
-  hasMissingSelection,
+  findSelectedCreative,
   matchesCreative,
+  needsSelectionLookup,
   resolveSelectedCreatives,
 } from "./selection-bar";
 import {
@@ -533,16 +534,8 @@ async function ComparisonNavigation({
     throw error;
   }
   const index = data.creatives.findIndex((creative) => matchesCreative(creative, [channel, id]));
-  let last = data.creatives[index];
-  const target = last && !table ? rankedActionId(index) : GALLERY_HEADING;
-  if (count === 1 && !last && data.truncated) {
-    try {
-      const selected = await loadSelected();
-      last = selected.creatives.find((creative) => matchesCreative(creative, [channel, id]));
-    } catch (error) {
-      if (!(error instanceof WarehouseError)) throw error;
-    }
-  }
+  const target = index >= 0 && !table ? rankedActionId(index) : GALLERY_HEADING;
+  const last = count === 1 ? await findSelectedCreative(data, [channel, id], loadSelected) : undefined;
   return (
     <>
       {count === 1 && (
@@ -864,7 +857,7 @@ function CreativesView({
         </div>
       </Disclosure>
       {!comparison &&
-        (data.truncated && loadSelected && hasMissingSelection(selection, data.creatives) ? (
+        (loadSelected && needsSelectionLookup(data, selection) ? (
           <Suspense fallback={<SelectionBar selection={selection} creatives={data.creatives} />}>
             <ResolvedSelectionBar selection={selection} creatives={data.creatives} loadSelected={loadSelected} />
           </Suspense>

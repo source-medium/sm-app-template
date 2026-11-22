@@ -34,8 +34,10 @@ export function MediaPreview({
         ref={track}
         role="group"
         aria-label={multiple ? "Scrollable media" : undefined}
+        // A scroll region takes keyboard focus so arrow keys can scroll it, as in ui/table.tsx.
+        {...(multiple ? { tabIndex: 0 } : {})}
         className={cn(
-          "flex aspect-[4/3] snap-x snap-mandatory overflow-x-auto overscroll-x-contain bg-muted sm:aspect-square",
+          "flex aspect-[4/3] snap-x snap-mandatory overflow-x-auto overscroll-x-contain bg-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring sm:aspect-square",
           frameClassName,
         )}
         onScroll={(event) => {

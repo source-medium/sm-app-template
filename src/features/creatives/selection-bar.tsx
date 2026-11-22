@@ -22,6 +22,32 @@ export function hasMissingSelection(selection: readonly CreativeIdentity[], crea
   return selection.some((identity) => !creatives.some((creative) => matchesCreative(creative, identity)));
 }
 
+/** Whether a pick is missing from a ranking that may not hold it, so only the selection query can name it. */
+export function needsSelectionLookup(data: CreativesData, selection: readonly CreativeIdentity[]): boolean {
+  return data.truncated && hasMissingSelection(selection, data.creatives);
+}
+
+/** The selection query's creatives, or none when the warehouse fails: callers fall back to the ranking. */
+async function loadSelectedOrNone(loadSelected: () => Promise<CreativesData>): Promise<Creative[]> {
+  try {
+    return (await loadSelected()).creatives;
+  } catch (error) {
+    if (!(error instanceof WarehouseError)) throw error;
+    return [];
+  }
+}
+
+/** One pick's creative: from the ranking, or from the selection query when a truncated ranking misses it. */
+export async function findSelectedCreative(
+  data: CreativesData,
+  identity: CreativeIdentity,
+  loadSelected: () => Promise<CreativesData>,
+): Promise<Creative | undefined> {
+  const listed = data.creatives.find((creative) => matchesCreative(creative, identity));
+  if (listed || !needsSelectionLookup(data, [identity])) return listed;
+  return (await loadSelectedOrNone(loadSelected)).find((creative) => matchesCreative(creative, identity));
+}
+
 /**
  * Resolve selected creatives from the already-loaded ranking whenever it holds
  * every possible match (untruncated list, or every selected identity already
@@ -153,14 +179,8 @@ export async function ResolvedSelectionBar({
   creatives: Creative[];
   loadSelected: () => Promise<CreativesData>;
 }) {
-  let resolved = creatives;
-  if (selection.length > 0) {
-    try {
-      const selected = await loadSelected();
-      if (selected.creatives.length > 0) resolved = [...selected.creatives, ...creatives];
-    } catch (error) {
-      if (!(error instanceof WarehouseError)) throw error;
-    }
-  }
-  return <SelectionBar selection={selection} creatives={resolved} />;
+  const selected = selection.length > 0 ? await loadSelectedOrNone(loadSelected) : [];
+  return (
+    <SelectionBar selection={selection} creatives={selected.length > 0 ? [...selected, ...creatives] : creatives} />
+  );
 }

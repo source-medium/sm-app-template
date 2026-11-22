@@ -16,6 +16,7 @@ describe("MediaPreview", () => {
     const next = screen.getByRole("button", { name: "Next media" });
 
     expect(track.id).toBeTruthy();
+    expect(track).toHaveAttribute("tabindex", "0");
     expect(prev).toHaveAttribute("aria-controls", track.id);
     expect(next).toHaveAttribute("aria-controls", track.id);
     expect(track.contains(prev)).toBe(false);
@@ -64,10 +65,12 @@ describe("MediaPreview", () => {
     expect(pause).toHaveBeenCalledTimes(1);
   });
 
-  it("omits controls when there is only one media item", () => {
+  it("omits controls and scrollable tab stop when there is only one media item", () => {
     render(<MediaPreview items={TWO_IMAGES.slice(0, 1)} title="Single hero" fallback={<span>Fallback</span>} />);
+    const outer = screen.getByRole("group", { name: "Single hero media" });
     expect(screen.queryByRole("button", { name: "Previous media" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Next media" })).toBeNull();
     expect(screen.queryByRole("group", { name: "Scrollable media" })).toBeNull();
+    expect(outer.firstElementChild).not.toHaveAttribute("tabindex");
   });
 });

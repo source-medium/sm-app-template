@@ -6,8 +6,10 @@ import {
   ResolvedSelectionBar,
   SelectionBar,
   creativeTitle,
+  findSelectedCreative,
   hasMissingSelection,
   matchesCreative,
+  needsSelectionLookup,
   resolveSelectedCreatives,
 } from "./selection-bar";
 
@@ -43,6 +45,42 @@ function makeCreative(overrides: Partial<Creative> = {}): Creative {
 }
 
 const COVERAGE = { latest_date: "2026-09-28", previous_latest_date: null, second_latest_date: null };
+
+describe("findSelectedCreative", () => {
+  const offPage = makeCreative({ creativeId: "crv-9", title: "Off page" });
+  const onPage = makeCreative({ creativeId: "crv-1", title: "On page" });
+
+  it("names a pick from the ranking without querying the selection", async () => {
+    const loadSelected = vi.fn<() => Promise<CreativesData>>();
+    const data = { creatives: [onPage], truncated: true, coverage: COVERAGE };
+    await expect(findSelectedCreative(data, ["meta_ads", "crv-1"], loadSelected)).resolves.toBe(onPage);
+    expect(loadSelected).not.toHaveBeenCalled();
+  });
+
+  it("queries the selection only when a truncated ranking misses the pick", async () => {
+    const loadSelected = vi
+      .fn<() => Promise<CreativesData>>()
+      .mockResolvedValue({ creatives: [offPage], truncated: false, coverage: COVERAGE });
+    const complete = { creatives: [onPage], truncated: false, coverage: COVERAGE };
+    const truncated = { ...complete, truncated: true };
+
+    expect(needsSelectionLookup(complete, [["meta_ads", "crv-9"]])).toBe(false);
+    await expect(findSelectedCreative(complete, ["meta_ads", "crv-9"], loadSelected)).resolves.toBeUndefined();
+    expect(loadSelected).not.toHaveBeenCalled();
+
+    expect(needsSelectionLookup(truncated, [["meta_ads", "crv-9"]])).toBe(true);
+    await expect(findSelectedCreative(truncated, ["meta_ads", "crv-9"], loadSelected)).resolves.toBe(offPage);
+    expect(loadSelected).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to no creative on a warehouse error and rethrows anything else", async () => {
+    const truncated = { creatives: [onPage], truncated: true, coverage: COVERAGE };
+    const warehouse = vi.fn<() => Promise<CreativesData>>().mockRejectedValue(new WarehouseError("transient"));
+    await expect(findSelectedCreative(truncated, ["meta_ads", "crv-9"], warehouse)).resolves.toBeUndefined();
+    const bug = vi.fn<() => Promise<CreativesData>>().mockRejectedValue(new TypeError("bug"));
+    await expect(findSelectedCreative(truncated, ["meta_ads", "crv-9"], bug)).rejects.toThrow(TypeError);
+  });
+});
 
 describe("resolveSelectedCreatives", () => {
   it("slices directly from loadList without calling the source loader when the list is not truncated", async () => {

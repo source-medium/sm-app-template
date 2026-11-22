@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CreativeRow, firstSpend, lookbackStart, toCreative, safeAdUrl } from "./rows";
+import { CreativeRow, firstSpend, formatLookbackStart, lookbackStart, toCreative, safeAdUrl } from "./rows";
 import { creativesOptions } from "./filters";
 import { sampleCreatives as sample, sampleCreativeSummary } from "./sample";
 import { samplePaidSummary } from "@/features/paid-marketing/sample";
@@ -225,6 +225,9 @@ describe("creative comparisons, launches and summary", () => {
 it("reads a first spend as launched in the range, running since a day in the lookback, or older than it", () => {
   const from = "2026-09-01";
   expect(lookbackStart(from)).toBe("2025-09-01");
+  // One scan finds both: the format window never starts after the first-spend lookback.
+  expect(formatLookbackStart({ from, to: from })).toBe("2025-08-31");
+  expect(formatLookbackStart({ from, to: from }) <= lookbackStart(from)).toBe(true);
   expect(firstSpend(null, from)).toBeNull();
   expect(firstSpend(from, from)).toEqual({ when: "launched", date: from });
   expect(firstSpend("2026-08-31", from)).toEqual({ when: "running", date: "2026-08-31" });

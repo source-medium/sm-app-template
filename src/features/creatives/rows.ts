@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { safeImageUrl } from "@/lib/image-url";
 import { bq } from "@/lib/data/decode";
-import { addDays } from "@/lib/filters";
+import { addDays, rangeLength, type DateRange } from "@/lib/filters";
 import { periodCoverageFields, periodFields, type PeriodPrefix } from "@/lib/data/period-sql";
 import { adTotals, adTotalsFields } from "@/lib/ad-totals";
 import type { Creative, CreativeMeasures, CreativeSummary, CreativeSummaryGroup } from "./queries";
@@ -19,6 +19,17 @@ export const LAUNCH_LOOKBACK_DAYS = 365;
 /** The first day searched for a creative's first spend: the lookback before the selected range. */
 export function lookbackStart(from: string): string {
   return addDays(from, -LAUNCH_LOOKBACK_DAYS);
+}
+
+/**
+ * The first day searched for a creative's latest format: the earliest day a
+ * comparison can start, a year before the selected range (366 days, so a
+ * leap-year comparison fits) or its length before it when that is longer. It is
+ * never later than lookbackStart(), so one scan also finds the first spend, and
+ * a creative keeps one format whichever comparison is shown.
+ */
+export function formatLookbackStart(range: DateRange): string {
+  return addDays(range.from, -Math.max(rangeLength(range), 366));
 }
 
 /**

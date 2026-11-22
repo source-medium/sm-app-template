@@ -29,6 +29,7 @@ import {
   CreativeRow,
   CreativeSummaryRow,
   MAX_CREATIVES,
+  formatLookbackStart,
   lookbackStart,
   toCreative,
   toCreativeSummary,
@@ -70,13 +71,12 @@ const latest = (expression: string) =>
   `ARRAY_AGG(${expression} IGNORE NULLS ORDER BY date DESC, ${expression} DESC LIMIT 1)[SAFE_OFFSET(0)]`;
 
 /**
- * Each creative's first day with spend (in the 365-day lookback) and latest
- * non-blank format on its ad platform, from the earliest day a comparison can
- * start (at least 366 days before the selection, or the selection's length
- * before it when longer, and never narrower than lookbackStart) through its
- * end, on any campaign: a creative launches once and keeps one format wherever
- * it runs, independent of comparison periods, so only the store and platform
- * scope this. firstSpend() in rows.ts reads the date.
+ * Each creative's first day with spend (from lookbackStart) and latest
+ * non-blank format (from formatLookbackStart, the earliest day a comparison can
+ * start) on its ad platform, through the selection's end, on any campaign: a
+ * creative launches once and keeps one format wherever it runs, independent of
+ * comparison periods, so only the store and platform scope this. firstSpend()
+ * in rows.ts reads the date.
  */
 const launches = (table: string) => `launches AS (
         SELECT ${AD_PLATFORM_SQL} AS channel, ad_creative_id AS creative_id,
@@ -84,7 +84,7 @@ const launches = (table: string) => `launches AS (
           ${latest(FORMAT_SQL)} AS format
         FROM ${table}
         WHERE sm_store_id = @store_id
-          AND date BETWEEN LEAST(@lookback_from, DATE_SUB(@start_date, INTERVAL GREATEST(DATE_DIFF(@end_date, @start_date, DAY) + 1, 366) DAY)) AND @end_date
+          AND date BETWEEN @format_from AND @end_date
           AND ad_creative_id IS NOT NULL
           AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
         GROUP BY channel, creative_id
@@ -107,6 +107,7 @@ function scopeParams(filters: CreativesFilters, baselines: BaselineRanges) {
     { name: "campaign", type: "STRING", value: filters.campaign ?? "" },
     { name: "format", type: "STRING", value: filters.format ?? "" },
     { name: "lookback_from", type: "DATE", value: lookbackStart(filters.range.from) },
+    { name: "format_from", type: "DATE", value: formatLookbackStart(filters.range) },
     ...periodParams(filters.range, baselines[0], baselines[1]),
   ] as const;
 }
