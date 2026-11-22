@@ -88,11 +88,53 @@ describe("creatives, live", () => {
     for (const index of [0, 1]) {
       const query = fake.submitted(index).query;
       expect(query.indexOf("@name_0_0")).toBeLessThan(query.indexOf("GROUP BY creative_id"));
-      // A creative launches once, wherever it runs: its first spend reads no campaign or name filter.
+      // A creative launches once and keeps one format across the comparison-safe lookback: no campaign, name or comparison filter.
       const launches = query.slice(query.indexOf("launches AS"), query.indexOf("grouped AS"));
-      expect(launches).toContain("date BETWEEN @lookback_from AND @end_date");
+      const grouped = query.slice(query.indexOf("grouped AS"), query.indexOf("scoped AS"));
+      expect(launches).toContain("date BETWEEN @format_from AND @end_date");
+      expect(launches).toContain("MIN(IF(date >= @lookback_from AND ad_spend > 0, date, NULL)) AS first_date");
+      expect(launches).toContain(
+        "ARRAY_AGG(NULLIF(TRIM(ad_creative_format), '') IGNORE NULLS ORDER BY date DESC, NULLIF(TRIM(ad_creative_format), '') DESC LIMIT 1)[SAFE_OFFSET(0)] AS format",
+      );
       expect(launches).not.toContain("@campaign");
       expect(launches).not.toContain("@name_0_0");
+      expect(launches).not.toContain("@compare");
+      expect(grouped).not.toContain("ad_creative_format");
+    }
+  });
+
+  it("reads first spend from the 365-day lookback and each format from the earliest day a comparison can start", async () => {
+    const fake = await goLive({ submit: () => rowsResponse([], []) });
+    const { getCreatives, getCreativeSummary } = await import("./queries");
+    const leapYearRange = { from: "2025-01-01", to: "2025-01-31" };
+    const leapYearYoY: BaselineRanges = [{ from: "2024-01-01", to: "2024-01-31" }, null];
+    const longRange = { from: "2025-01-01", to: "2026-01-15" };
+    const longPrevious: BaselineRanges = [{ from: "2023-12-18", to: "2024-12-31" }, null];
+
+    await getCreatives({ storeId: "store-1", range: leapYearRange, sort: "spend" }, leapYearYoY);
+    await getCreativeSummary({ storeId: "store-1", range: longRange, sort: "spend" }, longPrevious);
+
+    expect(fake.submitted()).toHaveLength(2);
+    // 366 days before a month, so its leap-year comparison (2024-01-01) is inside; a 380-day
+    // selection's whole length before it, so its previous period (2023-12-18) is too.
+    for (const [submit, formatFrom] of [
+      [fake.submitted(0), "2024-01-01"],
+      [fake.submitted(1), "2023-12-18"],
+    ] as const) {
+      const launches = submit.query.slice(submit.query.indexOf("launches AS"), submit.query.indexOf("grouped AS"));
+      expect(launches).toContain("MIN(IF(date >= @lookback_from AND ad_spend > 0, date, NULL)) AS first_date");
+      expect(launches).toContain("date BETWEEN @format_from AND @end_date");
+      expect(launches).not.toContain("@compare");
+      expect(submit.queryParameters).toContainEqual({
+        name: "lookback_from",
+        parameterType: { type: "DATE" },
+        parameterValue: { value: "2024-01-02" },
+      });
+      expect(submit.queryParameters).toContainEqual({
+        name: "format_from",
+        parameterType: { type: "DATE" },
+        parameterValue: { value: formatFrom },
+      });
     }
   });
 
@@ -134,7 +176,25 @@ describe("creatives, live", () => {
     );
     expect(submit.query).toContain("SAFE_DIVIDE(revenue, spend) AS roas");
     expect(submit.query).toContain("SAFE_DIVIDE(previous_spend, previous_conversions) AS previous_cpo");
-    expect(submit.query).toContain("ARRAY_AGG(ad_creative_image_url IGNORE NULLS ORDER BY date DESC LIMIT 1)");
+    for (const column of [
+      "ad_creative_image_url",
+      "ad_creative_thumbnail_url",
+      "ad_creative_video_url",
+      "ad_creative_post_url",
+    ]) {
+      const guarded = `IF(STARTS_WITH(${column}, 'https://'), ${column}, NULL)`;
+      expect(submit.query).toContain(
+        `ARRAY_AGG(${guarded} IGNORE NULLS ORDER BY date DESC, ${guarded} DESC LIMIT 1)[SAFE_OFFSET(0)]`,
+      );
+    }
+    const adUrlExpr =
+      "COALESCE(IF(STARTS_WITH(ad_creative_facebook_url, 'https://'), ad_creative_facebook_url, NULL), IF(STARTS_WITH(ad_creative_instagram_url, 'https://'), ad_creative_instagram_url, NULL))";
+    expect(submit.query).toContain(
+      `ARRAY_AGG(${adUrlExpr} IGNORE NULLS ORDER BY date DESC, ${adUrlExpr} DESC LIMIT 1)[SAFE_OFFSET(0)] AS ad_url`,
+    );
+    expect(submit.query).toContain(
+      "ARRAY_AGG(ad_creative_name IGNORE NULLS ORDER BY date DESC, ad_creative_name DESC LIMIT 1)[SAFE_OFFSET(0)] AS name",
+    );
     expect(submit.queryParameters).toContainEqual({
       name: "lookback_from",
       parameterType: { type: "DATE" },
@@ -237,11 +297,11 @@ describe("creatives, live", () => {
       submit: (call) =>
         String((call.body as { query: string }).query).includes("rpt_ad_creative_assets")
           ? Response.json({ error: { code: 404, message: "Missing table" } }, { status: 404 })
-          : rowsResponse(FIELDS, [ROW]),
+          : rowsResponse(FIELDS, [{ ...ROW, image_url: "/api/internal", thumbnail_url: "/sample-creatives/x.svg" }]),
     });
     const { getCreatives } = await import("./queries");
     const data = await getCreatives({ ...FILTERS, sort: "spend" }, NONE);
-    expect(data.creatives[0]).toMatchObject({ creativeId: "cr1", assets: "unknown" });
+    expect(data.creatives[0]).toMatchObject({ creativeId: "cr1", assets: "unknown", imageUrl: null, media: [] });
   });
 
   it("totals the scope, each format and each launch week in one grouped pass", async () => {

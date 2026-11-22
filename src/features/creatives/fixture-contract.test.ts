@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CreativeRow, firstSpend, lookbackStart, toCreative, safeAdUrl } from "./rows";
+import { CreativeRow, firstSpend, formatLookbackStart, lookbackStart, toCreative, safeAdUrl } from "./rows";
 import { creativesOptions } from "./filters";
 import { sampleCreatives as sample, sampleCreativeSummary } from "./sample";
 import { samplePaidSummary } from "@/features/paid-marketing/sample";
@@ -70,7 +70,7 @@ describe("creatives fixture contract", () => {
     expect(creatives.some((creative) => creative.imageUrl?.includes("expired-link"))).toBe(true);
   });
 
-  it("only renders https or same-origin images; anything else becomes a text card", () => {
+  it("only renders https images in live mode, and only bundled sample paths when opted in", () => {
     const period = (prefix: string) => ({
       [`${prefix}spend`]: "1.5",
       [`${prefix}impressions`]: "1",
@@ -101,8 +101,10 @@ describe("creatives fixture contract", () => {
       previous_latest_date: null,
       second_latest_date: null,
     };
-    const urlFor = (image: string | null) =>
-      toCreative(CreativeRow.parse({ ...base, image_url: image }), FILTERS.range).imageUrl;
+    const urlFor = (image: string | null, allowSamplePaths = false) =>
+      toCreative(CreativeRow.parse({ ...base, image_url: image }), FILTERS.range, "unknown", [], {
+        allowSamplePaths,
+      }).imageUrl;
     expect(urlFor("https://scontent.xx.fbcdn.net/v/t45/abc.jpg?stp=dst")).toBe(
       "https://scontent.xx.fbcdn.net/v/t45/abc.jpg?stp=dst",
     );
@@ -110,6 +112,10 @@ describe("creatives fixture contract", () => {
     expect(urlFor("javascript:alert(1)")).toBeNull();
     expect(urlFor("data:image/svg+xml;base64,AAAA")).toBeNull();
     expect(urlFor("//evil.example/a.jpg")).toBeNull();
+    expect(urlFor("/api/internal-endpoint")).toBeNull();
+    expect(urlFor("/sample-creatives/creative-01.svg")).toBeNull();
+    expect(urlFor("/sample-creatives/creative-01.svg", true)).toBe("/sample-creatives/creative-01.svg");
+    expect(urlFor("/api/internal-endpoint", true)).toBeNull();
   });
 });
 
@@ -219,6 +225,9 @@ describe("creative comparisons, launches and summary", () => {
 it("reads a first spend as launched in the range, running since a day in the lookback, or older than it", () => {
   const from = "2026-09-01";
   expect(lookbackStart(from)).toBe("2025-09-01");
+  // One scan finds both: the format window never starts after the first-spend lookback.
+  expect(formatLookbackStart({ from, to: from })).toBe("2025-08-31");
+  expect(formatLookbackStart({ from, to: from }) <= lookbackStart(from)).toBe(true);
   expect(firstSpend(null, from)).toBeNull();
   expect(firstSpend(from, from)).toEqual({ when: "launched", date: from });
   expect(firstSpend("2026-08-31", from)).toEqual({ when: "running", date: "2026-08-31" });

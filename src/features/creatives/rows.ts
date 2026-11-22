@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { safeImageUrl } from "@/lib/image-url";
 import { bq } from "@/lib/data/decode";
-import { addDays } from "@/lib/filters";
+import { addDays, rangeLength, type DateRange } from "@/lib/filters";
 import { periodCoverageFields, periodFields, type PeriodPrefix } from "@/lib/data/period-sql";
 import { adTotals, adTotalsFields } from "@/lib/ad-totals";
 import type { Creative, CreativeMeasures, CreativeSummary, CreativeSummaryGroup } from "./queries";
@@ -19,6 +19,17 @@ export const LAUNCH_LOOKBACK_DAYS = 365;
 /** The first day searched for a creative's first spend: the lookback before the selected range. */
 export function lookbackStart(from: string): string {
   return addDays(from, -LAUNCH_LOOKBACK_DAYS);
+}
+
+/**
+ * The first day searched for a creative's latest format: the earliest day a
+ * comparison can start, a year before the selected range (366 days, so a
+ * leap-year comparison fits) or its length before it when that is longer. It is
+ * never later than lookbackStart(), so one scan also finds the first spend, and
+ * a creative keeps one format whichever comparison is shown.
+ */
+export function formatLookbackStart(range: DateRange): string {
+  return addDays(range.from, -Math.max(rangeLength(range), 366));
 }
 
 /**
@@ -122,14 +133,23 @@ function measures(row: Row, prefix: PeriodPrefix): CreativeMeasures {
   };
 }
 
+/** Live creative media must be HTTPS; bundled sample assets are allowed only when opted in. */
+function safeMediaUrl(value: string | null, allowSamplePaths: boolean): string | null {
+  const url = safeImageUrl(value);
+  if (!url) return null;
+  if (url.startsWith("https://")) return url;
+  return allowSamplePaths && url.startsWith("/sample-creatives/") ? url : null;
+}
+
 export function toCreative(
   row: Row,
   range: { from: string },
   assets: Creative["assets"] = "unknown",
   extras: Creative["media"] = [],
+  { allowSamplePaths = false }: { allowSamplePaths?: boolean } = {},
 ): Creative {
-  const cover = safeImageUrl(row.image_url) ?? safeImageUrl(row.thumbnail_url);
-  const video = safeImageUrl(row.video_url);
+  const cover = safeMediaUrl(row.image_url, allowSamplePaths) ?? safeMediaUrl(row.thumbnail_url, allowSamplePaths);
+  const video = safeMediaUrl(row.video_url, allowSamplePaths);
   const media: Creative["media"] = [];
   if (video) media.push({ kind: "video", src: video, poster: cover });
   else if (cover) media.push({ kind: "image", src: cover });

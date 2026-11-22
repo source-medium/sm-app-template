@@ -29,6 +29,7 @@ import {
   CreativeRow,
   CreativeSummaryRow,
   MAX_CREATIVES,
+  formatLookbackStart,
   lookbackStart,
   toCreative,
   toCreativeSummary,
@@ -55,20 +56,36 @@ const PERIOD_RATIOS = PERIOD_PREFIXES.map(
       SAFE_DIVIDE(${prefix}clicks, ${prefix}impressions) AS ${prefix}ctr`,
 ).join(",\n      ");
 
-/** The newest of a column's values, by date: platform image links are signed and expire, and MAX() would pick by spelling. */
-const latest = (column: string) => `ARRAY_AGG(${column} IGNORE NULLS ORDER BY date DESC LIMIT 1)[SAFE_OFFSET(0)]`;
+/** Only HTTPS URLs survive live SQL aggregation, allowing earlier valid links to win over invalid values. */
+const httpsUrl = (column: string) => `IF(STARTS_WITH(${column}, 'https://'), ${column}, NULL)`;
+
+/** Normalized creative format; blank or whitespace-only values are treated as missing. */
+const FORMAT_SQL = "NULLIF(TRIM(ad_creative_format), '')";
 
 /**
- * Each creative's first day with spend on its ad platform, from the lookback
- * before the selection (lookbackStart) through its end, on any campaign: a
- * creative launches once, wherever it runs, so only the store and platform
- * scope this. firstSpend() in rows.ts reads the date.
+ * The newest of an expression's values, by date with a deterministic
+ * tie-breaker on the same day: platform image links are signed and expire,
+ * and MAX() would pick by spelling.
+ */
+const latest = (expression: string) =>
+  `ARRAY_AGG(${expression} IGNORE NULLS ORDER BY date DESC, ${expression} DESC LIMIT 1)[SAFE_OFFSET(0)]`;
+
+/**
+ * Each creative's first day with spend (from lookbackStart) and latest
+ * non-blank format (from formatLookbackStart, the earliest day a comparison can
+ * start) on its ad platform, through the selection's end, on any campaign: a
+ * creative launches once and keeps one format wherever it runs, independent of
+ * comparison periods, so only the store and platform scope this. firstSpend()
+ * in rows.ts reads the date.
  */
 const launches = (table: string) => `launches AS (
-        SELECT ${AD_PLATFORM_SQL} AS channel, ad_creative_id AS creative_id, MIN(date) AS first_date
+        SELECT ${AD_PLATFORM_SQL} AS channel, ad_creative_id AS creative_id,
+          MIN(IF(date >= @lookback_from AND ad_spend > 0, date, NULL)) AS first_date,
+          ${latest(FORMAT_SQL)} AS format
         FROM ${table}
-        WHERE sm_store_id = @store_id AND date BETWEEN @lookback_from AND @end_date
-          AND ad_creative_id IS NOT NULL AND ad_spend > 0
+        WHERE sm_store_id = @store_id
+          AND date BETWEEN @format_from AND @end_date
+          AND ad_creative_id IS NOT NULL
           AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
         GROUP BY channel, creative_id
       )`;
@@ -90,6 +107,7 @@ function scopeParams(filters: CreativesFilters, baselines: BaselineRanges) {
     { name: "campaign", type: "STRING", value: filters.campaign ?? "" },
     { name: "format", type: "STRING", value: filters.format ?? "" },
     { name: "lookback_from", type: "DATE", value: lookbackStart(filters.range.from) },
+    { name: "format_from", type: "DATE", value: formatLookbackStart(filters.range) },
     ...periodParams(filters.range, baselines[0], baselines[1]),
   ] as const;
 }
@@ -179,12 +197,11 @@ export async function queryCreatives(filters: CreativesFilters, baselines: Basel
           MAX(ad_creative_title) AS title,
           MAX(ad_creative_body) AS body,
           ${latest("ad_creative_name")} AS name,
-          ${latest("ad_creative_image_url")} AS image_url,
-          ${latest("ad_creative_thumbnail_url")} AS thumbnail_url,
-          ${latest("IF(STARTS_WITH(ad_creative_video_url, 'https://'), ad_creative_video_url, NULL)")} AS video_url,
-          ${latest("ad_creative_format")} AS format,
-          ${latest("NULLIF(ad_creative_post_url, '')")} AS post_url,
-          ${latest("COALESCE(NULLIF(ad_creative_facebook_url, ''), NULLIF(ad_creative_instagram_url, ''))")} AS ad_url,
+          ${latest(httpsUrl("ad_creative_image_url"))} AS image_url,
+          ${latest(httpsUrl("ad_creative_thumbnail_url"))} AS thumbnail_url,
+          ${latest(httpsUrl("ad_creative_video_url"))} AS video_url,
+          ${latest(httpsUrl("ad_creative_post_url"))} AS post_url,
+          ${latest(`COALESCE(${httpsUrl("ad_creative_facebook_url")}, ${httpsUrl("ad_creative_instagram_url")})`)} AS ad_url,
           MAX(ad_creative_call_to_action_type) AS call_to_action,
         ${AD_PERIOD_SUMS},
         ${period.latest}
@@ -272,7 +289,6 @@ export async function queryCreativeSummary(
         SELECT
           ad_creative_id AS creative_id,
           ${AD_PLATFORM_SQL} AS channel,
-          ${latest("ad_creative_format")} AS format,
         ${AD_PERIOD_SUMS},
         ${period.latest}
         FROM ${table}
@@ -281,7 +297,7 @@ export async function queryCreativeSummary(
         GROUP BY creative_id, channel
       ), scoped AS (
         -- A launch week only for a creative that launched in the selected dates, as firstSpend() reads it.
-        SELECT grouped.*, creative_id IS NOT NULL AS has_creative,
+        SELECT grouped.*, format, creative_id IS NOT NULL AS has_creative,
           IF(first_date >= @start_date, DATE_TRUNC(first_date, ${GRAIN_SQL.week}), NULL) AS launch_week
         FROM grouped LEFT JOIN launches USING (channel, creative_id)
         WHERE @format = '' OR format = @format

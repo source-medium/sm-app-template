@@ -4,7 +4,6 @@ import { creativeBindings, creativeBinding } from "./metrics";
 import { MetricDefinition } from "@/components/patterns/metric-definition";
 import { Check, Plus } from "lucide-react";
 import { LinkPending } from "@/components/shell/pending";
-import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,7 +22,6 @@ import { DataTable } from "@/components/patterns/data-table";
 import { decimalToNumber } from "@/lib/data/decimal";
 import { AnchoredReportBody } from "@/components/patterns/anchored-report-body";
 import { CreativeComparisonTable } from "./comparison-table";
-import { CardImage } from "@/components/patterns/card-image";
 import { CardGrid } from "@/components/patterns/card-grid";
 import { WarehouseError } from "@/lib/data/warehouse-error";
 import { DataRegion } from "@/components/patterns/data-region";
@@ -56,6 +54,16 @@ import { planRanges, slotChanges, type ComparisonPlan, type Polarity } from "@/l
 import { CREATIVE_POLARITY } from "./metrics";
 import { CreativeSummaryView } from "./summary";
 import {
+  COMPARISON_HEADING,
+  ResolvedSelectionBar,
+  SelectionBar,
+  creativeTitle,
+  findSelectedCreative,
+  matchesCreative,
+  needsSelectionLookup,
+  resolveSelectedCreatives,
+} from "./selection-bar";
+import {
   getCreativeChannels,
   getCreativeSummary,
   getCreatives,
@@ -69,13 +77,8 @@ import {
 export const metadata: Metadata = { title: "Creatives" };
 
 const PATHNAME = "/creatives";
-const COMPARISON_HEADING = "creative-comparison-heading";
 const GALLERY_HEADING = "creative-list-heading";
 const rankedActionId = (index: number) => `ranked-creative-${index + 1}`;
-
-function creativeTitle(creative: Creative) {
-  return creative.title ?? creative.name ?? creative.body ?? `Creative ${creative.creativeId}`;
-}
 
 const SORT_LABELS: Record<CreativeSort, string> = {
   spend: "Most spend",
@@ -161,11 +164,14 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
         let listLoad: ReturnType<typeof getCreatives> | undefined;
         const loadList = () => (listLoad ??= getCreatives(scope, baselines));
         let selectedLoad: ReturnType<typeof getCreatives> | undefined;
-        const loadSelected = () => (selectedLoad ??= getCreatives({ ...scope, selection: selection.items }, baselines));
+        const loadSelected = () =>
+          (selectedLoad ??= resolveSelectedCreatives(selection.items, loadList, () =>
+            getCreatives({ ...scope, selection: selection.items }, baselines),
+          ));
         // Only the final region waits for the other queries to finish before stamping the report.
         const loadFinalSummary = async () => {
           const totals = await loadSummary();
-          await Promise.allSettled([loadList(), ...(selection.items.length >= 2 ? [loadSelected()] : [])]);
+          await Promise.allSettled([loadList(), ...(selection.items.length > 0 ? [loadSelected()] : [])]);
           return totals;
         };
         const lastSelected = selection.items.at(-1);
@@ -372,6 +378,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                           timeZone={timeZone}
                           view={view}
                           selection={selection.items}
+                          loadSelected={loadSelected}
                           scopeFilters={definitionFilters(filters)}
                           params={applied}
                         />
@@ -398,6 +405,7 @@ export default async function CreativesPage({ searchParams }: { searchParams: Pr
                     <Suspense fallback={browseGallery}>
                       <ComparisonNavigation
                         load={loadList}
+                        loadSelected={loadSelected}
                         lastSelected={lastSelected}
                         count={selection.items.length}
                         table={view === "table"}
@@ -506,11 +514,13 @@ const browseGallery = (
 /** The same ranking supplies both the name and the action to return to, including after a sort or filter change. */
 async function ComparisonNavigation({
   load,
+  loadSelected,
   lastSelected: [channel, id],
   count,
   table,
 }: {
   load: () => Promise<CreativesData>;
+  loadSelected: () => Promise<CreativesData>;
   lastSelected: CreativeIdentity;
   count: number;
   table: boolean;
@@ -523,9 +533,9 @@ async function ComparisonNavigation({
     if (error instanceof WarehouseError) return browseGallery;
     throw error;
   }
-  const index = data.creatives.findIndex((creative) => creative.channel === channel && creative.creativeId === id);
-  const last = data.creatives[index];
-  const target = last && !table ? rankedActionId(index) : GALLERY_HEADING;
+  const index = data.creatives.findIndex((creative) => matchesCreative(creative, [channel, id]));
+  const target = index >= 0 && !table ? rankedActionId(index) : GALLERY_HEADING;
+  const last = count === 1 ? await findSelectedCreative(data, [channel, id], loadSelected) : undefined;
   return (
     <>
       {count === 1 && (
@@ -586,10 +596,6 @@ function assetAction(params: SearchParams, creative: Creative) {
     case "unknown":
       return { display: "Asset availability unknown" };
   }
-}
-
-function matchesCreative(creative: Creative, [platform, id]: CreativeIdentity) {
-  return creative.channel === platform && creative.creativeId === id;
 }
 
 function ComparisonAction({
@@ -657,11 +663,13 @@ function CreativesView({
   timeZone,
   view,
   selection,
+  loadSelected,
   params,
   scopeFilters,
   comparison = false,
 }: {
   selection: readonly CreativeIdentity[];
+  loadSelected?: () => Promise<CreativesData>;
   params: SearchParams;
   scopeFilters: Record<string, string | null> & { store: string };
   comparison?: boolean;
@@ -745,9 +753,7 @@ function CreativesView({
         />
       );
     const creatives = comparison
-      ? selection.flatMap(([platform, id]) =>
-          data.creatives.filter((c) => c.channel === platform && c.creativeId === id),
-        )
+      ? selection.flatMap((identity) => data.creatives.filter((c) => matchesCreative(c, identity)))
       : data.creatives;
     const cards = creatives.map((creative, index) => {
       const action = assetAction(params, creative);
@@ -850,89 +856,15 @@ function CreativesView({
           <MetricDefinition binding={creativeBinding("roas")} scope={{ filters: scopeFilters, currency, timeZone }} />
         </div>
       </Disclosure>
-      {!comparison && <SelectionBar selection={selection} creatives={data.creatives} />}
+      {!comparison &&
+        (loadSelected && needsSelectionLookup(data, selection) ? (
+          <Suspense fallback={<SelectionBar selection={selection} creatives={data.creatives} />}>
+            <ResolvedSelectionBar selection={selection} creatives={data.creatives} loadSelected={loadSelected} />
+          </Suspense>
+        ) : (
+          <SelectionBar selection={selection} creatives={data.creatives} />
+        ))}
     </div>
-  );
-}
-
-/** Keep the next action in sight while the operator is making picks in the ranking. */
-function SelectionBar({ selection, creatives }: { selection: readonly CreativeIdentity[]; creatives: Creative[] }) {
-  const picks = selection.map(([platform, id]) => {
-    const c = creatives.find((c) => matchesCreative(c, [platform, id]));
-    return {
-      id,
-      platform,
-      title: c ? creativeTitle(c) : id,
-      image: c?.imageUrl,
-      format: c?.format ? creativeFormatLabel(c.format) : null,
-      started: c?.firstSpend && c.firstSpend.when !== "older" ? c.firstSpend.date : null,
-    };
-  });
-  const count = picks.length;
-  const labels = picks.map((pick) => {
-    const samePlatform = picks.filter(
-      (other) => other !== pick && other.title === pick.title && other.platform === pick.platform,
-    );
-    const parts = [adPlatformLabel(pick.platform)];
-    if (samePlatform.length && pick.format) parts.push(pick.format);
-    const sameFormat = samePlatform.filter((other) => other.format === pick.format);
-    if (sameFormat.length && pick.started) parts.push(formatDate(pick.started));
-    if (sameFormat.some((other) => other.started === pick.started)) parts.push(pick.id);
-    return parts.join(" · ");
-  });
-  return (
-    <>
-      <p aria-live="polite" aria-atomic="true" className="sr-only">
-        {count > 0 &&
-          `${count} selected for comparison. ${picks.map((pick, i) => `${pick.title}, ${labels[i]}`).join(". ")}. ${count === 1 ? "Choose one more creative to compare." : "View comparison is available."}`}
-      </p>
-      {count > 0 && (
-        <aside
-          aria-label="Your comparison"
-          className="sticky bottom-2 z-10 space-y-2 rounded-xl border-2 border-primary bg-card px-3 py-2 text-card-foreground shadow-lg sm:px-4"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold">
-              {count === 1 ? "1 creative selected" : `${count} creatives selected`}
-            </p>
-            {count >= 2 && (
-              <a href={`#${COMPARISON_HEADING}`} className={buttonVariants({ size: "sm" })}>
-                View comparison
-              </a>
-            )}
-          </div>
-          <ul
-            aria-label="Selected ads"
-            className={cn("grid gap-x-3 gap-y-2", count > 1 && "grid-cols-2 lg:flex lg:flex-wrap lg:gap-x-6")}
-          >
-            {picks.map((pick, i) => {
-              const mark = <PlatformMark platform={pick.platform} />;
-              return (
-                <li key={JSON.stringify([pick.platform, pick.id])} className="flex min-w-0 items-center gap-2">
-                  <span
-                    aria-hidden
-                    className="grid size-9 shrink-0 place-items-center overflow-hidden rounded bg-muted"
-                  >
-                    {pick.image ? (
-                      <CardImage src={pick.image} alt="" fallback={mark} className="size-full object-contain" />
-                    ) : (
-                      mark
-                    )}
-                  </span>
-                  <span className="min-w-0 text-xs leading-tight">
-                    <span className="line-clamp-2 font-medium" title={pick.title}>
-                      {pick.title}
-                    </span>
-                    <span className="block [overflow-wrap:anywhere] text-muted-foreground">{labels[i]}</span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-          {count === 1 && <p className="text-xs text-muted-foreground">Choose one more creative to compare.</p>}
-        </aside>
-      )}
-    </>
   );
 }
 
