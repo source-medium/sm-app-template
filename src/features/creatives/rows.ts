@@ -122,14 +122,23 @@ function measures(row: Row, prefix: PeriodPrefix): CreativeMeasures {
   };
 }
 
+/** Live creative media must be HTTPS; bundled sample assets are allowed only when opted in. */
+function safeMediaUrl(value: string | null, allowSamplePaths: boolean): string | null {
+  const url = safeImageUrl(value);
+  if (!url) return null;
+  if (url.startsWith("https://")) return url;
+  return allowSamplePaths && url.startsWith("/sample-creatives/") ? url : null;
+}
+
 export function toCreative(
   row: Row,
   range: { from: string },
   assets: Creative["assets"] = "unknown",
   extras: Creative["media"] = [],
+  { allowSamplePaths = false }: { allowSamplePaths?: boolean } = {},
 ): Creative {
-  const cover = safeImageUrl(row.image_url) ?? safeImageUrl(row.thumbnail_url);
-  const video = safeImageUrl(row.video_url);
+  const cover = safeMediaUrl(row.image_url, allowSamplePaths) ?? safeMediaUrl(row.thumbnail_url, allowSamplePaths);
+  const video = safeMediaUrl(row.video_url, allowSamplePaths);
   const media: Creative["media"] = [];
   if (video) media.push({ kind: "video", src: video, poster: cover });
   else if (cover) media.push({ kind: "image", src: cover });

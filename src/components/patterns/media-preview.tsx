@@ -40,6 +40,7 @@ export function MediaPreview({
         )}
         onScroll={(event) => {
           const el = event.currentTarget;
+          if (!el.clientWidth) return;
           const next = Math.max(0, Math.min(items.length - 1, Math.round(el.scrollLeft / el.clientWidth)));
           setIndex(next);
           for (const video of el.querySelectorAll("video")) {
@@ -71,34 +72,34 @@ export function MediaPreview({
             )}
           </div>
         ))}
-        {multiple && (
-          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between border-b px-2 text-xs">
-            <button
-              type="button"
-              aria-label="Previous media"
-              aria-controls={id}
-              disabled={index === 0}
-              onClick={() => move(index - 1)}
-              className="grid size-9 place-items-center rounded hover:bg-muted disabled:opacity-30"
-            >
-              <ChevronLeft size={17} />
-            </button>
-            <span aria-live="polite">
-              {items[index]?.kind === "video" ? "Video" : "Image"} {index + 1} of {items.length}
-            </span>
-            <button
-              type="button"
-              aria-label="Next media"
-              aria-controls={id}
-              disabled={index >= items.length - 1}
-              onClick={() => move(index + 1)}
-              className="grid size-9 place-items-center rounded hover:bg-muted disabled:opacity-30"
-            >
-              <ChevronRight size={17} />
-            </button>
-          </div>
-        )}
       </div>
+      {multiple && (
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between border-b px-2 text-xs">
+          <button
+            type="button"
+            aria-label="Previous media"
+            aria-controls={id}
+            disabled={index === 0}
+            onClick={() => move(index - 1)}
+            className="grid size-9 place-items-center rounded hover:bg-muted disabled:opacity-30"
+          >
+            <ChevronLeft size={17} />
+          </button>
+          <span aria-live="polite">
+            {items[index]?.kind === "video" ? "Video" : "Image"} {index + 1} of {items.length}
+          </span>
+          <button
+            type="button"
+            aria-label="Next media"
+            aria-controls={id}
+            disabled={index >= items.length - 1}
+            onClick={() => move(index + 1)}
+            className="grid size-9 place-items-center rounded hover:bg-muted disabled:opacity-30"
+          >
+            <ChevronRight size={17} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

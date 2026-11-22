@@ -452,6 +452,7 @@ export async function sampleCreatives(filters: CreativesFilters, baselines: Base
         filters.range,
         "available",
         row.format === "carousel" ? [{ kind: "image", src: carouselDetail }] : [],
+        { allowSamplePaths: true },
       ),
     ),
     truncated: rows.length > limit,
