@@ -14,6 +14,7 @@ function source(relation: string, overrides: Partial<SourceEvidence> = {}): Sour
     metadata: "accessible",
     consistency: "consistent",
     observedDate: "2026-09-28",
+    hasData: true,
     freshness: "unknown",
     completeness: "unknown",
     quality: "unknown",

@@ -642,9 +642,14 @@ reporting-currency fields, not `original_*` amounts.
 
 One query covers the selected and both comparison periods, with identical validity
 store and sales-channel predicates. Products without a value in the selected
-period are not ranked. Ranking uses a fixed measure map; full-period totals and
-the share denominator are calculated before the top-10 limit. Negative members
-or a zero total suppress shares. Missing comparisons stay missing. The date
+period are not ranked. Ranking uses a fixed measure map, then the stable product
+key; full-period totals and the share denominator are calculated before the
+table's bound. The table pages 50 rows at a time through at most 500 matches,
+and the chart plots the first 10 on the first page. Search (`q`) keeps a product
+or variant whose title contains the text, or whose product, variant or SKU id is
+exactly it, before the bound; totals ignore it. **Download CSV** exports the same
+bounded list and marks a cut list with `export_truncated` and a `-partial` file
+name. Negative members or a zero total suppress shares. Missing comparisons stay missing. The date
 predicate uses `order_processed_at_local_datetime` directly for partition pruning.
 
 Product rankings also offer refund amount and refunded units. Their published
@@ -880,6 +885,19 @@ offers **Use in Vibe code**, which hands the canonical identity and reviewed
 definition (never row values) to the composer. **Fields** keeps the dictionary
 with **Use this field**, and **Data health** shows what the dictionary publishes
 per source, without inventing a status for what it does not.
+
+**Templates** (`/templates`, `src/features/templates`) lists starting points for
+common questions. Each is a destination view plus fixed URL parameters in
+`presets.ts`: it adds no query, and the store comes from the current report. A
+preset whose view is not in `nav` is not offered, and the store comparison needs
+more than one store. Readiness reads the published dictionary once for every
+preset source (`loadReportMetadata`): **Ready** when each required source has rows
+for the store, **Limited** when only a source that adds detail lacks them,
+**Unavailable** (no link, with the source and its fix) when a required source has
+none, and **Availability unknown** when the dictionary cannot say. Rows within a
+period are not checked, so a quiet week still opens. Save a preset you use from its
+report with **Save in this browser**. The IDs match the Metabase template's Start
+here list; keep the two in step.
 
 ## Check your numbers
 

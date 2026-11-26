@@ -15,6 +15,8 @@ export type SourceEvidence = {
   metadata: Availability;
   consistency: "consistent" | "inconsistent" | "unknown";
   observedDate: string | null;
+  /** Whether the dictionary observed rows for this store; null when it published no consistent store-scoped fact. */
+  hasData: boolean | null;
   freshness: "unknown";
   completeness: "unknown";
   quality: "unknown";
@@ -41,6 +43,7 @@ export function sourceEvidence(
     scope: scoped.length ? "store" : global.length ? "global" : "unknown",
     consistency: facts.size > 1 ? "inconsistent" : consistent ? "consistent" : "unknown",
     observedDate: consistent ? (scoped[0]?.observedDate ?? null) : null,
+    hasData: consistent ? (scoped[0]?.hasData ?? null) : null,
     freshness: "unknown",
     completeness: "unknown",
     quality: "unknown",
