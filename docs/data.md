@@ -926,8 +926,12 @@ the ranked media and up to eight distinct images and eight videos from current i
 **View assets** opens the full inventory. Videos load when played.
 
 The Creatives view loads each ad's image straight from the URL in your
-warehouse (`ad_creative_image_url`, else `ad_creative_thumbnail_url`), from any
-https host, without a referrer; video cover images load the same way. Ad
+warehouse (`ad_creative_display_image_url`, else `ad_creative_image_url`, else
+`ad_creative_thumbnail_url`), from any https host, without a referrer; video
+cover images load the same way. The display URL is SourceMedium's copy of a Meta
+library image at most 1080 pixels on its longest side, or the image itself
+where no copy is kept. Asset previews use
+`asset_display_image_url` the same way, and **Open image** links the original. Ad
 platforms do not promise how long those links last, and browser ad blockers
 refuse some of them (such as `facebook.com/ads/image/`). An image that fails
 tries the creative's thumbnail URL next, and only then shows the creative's

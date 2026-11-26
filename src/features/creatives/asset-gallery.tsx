@@ -32,12 +32,13 @@ import { getCreativeAssets } from "./queries";
 const linkStyle = "w-fit text-sm font-medium underline underline-offset-4";
 function AssetCard({ asset }: { asset: CreativeAsset }) {
   const image = asset.asset_image_url;
+  const shown = asset.asset_display_image_url ?? image;
   const video = asset.asset_video_url;
   const mediaRole = ["image", "logo", "video"].includes(asset.asset_role);
   const description = asset.asset_text || assetLabel(asset.asset_role);
-  const preview = mediaRole && image && (
+  const preview = mediaRole && shown && (
     <CardImage
-      src={image}
+      src={shown}
       alt={description}
       className="aspect-video object-contain"
       fallback={<span className="p-4 text-sm text-muted-foreground">Preview unavailable</span>}
@@ -48,7 +49,7 @@ function AssetCard({ asset }: { asset: CreativeAsset }) {
       {video ? (
         <AssetVideo
           src={video}
-          poster={image}
+          poster={shown}
           label={description}
           className="aspect-video w-full bg-muted object-contain"
           fallback={
