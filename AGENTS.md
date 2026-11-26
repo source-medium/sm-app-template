@@ -43,6 +43,8 @@ src/lib/auth/                 requireViewer(), Basic and Cloudflare Access guard
 src/lib/config/env.server.ts  The only configuration parser
 src/lib/data/                 BigQuery client, decoders, errors, catalog, store roster
 src/lib/filters.ts, format.ts URL filters; server-side number and date formatting
+worker.ts                     Worker entry: OpenNext's handler plus byte ranges for files
+contracts/demo-media-v1/      The public demo's files in public/, by hash (tests/static/demo-media.test.ts)
 docs/                         Guides (index below)
 ```
 
@@ -177,7 +179,13 @@ acts for a person needs a real per-person authorization design first.
   needs more than the Free plan's 10 ms of CPU). WebCrypto, `fetch`, and `jose`
   work; there is no file system at runtime.
 - Files in `public/` pass the viewer guard like pages (`run_worker_first` in
-  `wrangler.jsonc`); only `/_next/static` skips the Worker.
+  `wrangler.jsonc`); only `/_next/static` skips the Worker. The ASSETS binding
+  answers them whole, so `worker.ts` answers byte ranges (Safari plays no video
+  without them). Keep that entry's name: hosting deploys the bundled `worker.js`.
+- DemoCo's public demo names files in `public/sample-creatives` and
+  `public/sample-products` by URL (contract demo-media-v1). Changing one changes
+  its hash in `contracts/demo-media-v1/media.json` (the test prints it), and
+  SourceMedium copies that file to reporting_queries.
 - `src/middleware.ts` runs in the edge runtime: no Node-only APIs there.
 - Configuration comes only from runtime variables, read per request through
   `readConfig()`. Never read configuration at module scope or build time.

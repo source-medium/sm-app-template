@@ -245,7 +245,10 @@ Missing or expired images keep their labels and values visible.
 Sample mode uses fictional store marks and three AI-generated catalog photos in
 [`public/sample-products`](public/sample-products). The built-in image tool's
 [prompts](docs/images/sample-product-prompts.json) are retained with the assets.
-Live reports always use warehouse images.
+Live reports always use warehouse images. SourceMedium's public demo also shows
+the photographed colorways there and the campaign photos and videos in
+`public/sample-creatives`, listed in
+[`contracts/demo-media-v1`](contracts/demo-media-v1/media.json).
 
 ## Built to be trusted
 
