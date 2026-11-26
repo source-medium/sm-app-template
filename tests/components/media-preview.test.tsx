@@ -65,6 +65,47 @@ describe("MediaPreview", () => {
     expect(pause).toHaveBeenCalledTimes(1);
   });
 
+  it("drops an image slide whose sources all fail and counts only the remaining slides", () => {
+    const items: PreviewMedia[] = [
+      {
+        kind: "image",
+        src: "https://www.facebook.com/ads/image/?d=one",
+        fallbackSrc: "https://cdn.example.com/one.jpg",
+      },
+      { kind: "image", src: "https://www.facebook.com/ads/image/?d=two" },
+      { kind: "image", src: "https://cdn.example.com/three.jpg" },
+    ];
+    render(<MediaPreview items={items} title="Summer hero" fallback={<span>Fallback</span>} />);
+    expect(screen.getByText("Image 1 of 3")).toBeVisible();
+
+    // The first slide's blocked link falls back to its thumbnail and keeps the slide.
+    fireEvent.error(screen.getByRole("img", { name: "Summer hero, image 1" }));
+    expect(screen.getByRole("img", { name: "Summer hero, image 1" })).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/one.jpg",
+    );
+    // The second has no other URL, so its slide is removed rather than showing the text.
+    fireEvent.error(screen.getByRole("img", { name: "Summer hero, image 2" }));
+
+    const track = screen.getByRole("group", { name: "Scrollable media" });
+    expect(track.children).toHaveLength(2);
+    expect(screen.queryByText("Fallback")).not.toBeInTheDocument();
+    expect(screen.getByText("Image 1 of 2")).toBeVisible();
+    expect(screen.getByRole("img", { name: "Summer hero, image 2" })).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/three.jpg",
+    );
+  });
+
+  it("shows the fallback once, without controls, when every image fails", () => {
+    render(<MediaPreview items={TWO_IMAGES} title="Summer hero" fallback={<span>Fallback</span>} />);
+    fireEvent.error(screen.getByRole("img", { name: "Summer hero, image 1" }));
+    fireEvent.error(screen.getByRole("img", { name: "Summer hero, image 1" }));
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Fallback")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Next media" })).toBeNull();
+  });
+
   it("omits controls and scrollable tab stop when there is only one media item", () => {
     render(<MediaPreview items={TWO_IMAGES.slice(0, 1)} title="Single hero" fallback={<span>Fallback</span>} />);
     const outer = screen.getByRole("group", { name: "Single hero media" });

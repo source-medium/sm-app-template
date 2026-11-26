@@ -796,6 +796,7 @@ function CreativesView({
         ],
         caption: firstSpendLabel(creative.firstSpend) ?? undefined,
         imageUrl: creative.imageUrl,
+        imageFallbackUrl: creative.imageFallbackUrl,
         media: creative.media,
         footer: (
           <>

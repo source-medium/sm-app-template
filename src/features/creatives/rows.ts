@@ -148,14 +148,19 @@ export function toCreative(
   extras: Creative["media"] = [],
   { allowSamplePaths = false }: { allowSamplePaths?: boolean } = {},
 ): Creative {
-  const cover = safeMediaUrl(row.image_url, allowSamplePaths) ?? safeMediaUrl(row.thumbnail_url, allowSamplePaths);
+  const image = safeMediaUrl(row.image_url, allowSamplePaths);
+  const thumbnail = safeMediaUrl(row.thumbnail_url, allowSamplePaths);
+  const cover = image ?? thumbnail;
+  // The thumbnail is the same image at another URL, tried when the full-size link fails (blocked or expired).
+  const coverFallback = image && thumbnail && thumbnail !== image ? thumbnail : null;
   const video = safeMediaUrl(row.video_url, allowSamplePaths);
   const media: Creative["media"] = [];
   if (video) media.push({ kind: "video", src: video, poster: cover });
-  else if (cover) media.push({ kind: "image", src: cover });
+  else if (cover) media.push({ kind: "image", src: cover, ...(coverFallback ? { fallbackSrc: coverFallback } : {}) });
   for (const item of extras) {
     if (
       !media.some((existing) => existing.kind === item.kind && existing.src === item.src) &&
+      !(item.kind === "image" && item.src === coverFallback) &&
       !(video && item.kind === "image" && item.src === cover)
     )
       media.push(item);
@@ -167,6 +172,7 @@ export function toCreative(
     body: row.body,
     name: row.name,
     imageUrl: cover ?? media.find((item) => item.kind === "image")?.src ?? null,
+    imageFallbackUrl: coverFallback,
     media,
     callToAction: row.call_to_action,
     channel: row.channel,

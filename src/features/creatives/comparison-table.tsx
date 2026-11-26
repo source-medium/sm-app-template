@@ -10,6 +10,7 @@ type ComparisonCard = GridCard & { creativeId: string };
 
 function ComparisonPreview({ card, duplicate }: { card: ComparisonCard; duplicate: boolean }) {
   const thumbnail = card.imageUrl ?? card.media?.find((item) => item.kind === "video")?.poster;
+  const thumbnailFallback = card.imageUrl ? card.imageFallbackUrl : null;
   if (!card.media?.length && !card.body && !card.callToAction && !card.caption && !card.tags?.length) return null;
   return (
     <Sheet>
@@ -25,6 +26,7 @@ function ComparisonPreview({ card, duplicate }: { card: ComparisonCard; duplicat
           >
             <CardImage
               src={thumbnail}
+              fallbackSrc={thumbnailFallback}
               alt=""
               fallback={card.badgeMark}
               className="absolute inset-0 size-full object-contain"

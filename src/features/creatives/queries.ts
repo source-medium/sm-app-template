@@ -45,8 +45,10 @@ export type Creative = CreativeMeasures & {
   body: string | null;
   /** The platform's name for the creative, where it has one. */
   name: string | null;
-  /** Hotlinked from the ad platform; it may expire. The card falls back to text. */
+  /** Hotlinked from the warehouse's URL (SourceMedium's copy, or an ad platform's link that may expire). */
   imageUrl: string | null;
+  /** The same image at another published URL (the thumbnail), tried when `imageUrl` fails to load. */
+  imageFallbackUrl: string | null;
   media: PreviewMedia[];
   callToAction: string | null;
   /** The ad platform: source_system (src/lib/ad-platforms.ts), not the sales channel. */

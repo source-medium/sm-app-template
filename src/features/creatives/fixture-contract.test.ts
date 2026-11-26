@@ -4,7 +4,7 @@ import { creativesOptions } from "./filters";
 import { sampleCreatives as sample, sampleCreativeSummary } from "./sample";
 import { samplePaidSummary } from "@/features/paid-marketing/sample";
 import { sumDecimals } from "@/lib/data/decimal";
-import type { CreativesFilters } from "./queries";
+import type { Creative, CreativesFilters } from "./queries";
 import type { BaselineRanges } from "@/lib/comparison";
 
 const sampleCreatives = (filters: CreativesFilters) => sample(filters, [null, null]);
@@ -116,6 +116,29 @@ describe("creatives fixture contract", () => {
     expect(urlFor("/sample-creatives/creative-01.svg")).toBeNull();
     expect(urlFor("/sample-creatives/creative-01.svg", true)).toBe("/sample-creatives/creative-01.svg");
     expect(urlFor("/api/internal-endpoint", true)).toBeNull();
+
+    // A full-size link that fails (an ad blocker, an expired link) falls back to the thumbnail before the text.
+    const card = (image: string | null, thumbnail: string | null, extras: Creative["media"] = []) =>
+      toCreative(
+        CreativeRow.parse({ ...base, image_url: image, thumbnail_url: thumbnail }),
+        FILTERS.range,
+        "unknown",
+        extras,
+      );
+    const blocked = "https://www.facebook.com/ads/image/?d=abc";
+    const thumb = "https://scontent.xx.fbcdn.net/v/t45/thumb.jpg";
+    expect(card(blocked, thumb)).toMatchObject({
+      imageUrl: blocked,
+      imageFallbackUrl: thumb,
+      media: [{ kind: "image", src: blocked, fallbackSrc: thumb }],
+    });
+    expect(card(blocked, blocked)).toMatchObject({ imageUrl: blocked, imageFallbackUrl: null });
+    expect(card(blocked, blocked).media[0]).not.toHaveProperty("fallbackSrc");
+    expect(card(null, thumb)).toMatchObject({ imageUrl: thumb, imageFallbackUrl: null });
+    expect(card("http://insecure.example/a.jpg", thumb)).toMatchObject({ imageUrl: thumb, imageFallbackUrl: null });
+    expect(card(blocked, "javascript:alert(1)").imageFallbackUrl).toBeNull();
+    // An inventory image at the thumbnail's URL is the same picture, not a second slide.
+    expect(card(blocked, thumb, [{ kind: "image", src: thumb }]).media).toHaveLength(1);
   });
 });
 
