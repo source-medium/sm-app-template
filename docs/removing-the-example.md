@@ -41,6 +41,8 @@ Unused sample images live in `public/sample-creatives/`; delete them with
 Creatives.
 The Products example owns `public/sample-products/` and its generation prompts in
 `docs/images/sample-product-prompts.json`; remove them with Products.
+Both folders also hold SourceMedium's public demo media: when you delete either,
+delete `contracts/demo-media-v1/` and `tests/static/demo-media.test.ts` too.
 
 `performance` owns its business/platform queries, fixtures, tables and CSV route. Remove `src/app/(app)/performance` and its feature and navigation entry together. Summary date bounds and multi-channel controls are shared with Overview and remain useful without Performance.
 

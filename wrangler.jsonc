@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   // A unique Worker name for this app (docs/connect.md); keep it once deployed.
   "name": "sm-app",
-  "main": ".open-next/worker.js",
+  "main": "worker.ts",
   "compatibility_date": "2026-06-30",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {

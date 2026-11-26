@@ -4,6 +4,7 @@
  * Live-mode tests use a generated, unregistered key and make no data requests.
  * Runtime values come from test bindings, never from your local app settings.
  */
+import { statSync } from "node:fs";
 import { join } from "node:path";
 import { parseEnv } from "node:util";
 import { createTestHarness, unstable_readConfig } from "wrangler";
@@ -18,6 +19,8 @@ const PASSWORD = "SmokeTestPassword0123456789abc";
 const signedIn = { Authorization: `Basic ${btoa(`viewer:${PASSWORD}`)}` };
 const FIRST = appConfig.nav[0]?.href ?? "/";
 const LAST = appConfig.nav.at(-1)?.href ?? FIRST;
+const CLIP = "/sample-creatives/creative-03.mp4";
+const CLIP_BYTES = statSync(join(root, "public", CLIP)).size;
 
 const access = "CF_ACCESS_TEAM_DOMAIN=example.cloudflareaccess.com\nCF_ACCESS_AUD=" + "a".repeat(64) + "\n";
 const dataValues = Object.fromEntries(
@@ -35,7 +38,8 @@ type Mode = {
   name: string;
   env: string;
   workerEnv?: "preview";
-  checks: [string, { method?: string; headers?: Record<string, string> }, number, string?][];
+  /** Path, request, status, text the body contains, headers the response carries. */
+  checks: [string, { method?: string; headers?: Record<string, string> }, number, string?, Record<string, string>?][];
 };
 const modes: Mode[] = [
   {
@@ -51,6 +55,9 @@ const modes: Mode[] = [
       [LAST, {}, 200, "Sample data"],
       // An encoded # and & in one value must not cut or add parameters (the @opennextjs/aws patch).
       [`${LAST}?q=%23smoke%26%25store%3Devil&store=smoke`, {}, 200, `href="${FIRST}?store=smoke"`],
+      // ASSETS sends whole files; worker.ts answers the range a video player asks for.
+      [CLIP, { headers: { Range: "bytes=0-1" } }, 206, undefined, { "content-range": `bytes 0-1/${CLIP_BYTES}` }],
+      [CLIP, {}, 200, undefined, { "accept-ranges": "bytes" }],
     ],
   },
   {
@@ -74,6 +81,7 @@ const modes: Mode[] = [
       ["/overview;x", {}, 401],
       ["/_next/static/../overview", {}, 401],
       ["/sample-creatives/creative-01.svg", {}, 401],
+      [CLIP, { headers: { Range: "bytes=0-1" } }, 401],
       ["/paid-marketing/export", {}, 401],
       [FIRST, { headers: signedIn }, 200, "Sample data"],
       // Files from public/ (and the build id) pass the guard too (run_worker_first in wrangler.jsonc).
@@ -247,14 +255,17 @@ try {
       ],
     });
     await worker.listen();
-    for (const [path, init, status, text] of mode.checks) {
+    for (const [path, init, status, text, headers = {}] of mode.checks) {
       const response = await worker.fetch(`${BASE}${path}`, init);
       const body = await response.text();
-      const ok = response.status === status && (!text || body.includes(text));
+      const ok =
+        response.status === status &&
+        (!text || body.includes(text)) &&
+        Object.entries(headers).every(([name, value]) => response.headers.get(name) === value);
       console.log(`${ok ? "✓" : "✗"} ${mode.name}: ${path} → ${response.status}`);
       if (!ok)
         failures.push(
-          `${mode.name}: ${path} answered ${response.status}, expected ${status}${text ? ` containing "${text}"` : ""}.`,
+          `${mode.name}: ${path} answered ${response.status}, expected ${status}${text ? ` containing "${text}"` : ""}${Object.keys(headers).length ? ` with ${JSON.stringify(headers)}` : ""}.`,
         );
     }
   }
