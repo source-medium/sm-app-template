@@ -915,9 +915,13 @@ refuse some of them (such as `facebook.com/ads/image/`). An image that fails
 tries the creative's thumbnail URL next, and only then shows the creative's
 text; a carousel image that fails is removed from the card's previews. A video
 file loads only when played and, like
-other media, sends the app's origin under the page's `Referrer-Policy`. To
-allow only specific image hosts, narrow `img-src` in
-`src/lib/security-headers.ts`.
+other media, sends the app's origin under the page's `Referrer-Policy`. A
+YouTube link (Google Ads videos) plays muted in YouTube's privacy-enhanced
+player from `youtube-nocookie.com`, which also loads only when played and
+refuses to play without that origin; scrolling to another preview pauses it.
+To allow only specific image hosts, narrow `img-src` in
+`src/lib/security-headers.ts`; to restrict which sites may be embedded, add a
+`frame-src` there that keeps `https://www.youtube-nocookie.com`.
 
 The image host sees the viewer's IP address, request time and complete image
 URL, and may receive cookies permitted by the browser. `no-referrer` hides the
