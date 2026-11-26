@@ -1,56 +1,70 @@
 "use client";
 
-import { createContext, useContext, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { createContext, useContext, useId, useState, type Dispatch, type SetStateAction } from "react";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import { Disclosure } from "@/components/ui/disclosure";
+import { useReportNavigation } from "@/components/shell/report-navigation";
 import { channelName, encodeSalesChannels, REPORT_FILTER_FORM_ID, salesChannelValues } from "@/lib/filters";
 
 const ChannelScope = createContext<{
   applied: string[];
   selected: string[];
   setSelected: Dispatch<SetStateAction<string[]>>;
-  apply: (value: string) => void;
+  /** The selection on its way, encoded; null when none is. */
+  requested: string | null;
+  apply: (channels: string[]) => void;
 } | null>(null);
 
-/** One canonical form value lives outside the streamed roster, including during loading and failure. */
+/**
+ * One canonical form value lives outside the streamed roster, including during
+ * loading and failure. Applying sends only the sales channel (an empty value is
+ * an explicit All), so a draft in another field never blocks it. Key it by the
+ * applied scope: a committed change remounts it with the new selection.
+ */
 export function SalesChannelFilter({ value, children }: { value?: string | null; children: React.ReactNode }) {
-  const hidden = useRef<HTMLInputElement>(null);
+  const { navigate } = useReportNavigation();
   const [selected, setSelected] = useState(salesChannelValues(value));
+  const [requested, setRequested] = useState<string | null>(null);
   return (
     <ChannelScope.Provider
       value={{
         applied: salesChannelValues(value),
         selected,
         setSelected,
-        apply: (value) => {
-          setSelected(value ? [value] : []);
-          if (hidden.current) {
-            hidden.current.value = value;
-            hidden.current.form?.requestSubmit();
-          }
+        requested,
+        apply: (channels) => {
+          const encoded = encodeSalesChannels(channels) ?? "";
+          setSelected(salesChannelValues(encoded));
+          setRequested(encoded);
+          navigate({ sales_channel: encoded });
         },
       }}
     >
+      {/* The checkboxes' draft, for an explicit Apply; another control's change leaves it behind. */}
       <input
-        ref={hidden}
         type="hidden"
         name="sales_channel"
         value={encodeSalesChannels(selected) ?? ""}
         form={REPORT_FILTER_FORM_ID}
+        data-draft
       />
       {children}
     </ChannelScope.Provider>
   );
 }
 
-/** Draft several choices, then apply the whole report form once. Unknown applied values remain visible. */
+/** One quick choice applies at once; several are drafted, then applied together. Unknown applied values remain visible. */
 export function MultiChannelFilter({ channels }: { channels: string[] }) {
   const id = useId();
   const scope = useContext(ChannelScope);
   if (!scope) throw new Error("Wrap channel choices in SalesChannelFilter so scope survives loading.");
-  const { applied, selected, setSelected, apply } = scope;
-  const pending = encodeSalesChannels(selected) !== encodeSalesChannels(applied);
+  const { applied, selected, setSelected, requested, apply } = scope;
+  const draft = encodeSalesChannels(selected) ?? "";
+  // A selection on its way is not a draft: the report says it is updating.
+  const unapplied = draft !== (encodeSalesChannels(applied) ?? "") && draft !== requested;
+  // The select shows the choice on its way at once, then the applied one.
+  const shown = requested === null ? applied : salesChannelValues(requested);
   const options = [...new Set([...applied, ...selected, ...channels])].sort();
   return (
     <div className="max-w-full min-w-0" data-agent-target="Sales channels">
@@ -60,22 +74,22 @@ export function MultiChannelFilter({ channels }: { channels: string[] }) {
       <NativeSelect
         id={`${id}-quick`}
         aria-label="Sales channel"
-        value={applied.length > 1 ? "__multiple" : (applied[0] ?? "")}
+        value={shown.length > 1 ? "__multiple" : (shown[0] ?? "")}
         onChange={(event) => {
           const value = event.currentTarget.value;
           if (value === "__multiple") return;
-          apply(value);
+          apply(value ? [value] : []);
         }}
       >
         <option value="">All sales channels</option>
-        {applied.length > 1 && <option value="__multiple">{applied.length} selected</option>}
+        {shown.length > 1 && <option value="__multiple">{shown.length} selected</option>}
         {options.map((channel) => (
           <option key={channel} value={channel}>
             {channelName(channel)}
           </option>
         ))}
       </NativeSelect>
-      {pending && (
+      {unapplied && (
         <p role="status" className="pt-2 text-xs text-warning">
           Channel changes not applied.
         </p>
@@ -108,7 +122,7 @@ export function MultiChannelFilter({ channels }: { channels: string[] }) {
               </label>
             ))}
           </div>
-          <Button type="submit" form={REPORT_FILTER_FORM_ID} variant="secondary" size="sm">
+          <Button type="button" variant="secondary" size="sm" onClick={() => apply(selected)}>
             Apply channels
           </Button>
         </fieldset>

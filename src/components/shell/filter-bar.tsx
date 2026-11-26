@@ -1,6 +1,5 @@
 "use client";
 
-import Form from "next/form";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { CalendarDays, ChevronDown } from "lucide-react";
@@ -10,13 +9,17 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import { COMPARISON_OPTIONS, type ComparisonMode } from "@/lib/comparison";
 import { dateRangeIssue, REPORT_FILTER_FORM_ID } from "@/lib/filters";
-import { LinkPending, SubmitAnnouncement, SubmitPending } from "./pending";
+import { useReportNavigation } from "./report-navigation";
 import { useHydrated } from "@/hooks/use-hydrated";
 
 /** `quick` presets sit beside the date button with the active one; the rest open with it. */
 export type FilterPreset = { label: string; href: string; active: boolean; quick?: boolean };
 
-/** One GET form owns every report control, including streamed fields associated by form id. */
+/**
+ * One GET form holds every report control, including streamed fields associated
+ * by form id. A select applies only its own choice (report-navigation.tsx); an
+ * explicit Apply submits the form, so the choices typed into it travel together.
+ */
 export function FilterBar({
   pathname,
   storeId,
@@ -68,7 +71,7 @@ export function FilterBar({
   const [error, setError] = useState<string | null>(null);
   const [datesOpen, setDatesOpen] = useState(defaultOpen);
   const hydrated = useHydrated();
-  const formRef = useRef<HTMLFormElement>(null);
+  const { pending, navigate, go } = useReportNavigation();
   // The From field takes focus once it is in the layout: after the dates unfold, or after an invalid submit.
   const focusFrom = useRef(false);
   useEffect(() => {
@@ -76,36 +79,15 @@ export function FilterBar({
     focusFrom.current = false;
     document.getElementById(`${id}-from`)?.focus();
   });
-  // Edited dates are custom, so they drop the preset; unedited rolling dates submit as only their preset
-  // (nothing, for the default), so other choices and bookmarks keep rolling. Before scripts load, the form
-  // submits its dates as typed, so an early edit is never lost.
-  useEffect(() => {
-    const form = formRef.current;
-    if (!form || !dates) return;
-    const keepPreset = ({ formData }: FormDataEvent) => {
-      if (formData.get("from") !== (from ?? null) || formData.get("to") !== (to ?? null)) formData.delete("range");
-      else if (rolling) {
-        formData.delete("from");
-        formData.delete("to");
-      }
-    };
-    form.addEventListener("formdata", keepPreset);
-    return () => form.removeEventListener("formdata", keepPreset);
-  }, [dates, rolling, from, to]);
-  // A second comparison left at its default is not a choice: drop it, so Yesterday gets the same weekday last year.
-  useEffect(() => {
-    const form = formRef.current;
-    if (!form || !comparison2Default) return;
-    const keepDefault = ({ formData }: FormDataEvent) => {
-      if (formData.get("compare2") === comparison2Default) formData.delete("compare2");
-    };
-    form.addEventListener("formdata", keepDefault);
-    return () => form.removeEventListener("formdata", keepDefault);
-  }, [comparison2Default]);
   // Keep the form for controls rendered by the report, even when it has no visible fields of its own.
   const hasControls = dates || comparison !== undefined;
-  /** Choices apply on change; typed dates wait for Apply. The form's own submit handler still validates dates. */
-  const applyOnChange = (event: React.ChangeEvent<HTMLSelectElement>) => event.currentTarget.form?.requestSubmit();
+  // Choices apply on change; typed dates wait for Apply. A second comparison left at its default is not a choice.
+  const applyComparison = (event: React.ChangeEvent<HTMLSelectElement>) =>
+    navigate({ compare: event.currentTarget.value });
+  const applyComparison2 = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = event.currentTarget.value;
+    navigate({ compare2: value === comparison2Default ? null : value });
+  };
   const optionLabel = (mode: ComparisonMode) => COMPARISON_OPTIONS.find((option) => option.value === mode)?.label ?? "";
   // Reads as a continuation of the dates: "Oct 10 – Nov 6, 2026 vs previous period and same period last year".
   const comparisonSummary =
@@ -123,19 +105,22 @@ export function FilterBar({
       data-agent-element={preset.label}
       href={preset.href}
       aria-current={preset.active ? "true" : undefined}
+      onClick={(event) => {
+        // A plain click keeps choices still on their way; a modified click opens the link as usual.
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        go(preset.href);
+      }}
       className={cn(
         "flex min-h-9 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11",
         preset.active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted",
       )}
     >
       {preset.label}
-      <LinkPending />
     </Link>
   );
   return (
-    <Form
-      ref={formRef}
-      prefetch={false}
+    <form
       id={REPORT_FILTER_FORM_ID}
       action={pathname}
       aria-label="Report filters"
@@ -143,22 +128,42 @@ export function FilterBar({
       data-agent-component="FilterBar"
       className={hasControls ? "flex flex-col gap-3" : "hidden"}
       onSubmit={(event) => {
-        if (!dates || maxDate === undefined) return;
-        const data = new FormData(event.currentTarget);
-        const issue =
-          data.has("from") || data.has("to")
-            ? dateRangeIssue(
-                { from: String(data.get("from") ?? ""), to: String(data.get("to") ?? "") },
-                maxDate,
-                maxDays,
-              )
-            : null;
-        setError(issue);
-        if (issue) {
-          event.preventDefault();
-          setDatesOpen(true);
-          focusFrom.current = true;
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = new FormData(form, event.nativeEvent.submitter);
+        if (dates && maxDate !== undefined) {
+          const issue =
+            data.has("from") || data.has("to")
+              ? dateRangeIssue(
+                  { from: String(data.get("from") ?? ""), to: String(data.get("to") ?? "") },
+                  maxDate,
+                  maxDays,
+                )
+              : null;
+          setError(issue);
+          if (issue) {
+            setDatesOpen(true);
+            focusFrom.current = true;
+            return;
+          }
         }
+        // Edited dates are custom, so they drop the preset; unedited rolling dates submit as only their preset
+        // (nothing, for the default), so other choices and bookmarks keep rolling. Before scripts load, the form
+        // submits its dates as typed, so an early edit is never lost.
+        if (dates) {
+          if (data.get("from") !== (from ?? null) || data.get("to") !== (to ?? null)) data.delete("range");
+          else if (rolling) {
+            data.delete("from");
+            data.delete("to");
+          }
+        }
+        // A second comparison left at its default is not a choice: drop it, so Yesterday gets the same weekday last year.
+        if (comparison2Default && data.get("compare2") === comparison2Default) data.delete("compare2");
+        // The query a native GET submission would send, applied without leaving the page.
+        const query = new URLSearchParams();
+        for (const [key, value] of data) if (typeof value === "string") query.append(key, value);
+        const search = query.toString();
+        go(search ? `${pathname}?${search}` : pathname);
       }}
     >
       {comparison === undefined && carriedComparison && (
@@ -255,7 +260,7 @@ export function FilterBar({
               />
             </div>
             <Button data-agent-element="Apply" type="submit" className="col-span-full sm:col-auto">
-              <SubmitPending idle="Apply" pending="Updating…" />
+              {pending ? "Updating…" : "Apply"}
             </Button>
             {comparison !== undefined && (
               <div className="flex min-w-0 flex-col gap-1.5 sm:w-48">
@@ -267,7 +272,7 @@ export function FilterBar({
                   id={`${id}-compare`}
                   name="compare"
                   defaultValue={comparison}
-                  onChange={applyOnChange}
+                  onChange={applyComparison}
                 >
                   {COMPARISON_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -288,7 +293,7 @@ export function FilterBar({
                   name="compare2"
                   defaultValue={comparison2}
                   disabled={comparison === "off"}
-                  onChange={applyOnChange}
+                  onChange={applyComparison2}
                 >
                   {COMPARISON_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -315,7 +320,6 @@ export function FilterBar({
           </>
         )
       )}
-      <SubmitAnnouncement pending="Updating the report." />
-    </Form>
+    </form>
   );
 }

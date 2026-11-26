@@ -1,6 +1,62 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { expect, it } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 import { FilterBar } from "@/components/shell/filter-bar";
+import { ReportNavigationProvider } from "@/components/shell/report-navigation";
+
+const { router, navigationModule } = await vi.hoisted(() => import("../helpers/navigation"));
+vi.mock("next/navigation", () => navigationModule());
+beforeEach(() => router.reset());
+
+const comparing = (
+  <ReportNavigationProvider>
+    <FilterBar
+      pathname="/overview"
+      storeId="a"
+      from="2026-09-01"
+      to="2026-09-07"
+      maxDate="2026-10-01"
+      presets={[]}
+      rangeLabel="Sep 1, 2026 – Sep 7, 2026"
+      comparison="previous"
+      comparison2="year"
+      comparison2Default="year"
+    />
+  </ReportNavigationProvider>
+);
+
+it("applies a comparison by itself while an invalid date draft waits in its fields", () => {
+  router.search = "store=a&from=2026-09-01&to=2026-09-07&sales_channel=amazon";
+  render(comparing);
+  fireEvent.click(screen.getByRole("button", { name: /^Change dates/ }));
+  fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-09" } });
+  fireEvent.change(screen.getByLabelText("Compare with"), { target: { value: "weekday" } });
+  expect(router.push).toHaveBeenCalledExactlyOnceWith(
+    "/overview?store=a&from=2026-09-01&to=2026-09-07&sales_channel=amazon&compare=weekday",
+    { scroll: false },
+  );
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByLabelText("From")).toHaveValue("2026-09-09");
+});
+
+it("leaves a second comparison at its default out of the URL", () => {
+  router.search = "store=a&compare2=weekday";
+  render(comparing);
+  fireEvent.click(screen.getByRole("button", { name: /^Change dates/ }));
+  fireEvent.change(screen.getByLabelText("Second comparison"), { target: { value: "year" } });
+  expect(router.push).toHaveBeenCalledExactlyOnceWith("/overview?store=a", { scroll: false });
+});
+
+it("applies typed dates with Apply and keeps a choice already on its way", () => {
+  router.search = "store=a&from=2026-09-01&to=2026-09-07";
+  render(comparing);
+  fireEvent.click(screen.getByRole("button", { name: /^Change dates/ }));
+  fireEvent.change(screen.getByLabelText("Compare with"), { target: { value: "weekday" } });
+  fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-02" } });
+  fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+  expect(router.push).toHaveBeenLastCalledWith("/overview?store=a&from=2026-09-02&to=2026-09-07&compare=weekday", {
+    scroll: false,
+  });
+});
 
 it("submits the applied store and rejects invalid date drafts", () => {
   const { container } = render(

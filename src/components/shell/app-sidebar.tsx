@@ -4,6 +4,7 @@
  * The navigation, rendered from app.config.ts. On narrow screens the shadcn
  * sidebar becomes a sheet opened from the top bar.
  */
+import { Suspense, use } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { appConfig } from "@/app.config";
@@ -31,9 +32,12 @@ import { ThemeControl } from "./theme-control";
 
 /**
  * The sidebar carries SHARED_FILTERS, keeping the same store and dates when
- * switching views. Report-specific filters stay with their report: a sidebar
- * link starts the destination report fresh, while supporting detail links inside
- * a report (lib/drill-down.ts) carry a compatible investigation across.
+ * switching views, and the sales channel to views that read it (`salesChannel`),
+ * an explicit All included. Other report filters stay with their report: a
+ * sidebar link starts the destination report fresh, while supporting detail
+ * links inside a report (lib/drill-down.ts) carry a compatible investigation
+ * across. All stores is listed once the store list has more than one store, so
+ * a one-store app never shows it.
  *
  * Views saved from Share are places to go, so they are listed here, in this
  * browser only. Template links help whoever is setting the app up, so they
@@ -42,10 +46,13 @@ import { ThemeControl } from "./theme-control";
  */
 export function AppSidebar({
   fixedStore = false,
+  storeCount,
   sample = false,
   theme,
 }: {
   fixedStore?: boolean;
+  /** How many stores the viewer can see; null when the list could not be read. */
+  storeCount: Promise<number | null>;
   sample?: boolean;
   theme: Theme;
 }) {
@@ -72,6 +79,8 @@ export function AppSidebar({
                   .map((item) => {
                     const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                     const target = new URLSearchParams(shared);
+                    if (item.salesChannel && searchParams.has("sales_channel"))
+                      target.set("sales_channel", searchParams.get("sales_channel") ?? "");
                     // A report without period comparisons cannot apply one; dropping it is not a lost filter.
                     if (!item.comparisons) {
                       target.delete("compare");
@@ -80,7 +89,7 @@ export function AppSidebar({
                     const href = active
                       ? `${pathname}?${searchParams.toString()}`
                       : `${item.href}${target.size ? `?${target}` : ""}`;
-                    return (
+                    const link = (
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
                           <Link prefetch={false} href={href} aria-current={active ? "page" : undefined}>
@@ -90,6 +99,13 @@ export function AppSidebar({
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
+                    );
+                    return item.scope === "all-stores" ? (
+                      <Suspense key={item.href} fallback={null}>
+                        <WithSeveralStores count={storeCount}>{link}</WithSeveralStores>
+                      </Suspense>
+                    ) : (
+                      link
                     );
                   })}
               </SidebarMenu>
@@ -137,4 +153,10 @@ export function AppSidebar({
       </SidebarFooter>
     </Sidebar>
   );
+}
+
+/** Shown when the viewer has several stores, or when the list could not be read (as before it was known). */
+function WithSeveralStores({ count, children }: { count: Promise<number | null>; children: React.ReactNode }) {
+  const stores = use(count);
+  return stores === null || stores > 1 ? children : null;
 }

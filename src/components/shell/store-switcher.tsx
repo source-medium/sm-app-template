@@ -23,7 +23,11 @@ const subscribeToHeader = () => () => {};
 const headerSlot = () => document.getElementById(STORE_SWITCHER_SLOT);
 const serverSlot = () => null;
 
-/** The report supplies applied state. Date drafts never participate in switching stores. */
+/**
+ * The report supplies applied state. Date drafts never participate in switching stores.
+ * With one store to show (a fixed deployment, or a roster of one), it is the
+ * store's name and nothing to operate: no picker, search or All stores.
+ */
 export function StoreSwitcher({
   stores,
   storeId,
@@ -49,7 +53,7 @@ export function StoreSwitcher({
   const menu = useRef<HTMLDivElement>(null);
   const openedByTouch = useRef(false);
   const selected = stores.find((store) => store.id === storeId);
-  const portfolio = fixedStore ? undefined : allStoresPath();
+  const portfolio = allStoresPath();
   const storePath = allStores ? storeReportPath() : pathname;
   const counts = new Map<string, number>();
   const groups = new Map<string | null, StoreOption[]>();
@@ -63,7 +67,7 @@ export function StoreSwitcher({
   };
   const label = allStores ? "All stores" : selected ? storeLabel(selected) : storeId;
   // The trigger's visible caption, which also starts its accessible name.
-  const caption = pending ? "Switching store" : fixedStore ? "Store" : "Switch store";
+  const caption = pending ? "Switching store" : "Switch store";
   for (const store of stores) {
     if (
       ![store.label, store.id, store.domain ?? "", store.brand ?? ""]
@@ -82,6 +86,29 @@ export function StoreSwitcher({
     startTransition(() => router.push(href, { scroll: false }));
   }
   if (!host) return null;
+  // A link naming another store keeps the picker, so the listed store can be chosen.
+  const single = !allStores && (fixedStore || (stores.length === 1 && stores[0]?.id === storeId));
+  if (single)
+    return createPortal(
+      <div
+        data-slot="store-switcher"
+        data-single-store
+        data-agent-target="Store"
+        data-agent-component="StoreSwitcher"
+        data-store-id={storeId}
+        data-store-name={selected?.label}
+        className="flex h-11 min-w-0 items-center gap-2.5 px-2 lg:max-w-72"
+      >
+        <StoreAvatar label={selected?.label ?? storeId} logoUrl={selected?.logoUrl ?? null} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-xs text-muted-foreground">Store</span>{" "}
+          <span className="block truncate text-sm leading-4 font-medium" title={label}>
+            {label}
+          </span>
+        </span>
+      </div>,
+      host,
+    );
   return createPortal(
     <div
       data-slot="store-switcher"
@@ -100,9 +127,9 @@ export function StoreSwitcher({
           <Button
             type="button"
             variant="outline"
-            disabled={fixedStore || pending || stores.length === 0}
+            disabled={pending || stores.length === 0}
             aria-label={`${caption}: ${label}`}
-            aria-description={fixedStore ? "Only this store is available." : "Choose a store."}
+            aria-description="Choose a store."
             aria-busy={pending}
             data-store-id={allStores ? "all" : storeId}
             data-store-name={allStores ? undefined : selected?.label}
@@ -136,7 +163,7 @@ export function StoreSwitcher({
                 {label}
               </span>
             </span>
-            {!fixedStore && <ChevronDown aria-hidden className="size-4 text-muted-foreground" />}
+            <ChevronDown aria-hidden className="size-4 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent

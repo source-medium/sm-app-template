@@ -2,7 +2,13 @@ import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import type { RetentionFilters, RetentionSegmentFilters, RetentionSegments } from "./queries";
 import { COHORT_MONTHS, shiftMonth } from "./filters";
-import { decodeRetention, RetentionSegmentRow, RETENTION_RELATION, type RetentionRowData } from "./rows";
+import {
+  decodeRetention,
+  RetentionChannelRow,
+  RetentionSegmentRow,
+  RETENTION_RELATION,
+  type RetentionRowData,
+} from "./rows";
 import { decodeRows } from "@/lib/data/decode";
 import { CACHE_POLICY } from "@/lib/data/query-cache";
 import type { QueryParameter } from "@/lib/data/bigquery-rest.server";
@@ -54,6 +60,28 @@ export async function queryRetention(filters: RetentionFilters): Promise<Retenti
     ],
   });
   return decodeRetention(result.rows);
+}
+
+/** The acquisition channels with cohorts in the observation window. Age-zero rows name every cohort. */
+export async function queryRetentionChannels(filters: { storeId: string; asOf: string }): Promise<string[]> {
+  const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
+  const result = await warehouse.query({
+    name: "retention_channels",
+    cache: CACHE_POLICY.aggregate,
+    maxRows: 50,
+    partial: true,
+    sql: `SELECT DISTINCT IFNULL(sm_channel, '(none)') AS channel
+      FROM ${warehouse.table(RETENTION_RELATION)}
+      WHERE sm_store_id = @store_id
+        AND acquisition_order_filter_dimension = 'no_filters'
+        AND sm_order_line_type = 'all_orders'
+        AND cohort_month BETWEEN @cohort_from AND @as_of_month
+        AND months_since_first_order = 0
+      ORDER BY channel
+      LIMIT 51`,
+    params: cohortWindowParams(filters),
+  });
+  return decodeRows(RetentionChannelRow, result.rows, RETENTION_RELATION).map((row) => row.channel);
 }
 
 /** Only age-zero rows are needed for options. Search and selected channel keep high-cardinality lists bounded. */

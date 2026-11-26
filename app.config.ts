@@ -27,6 +27,8 @@ export type NavItem = {
   scope?: "all-stores";
   group?: string;
   comparisons?: boolean;
+  /** The view reads `sales_channel`, so the sidebar carries the applied sales channel to it. */
+  salesChannel?: boolean;
   /**
    * Canonical SourceMedium metric names (dim_semantic_metric_catalog
    * metric_name) this view presents, so "Explore your data" can offer
@@ -61,6 +63,7 @@ export const appConfig = {
       group: "Business",
       href: "/overview",
       comparisons: true,
+      salesChannel: true,
       label: "Overview",
       icon: LayoutDashboard,
       metrics: [
@@ -71,7 +74,14 @@ export const appConfig = {
         "website_sessions_summary",
       ],
     },
-    { group: "Business", href: "/performance", comparisons: true, label: "Performance tables", icon: Table2 },
+    {
+      group: "Business",
+      href: "/performance",
+      comparisons: true,
+      salesChannel: true,
+      label: "Performance tables",
+      icon: Table2,
+    },
     { group: "Business", href: "/stores", comparisons: true, label: "All stores", icon: Store, scope: "all-stores" },
     { group: "Marketing", href: "/paid-marketing", comparisons: true, label: "Paid marketing", icon: Megaphone },
     {
@@ -91,17 +101,18 @@ export const appConfig = {
         "click_through_rate",
       ],
     },
-    { group: "Sales", href: "/products", comparisons: true, label: "Products", icon: Package },
+    { group: "Sales", href: "/products", comparisons: true, salesChannel: true, label: "Products", icon: Package },
     { group: "Sales", href: "/retention", label: "Retention", icon: Repeat2 },
     {
       group: "Sales",
       href: "/geography",
       comparisons: true,
+      salesChannel: true,
       label: "Geography",
       icon: Map,
       metrics: ["order_net_revenue", "order_count"],
     },
-    { group: "Sales", href: "/orders", label: "Orders", icon: ShoppingBag },
+    { group: "Sales", href: "/orders", salesChannel: true, label: "Orders", icon: ShoppingBag },
     { href: "/data", label: "Explore your data", icon: Database, group: "Reference" },
   ] satisfies NavItem[] as NavItem[],
   /** Optional overrides for dim_stores.store_name. Names and brand groups otherwise come from SourceMedium. */
@@ -113,6 +124,10 @@ export const appConfig = {
   dateRange: { defaultDays: 28, maxDays: 92 },
   /** Summary reports can deliberately cover a full year; detail views retain the shorter limit. */
   summaryMaxDays: 366,
-  /** Optional verified sales-channel defaults for summary reports. Empty means all channels. */
+  /**
+   * Optional verified sales-channel defaults for Overview, Performance tables, Products and
+   * Geography when a link names none. Empty means all channels. Orders, a lookup, always starts
+   * with every channel.
+   */
   defaultSalesChannels: [] as string[],
 };

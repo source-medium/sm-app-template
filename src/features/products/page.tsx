@@ -22,7 +22,7 @@ import { SelectFilter } from "@/components/patterns/select-filter";
 import { planRanges, slotChanges } from "@/lib/comparison";
 import { nonnegativeShare } from "@/lib/data/decimal";
 import { formatMeasure, formatMoneyIn, moneyAxis } from "@/lib/format";
-import { parseSalesChannel, salesChannelLabel, withParams, type SearchParams } from "@/lib/filters";
+import { reportSalesChannel, salesChannelLabel, withParams, type SearchParams } from "@/lib/filters";
 import { Disclosure } from "@/components/ui/disclosure";
 import {
   getProductCoverage,
@@ -40,7 +40,7 @@ export const metadata: Metadata = { title: "Products" };
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const options = productOptions(params);
-  const channel = parseSalesChannel(params);
+  const channel = reportSalesChannel(params);
   const diagnostic =
     options.metric === "profit"
       ? "cost"

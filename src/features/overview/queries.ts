@@ -13,6 +13,7 @@ import { WarehouseError } from "@/lib/data/warehouse-error";
 import { queryOverview, queryOverviewChannels } from "./bigquery";
 import { sampleOverview } from "./sample";
 import { sampleSummaryChannels } from "@/lib/sample/executive-summary";
+import { sellingChannels } from "@/lib/sales-channels";
 
 export type OverviewMeasures = {
   /** NUMERIC, exact decimal text, in the reporting currency: SUM(order_net_revenue). */
@@ -67,9 +68,11 @@ export async function getOverview(filters: OverviewFilters): Promise<OverviewDat
 /** Options are scoped to the selected store and dates, before applying the channel filter. */
 export async function getOverviewChannels(filters: ReportFilters): Promise<string[]> {
   const access = await requireViewer({ storeId: filters.storeId });
-  return access.mode === "live"
-    ? queryOverviewChannels(filters)
-    : sampleSummaryChannels(filters.storeId, filters.range);
+  return sellingChannels(
+    access.mode === "live"
+      ? await queryOverviewChannels(filters)
+      : sampleSummaryChannels(filters.storeId, filters.range),
+  );
 }
 
 export type OverviewBaseline = { data: OverviewData; error: null } | { data: null; error: WarehouseError };

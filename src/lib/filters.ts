@@ -332,7 +332,12 @@ export function channelName(value: string): string {
 export function salesChannelLabel(selection: string | null | undefined): string {
   return salesChannelValues(selection).map(channelName).join(", ") || "All sales channels";
 }
-export function summarySalesChannel(params: SearchParams): string | null {
+/**
+ * The sales channel an aggregate report applies: the URL's (an empty value is an explicit All), or
+ * app.config.ts `defaultSalesChannels` when the URL names none. Overview, Performance tables, Products
+ * and Geography read it, so the same link means the same scope in each.
+ */
+export function reportSalesChannel(params: SearchParams): string | null {
   return single(params, "sales_channel") === undefined
     ? encodeSalesChannels(appConfig.defaultSalesChannels)
     : parseSalesChannel(params);

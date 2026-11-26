@@ -10,13 +10,14 @@ import { SelectFilter } from "@/components/patterns/select-filter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMonth } from "@/lib/format";
-import { channelName, REPORT_FILTER_FORM_ID, type SearchParams } from "@/lib/filters";
-import { getRetention } from "./queries";
+import { channelName, REPORT_FILTER_FORM_ID, single, type SearchParams } from "@/lib/filters";
+import { WarehouseError } from "@/lib/data/warehouse-error";
+import { defaultAcquisitionChannel, getRetention, getRetentionChannels } from "./queries";
 import { RetentionCurves } from "./curves";
 import { COHORT_WINDOWS, COHORT_MONTHS, MIN_COHORT_MONTH, RETENTION_METRICS, retentionOptions } from "./filters";
 import { retentionMatrix } from "./matrix";
 import { AcquisitionDimensionFilter } from "./segmentation-controls";
-import { RetentionSegmentControls } from "./controls";
+import { RetentionChannelFilter, RetentionSegmentControls } from "./controls";
 import { Disclosure } from "@/components/ui/disclosure";
 import { SectionHeader } from "@/components/patterns/section-header";
 
@@ -39,11 +40,11 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
       params={params}
       chartParams={["rate_curve", "value_curve"]}
       // The latest complete month depends on the store's date, so the shell applies these once it knows it.
-      defaults={(today) => {
+      defaults={async (today, storeId) => {
         const options = retentionOptions(params, today);
         return {
           as_of: options.asOf,
-          channel: options.channel,
+          channel: options.channel ?? (await startingChannel(storeId, options.asOf)),
           measure: options.metric,
           cohorts: options.curveWindow,
           acquisition_dimension: options.dimension,
@@ -55,8 +56,10 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
       ]}
       dates={false}
     >
-      {({ filters, today, timeZone, currency, dataStatus }) => {
+      {({ filters, params: applied, today, timeZone, currency, dataStatus }) => {
         const options = retentionOptions(params, today);
+        // The link's channel, or the one the shell resolved from the store's cohorts (defaults above).
+        const channel = options.channel ?? single(applied, "channel") ?? "online_dtc";
         const metricLabel =
           RETENTION_METRICS.find((item) => item.value === options.metric)?.label ?? "Monthly retention";
         const needsSegment = options.dimension !== "no_filters" && !options.segment;
@@ -64,7 +67,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
           <>
             <ReportControls
               keepOpen={Boolean(options.asOfIssue) || needsSegment}
-              summary={[channelName(options.channel), `Through ${formatMonth(`${options.asOf}-01`)}`, metricLabel]}
+              summary={[channelName(channel), `Through ${formatMonth(`${options.asOf}-01`)}`, metricLabel]}
             >
               <div
                 role="group"
@@ -90,15 +93,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                   Apply month
                 </Button>
               </div>
-              <SelectFilter
-                name="channel"
-                label="Acquisition sales channel"
-                value={options.channel}
-                options={[...new Set(["online_dtc", "amazon", options.channel])].map((value) => ({
-                  value,
-                  label: channelName(value),
-                }))}
-              />
+              <RetentionChannelFilter storeId={filters.storeId} asOf={options.asOf} channel={channel} />
               <AcquisitionDimensionFilter dimension={options.dimension} />
               {/* Segment options are scoped to the month, so an unusable month runs no options query either. */}
               {options.dimension !== "no_filters" && !options.asOfIssue && (
@@ -108,7 +103,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                     asOf: options.asOf,
                     dimension: options.dimension,
                     segment: options.segment,
-                    channel: options.channel,
+                    channel,
                     search: options.segmentSearch,
                   }}
                 />
@@ -142,7 +137,7 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
               />
             ) : (
               <Suspense
-                key={`${filters.storeId}|${options.asOf}|${options.channel}|${options.metric}|${options.curveWindow}|${options.dimension}|${options.segment}`}
+                key={`${filters.storeId}|${options.asOf}|${channel}|${options.metric}|${options.curveWindow}|${options.dimension}|${options.segment}`}
                 fallback={<LoadingState variant="table" label="Loading retention cohorts" />}
               >
                 <DataRegion
@@ -165,10 +160,10 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                   {(rows) => {
                     return (
                       <div className="flex flex-col gap-4">
-                        {rows.some((row) => row.channel === options.channel) && (
+                        {rows.some((row) => row.channel === channel) && (
                           <RetentionCurves
                             rows={rows}
-                            channel={options.channel}
+                            channel={channel}
                             asOf={options.asOf}
                             window={options.curveWindow}
                             currency={currency}
@@ -180,11 +175,11 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
                             description="A dash is a month that has not elapsed yet; No data is an elapsed month with no published value."
                           />
                         </div>
-                        {rows.some((row) => row.channel === options.channel) ? (
+                        {rows.some((row) => row.channel === channel) ? (
                           <CohortMatrix
                             caption={metricLabel}
                             columns={Array.from({ length: COHORT_MONTHS }, (_, index) => `Month ${index}`)}
-                            rows={retentionMatrix(rows, options.channel, options.metric, options.asOf, currency)}
+                            rows={retentionMatrix(rows, channel, options.metric, options.asOf, currency)}
                           />
                         ) : (
                           <EmptyState message="No cohorts for this channel. Choose another acquisition sales channel." />
@@ -227,4 +222,15 @@ export default async function RetentionPage({ searchParams }: { searchParams: Pr
       }}
     </ReportPage>
   );
+}
+
+/** The channel cohorts start on: the default the store has cohorts for (defaultAcquisitionChannel). */
+async function startingChannel(storeId: string, asOf: string): Promise<string> {
+  try {
+    return defaultAcquisitionChannel(await getRetentionChannels(storeId, asOf));
+  } catch (error) {
+    // The cohort region reports the same failure; the controls still need a value.
+    if (error instanceof WarehouseError) return defaultAcquisitionChannel([]);
+    throw error;
+  }
 }

@@ -4,10 +4,12 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useReportNavigation } from "@/components/shell/report-navigation";
 import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
 import { ACQUISITION_DIMENSIONS, type AcquisitionDimension } from "./filters";
 
 export function AcquisitionDimensionFilter({ dimension }: { dimension: AcquisitionDimension }) {
+  const { navigate } = useReportNavigation();
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <label htmlFor="acquisition-dimension" className="text-xs font-medium text-muted-foreground">
@@ -19,15 +21,14 @@ export function AcquisitionDimensionFilter({ dimension }: { dimension: Acquisiti
         name="acquisition_dimension"
         defaultValue={dimension}
         key={dimension}
-        onChange={(event) => {
-          const form = event.currentTarget.form;
-          // A value from the old dimension must not be reused in the new one.
-          const segment = form?.elements.namedItem("acquisition_segment");
-          const search = form?.elements.namedItem("segment_search");
-          if (segment instanceof HTMLSelectElement) segment.value = "";
-          if (search instanceof HTMLInputElement) search.value = "";
-          form?.requestSubmit();
-        }}
+        // A value from the old dimension must not be reused in the new one.
+        onChange={(event) =>
+          navigate({
+            acquisition_dimension: event.currentTarget.value,
+            acquisition_segment: null,
+            segment_search: null,
+          })
+        }
       >
         {ACQUISITION_DIMENSIONS.map((item) => (
           <option key={item.value} value={item.value}>

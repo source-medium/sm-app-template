@@ -61,7 +61,8 @@ export function retentionOptions(params: SearchParams, today: string) {
     asOf,
     asOfIssue,
     maxMonth,
-    channel: single(params, "channel")?.slice(0, 100) || "online_dtc",
+    /** Null when the link names none; the page resolves it from the store's cohorts. */
+    channel: single(params, "channel")?.slice(0, 100) || null,
     dimension,
     segment: dimension === "no_filters" ? null : single(params, "acquisition_segment") || null,
     segmentSearch: single(params, "segment_search")?.slice(0, 200) || "",

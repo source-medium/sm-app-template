@@ -34,13 +34,13 @@ const stores = [
     currency: "GBP",
   },
 ];
-function setup(fixedStore = false) {
+function setup(fixedStore = false, roster = fixedStore ? stores.slice(0, 1) : stores, storeId = "a") {
   return render(
     <>
       <div id="report-store-switcher" />
       <StoreSwitcher
-        stores={fixedStore ? stores.slice(0, 1) : stores}
-        storeId="a"
+        stores={roster}
+        storeId={storeId}
         pathname="/overview"
         params={{ from: "2026-09-01", to: "2026-09-07", campaign: "old" }}
         fixedStore={fixedStore}
@@ -62,10 +62,24 @@ it("searches names, brands and IDs, disambiguates duplicate names and keeps the 
   expect(screen.getByRole("button", { name: "Switch store: US (a)" })).toHaveAttribute("data-store-id", "a");
   expect(screen.getByRole("button", { name: "Switch store: US (a)" })).toHaveAttribute("data-store-name", "US");
 });
-it("keeps fixed stores visible but not switchable", () => {
-  setup(true);
-  expect(screen.getByRole("button", { name: "Store: US" })).toBeDisabled();
-  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+it.each([
+  ["a fixed store", true],
+  ["a roster of one", false],
+])("shows %s as its name, with nothing to switch", (_, fixedStore) => {
+  const { container } = setup(fixedStore, stores.slice(0, 1));
+  const identity = container.querySelector('[data-slot="store-switcher"]');
+  expect(identity).toHaveTextContent(/Store\s*US$/);
+  expect(identity).toHaveAttribute("data-store-id", "a");
+  expect(identity).toHaveAttribute("data-store-name", "US");
+  expect(identity).toHaveAttribute("data-single-store");
+  expect(screen.queryByRole("button")).toBeNull();
+  expect(screen.queryByText("All stores")).toBeNull();
+});
+
+it("keeps the picker when a link names a store the roster of one does not list", () => {
+  setup(false, stores.slice(0, 1), "unknown");
+  fireEvent.click(screen.getByRole("button", { name: "Switch store: unknown" }));
+  expect(screen.getByRole("dialog", { name: "Switch store" })).toBeVisible();
 });
 
 it("reselecting the applied store closes the picker without dropping report filters", () => {

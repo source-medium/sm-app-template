@@ -64,6 +64,9 @@ function sampleRetentionWire(filters: RetentionFilters) {
     }),
   );
 }
+export function sampleRetentionChannels(filters: { storeId: string; asOf: string }): string[] {
+  return [...new Set(sampleRetentionWire({ ...filters, dimension: "no_filters" }).map((row) => row.channel))].sort();
+}
 export function sampleRetention(filters: RetentionFilters) {
   return decodeRetention(sampleRetentionWire(filters));
 }
