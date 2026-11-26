@@ -1,5 +1,6 @@
 import { formatInstant } from "@/lib/format";
 import { instanceInfo } from "@/lib/config/env.server";
+import { isPublicDemoVisitor } from "@/lib/auth/authenticate";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { SAMPLE_CONNECTION_REPORT } from "@/lib/data/connection-report";
 
@@ -12,6 +13,10 @@ export async function POST(request: Request) {
   target.host = request.headers.get("host") ?? target.host;
   if (request.headers.get("origin") !== target.origin) {
     return Response.json({ error: "Open Connection in this app to run the check." }, { status: 403, headers });
+  }
+  // The public demo runs no uncached warehouse checks for anonymous visitors.
+  if (isPublicDemoVisitor(access.viewer)) {
+    return Response.json({ error: "The public demo does not run connection checks." }, { status: 403, headers });
   }
   const report =
     access.mode === "sample" ? SAMPLE_CONNECTION_REPORT : await access.warehouse.checkConnection(request.signal);

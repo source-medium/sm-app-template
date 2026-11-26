@@ -48,6 +48,15 @@ that leaves it out, or a value this version does not know, shows the same steps.
 labels never authorize a request: the gateway viewer and the data API's app,
 deployment and membership checks still apply.
 
+SourceMedium's public demo is DemoCo's hosted app opened without sign-in, and
+only DemoCo's app can be. There the gateway sends an anonymous viewer (kind
+`public`: no user, email or name) and lets only reads through, and the data
+API serves the demo's live deployment alone, rate limiting each visitor. The
+app shows its reports as to anyone, labels the visitor **Public demo**, and
+offers no Refresh or connection check, the two actions that bypass the shared
+cache: called directly, Refresh does nothing and the check is refused. No other
+hosted app ever receives it.
+
 ## Change a hosted app
 
 An admin or editor can connect the hosted app to a GitHub repository and

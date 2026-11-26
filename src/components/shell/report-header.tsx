@@ -43,6 +43,7 @@ export function ReportHeader({
   currency = null,
   allStores = false,
   view,
+  canRefresh = true,
 }: {
   title: string;
   description: string;
@@ -63,6 +64,8 @@ export function ReportHeader({
   allStores?: boolean;
   /** Absent when the store's date is unknown; then the report is not loaded. */
   view?: ReportView;
+  /** False for a public demo visitor, who never bypasses the shared cache. */
+  canRefresh?: boolean;
 }) {
   // Shared links pin the applied dates and both comparisons, defaults included, so a colleague sees exactly
   // this period and its comparisons. Other links leave a default second comparison out (planParams).
@@ -121,7 +124,7 @@ export function ReportHeader({
             timeZone={timeZone}
           />
         )}
-        <RefreshReport />
+        {canRefresh && <RefreshReport />}
         {shareHref && (
           <ShareReport
             key={shareHref}
