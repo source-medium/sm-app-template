@@ -33,6 +33,7 @@ function makeCreative(overrides: Partial<Creative> = {}): Creative {
     body: "Body copy",
     name: "Fallback name",
     imageUrl: "https://cdn.example.com/crv-1.jpg",
+    imageFallbackUrl: null,
     media: [{ kind: "image", src: "https://cdn.example.com/crv-1.jpg" }],
     callToAction: "SHOP_NOW",
     channel: "meta_ads",

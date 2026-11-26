@@ -910,8 +910,11 @@ the ranked media and up to eight distinct images and eight videos from current i
 The Creatives view loads each ad's image straight from the URL in your
 warehouse (`ad_creative_image_url`, else `ad_creative_thumbnail_url`), from any
 https host, without a referrer; video cover images load the same way. Ad
-platforms do not promise how long those links last, so a card whose image fails
-shows the creative's text instead. A video file loads only when played and, like
+platforms do not promise how long those links last, and browser ad blockers
+refuse some of them (such as `facebook.com/ads/image/`). An image that fails
+tries the creative's thumbnail URL next, and only then shows the creative's
+text; a carousel image that fails is removed from the card's previews. A video
+file loads only when played and, like
 other media, sends the app's origin under the page's `Referrer-Policy`. To
 allow only specific image hosts, narrow `img-src` in
 `src/lib/security-headers.ts`.

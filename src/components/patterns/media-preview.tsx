@@ -6,8 +6,17 @@ import { cn } from "@/lib/utils";
 import { AssetVideo } from "./asset-video";
 import { CardImage } from "./card-image";
 
-export type PreviewMedia = { kind: "image"; src: string } | { kind: "video"; src: string; poster: string | null };
+/** An image's `fallbackSrc` is another URL for the same image, tried before the slide is dropped. */
+export type PreviewMedia =
+  { kind: "image"; src: string; fallbackSrc?: string | null } | { kind: "video"; src: string; poster: string | null };
 
+const mediaKey = (item: PreviewMedia) => item.kind + item.src;
+
+/**
+ * The creative's images and videos, one slide each. An image slide whose every
+ * source fails is removed, and the counter and controls count only the slides
+ * that remain; when none remain, the fallback shows once.
+ */
 export function MediaPreview({
   items,
   title,
@@ -22,7 +31,11 @@ export function MediaPreview({
   const track = useRef<HTMLDivElement>(null);
   const id = useId();
   const [index, setIndex] = useState(0);
-  const multiple = items.length > 1;
+  const [failed, setFailed] = useState<readonly string[]>([]);
+  const visible = items.filter((item) => !failed.includes(mediaKey(item)));
+  const multiple = visible.length > 1;
+  // A removed slide shifts the later ones down; the scroll offset then shows the slide now at this index.
+  const shown = Math.max(0, Math.min(index, visible.length - 1));
   function move(next: number) {
     const el = track.current;
     if (el) el.scrollTo({ left: el.clientWidth * next });
@@ -43,15 +56,18 @@ export function MediaPreview({
         onScroll={(event) => {
           const el = event.currentTarget;
           if (!el.clientWidth) return;
-          const next = Math.max(0, Math.min(items.length - 1, Math.round(el.scrollLeft / el.clientWidth)));
+          const next = Math.max(0, Math.min(visible.length - 1, Math.round(el.scrollLeft / el.clientWidth)));
           setIndex(next);
           for (const video of el.querySelectorAll("video")) {
             if (!el.children[next]?.contains(video) && !video.paused) video.pause();
           }
         }}
       >
-        {items.map((item, i) => (
-          <div key={item.kind + item.src} className="flex min-w-full shrink-0 basis-full snap-start overflow-hidden">
+        {visible.length === 0 && (
+          <div className="flex min-w-full shrink-0 basis-full snap-start overflow-hidden">{fallback}</div>
+        )}
+        {visible.map((item, i) => (
+          <div key={mediaKey(item)} className="flex min-w-full shrink-0 basis-full snap-start overflow-hidden">
             {item.kind === "video" ? (
               <AssetVideo
                 src={item.src}
@@ -67,9 +83,11 @@ export function MediaPreview({
             ) : (
               <CardImage
                 src={item.src}
+                fallbackSrc={item.fallbackSrc}
                 alt={`${title}, image ${i + 1}`}
                 fallback={fallback}
                 className="size-full object-contain"
+                onUnavailable={() => setFailed((keys) => [...keys, mediaKey(item)])}
               />
             )}
           </div>
@@ -81,21 +99,21 @@ export function MediaPreview({
             type="button"
             aria-label="Previous media"
             aria-controls={id}
-            disabled={index === 0}
-            onClick={() => move(index - 1)}
+            disabled={shown === 0}
+            onClick={() => move(shown - 1)}
             className="grid size-9 place-items-center rounded hover:bg-muted disabled:opacity-30"
           >
             <ChevronLeft size={17} />
           </button>
           <span aria-live="polite">
-            {items[index]?.kind === "video" ? "Video" : "Image"} {index + 1} of {items.length}
+            {visible[shown]?.kind === "video" ? "Video" : "Image"} {shown + 1} of {visible.length}
           </span>
           <button
             type="button"
             aria-label="Next media"
             aria-controls={id}
-            disabled={index >= items.length - 1}
-            onClick={() => move(index + 1)}
+            disabled={shown >= visible.length - 1}
+            onClick={() => move(shown + 1)}
             className="grid size-9 place-items-center rounded hover:bg-muted disabled:opacity-30"
           >
             <ChevronRight size={17} />

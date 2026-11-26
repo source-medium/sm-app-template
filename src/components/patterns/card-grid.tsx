@@ -23,6 +23,8 @@ export type GridCard = {
   /** Short facts beside the badge, such as a format or "New"; the first is emphasized when `highlight` is set. */
   tags?: { label: string; highlight?: boolean }[];
   imageUrl: string | null;
+  /** Another URL for the same image, tried when `imageUrl` fails before the card falls back to text. */
+  imageFallbackUrl?: string | null;
   media?: PreviewMedia[];
   /** `change` is the metric's change against the report's comparison, colored by its measure's polarity. */
   metrics: { label: string; display: string; change?: { display: string; tone: ChangeTone | null } }[];
@@ -44,6 +46,7 @@ export function CardGrid({ cards, label }: { cards: GridCard[]; label: string })
             ) : card.imageUrl ? (
               <CardImage
                 src={card.imageUrl}
+                fallbackSrc={card.imageFallbackUrl}
                 alt={card.title}
                 fallback={<TextPanel card={card} />}
                 // Shorter on a phone so a card's numbers stay near its image; contained, so no creative is cropped.

@@ -94,6 +94,7 @@ export function SelectionBar({
       platform,
       title: c ? creativeTitle(c) : id,
       image: c?.imageUrl,
+      imageFallback: c?.imageFallbackUrl,
       format: c?.format ? creativeFormatLabel(c.format) : null,
       started: c?.firstSpend && c.firstSpend.when !== "older" ? c.firstSpend.date : null,
     };
@@ -144,7 +145,13 @@ export function SelectionBar({
                     className="grid size-9 shrink-0 place-items-center overflow-hidden rounded bg-muted"
                   >
                     {pick.image ? (
-                      <CardImage src={pick.image} alt="" fallback={mark} className="size-full object-contain" />
+                      <CardImage
+                        src={pick.image}
+                        fallbackSrc={pick.imageFallback}
+                        alt=""
+                        fallback={mark}
+                        className="size-full object-contain"
+                      />
                     ) : (
                       mark
                     )}
