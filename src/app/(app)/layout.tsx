@@ -10,6 +10,7 @@ import { TopBar } from "@/components/shell/top-bar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConfigurationError, requireViewer, type ViewerAccess } from "@/lib/auth/require-viewer";
+import { loadStores } from "@/lib/data/stores.server";
 import { parseTheme, THEME_COOKIE } from "@/lib/theme";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -42,7 +43,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         >
           Skip to report
         </a>
-        <AppSidebar fixedStore={access.storeId !== null} sample={access.mode === "sample"} theme={theme} />
+        <AppSidebar
+          fixedStore={access.storeId !== null}
+          // The request's store list, shared with the report (loadStores is cached per request); never awaited here.
+          storeCount={loadStores().then(
+            (stores) => stores.length,
+            () => null,
+          )}
+          sample={access.mode === "sample"}
+          theme={theme}
+        />
         <SidebarInset>
           <TopBar mode={access.mode} viewer={access.viewer} />
           {/* scroll-mt keeps the report title below the sticky top bar when the skip link scrolls to it. */}

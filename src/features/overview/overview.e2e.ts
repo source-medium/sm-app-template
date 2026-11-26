@@ -453,21 +453,41 @@ test("overview: an unknown channel stays explicit and can be reset", async ({ pa
   await expect(page.getByRole("table", { name: "Business summary", exact: true })).toBeVisible();
 });
 
-test("overview: date and channel drafts apply together, and invalid ranges never silently change", async ({ page }) => {
+test("overview: a channel applies by itself while a date draft waits, and invalid ranges never silently change", async ({
+  page,
+}) => {
   await page.goto("/overview?store=sample-store-a&from=2026-09-09&to=2026-09-28");
   await openDates(page);
-  await page.getByLabel("From", { exact: true }).fill("2026-09-01");
-  await expect(page).toHaveURL(/from=2026-09-09/);
+  await page.getByLabel("From", { exact: true }).fill("2026-09-30");
   await choose(page, "Sales channel", "amazon");
+  // The channel applies alone: the invalid date draft neither travels with it nor blocks it.
   await expect(page).toHaveURL(
-    (url) => url.searchParams.get("from") === "2026-09-01" && url.searchParams.get("sales_channel") === "amazon",
+    (url) => url.searchParams.get("from") === "2026-09-09" && url.searchParams.get("sales_channel") === "amazon",
+  );
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+  // Sidebar links carry the applied channel to reports that share its population, and not to others.
+  const sidebar = page.locator('[data-sidebar="sidebar"]');
+  await expect(sidebar.getByRole("link", { name: "Products", exact: true })).toHaveAttribute(
+    "href",
+    /sales_channel=amazon/,
+  );
+  await expect(sidebar.getByRole("link", { name: "Paid marketing", exact: true })).not.toHaveAttribute(
+    "href",
+    /sales_channel/,
   );
   await openDates(page);
-  await page.getByLabel("From", { exact: true }).fill("2026-09-30");
-  await choose(page, "Sales channel", "");
+  await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-09-30");
+  await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toContainText("start date must be on or before");
-  await expect(page).toHaveURL(/from=2026-09-01/);
+  await expect(page).toHaveURL(/from=2026-09-09/);
   await expect(page.getByLabel("From", { exact: true })).toBeFocused();
+  // An explicit All carries too, so the next report does not fall back to its own default channels.
+  await choose(page, "Sales channel", "");
+  await expect(page).toHaveURL((url) => url.searchParams.get("sales_channel") === "");
+  await expect(sidebar.getByRole("link", { name: "Products", exact: true })).toHaveAttribute(
+    "href",
+    /sales_channel=(&|$)/,
+  );
   await page.getByLabel("From", { exact: true }).fill("2025-01-01");
   await page.getByRole("form", { name: "Report filters" }).getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toContainText("366 days or fewer");
@@ -786,7 +806,8 @@ test("sidebar links carry shared store and dates, start the next report fresh, a
       url.searchParams.get("to") === "2026-09-07",
   );
   const next = new URL(page.url()).searchParams;
-  expect(next.has("sales_channel")).toBe(false);
+  // The channel goes only to a report that reads it (app.config.ts `salesChannel`).
+  expect(next.get("sales_channel")).toBe(other.salesChannel ? "amazon" : null);
   expect(next.get("compare")).toBe(other.comparisons ? "off" : null);
   await page.goBack();
   await expect(page).toHaveURL(/sales_channel=amazon/);

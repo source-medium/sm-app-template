@@ -12,6 +12,7 @@ import type { ReportSource } from "@/lib/report-data";
 import { AboutData } from "./about-data";
 import { RefreshReport } from "./refresh-report";
 import { ShareReport } from "./share-report";
+import { ReportPendingStatus } from "./report-navigation";
 
 /** The applied report state, once the store's date is known. */
 export type ReportView = {
@@ -114,6 +115,7 @@ export function ReportHeader({
         )}
       </div>
       <div className="flex flex-wrap items-center gap-1">
+        <ReportPendingStatus />
         {sources.length > 0 && (
           <AboutData
             key={JSON.stringify(agentContext)}

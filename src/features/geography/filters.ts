@@ -1,4 +1,4 @@
-import { parseSalesChannel, single, type SearchParams } from "@/lib/filters";
+import { reportSalesChannel, single, type SearchParams } from "@/lib/filters";
 import { parseShippingDestination } from "@/lib/shipping-geography";
 import type { OrderDateBasis } from "@/lib/order-scope";
 export function geographyOptions(params: SearchParams) {
@@ -11,5 +11,5 @@ export function geographyOptions(params: SearchParams) {
       : region && !country
         ? "A shipping region requires its country."
         : null;
-  return { dateBasis, country, region, channel: parseSalesChannel(params), issue };
+  return { dateBasis, country, region, channel: reportSalesChannel(params), issue };
 }

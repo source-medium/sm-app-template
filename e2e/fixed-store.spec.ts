@@ -14,11 +14,13 @@ for (const item of appConfig.nav.filter((item) => item.scope !== "all-stores")) 
     await page.goto(item.href);
     await expect(page.getByTestId("mode-chip")).toHaveText("Sample data");
     await expect(page.getByRole("status")).toHaveCount(0);
-    const picker = page.getByRole("button", { name: /^(Switch store|Store):/ });
     if (await page.locator("[data-agent-page]").count()) {
-      await expect(picker).toBeVisible();
-      await expect(picker).toBeDisabled();
-      await expect(picker).toHaveAttribute("data-store-id", "sample-store-b");
+      // One store to show: its name, with nothing to switch to.
+      const store = page.locator('[data-slot="store-switcher"]');
+      await expect(store).toBeVisible();
+      await expect(store).toHaveAttribute("data-single-store");
+      await expect(store).toHaveAttribute("data-store-id", "sample-store-b");
+      await expect(page.getByRole("button", { name: /^Switch store/ })).toHaveCount(0);
       await expect(page.getByRole("link", { name: "All stores", exact: true })).toHaveCount(0);
       await page.getByRole("button", { name: "Vibe code" }).click();
       expect(await page.getByRole("dialog").getByLabel("Prompt", { exact: true }).inputValue()).toContain(
@@ -107,6 +109,7 @@ test("a fixed-store deployment redirects the portfolio to its permitted store", 
   expect(new URL(page.url()).pathname).toBe(destination);
   expect(new URL(page.url()).searchParams.get("store")).toBe("sample-store-b");
   expect(new URL(page.url()).searchParams.get("from")).toBe("2026-09-01");
-  await expect(page.getByRole("button", { name: /^(Switch store|Store):/ })).toBeDisabled();
+  await expect(page.locator('[data-slot="store-switcher"]')).toHaveAttribute("data-store-id", "sample-store-b");
+  await expect(page.getByRole("button", { name: /^Switch store/ })).toHaveCount(0);
   expect((await request.get("/stores?store=sample-store-a")).status()).toBe(403);
 });

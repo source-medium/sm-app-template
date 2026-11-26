@@ -1,30 +1,27 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { expect, it } from "vitest";
-import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
+import { beforeEach, expect, it, vi } from "vitest";
+import { ReportNavigationProvider } from "@/components/shell/report-navigation";
 import { AcquisitionDimensionFilter, AcquisitionSegmentFilter } from "./segmentation-controls";
 
-it("clears the old dimension's value and search before submitting the existing report form", () => {
-  let submitted: FormData | undefined;
+const { router, navigationModule } = await vi.hoisted(() => import("../../../tests/helpers/navigation"));
+vi.mock("next/navigation", () => navigationModule());
+beforeEach(() => router.reset());
+
+it("clears the old dimension's value and search when the dimension changes", () => {
+  router.pathname = "/retention";
+  router.search =
+    "store=sample-store-a&acquisition_dimension=campaign&acquisition_segment=Prospecting&segment_search=prospect";
   render(
-    <>
-      <form
-        id={REPORT_FILTER_FORM_ID}
-        onSubmit={(event) => {
-          event.preventDefault();
-          submitted = new FormData(event.currentTarget);
-        }}
-      >
-        <input type="hidden" name="store" value="sample-store-a" />
-      </form>
+    <ReportNavigationProvider>
       <AcquisitionDimensionFilter dimension="campaign" />
       <AcquisitionSegmentFilter segment="Prospecting" search="prospect" values={["Prospecting"]} truncated={false} />
-    </>,
+    </ReportNavigationProvider>,
   );
   fireEvent.change(screen.getByLabelText("Segment cohorts by"), { target: { value: "discount_code" } });
-  expect(submitted?.get("store")).toBe("sample-store-a");
-  expect(submitted?.get("acquisition_dimension")).toBe("discount_code");
-  expect(submitted?.get("acquisition_segment")).toBe("");
-  expect(submitted?.get("segment_search")).toBe("");
+  expect(router.push).toHaveBeenCalledExactlyOnceWith(
+    "/retention?store=sample-store-a&acquisition_dimension=discount_code",
+    { scroll: false },
+  );
 });
 
 it("keeps an applied value visible when a narrowed or partial options list excludes it", () => {

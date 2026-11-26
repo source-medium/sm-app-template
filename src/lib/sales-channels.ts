@@ -8,3 +8,12 @@ export const VALID_SALES_CHANNELS: readonly string[] = ["online_dtc", "amazon", 
 export function isValidSalesChannel(channel: string | null): boolean {
   return channel !== null && VALID_SALES_CHANNELS.includes(channel);
 }
+
+/**
+ * The choices a business report's sales-channel selector offers: the valid channels only.
+ * Draft, exchanged, excluded and *_via_shopify rows are not sales; a link that names one
+ * still applies it and shows it as applied.
+ */
+export function sellingChannels(channels: readonly string[]): string[] {
+  return channels.filter(isValidSalesChannel);
+}

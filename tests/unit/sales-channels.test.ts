@@ -4,7 +4,7 @@ import {
   matchesSalesChannel,
   parseSalesChannel,
   salesChannelValues,
-  summarySalesChannel,
+  reportSalesChannel,
 } from "@/lib/filters";
 it("keeps old one-channel links and canonical multi-selection including punctuation", () => {
   expect(parseSalesChannel({ sales_channel: "Online DTC" })).toBe("Online DTC");
@@ -14,7 +14,7 @@ it("keeps old one-channel links and canonical multi-selection including punctuat
   expect(matchesSalesChannel(selection, "other")).toBe(false);
   expect(matchesSalesChannel(null, "other")).toBe(true);
   expect(encodeSalesChannels([])).toBeNull();
-  expect(summarySalesChannel({ sales_channel: "" })).toBeNull();
+  expect(reportSalesChannel({ sales_channel: "" })).toBeNull();
 });
 it.each(["[null]", "[]", "[1]", '["x",null]', "[" + "x".repeat(7000)])(
   "keeps an invalid choice explicit instead of widening: %s",

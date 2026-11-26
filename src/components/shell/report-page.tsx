@@ -37,6 +37,7 @@ import {
 import type { ReportSource } from "@/lib/report-data";
 import { ReportFilterBar } from "./report-filter-bar";
 import { ReportHeader } from "./report-header";
+import { ReportBusy, ReportNavigationProvider } from "./report-navigation";
 
 /**
  * `timeZone` is the store's SourceMedium time zone; `today` is its current date there.
@@ -111,7 +112,7 @@ export async function ReportPage({
    * month. They apply like URL parameters: frozen in share links and listed
    * for agents.
    */
-  defaults?: (today: string) => Record<string, string>;
+  defaults?: (today: string, storeId: string) => Record<string, string> | Promise<Record<string, string>>;
   children: (context: ReportContext) => React.ReactNode;
 }) {
   const access = await requireViewer();
@@ -139,14 +140,16 @@ export async function ReportPage({
   const store = await resolveReportStore(single(params, "store"));
   if (store.status === "no_store") {
     return (
-      <div className="flex flex-col gap-4">
-        <ReportHeader {...header} params={params} />
-        {store.error ? (
-          <WarehouseErrorState error={store.error} />
-        ) : (
-          <EmptyState message="This warehouse has no stores available yet." />
-        )}
-      </div>
+      <ReportNavigationProvider>
+        <div className="flex flex-col gap-4">
+          <ReportHeader {...header} params={params} />
+          {store.error ? (
+            <WarehouseErrorState error={store.error} />
+          ) : (
+            <EmptyState message="This warehouse has no stores available yet." />
+          )}
+        </div>
+      </ReportNavigationProvider>
     );
   }
   // The request's store list, shared with resolveReportStore when it needed one; the filter bar renders it.
@@ -160,27 +163,29 @@ export async function ReportPage({
       () => true,
     );
     return (
-      <div className="flex flex-col gap-4">
-        <ReportHeader {...header} params={params} storeId={store.storeId} />
-        <ReportFilterBar
-          roster={roster}
-          storeId={store.storeId}
-          pathname={pathname}
-          params={params}
-          range={null}
-          today={null}
-          dates={false}
-          allStores={allStores}
-          fixedStore={fixedStore}
-        />
-        {store.error && !rosterFailed && <WarehouseErrorState error={store.error} />}
-      </div>
+      <ReportNavigationProvider>
+        <div className="flex flex-col gap-4">
+          <ReportHeader {...header} params={params} storeId={store.storeId} />
+          <ReportFilterBar
+            roster={roster}
+            storeId={store.storeId}
+            pathname={pathname}
+            params={params}
+            range={null}
+            today={null}
+            dates={false}
+            allStores={allStores}
+            fixedStore={fixedStore}
+          />
+          {store.error && !rosterFailed && <WarehouseErrorState error={store.error} />}
+        </div>
+      </ReportNavigationProvider>
     );
   }
   // Links built from params name the store, so the next page can run its queries in parallel.
   const { storeId, timeZone, currency } = store;
   const today = calendarDate(new Date(), timeZone);
-  const derived = defaults?.(today) ?? {};
+  const derived = (await defaults?.(today, storeId)) ?? {};
   params = { ...params, ...derived };
   const range = parseDateRange(params, today, maxDays);
   const issue = dates ? dateRangeIssue(params, today, maxDays) : null;
@@ -203,72 +208,76 @@ export async function ReportPage({
       </Suspense>
     ) : null;
   return (
-    <div className="flex flex-col gap-4">
-      <ReportHeader
-        {...header}
-        clientPresentationParams={presentationParams}
-        params={params}
-        storeId={storeId}
-        currency={allStores ? null : currency}
-        view={{ range, issue, plan, derived, fixed: dateParams.fixed, live: dateParams.live }}
-        timeZone={timeZone}
-      />
-      <ReportFilterBar
-        roster={roster}
-        storeId={storeId}
-        pathname={pathname}
-        params={params}
-        range={range}
-        dateParams={dateParams}
-        today={today}
-        maxDays={maxDays}
-        comparisonLabel={comparisonLabel}
-        dates={dates}
-        plan={plan}
-        dateIssue={Boolean(issue)}
-        allStores={allStores}
-        fixedStore={fixedStore}
-      />
-      {!dataStatusAfterControls && dataStatus}
-      {issue ? (
-        <ErrorState
-          tone="warning"
-          title="Check the date range"
-          remedy={`${issue} The dates above show a suggested range. Apply it or pick another range to load the report.`}
+    <ReportNavigationProvider>
+      <div className="flex flex-col gap-4">
+        <ReportHeader
+          {...header}
+          clientPresentationParams={presentationParams}
+          params={params}
+          storeId={storeId}
+          currency={allStores ? null : currency}
+          view={{ range, issue, plan, derived, fixed: dateParams.fixed, live: dateParams.live }}
+          timeZone={timeZone}
         />
-      ) : (
-        <BaselineProvider available={[!!plan?.slots[0].range, !!plan?.slots[1].range]}>
-          <ChartMemoryProvider initial={chartMemory}>
-            {children({
-              filters: { storeId, range },
-              params: { ...(dates ? withDates(params, dateParams.live) : params), store: storeId },
-              dates: dateParams,
-              plan,
-              today,
-              timeZone,
-              currency,
-              dataStatus,
-            })}
-          </ChartMemoryProvider>
-        </BaselineProvider>
-      )}
-      <footer className="border-t pt-4 text-xs text-muted-foreground">
-        {access.mode === "sample"
-          ? "Synthetic sample data for demonstration; not from any warehouse."
-          : "Data freshness unknown."}
-        {dates &&
-          (allStores
-            ? ` The same calendar dates are used in each store's local time. Default dates use ${zoneLabel}.`
-            : ` Dates are calendar dates in the store's time zone, ${zoneLabel}.`)}
-        {dates && range.to === today && " Today may be incomplete."}
-        <span className="mt-1 block">
-          {allStores
-            ? "Reporting currencies are shown per store. Amounts are never added across stores."
-            : currency
-              ? `Reporting currency: ${currency}.`
-              : "Reporting currency unknown."}
-        </span>
-      </footer>
-    </div>
+        <ReportFilterBar
+          roster={roster}
+          storeId={storeId}
+          pathname={pathname}
+          params={params}
+          range={range}
+          dateParams={dateParams}
+          today={today}
+          maxDays={maxDays}
+          comparisonLabel={comparisonLabel}
+          dates={dates}
+          plan={plan}
+          dateIssue={Boolean(issue)}
+          allStores={allStores}
+          fixedStore={fixedStore}
+        />
+        <ReportBusy>
+          {!dataStatusAfterControls && dataStatus}
+          {issue ? (
+            <ErrorState
+              tone="warning"
+              title="Check the date range"
+              remedy={`${issue} The dates above show a suggested range. Apply it or pick another range to load the report.`}
+            />
+          ) : (
+            <BaselineProvider available={[!!plan?.slots[0].range, !!plan?.slots[1].range]}>
+              <ChartMemoryProvider initial={chartMemory}>
+                {children({
+                  filters: { storeId, range },
+                  params: { ...(dates ? withDates(params, dateParams.live) : params), store: storeId },
+                  dates: dateParams,
+                  plan,
+                  today,
+                  timeZone,
+                  currency,
+                  dataStatus,
+                })}
+              </ChartMemoryProvider>
+            </BaselineProvider>
+          )}
+          <footer className="border-t pt-4 text-xs text-muted-foreground">
+            {access.mode === "sample"
+              ? "Synthetic sample data for demonstration; not from any warehouse."
+              : "Data freshness unknown."}
+            {dates &&
+              (allStores
+                ? ` The same calendar dates are used in each store's local time. Default dates use ${zoneLabel}.`
+                : ` Dates are calendar dates in the store's time zone, ${zoneLabel}.`)}
+            {dates && range.to === today && " Today may be incomplete."}
+            <span className="mt-1 block">
+              {allStores
+                ? "Reporting currencies are shown per store. Amounts are never added across stores."
+                : currency
+                  ? `Reporting currency: ${currency}.`
+                  : "Reporting currency unknown."}
+            </span>
+          </footer>
+        </ReportBusy>
+      </div>
+    </ReportNavigationProvider>
   );
 }
