@@ -2,7 +2,8 @@ import "server-only";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { parseChoice, single, type ReportFilters, type SearchParams } from "@/lib/filters";
 import { queryProductChannels, queryProducts, queryProductCoverage, queryProductImages } from "./bigquery";
-import type { Product, ProductCoverage } from "./rows";
+import { MAX_PRODUCT_SEARCH, type Product, type ProductCoverage } from "./rows";
+import { productPageParam } from "./paging";
 import { sampleProductSource, sampleProducts, aggregateProductCoverage } from "./sample";
 import type { BaselineRanges, Polarity } from "@/lib/comparison";
 import { WarehouseError } from "@/lib/data/warehouse-error";
@@ -36,8 +37,17 @@ export type ProductFilters = ReportFilters & {
   channel?: string | null;
   entity?: string | null;
   ranking?: "value" | "gainers" | "decliners";
+  /** Title contains, or an exact product, variant or SKU ID; case-insensitive. */
+  q?: string | null;
+  /** 1-based page of PRODUCT_PAGE_SIZE rows. */
+  page?: number;
 };
-export type ProductsData = { rows: Product[]; hasMore: boolean };
+/**
+ * One page of ranked rows. `matched` counts every ranked product the search
+ * matches; `hasMore` is a later page within MAX_PRODUCT_ROWS; `truncated` says
+ * matches exist past that bound.
+ */
+export type ProductsData = { rows: Product[]; hasMore: boolean; matched: bigint; page: number; truncated: boolean };
 
 export function productOptions(params: SearchParams) {
   return {
@@ -60,12 +70,20 @@ export function productOptions(params: SearchParams) {
       PRODUCT_METRICS.map((item) => item.value),
       "revenue",
     ),
+    q: single(params, "q")?.trim().slice(0, MAX_PRODUCT_SEARCH) || null,
+    page: productPageParam(single(params, "page")),
   };
 }
 
-export async function getProducts(filters: ProductFilters, baselines: BaselineRanges): Promise<ProductsData> {
+/** One page of ranked products, or with `all` the whole bounded set an export writes. */
+export async function getProducts(
+  filters: ProductFilters,
+  baselines: BaselineRanges,
+  options?: { all?: boolean },
+): Promise<ProductsData> {
   const access = await requireViewer({ storeId: filters.storeId });
-  return access.mode === "live" ? queryProducts(filters, baselines) : sampleProducts(filters, baselines);
+  const all = options?.all;
+  return access.mode === "live" ? queryProducts(filters, baselines, all) : sampleProducts(filters, baselines, all);
 }
 
 /** Photos are optional decoration. Catalog failures remain logged by the warehouse and never hide valid metrics. */

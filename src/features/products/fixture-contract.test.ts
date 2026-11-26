@@ -74,7 +74,7 @@ it("sums exact valid-order lines without merging duplicate titles, platforms, or
   expect(aggregateProducts(source, { ...filters, dimension: "variant" }, [null, null]).rows).toHaveLength(4);
 });
 
-it("keeps full totals before top ten and gives both periods the same product scope", () => {
+it("keeps full totals before the page and gives both periods the same product scope", () => {
   const source = Array.from({ length: 12 }, (_, index) => ({
     ...line,
     productId: `p${index}`,
@@ -85,10 +85,15 @@ it("keeps full totals before top ten and gives both periods the same product sco
     { from: "2026-08-30", to: "2026-08-31" },
     null,
   ]);
-  expect(data.hasMore).toBe(true);
-  expect(data.rows).toHaveLength(10);
+  expect(data).toMatchObject({ hasMore: false, matched: 12n, page: 1 });
+  expect(data.rows).toHaveLength(12);
   expect(data.rows[0]?.total_revenue).toBe("78");
-  expect(sumDecimals(data.rows.map((row) => row.revenue))).toBe("75");
+  expect(sumDecimals(data.rows.map((row) => row.revenue))).toBe("78");
+  // A search narrows the rows, never the totals or each row's share base.
+  const searched = aggregateProducts(source, { ...filters, q: "P11" }, [null, null]);
+  expect(searched.rows.map((row) => row.revenue)).toEqual(["12"]);
+  expect(searched).toMatchObject({ matched: 1n, hasMore: false });
+  expect(searched.rows[0]?.total_revenue).toBe("78");
   expect(data.rows[0]?.total_previous_revenue).toBe("4");
   expect(aggregateProducts(source, { ...filters, metric: "profit" }, [null, null]).rows[0]?.minimum_value).toBe("-1");
 });
@@ -98,7 +103,13 @@ it("provides deterministic sample rows for both stores and empty results for an 
   expect(sampleProducts({ ...filters, storeId: "sample-store-b" }, [null, null]).rows[0]?.total_revenue).not.toBe(
     sampleProducts(filters, [null, null]).rows[0]?.total_revenue,
   );
-  expect(sampleProducts({ ...filters, storeId: "unknown" }, [null, null])).toEqual({ rows: [], hasMore: false });
+  expect(sampleProducts({ ...filters, storeId: "unknown" }, [null, null])).toEqual({
+    rows: [],
+    hasMore: false,
+    matched: 0n,
+    page: 1,
+    truncated: false,
+  });
 });
 
 it("uses the latest non-empty product image independently of financial totals", () => {

@@ -16,7 +16,7 @@ import { ReportPage } from "@/components/shell/report-page";
 import { channelName, REPORT_FILTER_FORM_ID, salesChannelLabel, withParams, type SearchParams } from "@/lib/filters";
 import { EMPTY_VALUE, formatCount, formatInstant, formatLabel, formatMoney, formatWallTime } from "@/lib/format";
 import { OrderDrawer } from "./order-drawer";
-import { OrderSearchForm } from "./search-form";
+import { ReportSearch } from "@/components/patterns/report-search";
 import {
   encodeRef,
   ordersOptions,
@@ -139,7 +139,14 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               id="orders-heading"
               title="Orders, newest first"
               headingProps={{ tabIndex: -1 }}
-              actions={<OrderSearchForm search={search ?? ""} />}
+              actions={
+                <ReportSearch
+                  label="Find an order"
+                  placeholder="Name, number, or id"
+                  value={search ?? ""}
+                  maxLength={64}
+                />
+              }
             />
             {scopeIssue ? (
               <ErrorState title="Check order scope" remedy={scopeIssue} tone="warning" />

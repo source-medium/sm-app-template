@@ -5,8 +5,8 @@ import { decodeRows } from "@/lib/data/decode";
 import type { ReportFilters } from "@/lib/filters";
 import { dateTimeWindow, PERIOD_COVERAGE, periodParams, periodSql } from "@/lib/data/period-sql";
 import type { ProductFilters, ProductsData } from "./queries";
+import { productPage, productWindow } from "./paging";
 import {
-  MAX_PRODUCTS,
   PRODUCTS_RELATION,
   ProductChannelRow,
   ProductRow,
@@ -80,23 +80,33 @@ export async function queryProductCoverage(
   return row;
 }
 
-export async function queryProducts(filters: ProductFilters, baselines: BaselineRanges): Promise<ProductsData> {
+export async function queryProducts(
+  filters: ProductFilters,
+  baselines: BaselineRanges,
+  all?: boolean,
+): Promise<ProductsData> {
   const { warehouse } = await requireViewer({ live: true, storeId: filters.storeId });
   const dimension = DIMENSIONS[filters.dimension];
   const sort = SORTS[filters.metric];
   const measures = Object.entries(MEASURES);
   const period = periodSql("DATE(order_processed_at_local_datetime)");
+  const { offset, limit } = productWindow(filters.page, all);
   const result = await warehouse.query({
     name: "products_ranked",
     cache: CACHE_POLICY.aggregate,
-    maxRows: MAX_PRODUCTS + 1,
+    maxRows: limit,
     sql: `WITH grouped AS (
       SELECT ${dimension.key} AS product_key,
         -- Equal timestamps choose a stable label directly, avoiding a scan of every order-line key just to break ties.
         ARRAY_AGG(${dimension.label} ORDER BY order_processed_at_local_datetime DESC, ${dimension.label} DESC LIMIT 1)[OFFSET(0)] AS label,
         MAX(${dimension.reference}) AS reference,
         ${measures.map(([name, column]) => period.sum(column, name)).join(",\n")},
-        ${period.latest}
+        ${period.latest},
+        -- The search: a title containing it, or an exact product, variant or SKU ID.
+        LOGICAL_OR(@q = ''
+          OR STRPOS(LOWER(IFNULL(product_title, '')), LOWER(@q)) > 0
+          OR STRPOS(LOWER(IFNULL(product_variant_title, '')), LOWER(@q)) > 0
+          OR LOWER(@q) IN (LOWER(IFNULL(product_id, '')), LOWER(IFNULL(product_variant_id, '')), LOWER(IFNULL(sku, '')))) AS matches
       FROM ${warehouse.table(PRODUCTS_RELATION)}
       WHERE sm_store_id = @store_id AND is_order_sm_valid = TRUE
         AND ${SALES_CHANNEL_PREDICATE}
@@ -105,21 +115,24 @@ export async function queryProducts(filters: ProductFilters, baselines: Baseline
     )
     SELECT ${PERIOD_COVERAGE},
       ${measures.flatMap(([name]) => [`SUM(${name}) OVER () AS total_${name}`, `SUM(previous_${name}) OVER () AS total_previous_${name}`, `SUM(second_${name}) OVER () AS total_second_${name}`]).join(",\n")},
-      MIN(${sort}) OVER () AS minimum_value
+      MIN(${sort}) OVER () AS minimum_value,
+      COUNTIF(${sort} IS NOT NULL AND matches) OVER () AS matched_count
     FROM grouped ${filters.entity ? "WHERE product_key = @entity" : ""}
-    -- Keep all periods in the window totals, then exclude comparison-only products before the limit.
-    QUALIFY ${sort} IS NOT NULL
+    -- Totals cover every product in the window, whatever the search; then comparison-only and
+    -- unmatched products leave before the page.
+    QUALIFY ${sort} IS NOT NULL AND matches
     -- Period gainers and decliners rank against the first comparison period.
-    ORDER BY ${filters.ranking === "gainers" ? `${sort} - previous_${sort} DESC` : filters.ranking === "decliners" ? `${sort} - previous_${sort} ASC` : `${sort} DESC`} NULLS LAST, product_key LIMIT ${MAX_PRODUCTS + 1}`,
+    ORDER BY ${filters.ranking === "gainers" ? `${sort} - previous_${sort} DESC` : filters.ranking === "decliners" ? `${sort} - previous_${sort} ASC` : `${sort} DESC`} NULLS LAST, product_key LIMIT ${limit} OFFSET ${offset}`,
     params: [
       { name: "store_id", type: "STRING", value: filters.storeId },
       { name: "channel", type: "STRING", value: filters.channel ?? "" },
+      { name: "q", type: "STRING", value: filters.q ?? "" },
       ...(filters.entity ? [{ name: "entity", type: "STRING" as const, value: filters.entity }] : []),
       ...periodParams(filters.range, baselines[0], baselines[1]),
     ],
   });
   const rows = decodeRows(ProductRow, result.rows, PRODUCTS_RELATION);
-  return { rows: rows.slice(0, MAX_PRODUCTS), hasMore: rows.length > MAX_PRODUCTS };
+  return productPage(rows, rows[0]?.matched_count ?? 0n, filters.page, all);
 }
 
 /** One bounded catalog lookup for the visible identities, independent of financial report availability. */

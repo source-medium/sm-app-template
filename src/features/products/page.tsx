@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { REPORT_FILTER_FORM_ID } from "@/lib/filters";
 import { drillDown } from "@/lib/drill-down";
-import { PRODUCTS_RELATION } from "./rows";
+import { MAX_PRODUCTS, MAX_PRODUCT_ROWS, MAX_PRODUCT_SEARCH, PRODUCT_PAGE_SIZE, PRODUCTS_RELATION } from "./rows";
+import { Download } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { SectionHeader } from "@/components/patterns/section-header";
+import { ReportSearch } from "@/components/patterns/report-search";
+import { ProductPager } from "./pager";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ReportPage } from "@/components/shell/report-page";
@@ -21,7 +26,7 @@ import { ChannelRosterFilter } from "@/components/patterns/channel-filter";
 import { SelectFilter } from "@/components/patterns/select-filter";
 import { planRanges, slotChanges } from "@/lib/comparison";
 import { nonnegativeShare } from "@/lib/data/decimal";
-import { formatMeasure, formatMoneyIn, moneyAxis } from "@/lib/format";
+import { formatCount, formatMeasure, formatMoneyIn, moneyAxis } from "@/lib/format";
 import { reportSalesChannel, salesChannelLabel, withParams, type SearchParams } from "@/lib/filters";
 import { Disclosure } from "@/components/ui/disclosure";
 import {
@@ -66,11 +71,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         dimension: options.dimension,
         metric: options.metric,
         ranking: options.ranking,
+        q: options.q,
       }}
       agentOmissions={options.entity ? ["Selected product or variant identity"] : []}
       comparisons
     >
-      {({ filters, dates, plan, timeZone, currency, dataStatus }) => {
+      {({ filters, dates, plan, timeZone, currency, dataStatus, params: applied }) => {
         const money = formatMoneyIn(currency);
         const format = options.metric === "units" || options.metric === "refunded_units" ? formatMeasure : money;
         const metricLabel = PRODUCT_METRICS.find((item) => item.value === options.metric)?.label ?? "Net revenue";
@@ -82,6 +88,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 `${options.entity ? "Selected " : ""}${options.dimension === "product" ? "Products" : "Variants"}`,
                 metricLabel,
                 PRODUCT_RANKINGS.find((item) => item.value === options.ranking)?.label,
+                options.q && `Search “${options.q}”`,
               ]}
             >
               <ChannelRosterFilter
@@ -118,22 +125,54 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             {options.entity && (
               <p className="text-sm">All totals below are scoped to the selected {options.dimension} identity.</p>
             )}
+            {/* The search narrows the ranked list, so it sits in the list's header, as on Orders. */}
+            <SectionHeader
+              title={`${options.entity ? "Selected" : "Ranked"} ${options.dimension === "product" ? "products" : "variants"}`}
+              description="Totals cover every product in the period; the search narrows the ranked list."
+              actions={
+                <div className="flex flex-wrap items-end gap-3">
+                  <ReportSearch
+                    label={`Find a ${options.dimension}`}
+                    placeholder="Title, product ID or SKU"
+                    value={options.q ?? ""}
+                    maxLength={MAX_PRODUCT_SEARCH}
+                  />
+                  <Link
+                    prefetch={false}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                    href={withParams("/products/export", applied, { page: null })}
+                  >
+                    <Download aria-hidden /> Download CSV
+                  </Link>
+                </div>
+              }
+            />
             <Suspense
-              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${options.dimension}|${options.metric}|${options.entity}|${options.ranking}|${plan?.slots[0].mode}|${plan?.slots[1].mode}|${channel}`}
+              key={`${filters.storeId}|${filters.range.from}|${filters.range.to}|${options.dimension}|${options.metric}|${options.entity}|${options.ranking}|${options.q}|${options.page}|${plan?.slots[0].mode}|${plan?.slots[1].mode}|${channel}`}
               fallback={<LoadingState variant="chart" label="Loading products" />}
             >
               <DataRegion
                 timestamp={timeZone}
                 load={() => getProducts({ ...filters, ...options, channel }, planRanges(plan))}
                 isEmpty={(data) => data.rows.length === 0}
-                emptyMessage="No valid-order product lines match this store, sales channel, and date range."
+                emptyMessage={
+                  options.page > 1
+                    ? "This page is past the matching products."
+                    : options.q
+                      ? `No ${options.dimension === "product" ? "products" : "variants"} match “${options.q}” in this store, sales channel, and date range.`
+                      : "No valid-order product lines match this store, sales channel, and date range."
+                }
                 emptyAction={
-                  channel
-                    ? {
-                        href: withParams("/products", params, { sales_channel: null }),
-                        label: "Show all sales channels",
-                      }
-                    : undefined
+                  options.page > 1
+                    ? { href: withParams("/products", params, { page: null }), label: "Go to the first page" }
+                    : options.q
+                      ? { href: withParams("/products", params, { q: null }), label: "Clear the search" }
+                      : channel
+                        ? {
+                            href: withParams("/products", params, { sales_channel: null }),
+                            label: "Show all sales channels",
+                          }
+                        : undefined
                 }
               >
                 {(data) => {
@@ -182,6 +221,19 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         },
                       },
                     ).href ?? undefined;
+                  const firstRow = (data.page - 1) * PRODUCT_PAGE_SIZE + 1;
+                  const pageHref = (page: number) =>
+                    withParams("/products", params, { page: page === 1 ? null : String(page) });
+                  const pager = (
+                    <ProductPager
+                      first={firstRow}
+                      last={firstRow + data.rows.length - 1}
+                      matched={formatCount(data.matched)}
+                      bound={data.truncated ? MAX_PRODUCT_ROWS : null}
+                      previous={data.page > 1 ? pageHref(data.page - 1) : null}
+                      next={data.hasMore ? pageHref(data.page + 1) : null}
+                    />
+                  );
                   // Gainers and decliners are ranked against the first comparison in SQL, so that list
                   // has one variant; ranking by value shows either slot's changes beside the same rows.
                   const perSlot = Boolean(plan) && options.ranking === "value";
@@ -200,10 +252,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         valueFormat={format === money ? moneyAxis(currency) : "number"}
                         description={
                           options.ranking === "value"
-                            ? "Top 10 by the selected measure."
-                            : `Top 10 ${options.ranking} vs ${plan?.slots[0].label ?? "the first comparison"}.`
+                            ? "By the selected measure."
+                            : `${options.ranking === "gainers" ? "Gainers" : "Decliners"} vs ${plan?.slots[0].label ?? "the first comparison"}.`
                         }
-                        hasMore={data.hasMore}
+                        tableFirst
+                        // The chart shows the leaders; later pages are the table alone.
+                        chartRows={data.page === 1 ? MAX_PRODUCTS : 0}
+                        tableActions={pager}
                         baselineLabel={compare ? baseline?.short : undefined}
                         formatValue={format}
                         better={productPolarity(options.metric)}
