@@ -41,7 +41,8 @@ the local checks do not authorize that rollout.
 
 ## Permanent hosted demo (2026-10-09)
 
-The [hosted demo](https://sm-app-starter-demo.source-medium.workers.dev) was verified at
+The hosted demo (the `sm-app-starter-demo` Worker, retired 2026-11-26; the public demo is now DemoCo's hosted app at
+`app-demo.sourcemedium.app`) was verified at
 application commit `1298eace39bd9c3e0d585d24778e23651d3ab1c6` against the
 `sm-democo` warehouse, behind the existing demo viewer password. Its runtime
 configuration is encrypted, `APP_REQUIRE_LIVE=true` prevents sample fallback,

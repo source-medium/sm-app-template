@@ -177,7 +177,8 @@ describe("creatives, live", () => {
     expect(submit.query).toContain("SAFE_DIVIDE(revenue, spend) AS roas");
     expect(submit.query).toContain("SAFE_DIVIDE(previous_spend, previous_conversions) AS previous_cpo");
     for (const column of [
-      "ad_creative_image_url",
+      // Cards show the display-size copy, falling back to the image where a month predates the column.
+      "COALESCE(ad_creative_display_image_url, ad_creative_image_url)",
       "ad_creative_thumbnail_url",
       "ad_creative_video_url",
       "ad_creative_post_url",
@@ -285,6 +286,8 @@ describe("creatives, live", () => {
     // Inventory rows match the ranking by the same platform key, so an aliased platform finds its assets.
     expect(fake.submitted(1).query).toContain(`${PLATFORM} AS channel`);
     expect(fake.submitted(1).query).toContain(`requested.channel = ${PLATFORM}`);
+    // Previews show each image at display size.
+    expect(fake.submitted(1).query).toContain("asset_display_image_url AS asset_image_url");
     expect(fake.submitted(1).queryParameters).toContainEqual({
       name: "identities",
       parameterType: { type: "STRING" },
@@ -498,6 +501,7 @@ it("loads current assets independently of spend, scoped by store, platform and c
     asset_id: null,
     asset_text: null,
     asset_image_url: "javascript:bad",
+    asset_display_image_url: "https://storage.googleapis.com/mirror/cover.webp",
     asset_video_url: "https://cdn.example.com/movie.mp4",
     asset_video_id: "video1",
     asset_link_url: "https://user:pass@example.com",
@@ -520,6 +524,7 @@ it("loads current assets independently of spend, scoped by store, platform and c
   expect(page.rows).toHaveLength(ASSET_PAGE_SIZE);
   expect(page.rows[0]).toMatchObject({
     asset_image_url: null,
+    asset_display_image_url: row.asset_display_image_url,
     asset_link_url: null,
     asset_video_id: "video1",
     asset_video_url: row.asset_video_url,

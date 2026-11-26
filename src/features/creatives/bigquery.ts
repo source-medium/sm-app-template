@@ -125,11 +125,12 @@ async function assetCoverage(warehouse: Warehouse, storeId: string, rows: { chan
           SELECT JSON_VALUE(pair, '$[0]') AS channel, JSON_VALUE(pair, '$[1]') AS creative_id
           FROM UNNEST(JSON_QUERY_ARRAY(@identities)) pair
         ), candidates AS (
+          -- Previews show each image at display size: SourceMedium's smaller copy where it keeps one, else the image.
           SELECT ${AD_PLATFORM_SQL} AS channel, requested.creative_id, asset_position,
             IF(requested.creative_id IS NULL, NULL, CASE
               WHEN STARTS_WITH(asset_video_url, 'https://') THEN 'video'
               WHEN asset_role IN ('image','logo','video') AND STARTS_WITH(asset_image_url,'https://') THEN 'image'
-            END) AS kind, asset_image_url, asset_video_url
+            END) AS kind, asset_display_image_url AS asset_image_url, asset_video_url
           FROM ${warehouse.table(ASSET_RELATION)}
           LEFT JOIN requested ON requested.channel = ${AD_PLATFORM_SQL} AND requested.creative_id = ad_creative_id
           WHERE sm_store_id = @store_id AND ${AD_PLATFORM_SQL} IN (SELECT channel FROM requested)
@@ -197,7 +198,9 @@ export async function queryCreatives(filters: CreativesFilters, baselines: Basel
           MAX(ad_creative_title) AS title,
           MAX(ad_creative_body) AS body,
           ${latest("ad_creative_name")} AS name,
-          ${latest(httpsUrl("ad_creative_image_url"))} AS image_url,
+          -- The image at display size (SourceMedium's smaller copy, else the image). Months built
+          -- before the report had that column hold NULL there, so they fall back to the image.
+          ${latest(httpsUrl("COALESCE(ad_creative_display_image_url, ad_creative_image_url)"))} AS image_url,
           ${latest(httpsUrl("ad_creative_thumbnail_url"))} AS thumbnail_url,
           ${latest(httpsUrl("ad_creative_video_url"))} AS video_url,
           ${latest(httpsUrl("ad_creative_post_url"))} AS post_url,
@@ -350,7 +353,8 @@ export async function queryCreativeAssets(filters: AssetScope) {
     maxRows: ASSET_PAGE_SIZE,
     partial: true,
     sql: `SELECT sm_ad_creative_asset_key, source_system, ad_creative_id, ad_id, ad_campaign_id, asset_role,
-        asset_pinned_position, asset_performance_label, asset_status, asset_id, asset_text, asset_image_url, asset_video_url, asset_video_id, asset_link_url
+        asset_pinned_position, asset_performance_label, asset_status, asset_id, asset_text, asset_image_url,
+        asset_display_image_url, asset_video_url, asset_video_id, asset_link_url
       FROM ${warehouse.table(ASSET_RELATION)}
       WHERE sm_store_id = @store_id AND (@channel = '' OR ${AD_PLATFORM_SQL} = @channel)
         AND (@entity = '' OR ad_creative_id = @entity) AND (@role = '' OR asset_role = @role)

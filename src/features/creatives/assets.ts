@@ -42,6 +42,8 @@ export const AssetRow = z.object({
   asset_id: bq.string().nullable(),
   asset_text: bq.string().nullable(),
   asset_image_url: media,
+  // The image at display size (SourceMedium's smaller copy, else the image): previews show it, Open image links the original.
+  asset_display_image_url: media,
   asset_video_url: media,
   asset_video_id: bq.string().nullable(),
   asset_link_url: media,

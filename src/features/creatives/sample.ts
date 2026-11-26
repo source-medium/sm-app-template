@@ -586,6 +586,7 @@ export function sampleCreativeAssets(filters: AssetScope, today: string) {
           asset_text: null,
           asset_video_id: null,
           asset_image_url: null,
+          asset_display_image_url: null,
           asset_video_url: null,
           asset_link_url: null,
           ...values,
