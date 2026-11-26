@@ -13,6 +13,7 @@ const fields = [
   ),
   ...["product_key", "label", "reference"].map((name) => ({ name, type: "STRING" })),
   ...periodColumns(["latest_date"]).map((name) => ({ name, type: "DATE" })),
+  { name: "matched_count", type: "INT64" },
 ];
 const row = {
   product_key: "p1",
@@ -23,6 +24,7 @@ const row = {
   revenue: "9007199254740993.123456789",
   units: "1.5",
   total_revenue: "9007199254740993.123456789",
+  matched_count: "60",
 };
 const filters: ProductFilters = {
   storeId: "store' --",
@@ -37,13 +39,13 @@ it("guards, parameterizes and aggregates valid product lines before the limit, r
     submit: () =>
       rowsResponse(
         fields,
-        Array.from({ length: 11 }, (_, i) => ({ ...row, product_key: `p${i}` })),
+        Array.from({ length: 50 }, (_, i) => ({ ...row, product_key: `p${i}` })),
       ),
   });
   const { getProducts } = await import("./queries");
   const data = await getProducts(filters, [{ from: "2025-09-01", to: "2025-09-02" }, null]);
-  expect(data.rows).toHaveLength(10);
-  expect(data.hasMore).toBe(true);
+  expect(data.rows).toHaveLength(50);
+  expect(data).toMatchObject({ hasMore: true, matched: 60n, page: 1, truncated: false });
   expect(data.rows[0]?.revenue).toBe(row.revenue);
   expect(data.rows[0]?.image_url).toBeNull();
   const body = fake.submitted(0);
@@ -75,7 +77,7 @@ it("guards, parameterizes and aggregates valid product lines before the limit, r
 it.each(["value", "gainers", "decliners"] as const)(
   "%s excludes comparison-only products after window totals and before the ranked limit",
   async (ranking) => {
-    const ranked = Array.from({ length: 3 }, (_, i) => ({ ...row, product_key: `p${i}` }));
+    const ranked = Array.from({ length: 3 }, (_, i) => ({ ...row, product_key: `p${i}`, matched_count: "3" }));
     const fake = await goLive({ submit: () => rowsResponse(fields, ranked) });
     const { getProducts } = await import("./queries");
     const data = await getProducts({ ...filters, ranking }, [null, { from: "2025-09-01", to: "2025-09-02" }]);
@@ -86,9 +88,9 @@ it.each(["value", "gainers", "decliners"] as const)(
     expect(sql).toContain("SUM(previous_units) OVER () AS total_previous_units");
     expect(sql).toContain("SUM(second_units) OVER () AS total_second_units");
     expect(sql).not.toContain("WHERE units IS NOT NULL");
-    expect(sql).toContain("QUALIFY units IS NOT NULL");
+    expect(sql).toContain("QUALIFY units IS NOT NULL AND matches");
     expect(sql.indexOf("QUALIFY units IS NOT NULL")).toBeLessThan(sql.lastIndexOf("ORDER BY"));
-    expect(sql.lastIndexOf("ORDER BY")).toBeLessThan(sql.lastIndexOf("LIMIT 11"));
+    expect(sql.lastIndexOf("ORDER BY")).toBeLessThan(sql.lastIndexOf("LIMIT 50 OFFSET 0"));
   },
 );
 it("rejects unexpected truncation instead of publishing uncertain totals", async () => {
@@ -96,7 +98,7 @@ it("rejects unexpected truncation instead of publishing uncertain totals", async
     submit: () =>
       rowsResponse(
         fields,
-        Array.from({ length: 11 }, () => row),
+        Array.from({ length: 50 }, () => row),
         { pageToken: "more" },
       ),
   });
@@ -198,11 +200,49 @@ it("scopes detail totals before windows and ranks changes before the bounded lim
   ]);
   const body = fake.submitted(0);
   expect(body.query).toContain("FROM grouped WHERE product_key = @entity");
-  expect(body.query).toContain("ORDER BY units - previous_units ASC NULLS LAST, product_key LIMIT 11");
+  expect(body.query).toContain("ORDER BY units - previous_units ASC NULLS LAST, product_key LIMIT 50 OFFSET 0");
   expect(body.query).not.toContain(identity);
   expect(body.queryParameters).toContainEqual({
     name: "entity",
     parameterType: { type: "STRING" },
     parameterValue: { value: identity },
   });
+});
+
+it("searches titles and exact IDs as a parameter, pages after the ranking and leaves totals whole", async () => {
+  const fake = await goLive({ submit: () => rowsResponse(fields, [{ ...row, matched_count: "520" }]) });
+  const { getProducts } = await import("./queries");
+  const q = "Blend' OR TRUE --";
+  const data = await getProducts({ ...filters, q, page: 3 }, [null, null]);
+  expect(data).toMatchObject({ page: 3, matched: 520n, hasMore: true, truncated: true });
+  const body = fake.submitted(0);
+  expect(body.query).not.toContain(q);
+  expect(body.queryParameters).toContainEqual({
+    name: "q",
+    parameterType: { type: "STRING" },
+    parameterValue: { value: q },
+  });
+  expect(body.query).toContain("STRPOS(LOWER(IFNULL(product_title, '')), LOWER(@q)) > 0");
+  expect(body.query).toContain(
+    "LOWER(@q) IN (LOWER(IFNULL(product_id, '')), LOWER(IFNULL(product_variant_id, '')), LOWER(IFNULL(sku, '')))",
+  );
+  // The windows run before QUALIFY, so a search narrows the rows and never the totals.
+  expect(body.query.indexOf("SUM(revenue) OVER () AS total_revenue")).toBeLessThan(body.query.indexOf("QUALIFY"));
+  expect(body.query).toContain("COUNTIF(units IS NOT NULL AND matches) OVER () AS matched_count");
+  expect(body.query).toContain("product_key LIMIT 50 OFFSET 100");
+});
+
+it("exports the whole bounded set in one read and says when matches pass the bound", async () => {
+  const fake = await goLive({
+    submit: () =>
+      rowsResponse(
+        fields,
+        Array.from({ length: 500 }, (_, i) => ({ ...row, product_key: `p${i}`, matched_count: "501" })),
+      ),
+  });
+  const { getProducts } = await import("./queries");
+  const data = await getProducts({ ...filters, page: 4 }, [null, null], { all: true });
+  expect(data.rows).toHaveLength(500);
+  expect(data).toMatchObject({ hasMore: false, truncated: true, page: 1 });
+  expect(fake.submitted(0).query).toContain("product_key LIMIT 500 OFFSET 0");
 });

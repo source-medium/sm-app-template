@@ -10,7 +10,13 @@ export const ProductImageRow = z.object({
   image_url: bq.string().nullable().transform(safeImageUrl),
 });
 export const ProductChannelRow = z.object({ channel: bq.string() });
+/** The ranked chart's rows. */
 export const MAX_PRODUCTS = 10;
+/** The explorer table: rows per page, and the most rows it pages through or exports. */
+export const PRODUCT_PAGE_SIZE = 50;
+export const MAX_PRODUCT_ROWS = 500;
+/** At most this many characters of a product search. */
+export const MAX_PRODUCT_SEARCH = 200;
 /** Each measure `queryProducts` sums per period and totals across the ranked set. */
 export const PRODUCT_MEASURES = ["revenue", "units", "profit", "refunds", "refunded_units"] as const;
 export type ProductMeasure = (typeof PRODUCT_MEASURES)[number];
@@ -24,6 +30,8 @@ export const ProductRow = z.object({
   ...periodFields(PRODUCT_MEASURES, amount),
   ...periodFields(PRODUCT_MEASURES, amount, "total_"),
   minimum_value: amount,
+  /** Ranked products that match the search, before paging. */
+  matched_count: bq.int64(),
   ...periodCoverageFields,
 });
 export type Product = z.output<typeof ProductRow>;

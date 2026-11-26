@@ -177,7 +177,11 @@ test("products: ranking and variant filters preserve comparison dates and full t
   await expect(page.getByRole("table", { name: "Net units by variant details", exact: true })).toBeVisible();
   expect(await totals.locator('[data-slot="kpi-value"]').allTextContents()).toEqual(before);
   expect(new URL(page.url()).searchParams.get("compare")).toBe("year");
-  await expect(page.getByText("Showing the first 10 rows; more rows matched than this view loads.")).toBeVisible();
+  // The table lists every match past the chart's first 10.
+  await expect(page.getByText("1–24 of 24", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("table", { name: "Net units by variant details", exact: true }).locator("tbody tr"),
+  ).toHaveCount(24);
   await choose(page, "Compare with", "off");
   await expect(page).toHaveURL(/compare=off/);
   await expect(page.getByRole("columnheader", { name: "Change vs comparison" })).toHaveCount(0);
@@ -225,4 +229,57 @@ test("phone rankings show each complete change amount inside the table frame", a
       ),
     ).toBe(true);
   }
+});
+
+test("products: the search narrows the ranked list, never the totals, and the CSV exports the same rows", async ({
+  page,
+}) => {
+  await page.goto("/products?store=sample-store-a&from=2026-09-01&to=2026-09-28");
+  const totals = page.getByRole("region", { name: "All product totals" });
+  const table = page.getByRole("table", { name: "Net revenue by product details", exact: true });
+  await expect(table.locator("tbody tr").first()).toBeVisible();
+  const before = await totals.locator('[data-slot="kpi-value"]').allTextContents();
+  const everyRow = await table.locator("tbody tr").count();
+  await page.getByRole("searchbox", { name: "Find a product" }).fill("BLEND");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page).toHaveURL((url) => url.searchParams.get("q") === "BLEND");
+  await expect(table.locator("tbody tr").first()).toBeVisible();
+  const names = await table.locator("tbody tr td:first-child").allInnerTexts();
+  expect(names.length).toBeGreaterThan(0);
+  expect(names.length).toBeLessThan(everyRow);
+  for (const name of names) expect(name.toLowerCase()).toContain("blend");
+  expect(await totals.locator('[data-slot="kpi-value"]').allTextContents()).toEqual(before);
+  await expect(page.getByRole("searchbox", { name: "Find a product" })).toHaveValue("BLEND");
+
+  const download = page.getByRole("link", { name: "Download CSV" });
+  const href = await download.getAttribute("href");
+  expect(href).toMatch(/^\/products\/export\?/);
+  const csv = await (await page.request.get(href ?? "")).text();
+  // Every cell is quoted, and these rows hold no quotes or commas.
+  const [columns = [], ...lines] = csv
+    .trim()
+    .split("\r\n")
+    .map((line) => line.slice(1, -1).split('","'));
+  expect(columns).toEqual(expect.arrayContaining(["export_truncated", "search", "product", "net_revenue"]));
+  expect(lines).toHaveLength(names.length);
+  const truncated = columns.indexOf("export_truncated");
+  const search = columns.indexOf("search");
+  for (const cells of lines) {
+    expect(cells[truncated]).toBe("false");
+    expect(cells[search]).toBe("BLEND");
+  }
+
+  // Another control keeps the applied search and starts again from the first page.
+  await choose(page, "Rank by", "Net units");
+  await expect(page).toHaveURL((url) => url.searchParams.get("metric") === "units");
+  expect(new URL(page.url()).searchParams.get("q")).toBe("BLEND");
+
+  await page.getByRole("searchbox", { name: "Find a product" }).fill("no such product");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page.getByText(/No products match “no such product”/)).toBeVisible();
+  await page.getByRole("link", { name: "Clear the search" }).click();
+  await expect(page).toHaveURL((url) => !url.searchParams.has("q"));
+  await expect(
+    page.getByRole("table", { name: "Net units by product details", exact: true }).locator("tbody tr"),
+  ).toHaveCount(everyRow);
 });

@@ -73,7 +73,11 @@ it.each([
     submit: (call) =>
       (call.body as SubmittedQuery).labels.sm_query === "product_images"
         ? response()
-        : rowsResponse(financialFields, products),
+        : // As BigQuery returns them: INT64 counts arrive as decimal strings.
+          rowsResponse(
+            financialFields,
+            products.map((row) => ({ ...row, matched_count: String(row.matched_count) })),
+          ),
   });
   const { getProductImages, getProducts } = await import("./queries");
   const data = await getProducts(filters, [null, null]);

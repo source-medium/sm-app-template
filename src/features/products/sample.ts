@@ -6,15 +6,9 @@ import { seededRandom, randomInt } from "@/lib/sample/random";
 import { SAMPLE_STORE_SCALE } from "@/lib/sample/stores";
 import { countedSales, sampleSummarySource } from "@/lib/sample/executive-summary";
 import type { ProductFilters, ProductsData } from "./queries";
+import { productPage, productWindow } from "./paging";
 import { periodColumns } from "@/lib/data/period-sql";
-import {
-  MAX_PRODUCTS,
-  PRODUCT_MEASURES,
-  PRODUCTS_RELATION,
-  ProductRow,
-  type ProductCoverage,
-  type ProductMeasure,
-} from "./rows";
+import { PRODUCT_MEASURES, PRODUCTS_RELATION, ProductRow, type ProductCoverage, type ProductMeasure } from "./rows";
 import type { BaselineRanges } from "@/lib/comparison";
 
 export type ProductSource = {
@@ -144,8 +138,16 @@ export function aggregateProducts(
   source: ProductSource[],
   filters: ProductFilters,
   baselines: BaselineRanges,
+  all = false,
 ): ProductsData {
   const [baseline, second] = baselines;
+  // As live: a title containing the search, or an exact product or variant ID.
+  const search = filters.q?.toLowerCase() ?? "";
+  const matches = (row: ProductSource) =>
+    !search ||
+    row.title.toLowerCase().includes(search) ||
+    row.variant.toLowerCase().includes(search) ||
+    [row.productId, row.variantId].some((id) => id.toLowerCase() === search);
   const groups = new Map<string, ProductSource[]>();
   const inRange = (date: string, range: DateRange | null) => range !== null && date >= range.from && date <= range.to;
   for (const row of source) {
@@ -182,6 +184,7 @@ export function aggregateProducts(
           }),
       );
     return {
+      matches: group.some(matches),
       product_key: key,
       label: label(first),
       reference: `${first.source} / ${filters.dimension === "product" ? first.productId : first.variantId}`,
@@ -228,19 +231,25 @@ export function aggregateProducts(
     const diff = (toUnits(right) - toUnits(left)) * (filters.ranking === "decliners" ? -1n : 1n);
     return diff > 0n ? 1 : diff < 0n ? -1 : a.product_key.localeCompare(b.product_key);
   });
-  // As live: products with no value in the selected period are not ranked.
-  const ranked = rows.filter((row) => row[filters.metric] !== null);
-  return {
-    rows: decodeRows(
+  // As live: products with no value in the selected period are not ranked, and totals ignore the search.
+  const ranked = rows.filter((row) => row[filters.metric] !== null && row.matches);
+  const { offset, limit } = productWindow(filters.page, all);
+  const matched = BigInt(ranked.length);
+  return productPage(
+    decodeRows(
       ProductRow,
-      ranked.slice(0, MAX_PRODUCTS).map((row) => ({ ...row, ...totals, ...coverage, minimum_value: minimum })),
+      ranked
+        .slice(offset, offset + limit)
+        .map((row) => ({ ...row, ...totals, ...coverage, minimum_value: minimum, matched_count: String(matched) })),
       PRODUCTS_RELATION,
     ),
-    hasMore: ranked.length > MAX_PRODUCTS,
-  };
+    matched,
+    filters.page,
+    all,
+  );
 }
 
-export function sampleProducts(filters: ProductFilters, baselines: BaselineRanges): ProductsData {
+export function sampleProducts(filters: ProductFilters, baselines: BaselineRanges, all = false): ProductsData {
   // Deduplicate overlapping date ranges before generating source rows.
   const dates = new Set([
     ...datesInRange(filters.range),
@@ -250,6 +259,7 @@ export function sampleProducts(filters: ProductFilters, baselines: BaselineRange
     [...dates].flatMap((date) => sampleProductSource(filters.storeId, { from: date, to: date })),
     filters,
     baselines,
+    all,
   );
 }
 
