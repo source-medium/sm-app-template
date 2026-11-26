@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { AssetVideo } from "./asset-video";
+import { AssetVideo, pauseVideosOutside } from "./asset-video";
 import { CardImage } from "./card-image";
 
 /** An image's `fallbackSrc` is another URL for the same image, tried before the slide is dropped. */
@@ -58,9 +58,7 @@ export function MediaPreview({
           if (!el.clientWidth) return;
           const next = Math.max(0, Math.min(visible.length - 1, Math.round(el.scrollLeft / el.clientWidth)));
           setIndex(next);
-          for (const video of el.querySelectorAll("video")) {
-            if (!el.children[next]?.contains(video) && !video.paused) video.pause();
-          }
+          pauseVideosOutside(el, el.children[next]);
         }}
       >
         {visible.length === 0 && (

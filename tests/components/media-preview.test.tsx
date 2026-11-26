@@ -65,6 +65,32 @@ describe("MediaPreview", () => {
     expect(pause).toHaveBeenCalledTimes(1);
   });
 
+  it("pauses a playing YouTube embed when its slide scrolls away", () => {
+    const items: PreviewMedia[] = [
+      { kind: "video", src: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", poster: null },
+      { kind: "image", src: "https://cdn.example.com/two.jpg" },
+    ];
+    render(<MediaPreview items={items} title="Video hero" fallback={<span>Fallback</span>} />);
+    fireEvent.click(screen.getByRole("button", { name: "Play Video hero, video 1" }));
+    const frame = screen.getByTitle("Video hero, video 1") as HTMLIFrameElement;
+    if (!frame.contentWindow) throw new Error("Expected the embed to have a window");
+    const post = vi.spyOn(frame.contentWindow, "postMessage").mockImplementation(() => {});
+    const track = screen.getByRole("group", { name: "Scrollable media" });
+    Object.defineProperty(track, "clientWidth", { value: 300, configurable: true });
+
+    // Scrolling within its own slide leaves it playing.
+    Object.defineProperty(track, "scrollLeft", { value: 0, configurable: true });
+    fireEvent.scroll(track);
+    expect(post).not.toHaveBeenCalled();
+
+    Object.defineProperty(track, "scrollLeft", { value: 300, configurable: true });
+    fireEvent.scroll(track);
+    expect(post).toHaveBeenCalledExactlyOnceWith(
+      JSON.stringify({ event: "command", func: "pauseVideo", args: [] }),
+      "https://www.youtube-nocookie.com",
+    );
+  });
+
   it("drops an image slide whose sources all fail and counts only the remaining slides", () => {
     const items: PreviewMedia[] = [
       {
