@@ -19,6 +19,16 @@ export type Viewer =
   /** A workspace member signed in through SourceMedium's gateway (hosting). */
   | SourceMediumViewer;
 
+/**
+ * An anonymous visitor to SourceMedium's public demo. It reads reports like
+ * anyone, through the shared cache, but never bypasses it (Refresh, the
+ * connection check): the gateway admits only its reads, and both decline it
+ * again here. The data API rate limits each visitor.
+ */
+export function isPublicDemoVisitor(viewer: Viewer): boolean {
+  return viewer.kind === "sourcemedium" && viewer.access === "public";
+}
+
 export type AuthenticationResult =
   | { ok: true; viewer: Viewer }
   | { ok: false; guard: GuardConfig["kind"]; reason: "missing" | "invalid" | "keys_unavailable" };

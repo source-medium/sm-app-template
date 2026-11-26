@@ -16,6 +16,7 @@ import { DataStatus, PendingDataStatus } from "./data-status";
  * trip. Otherwise the page first waits for the list.
  */
 import { EmptyState, ErrorState, WarehouseErrorState } from "@/components/patterns/data-states";
+import { isPublicDemoVisitor } from "@/lib/auth/authenticate";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { loadStores, resolveReportStore } from "@/lib/data/stores.server";
 import { BASELINE_PARAM, parseComparisonPlan, planParams, type ComparisonPlan } from "@/lib/comparison";
@@ -132,6 +133,7 @@ export async function ReportPage({
     clientPresentationParams: livePresentationParams,
     allStores,
     mode: access.mode,
+    canRefresh: !isPublicDemoVisitor(access.viewer),
   };
 
   const store = await resolveReportStore(single(params, "store"));

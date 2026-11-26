@@ -1,4 +1,5 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { isPublicDemoVisitor } from "@/lib/auth/authenticate";
 import type { Viewer } from "@/lib/auth/require-viewer";
 import { buildId, instanceInfo, readConfig } from "@/lib/config/env.server";
 import { AgentPrompt } from "./agent-prompt";
@@ -23,6 +24,7 @@ export function TopBar({ mode, viewer }: { mode: "sample" | "live"; viewer: View
             {viewer.email}
           </span>
         )}
+        {isPublicDemoVisitor(viewer) && <span className="text-xs text-muted-foreground">Public demo</span>}
         {!probe && viewer.kind === "sourcemedium" && (viewer.name ?? viewer.email) && (
           <span className="hidden truncate text-sm text-muted-foreground sm:inline" title={viewer.email ?? undefined}>
             {viewer.name ?? viewer.email}

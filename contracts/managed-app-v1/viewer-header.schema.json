@@ -1,55 +1,95 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "contract_version": {
-      "type": "number",
-      "const": 1
-    },
-    "kind": {
-      "type": "string",
-      "enum": ["member", "agency"]
-    },
-    "user_id": {
-      "type": "string",
-      "format": "uuid",
-      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-    },
-    "email": {
-      "anyOf": [
-        {
-          "type": "string",
-          "maxLength": 320
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "type": "number",
+          "const": 1
         },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "name": {
-      "anyOf": [
-        {
+        "kind": {
           "type": "string",
-          "maxLength": 200
+          "enum": ["member", "agency"]
         },
-        {
-          "type": "null"
+        "user_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "email": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 320
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "organization_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
         }
-      ]
+      },
+      "required": [
+        "contract_version",
+        "kind",
+        "user_id",
+        "email",
+        "name",
+        "organization_id"
+      ],
+      "additionalProperties": false
     },
-    "organization_id": {
-      "type": "string",
-      "format": "uuid",
-      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "type": "number",
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "const": "public"
+        },
+        "user_id": {
+          "type": "null"
+        },
+        "email": {
+          "type": "null"
+        },
+        "name": {
+          "type": "null"
+        },
+        "organization_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      "required": [
+        "contract_version",
+        "kind",
+        "user_id",
+        "email",
+        "name",
+        "organization_id"
+      ],
+      "additionalProperties": false
     }
-  },
-  "required": [
-    "contract_version",
-    "kind",
-    "user_id",
-    "email",
-    "name",
-    "organization_id"
-  ],
-  "additionalProperties": false
+  ]
 }

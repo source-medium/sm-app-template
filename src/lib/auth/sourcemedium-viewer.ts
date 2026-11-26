@@ -7,28 +7,45 @@
  * sets `X-SM-Viewer` (base64url JSON, contracts/managed-app-v1/
  * viewer-header.schema.json). The header carries identity for display only,
  * never a credential: the data API rechecks the viewer on every query
- * through the gateway's outbound Worker, whatever this code does.
+ * through the gateway's outbound Worker, whatever this code does. On
+ * SourceMedium's public demo (DemoCo's app, without sign-in) the viewer is an
+ * anonymous visitor: kind `public`, no user, and only reads reach the app.
  */
 import { z } from "zod";
 
 export const VIEWER_HEADER = "x-sm-viewer";
 
-const viewerHeader = z
-  .object({
-    contract_version: z.literal(1),
-    kind: z.enum(["member", "agency"]),
-    user_id: z.uuid(),
-    email: z.string().max(320).nullable(),
-    name: z.string().max(200).nullable(),
-    organization_id: z.uuid(),
-  })
-  .strict();
+const viewerHeader = z.union([
+  z
+    .object({
+      contract_version: z.literal(1),
+      kind: z.enum(["member", "agency"]),
+      user_id: z.uuid(),
+      email: z.string().max(320).nullable(),
+      name: z.string().max(200).nullable(),
+      organization_id: z.uuid(),
+    })
+    .strict(),
+  z
+    .object({
+      contract_version: z.literal(1),
+      kind: z.literal("public"),
+      user_id: z.null(),
+      email: z.null(),
+      name: z.null(),
+      organization_id: z.uuid(),
+    })
+    .strict(),
+]);
 
 export type SourceMediumViewer = {
   kind: "sourcemedium";
-  /** A direct workspace member, or an agency with workspace-wide access. */
-  access: "member" | "agency";
-  userId: string;
+  /**
+   * A direct workspace member, an agency with workspace-wide access, or an
+   * anonymous visitor to SourceMedium's public demo (no user).
+   */
+  access: "member" | "agency" | "public";
+  userId: string | null;
   email: string | null;
   name: string | null;
   organizationId: string;

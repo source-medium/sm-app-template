@@ -33,6 +33,13 @@ it("keeps an unknown currency beside the report title and says nothing when it i
   expect(trust()).toBeNull();
 });
 
+it("offers Refresh to every viewer except a public demo visitor", () => {
+  const { rerender } = render(<ReportHeader {...props} mode="live" storeId="a" />, { wrapper: TooltipProvider });
+  expect(screen.getByRole("button", { name: "Refresh data" })).toBeInTheDocument();
+  rerender(<ReportHeader {...props} mode="live" storeId="a" canRefresh={false} />);
+  expect(screen.queryByRole("button", { name: "Refresh data" })).toBeNull();
+});
+
 it("copies native-history presentation choices while retaining resolved store and date defaults", async () => {
   const original = window.location.href;
   const writeText = vi.fn(async (_text: string) => undefined);

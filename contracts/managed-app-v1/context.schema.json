@@ -54,7 +54,7 @@
           "properties": {
             "kind": {
               "type": "string",
-              "const": "verifier"
+              "enum": ["verifier", "public_demo"]
             },
             "user_id": {
               "type": "null"

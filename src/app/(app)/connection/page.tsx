@@ -1,5 +1,6 @@
 import { instanceInfo, readConfig } from "@/lib/config/env.server";
 import type { Metadata } from "next";
+import { isPublicDemoVisitor } from "@/lib/auth/authenticate";
 import { requireViewer } from "@/lib/auth/require-viewer";
 import { reportingCurrencyConfig } from "@/lib/data/stores.server";
 import { ConnectionCheck } from "@/components/shell/connection-check";
@@ -16,15 +17,18 @@ export default async function ConnectionPage() {
   const managed = config.status === "ok" && (config.mode === "managed-dev" || config.mode === "managed");
   const hosted = config.status === "ok" && config.mode === "managed";
   const probe = hosted && config.hosted.authMethod === "probe";
+  const publicDemo = isPublicDemoVisitor(access.viewer);
   const currency = access.mode === "sample" ? sampleCurrencyNote() : liveCurrencyNote(reportingCurrencyConfig());
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Connection</h1>
         <p className="text-sm text-muted-foreground">
-          {access.mode === "live"
-            ? "Live configuration is present. Run a check to verify the app can reach your warehouse."
-            : "Sample data is loaded; nothing is connected yet. Follow the steps below to connect this instance."}
+          {publicDemo
+            ? "A read-only demo of DemoCo's reports."
+            : access.mode === "live"
+              ? "Live configuration is present. Run a check to verify the app can reach your warehouse."
+              : "Sample data is loaded; nothing is connected yet. Follow the steps below to connect this instance."}
         </p>
       </div>
       <section aria-label="This instance" className="space-y-3 rounded-xl border bg-card p-4 text-sm">
@@ -43,9 +47,11 @@ export default async function ConnectionPage() {
           <dt className="text-muted-foreground">Sign-in</dt>
           <dd>
             {hosted
-              ? probe
-                ? "Shared staging probe access; not individual sign-in"
-                : "SourceMedium sign-in, for your workspace's members"
+              ? publicDemo
+                ? "None: SourceMedium's public demo, read only"
+                : probe
+                  ? "Shared staging probe access; not individual sign-in"
+                  : "SourceMedium sign-in, for your workspace's members"
               : managed
                 ? "This computer only (managed development)"
                 : auth === "access"
@@ -58,8 +64,12 @@ export default async function ConnectionPage() {
           <dd>{info.requireLive ? "Yes" : "No"}</dd>
           <dt className="text-muted-foreground">Build</dt>
           <dd className="font-mono text-xs break-all">{info.build}</dd>
-          <dt className="text-muted-foreground">Verification</dt>
-          <dd>Check this instance below; its result includes the time and build.</dd>
+          {!publicDemo && (
+            <>
+              <dt className="text-muted-foreground">Verification</dt>
+              <dd>Check this instance below; its result includes the time and build.</dd>
+            </>
+          )}
         </dl>
       </section>
       {access.mode === "sample" && (
@@ -101,7 +111,9 @@ export default async function ConnectionPage() {
           </p>
         </section>
       )}
-      <ConnectionCheck key={`${info.environment}|${info.build}|${access.mode}|${auth}`} mode={access.mode} />
+      {!publicDemo && (
+        <ConnectionCheck key={`${info.environment}|${info.build}|${access.mode}|${auth}`} mode={access.mode} />
+      )}
       <section aria-labelledby="currency-heading" className="space-y-2 rounded-xl border bg-card p-4 text-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h2 id="currency-heading" className="font-semibold">
@@ -137,7 +149,9 @@ export default async function ConnectionPage() {
             ? probe
               ? "This staging app uses a shared probe session with a fixed test viewer. SourceMedium operates its data access. Individual workspace sign-in is not enabled on this probe."
               : hosted
-                ? "SourceMedium manages this app's data access. Ask your workspace admin to review app availability and membership."
+                ? publicDemo
+                  ? "Sign in to SourceMedium to open your own workspace's apps."
+                  : "SourceMedium manages this app's data access. Ask your workspace admin to review app availability and membership."
                 : "A workspace admin or editor creates and revokes this development token in SourceMedium. See docs/managed.md in your repository. Never paste a token into an agent conversation."
             : "To replace or revoke the app credential, follow docs/connect.md in your repository. Enter credentials privately in the Worker's runtime settings, never in an agent conversation."}
         </p>
