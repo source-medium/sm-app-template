@@ -47,6 +47,9 @@ screenshots and the tour use the starter's sample data._
   the report that shows it, and a hand-off to the coding-agent composer; field
   documentation and source availability sit beside it, served from the same
   adapter the reports use.
+- **Templates.** Starting points for common questions, such as what changed
+  last week or which products lost gross profit. Each opens its report already
+  set up, and says whether this store's data can answer it.
 - **Two comparisons at once.** Every headline number compares with the previous
   period and the same period last year, aware of what the range is: a full
   month against the previous month, a rolling week against the week before, a
@@ -144,6 +147,7 @@ links product photos to scoped detail reports.
 | **Orders**             | What happened with a particular order, and why was it attributed where it was?       |
 | **Geography**          | Where are valid-order sales happening, and which shipping destinations are changing? |
 | **Explore your data**  | What do these metrics mean, where do they appear, and which evidence is available?   |
+| **Templates**          | Which report answers a common question, and is it ready for this store?              |
 
 ### Where sales are happening
 

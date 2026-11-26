@@ -11,6 +11,7 @@ import {
   Map,
   ImageIcon,
   LayoutDashboard,
+  LayoutTemplate,
   Megaphone,
   Package,
   Repeat2,
@@ -113,6 +114,7 @@ export const appConfig = {
       metrics: ["order_net_revenue", "order_count"],
     },
     { group: "Sales", href: "/orders", salesChannel: true, label: "Orders", icon: ShoppingBag },
+    { href: "/templates", label: "Templates", icon: LayoutTemplate, group: "Reference" },
     { href: "/data", label: "Explore your data", icon: Database, group: "Reference" },
   ] satisfies NavItem[] as NavItem[],
   /** Optional overrides for dim_stores.store_name. Names and brand groups otherwise come from SourceMedium. */

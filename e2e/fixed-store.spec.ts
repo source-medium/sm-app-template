@@ -113,3 +113,10 @@ test("a fixed-store deployment redirects the portfolio to its permitted store", 
   await expect(page.getByRole("button", { name: /^Switch store/ })).toHaveCount(0);
   expect((await request.get("/stores?store=sample-store-a")).status()).toBe(403);
 });
+
+test("templates leave out the store comparison for the one store", async ({ page }) => {
+  test.skip(!appConfig.nav.some((item) => item.href === "/templates"), "No Templates view");
+  await page.goto("/templates");
+  await expect(page.locator('[data-preset="weekly-review"]')).toHaveAttribute("data-readiness", "ready");
+  await expect(page.locator('[data-preset="store-portfolio"]')).toHaveCount(0);
+});
