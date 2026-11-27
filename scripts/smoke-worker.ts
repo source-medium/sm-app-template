@@ -56,8 +56,15 @@ const modes: Mode[] = [
       // An encoded # and & in one value must not cut or add parameters (the @opennextjs/aws patch).
       [`${LAST}?q=%23smoke%26%25store%3Devil&store=smoke`, {}, 200, `href="${FIRST}?store=smoke"`],
       // ASSETS sends whole files; worker.ts answers the range a video player asks for.
-      [CLIP, { headers: { Range: "bytes=0-1" } }, 206, undefined, { "content-range": `bytes 0-1/${CLIP_BYTES}` }],
-      [CLIP, {}, 200, undefined, { "accept-ranges": "bytes" }],
+      // Safari plays a clip only with its own type and a 206.
+      [
+        CLIP,
+        { headers: { Range: "bytes=0-1" } },
+        206,
+        undefined,
+        { "content-range": `bytes 0-1/${CLIP_BYTES}`, "content-type": "video/mp4" },
+      ],
+      [CLIP, {}, 200, undefined, { "accept-ranges": "bytes", "content-type": "video/mp4" }],
     ],
   },
   {
