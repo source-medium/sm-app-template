@@ -1,5 +1,5 @@
 {
- "_note": "Column names, types, descriptions, and key flags of SourceMedium's published relations, read from the SourceMedium demo warehouse and its data dictionary on 2026-10-05. No data. Your warehouse may differ; with live configuration, pnpm schema reads your own. Products and cohort schemas added from the demo warehouse on 2026-10-07. dim_stores schema checked against a published warehouse and the reporting_queries model on 2026-10-07; metadata descriptions are from that model, not customer rows. rpt_ad_performance_daily creative name, description, video, post URL and format columns added from the reporting_queries model on 2026-11-18. rpt_ad_performance_daily ad_creative_display_image_url added from the reporting_queries model on 2026-11-26.",
+ "_note": "Column names, types, descriptions, and key flags of SourceMedium's published relations, read from the SourceMedium demo warehouse and its data dictionary on 2026-10-05. No data. Your warehouse may differ; with live configuration, pnpm schema reads your own. Products and cohort schemas added from the demo warehouse on 2026-10-07. dim_stores schema checked against a published warehouse and the reporting_queries model on 2026-10-07; metadata descriptions are from that model, not customer rows. rpt_ad_performance_daily creative name, description, video, post URL and format columns added from the reporting_queries model on 2026-11-18. rpt_ad_performance_daily ad_creative_display_image_url, added from the reporting_queries model on 2026-11-26, left out on 2026-11-27: that model is dropping it, and display copies are rpt_ad_creative_assets.asset_display_image_url.",
  "relations": {
   "rpt_executive_summary_daily": {
    "dataset": "transformed",
@@ -595,12 +595,6 @@
      "type": "STRING",
      "mode": "NULLABLE",
      "description": "The URL of the image used in the ad creative."
-    },
-    {
-     "name": "ad_creative_display_image_url",
-     "type": "STRING",
-     "mode": "NULLABLE",
-     "description": "ad_creative_image_url at display size, for showing the creative in a gallery or table: SourceMedium's copy of it at most 1080 pixels on its longest side where one is kept (Meta library images), else ad_creative_image_url itself. Link ad_creative_image_url to open the full-resolution image."
     },
     {
      "name": "ad_creative_thumbnail_url",
