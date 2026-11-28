@@ -127,16 +127,35 @@ async function inventoryEnrichment<T>(read: () => Promise<T>): Promise<T | null>
 }
 
 const PREVIEWS_PER_KIND = 8;
-async function assetCoverage(warehouse: Warehouse, storeId: string, rows: { channel: string; creative_id: string }[]) {
+/**
+ * The ranked creatives' current inventory: up to PREVIEWS_PER_KIND images and videos per
+ * creative, the platforms and creatives the inventory covers, and each ranked image at
+ * display size, found by store, ad platform and original URL. Previews and ranked images
+ * show asset_display_image_url (SourceMedium's smaller copy of a Meta library image, else
+ * the image itself). It is one read, so a failure cannot leave a card's original image
+ * beside its own display copy in the previews. Without the inventory table, its column or
+ * a match, a card shows the original.
+ */
+async function creativeInventory(
+  warehouse: Warehouse,
+  storeId: string,
+  rows: { channel: string; creative_id: string; image_url: string | null }[],
+) {
   if (!rows.length) return null;
+  const images = new Map<string, [string, string]>();
+  for (const { channel, image_url } of rows)
+    if (image_url?.startsWith("https://")) images.set(JSON.stringify([channel, image_url]), [channel, image_url]);
   return inventoryEnrichment(async () => {
     const result = await warehouse.query({
       name: "creative_asset_coverage",
       cache: CACHE_POLICY.aggregate,
-      maxRows: rows.length * (2 * PREVIEWS_PER_KIND + 2),
+      maxRows: rows.length * (2 * PREVIEWS_PER_KIND + 2) + images.size,
       sql: `WITH requested AS (
           SELECT JSON_VALUE(pair, '$[0]') AS channel, JSON_VALUE(pair, '$[1]') AS creative_id
           FROM UNNEST(JSON_QUERY_ARRAY(@identities)) pair
+        ), images AS (
+          SELECT JSON_VALUE(pair, '$[0]') AS channel, JSON_VALUE(pair, '$[1]') AS image_url
+          FROM UNNEST(JSON_QUERY_ARRAY(@images)) pair
         ), candidates AS (
           -- Previews show each image at display size: SourceMedium's smaller copy where it keeps one, else the image.
           SELECT ${AD_PLATFORM_SQL} AS channel, requested.creative_id, asset_position,
@@ -153,13 +172,27 @@ async function assetCoverage(warehouse: Warehouse, storeId: string, rows: { chan
             MIN(IF(kind = 'video' AND STARTS_WITH(asset_image_url,'https://'), asset_image_url, NULL)) AS poster,
             MIN(asset_position) AS position
           FROM candidates GROUP BY channel, creative_id, kind, src
+        ), previews AS (
+          SELECT channel, creative_id, kind, src, poster, position FROM distinct_media
+          QUALIFY ROW_NUMBER() OVER (PARTITION BY channel, creative_id, kind ORDER BY position, src) <= ${PREVIEWS_PER_KIND}
+        ), displays AS (
+          -- The inventory repeats an image across ads and creatives: one copy per ranked image.
+          SELECT images.channel, images.image_url,
+            MIN(IF(STARTS_WITH(asset_display_image_url, 'https://'), asset_display_image_url, NULL)) AS display_url
+          FROM ${warehouse.table(ASSET_RELATION)}
+          JOIN images ON images.channel = ${AD_PLATFORM_SQL} AND images.image_url = asset_image_url
+          WHERE sm_store_id = @store_id
+          GROUP BY images.channel, images.image_url
         )
-        SELECT channel, creative_id, kind, src, poster FROM distinct_media
-        QUALIFY ROW_NUMBER() OVER (PARTITION BY channel, creative_id, kind ORDER BY position, src) <= ${PREVIEWS_PER_KIND}
+        SELECT channel, creative_id, kind, src, poster, CAST(NULL AS STRING) AS image_url, position FROM previews
+        UNION ALL
+        -- A ranked image's display copy, in src, beside its original: no creative, kind or poster.
+        SELECT channel, NULL, NULL, display_url, NULL, image_url, NULL FROM displays
         ORDER BY channel, creative_id, kind DESC, position, src`,
       params: [
         { name: "store_id", type: "STRING", value: storeId },
         { name: "identities", type: "STRING", value: JSON.stringify(rows.map((r) => [r.channel, r.creative_id])) },
+        { name: "images", type: "STRING", value: JSON.stringify([...images.values()]) },
       ],
     });
     const hits = decodeRows(
@@ -169,12 +202,14 @@ async function assetCoverage(warehouse: Warehouse, storeId: string, rows: { chan
         kind: z.enum(["image", "video"]).nullable(),
         src: AssetRow.shape.asset_image_url,
         poster: AssetRow.shape.asset_image_url,
+        image_url: bq.string().nullable(),
       }),
       result.rows,
       ASSET_RELATION,
     );
+    const coverage = hits.filter((hit) => hit.image_url === null);
     const previews = new Map<string, Creative["media"]>();
-    for (const hit of hits) {
+    for (const hit of coverage) {
       if (!hit.creative_id || !hit.kind || !hit.src) continue;
       const key = JSON.stringify([hit.channel, hit.creative_id]);
       const items = previews.get(key) ?? [];
@@ -183,58 +218,15 @@ async function assetCoverage(warehouse: Warehouse, storeId: string, rows: { chan
       );
       previews.set(key, items);
     }
+    const displays = new Map<string, string>();
+    for (const hit of hits)
+      if (hit.image_url && hit.src) displays.set(JSON.stringify([hit.channel, hit.image_url]), hit.src);
     return {
       previews,
-      platforms: new Set(hits.map((r) => r.channel)),
-      creatives: new Set(hits.map((r) => JSON.stringify([r.channel, r.creative_id]))),
+      displays,
+      platforms: new Set(coverage.map((r) => r.channel)),
+      creatives: new Set(coverage.map((r) => JSON.stringify([r.channel, r.creative_id]))),
     };
-  });
-}
-
-/**
- * Each ranked image at display size: the inventory's asset_display_image_url for the same
- * store, ad platform and original URL (SourceMedium's smaller copy of a Meta library image,
- * else the image itself). Without the inventory table, its column or a match, a card shows
- * the original.
- */
-async function displayImages(
-  warehouse: Warehouse,
-  storeId: string,
-  rows: { channel: string; image_url: string | null }[],
-) {
-  const images = new Map<string, [string, string]>();
-  for (const { channel, image_url } of rows)
-    if (image_url?.startsWith("https://")) images.set(JSON.stringify([channel, image_url]), [channel, image_url]);
-  if (!images.size) return null;
-  return inventoryEnrichment(async () => {
-    const result = await warehouse.query({
-      name: "creative_display_images",
-      cache: CACHE_POLICY.aggregate,
-      maxRows: images.size,
-      sql: `WITH requested AS (
-          SELECT JSON_VALUE(pair, '$[0]') AS channel, JSON_VALUE(pair, '$[1]') AS image_url
-          FROM UNNEST(JSON_QUERY_ARRAY(@images)) pair
-        )
-        -- The inventory repeats an image across ads and creatives: one copy per image.
-        SELECT requested.channel, requested.image_url,
-          MIN(IF(STARTS_WITH(asset_display_image_url, 'https://'), asset_display_image_url, NULL)) AS display_url
-        FROM ${warehouse.table(ASSET_RELATION)}
-        JOIN requested ON requested.channel = ${AD_PLATFORM_SQL} AND requested.image_url = asset_image_url
-        WHERE sm_store_id = @store_id
-        GROUP BY requested.channel, requested.image_url`,
-      params: [
-        { name: "store_id", type: "STRING", value: storeId },
-        { name: "images", type: "STRING", value: JSON.stringify([...images.values()]) },
-      ],
-    });
-    const hits = decodeRows(
-      z.object({ channel: bq.string(), image_url: bq.string(), display_url: AssetRow.shape.asset_image_url }),
-      result.rows,
-      ASSET_RELATION,
-    );
-    return new Map(
-      hits.flatMap((hit) => (hit.display_url ? [[JSON.stringify([hit.channel, hit.image_url]), hit.display_url]] : [])),
-    );
   });
 }
 
@@ -255,7 +247,7 @@ export async function queryCreatives(filters: CreativesFilters, baselines: Basel
           MAX(ad_creative_title) AS title,
           MAX(ad_creative_body) AS body,
           ${latest("ad_creative_name")} AS name,
-          -- The original image; displayImages() finds its display-size copy after ranking.
+          -- The original image; creativeInventory() finds its display-size copy after ranking.
           ${latest(httpsUrl("ad_creative_image_url"))} AS image_url,
           ${latest(httpsUrl("ad_creative_thumbnail_url"))} AS thumbnail_url,
           ${latest(httpsUrl("ad_creative_video_url"))} AS video_url,
@@ -295,15 +287,12 @@ export async function queryCreatives(filters: CreativesFilters, baselines: Basel
     ],
   });
   const rows = decodeRows(CreativeRow, result.rows, CREATIVE_RELATION);
-  const [assets, displays] = await Promise.all([
-    assetCoverage(warehouse, filters.storeId, rows),
-    displayImages(warehouse, filters.storeId, rows),
-  ]);
+  const assets = await creativeInventory(warehouse, filters.storeId, rows);
   const first = rows[0];
   return {
     creatives: rows.map((row) =>
       toCreative(
-        { ...row, image_url: displays?.get(JSON.stringify([row.channel, row.image_url])) ?? row.image_url },
+        { ...row, image_url: assets?.displays.get(JSON.stringify([row.channel, row.image_url])) ?? row.image_url },
         filters.range,
         !assets
           ? "unknown"

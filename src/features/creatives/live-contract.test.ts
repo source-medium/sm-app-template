@@ -51,9 +51,11 @@ const ROW = {
   latest_date: "2026-09-02",
   previous_latest_date: "2026-08-31",
 };
-// The inventory reads' columns: previews per creative (assetCoverage) and display copies per image (displayImages).
-const COVERAGE_FIELDS = ["channel", "creative_id", "kind", "src", "poster"].map((name) => ({ name, type: "STRING" }));
-const DISPLAY_FIELDS = ["channel", "image_url", "display_url"].map((name) => ({ name, type: "STRING" }));
+// The inventory read's columns: previews per creative, and each ranked image_url's display copy in src.
+const COVERAGE_FIELDS = ["channel", "creative_id", "kind", "src", "poster", "image_url"].map((name) => ({
+  name,
+  type: "STRING",
+}));
 const FILTERS = { storeId: "store-1", range: { from: "2026-09-01", to: "2026-09-02" } };
 const NONE: BaselineRanges = [null, null];
 const PREVIOUS: BaselineRanges = [{ from: "2026-08-30", to: "2026-08-31" }, null];
@@ -313,10 +315,10 @@ describe("creatives, live", () => {
   const SHARED = "https://cdn.example.com/shared.jpg";
   const PLAIN = "https://cdn.example.com/plain.jpg";
   const COPY = "https://storage.googleapis.com/mirror/shared.webp";
+  const isInventory = (call: { body: unknown }) =>
+    String((call.body as { query: string }).query).includes("rpt_ad_creative_assets");
   const isDisplayLookup = (call: { body: unknown }) =>
-    String((call.body as { query: string }).query).includes("display_url");
-  const isCoverage = (call: { body: unknown }) =>
-    String((call.body as { query: string }).query).includes("rpt_ad_creative_assets") && !isDisplayLookup(call);
+    isInventory(call) && String((call.body as { query: string }).query).includes("display_url");
   const imaged = [
     // One image on two ads, the same URL on another platform, and an image without a copy.
     { ...ROW, channel: "meta_ads", creative_id: "a", image_url: SHARED, thumbnail_url: null },
@@ -328,13 +330,12 @@ describe("creatives, live", () => {
   it("shows each ranked image's display copy from the inventory, by store, platform and original URL", async () => {
     const fake = await goLive({
       submit: (call) =>
-        isDisplayLookup(call)
-          ? rowsResponse(DISPLAY_FIELDS, [{ channel: "meta_ads", image_url: SHARED, display_url: COPY }])
-          : isCoverage(call)
-            ? rowsResponse(COVERAGE_FIELDS, [
-                { channel: "meta_ads", creative_id: "a", kind: "image", src: COPY, poster: null },
-              ])
-            : rowsResponse(FIELDS, imaged),
+        isInventory(call)
+          ? rowsResponse(COVERAGE_FIELDS, [
+              { channel: "meta_ads", creative_id: "a", kind: "image", src: COPY, poster: null },
+              { channel: "meta_ads", creative_id: null, kind: null, src: COPY, poster: null, image_url: SHARED },
+            ])
+          : rowsResponse(FIELDS, imaged),
     });
     const { getCreatives } = await import("./queries");
     const data = await getCreatives({ ...FILTERS, sort: "spend" }, NONE);
@@ -347,10 +348,12 @@ describe("creatives, live", () => {
     // The card's image and the inventory's preview of it are one item, not the original beside its copy.
     expect(data.creatives[0]?.media).toEqual([{ kind: "image", src: COPY }]);
     expectEveryQueryScopedTo(fake, FILTERS.storeId);
+    // The previews and the display copies are one read, so they succeed or fail together.
+    expect(fake.submitted()).toHaveLength(2);
     const lookup = fake.submitted().find((body) => body.query.includes("display_url"));
-    expect(lookup?.query).toContain(`requested.channel = ${PLATFORM} AND requested.image_url = asset_image_url`);
+    expect(lookup?.query).toContain(`images.channel = ${PLATFORM} AND images.image_url = asset_image_url`);
     // The inventory repeats an image across ads: one copy per requested image.
-    expect(lookup?.query).toContain("GROUP BY requested.channel, requested.image_url");
+    expect(lookup?.query).toContain("GROUP BY images.channel, images.image_url");
     // Bounded to the ranked images, each platform and URL once.
     expect(lookup?.queryParameters).toContainEqual({
       name: "images",
@@ -371,15 +374,34 @@ describe("creatives, live", () => {
   ])("keeps the ranking and each original image when %s", async (_, status, message) => {
     await goLive({
       submit: (call) =>
-        isDisplayLookup(call)
+        isInventory(call)
           ? Response.json({ error: { code: status, message } }, { status })
-          : isCoverage(call)
-            ? rowsResponse(COVERAGE_FIELDS, [])
-            : rowsResponse(FIELDS, imaged),
+          : rowsResponse(FIELDS, imaged),
     });
     const { getCreatives } = await import("./queries");
     const data = await getCreatives({ ...FILTERS, sort: "spend" }, NONE);
     expect(data.creatives.map((c) => c.imageUrl)).toEqual([SHARED, SHARED, SHARED, PLAIN]);
+  });
+
+  it("never shows a card's image beside its own display copy when the display lookup fails", async () => {
+    // Whatever read looks up display copies fails; any other inventory read previews the copy.
+    await goLive({
+      submit: (call) =>
+        isDisplayLookup(call)
+          ? Response.json({ error: { code: 503, message: "Backend error" } }, { status: 503 })
+          : isInventory(call)
+            ? rowsResponse(COVERAGE_FIELDS, [
+                { channel: "meta_ads", creative_id: "a", kind: "image", src: COPY, poster: null },
+              ])
+            : rowsResponse(FIELDS, imaged),
+    });
+    const { getCreatives } = await import("./queries");
+    const data = await getCreatives({ ...FILTERS, sort: "spend" }, NONE);
+    expect(data.creatives[0]).toMatchObject({
+      assets: "unknown",
+      imageUrl: SHARED,
+      media: [{ kind: "image", src: SHARED }],
+    });
   });
 
   it("totals the scope, each format and each launch week in one grouped pass", async () => {
