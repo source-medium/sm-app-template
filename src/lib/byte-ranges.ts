@@ -9,6 +9,10 @@
  * that a later range is of the same file. One `bytes=` range is answered with
  * 206 (or 416 past the end); several ranges, another unit or a changed file
  * get the whole file, as the RFC allows.
+ *
+ * A file that declares its size (Content-Length) is sliced as it streams, so a
+ * range holds only a chunk of the file in memory at a time; one that does not
+ * is read whole to learn its size.
  */
 export async function withByteRanges(request: Request, response: Response): Promise<Response> {
   const etag = response.headers.get("ETag");
@@ -27,8 +31,10 @@ export async function withByteRanges(request: Request, response: Response): Prom
   const spec = range && (ifRange === null || ifRange === etag) ? /^bytes=(\d*)-(\d*)$/.exec(range.trim()) : null;
   if (!spec) return new Response(response.body, { status: 200, statusText: response.statusText, headers });
 
-  const body = new Uint8Array(await response.arrayBuffer());
-  const size = body.byteLength;
+  const declared = response.headers.get("Content-Length");
+  const stream = declared && /^\d+$/.test(declared) ? response.body : null;
+  const whole = stream ? null : new Uint8Array(await response.arrayBuffer());
+  const size = whole ? whole.byteLength : Number(declared);
   const [, first = "", last = ""] = spec;
   const bounds = first
     ? {
@@ -37,12 +43,42 @@ export async function withByteRanges(request: Request, response: Response): Prom
         valid: !last || Number(last) >= Number(first),
       }
     : { start: Math.max(size - Number(last), 0), end: size - 1, valid: last !== "" };
-  if (!bounds.valid) return new Response(body, { status: 200, statusText: response.statusText, headers });
+  if (!bounds.valid) return new Response(stream ?? whole, { status: 200, statusText: response.statusText, headers });
   headers.delete("Content-Length");
   if (bounds.start >= size || (!first && Number(last) === 0)) {
+    await stream?.cancel();
     headers.set("Content-Range", `bytes */${size}`);
     return new Response(null, { status: 416, headers });
   }
   headers.set("Content-Range", `bytes ${bounds.start}-${bounds.end}/${size}`);
-  return new Response(body.slice(bounds.start, bounds.end + 1), { status: 206, headers });
+  const body = stream
+    ? slice(stream, bounds.start, bounds.end - bounds.start + 1)
+    : whole?.slice(bounds.start, bounds.end + 1);
+  return new Response(body, { status: 206, headers });
+}
+
+/**
+ * workerd sends a FixedLengthStream body with Content-Length, as it does a byte
+ * array; any other stream it sends chunked. Node, where the unit tests run, has none.
+ */
+const FixedLengthStream = (
+  globalThis as { FixedLengthStream?: new (length: number) => TransformStream<Uint8Array, Uint8Array> }
+).FixedLengthStream;
+
+/** The `length` bytes of `file` from `start`, read as they arrive; reading stops once they have. */
+function slice(file: ReadableStream<Uint8Array>, start: number, length: number): ReadableStream<Uint8Array> {
+  const end = start + length;
+  let offset = 0;
+  const range = file.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        const from = offset;
+        offset += chunk.byteLength;
+        if (offset > start) controller.enqueue(chunk.subarray(Math.max(start - from, 0), end - from));
+        // Closes the range and cancels the rest of the file.
+        if (offset >= end) controller.terminate();
+      },
+    }),
+  );
+  return FixedLengthStream ? range.pipeThrough(new FixedLengthStream(length)) : range;
 }
